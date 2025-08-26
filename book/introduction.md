@@ -1,257 +1,211 @@
-> Fairy tales are more than true: not because they tell us that dragons exist,
-> but because they tell us that dragons can be beaten.
+> Les contes de fées sont plus vrais que vrais : non pas parce qu’ils nous disent que les dragons existent,  
+> mais parce qu’ils nous disent que les dragons peuvent être vaincus.  
 >
-> <cite>G.K. Chesterton by way of Neil Gaiman, <em>Coraline</em></cite>
+> <cite>G.K. Chesterton via Neil Gaiman, <em>Coraline</em></cite>
 
-I'm really excited we're going on this journey together. This is a book on
-implementing interpreters for programming languages. It's also a book on how to
-design a language worth implementing. It's the book I wish I'd had when I first
-started getting into languages, and it's the book I've been writing in my <span
-name="head">head</span> for nearly a decade.
+Je suis vraiment enthousiaste que nous entreprenions ce voyage ensemble. Ceci est un livre sur
+l’implémentation d’interpréteurs pour des langages de programmation. C’est aussi un livre sur la manière de
+concevoir un langage qui mérite d’être implémenté. C’est le livre que j’aurais aimé avoir quand j’ai commencé
+à m’intéresser aux langages, et c’est le livre que j’écris dans ma <span
+name="head">tête</span> depuis près d’une décennie.
 
 <aside name="head">
 
-To my friends and family, sorry I've been so absentminded!
+À mes amis et à ma famille, désolé d’avoir été si distrait !
 
 </aside>
 
-In these pages, we will walk step-by-step through two complete interpreters for
-a full-featured language. I assume this is your first foray into languages, so
-I'll cover each concept and line of code you need to build a complete, usable,
-fast language implementation.
 
-In order to cram two full implementations inside one book without it turning
-into a doorstop, this text is lighter on theory than others. As we build each
-piece of the system, I will introduce the history and concepts behind it. I'll
-try to get you familiar with the lingo so that if you ever find yourself at a
-<span name="party">cocktail party</span> full of PL (programming language)
-researchers, you'll fit in.
+Dans ces pages, nous allons parcourir pas à pas deux interpréteurs complets pour
+un langage riche en fonctionnalités. Je pars du principe qu’il s’agit de votre première incursion dans les langages, donc
+je couvrirai chaque concept et chaque ligne de code dont vous aurez besoin pour construire une implémentation de langage complète, utilisable et rapide.
+
+Afin de caser deux implémentations complètes dans un seul livre sans qu’il ne se transforme
+en cale-porte, ce texte est plus léger en théorie que d’autres. À mesure que nous construirons chaque
+partie du système, je présenterai l’histoire et les concepts qui la sous-tendent. J’essaierai
+de vous familiariser avec le jargon afin que, si jamais vous vous retrouvez à une
+<span name="party">soirée cocktail</span> remplie de chercheurs en LP (langages de programmation),
+vous soyez à l’aise.
 
 <aside name="party">
 
-Strangely enough, a situation I have found myself in multiple times. You
-wouldn't believe how much some of them can drink.
+Aussi étrange que cela puisse paraître, une situation dans laquelle je me suis retrouvé plusieurs fois.  
+Vous ne croiriez pas combien certains d’entre eux peuvent boire.
 
 </aside>
 
-But we're mostly going to spend our brain juice getting the language up and
-running. This is not to say theory isn't important. Being able to reason
-precisely and <span name="formal">formally</span> about syntax and semantics is
-a vital skill when working on a language. But, personally, I learn best by
-doing. It's hard for me to wade through paragraphs full of abstract concepts and
-really absorb them. But if I've coded something, run it, and debugged it, then I
-*get* it.
+
+Mais nous allons surtout consacrer notre énergie cérébrale à faire en sorte que le langage démarre et fonctionne.  
+Cela ne veut pas dire que la théorie n’est pas importante. Être capable de raisonner
+de manière précise et <span name="formal">formelle</span> à propos de la syntaxe et de la sémantique est
+une compétence vitale lorsqu’on travaille sur un langage. Mais, personnellement, j’apprends mieux en
+faisant. J’ai du mal à me frayer un chemin à travers des paragraphes remplis de concepts abstraits et
+à vraiment les assimiler. Mais si j’ai codé quelque chose, exécuté le code, et corrigé ses erreurs, alors je
+*comprends*.
 
 <aside name="formal">
 
-Static type systems in particular require rigorous formal reasoning. Hacking on
-a type system has the same feel as proving a theorem in mathematics.
+Les systèmes de types statiques, en particulier, exigent un raisonnement formel rigoureux.  
+Bidouiller un système de types donne la même impression que de démontrer un théorème en mathématiques.
 
-It turns out this is no coincidence. In the early half of last century, Haskell
-Curry and William Alvin Howard showed that they are two sides of the same coin:
-[the Curry-Howard isomorphism][].
+Il s’avère que ce n’est pas une coïncidence. Dans la première moitié du siècle dernier, Haskell
+Curry et William Alvin Howard ont montré qu’il s’agissait des deux faces d’une même pièce :
+[le isomorphisme de Curry-Howard][].
 
-[the curry-howard isomorphism]: https://en.wikipedia.org/wiki/Curry%E2%80%93Howard_correspondence
+[le isomorphisme de curry-howard]: https://en.wikipedia.org/wiki/Curry%E2%80%93Howard_correspondence
 
 </aside>
 
-That's my goal for you. I want you to come away with a solid intuition of how a
-real language lives and breathes. My hope is that when you read other, more
-theoretical books later, the concepts there will firmly stick in your mind,
-adhered to this tangible substrate.
+C’est mon objectif pour vous. Je veux que vous repartiez avec une intuition solide de la manière dont un
+langage réel vit et respire. J’espère que lorsque vous lirez d’autres livres plus théoriques par la suite,  
+les concepts qu’ils présentent resteront fermement ancrés dans votre esprit, attachés à ce substrat tangible.
 
-## Why Learn This Stuff?
 
-Every introduction to every compiler book seems to have this section. I don't
-know what it is about programming languages that causes such existential doubt.
-I don't think ornithology books worry about justifying their existence. They
-assume the reader loves birds and start teaching.
+## Pourquoi apprendre tout ça ?
 
-But programming languages are a little different. I suppose it is true that the
-odds of any of us creating a broadly successful, general-purpose programming
-language are slim. The designers of the world's widely used languages could fit
-in a Volkswagen bus, even without putting the pop-top camper up. If joining that
-elite group was the *only* reason to learn languages, it would be hard to
-justify. Fortunately, it isn't.
+Chaque introduction de chaque livre sur les compilateurs semble avoir cette section.  
+Je ne sais pas ce qu’il y a avec les langages de programmation qui provoque un tel doute existentiel.  
+Je ne pense pas que les livres d’ornithologie s’inquiètent de justifier leur existence.  
+Ils partent du principe que le lecteur aime les oiseaux et commencent à enseigner.  
 
-### Little languages are everywhere
+Mais les langages de programmation sont un peu différents. J’imagine qu’il est vrai que les chances pour l’un de nous de créer un langage de programmation à usage général et largement populaire sont minces.  
+Les concepteurs des langages les plus utilisés dans le monde pourraient tenir dans un minibus Volkswagen, même sans relever le toit escamotable.  
+Si rejoindre ce groupe d’élite était la *seule* raison d’apprendre les langages, ce serait difficile à justifier. Heureusement, ce n’est pas le cas.  
 
-For every successful general-purpose language, there are a thousand successful
-niche ones. We used to call them "little languages", but inflation in the jargon
-economy led to the name "domain-specific languages". These are pidgins
-tailor-built to a specific task. Think application scripting languages, template
-engines, markup formats, and configuration files.
+### Les petits langages sont partout
 
-<span name="little"></span><img src="image/introduction/little-languages.png" alt="A random selection of little languages." />
+Pour chaque langage généraliste réussi, il existe un millier de langages spécialisés qui réussissent.  
+Nous avions l’habitude de les appeler « petits langages », mais l’inflation dans l’économie du jargon a conduit au nom de « langages spécifiques à un domaine ».  
+Ce sont des pidgins conçus sur mesure pour une tâche précise. Pensez aux langages de script d’application, aux moteurs de templates, aux formats de balisage et aux fichiers de configuration.  
+
+<span name="little"></span><img src="image/introduction/little-languages.png" alt="Une sélection aléatoire de petits langages." />
 
 <aside name="little">
 
-A random selection of some little languages you might run into.
+Une sélection aléatoire de quelques petits langages que vous pourriez rencontrer.  
 
 </aside>
 
-Almost every large software project needs a handful of these. When you can, it's
-good to reuse an existing one instead of rolling your own. Once you factor in
-documentation, debuggers, editor support, syntax highlighting, and all of the
-other trappings, doing it yourself becomes a tall order.
 
-But there's still a good chance you'll find yourself needing to whip up a parser
-or other tool when there isn't an existing library that fits your needs. Even
-when you are reusing some existing implementation, you'll inevitably end up
-needing to debug and maintain it and poke around in its guts.
+Presque chaque grand projet logiciel a besoin d’une poignée de ceux-ci. Quand c’est possible, il vaut mieux réutiliser un existant plutôt que de créer le vôtre.  
+Une fois que vous prenez en compte la documentation, les débogueurs, le support dans les éditeurs, la coloration syntaxique et tout le reste, le faire vous-même devient une tâche ardue.  
 
-### Languages are great exercise
+Mais il y a encore de bonnes chances que vous vous retrouviez à devoir bricoler un parseur ou un autre outil lorsqu’il n’existe pas de bibliothèque adaptée à vos besoins.  
+Même lorsque vous réutilisez une implémentation existante, vous finirez inévitablement par devoir la déboguer, la maintenir et plonger dans ses entrailles.  
 
-Long distance runners sometimes train with weights strapped to their ankles or
-at high altitudes where the atmosphere is thin. When they later unburden
-themselves, the new relative ease of light limbs and oxygen-rich air enables
-them to run farther and faster.
+### Les langages sont un excellent exercice
 
-Implementing a language is a real test of programming skill. The code is complex
-and performance critical. You must master recursion, dynamic arrays, trees,
-graphs, and hash tables. You probably use hash tables at least in your
-day-to-day programming, but do you *really* understand them? Well, after we've
-crafted our own from scratch, I guarantee you will.
+Les coureurs de fond s’entraînent parfois avec des poids attachés aux chevilles ou en haute altitude, là où l’air est raréfié.  
+Quand ils s’en débarrassent ensuite, la nouvelle légèreté de leurs membres et l’air riche en oxygène leur permet de courir plus loin et plus vite.  
 
-While I intend to show you that an interpreter isn't as daunting as you might
-believe, implementing one well is still a challenge. Rise to it, and you'll come
-away a stronger programmer, and smarter about how you use data structures and
-algorithms in your day job.
+Implémenter un langage est un véritable test de compétence en programmation. Le code est complexe et critique en termes de performance.  
+Vous devez maîtriser la récursivité, les tableaux dynamiques, les arbres, les graphes et les tables de hachage.  
+Vous utilisez probablement des tables de hachage dans votre programmation quotidienne, mais les comprenez-vous *vraiment* ?  
+Eh bien, après avoir construit les nôtres à partir de zéro, je vous garantis que oui.  
 
-### One more reason
+Même si je souhaite vous montrer qu’un interpréteur n’est pas aussi intimidant que vous pourriez le croire, en implémenter un correctement reste un défi.  
+Relevez-le, et vous repartirez en meilleur programmeur, plus avisé sur votre utilisation des structures de données et des algorithmes dans votre travail quotidien.  
 
-This last reason is hard for me to admit, because it's so close to my heart.
-Ever since I learned to program as a kid, I felt there was something magical
-about languages. When I first tapped out BASIC programs one key at a time I
-couldn't conceive how BASIC *itself* was made.
+### Une raison de plus
 
-Later, the mixture of awe and terror on my college friends' faces when talking
-about their compilers class was enough to convince me language hackers were a
-different breed of human -- some sort of wizards granted privileged access to
-arcane arts.
+Cette dernière raison est difficile pour moi à admettre, car elle me tient tellement à cœur.  
+Depuis que j’ai appris à programmer enfant, j’ai toujours ressenti quelque chose de magique à propos des langages.  
+Quand j’ai tapoté mes premiers programmes BASIC une touche à la fois, je ne pouvais pas concevoir comment BASIC *lui-même* était fait.  
 
-It's a charming <span name="image">image</span>, but it has a darker side. *I*
-didn't feel like a wizard, so I was left thinking I lacked some inborn quality
-necessary to join the cabal. Though I've been fascinated by languages ever since
-I doodled made-up keywords in my school notebook, it took me decades to muster
-the courage to try to really learn them. That "magical" quality, that sense of
-exclusivity, excluded *me*.
+Plus tard, le mélange d’admiration et de terreur sur le visage de mes camarades d’université quand ils parlaient de leur cours de compilateurs suffisait à me convaincre que les bidouilleurs de langages étaient d’une autre espèce d’humains — une sorte de sorciers ayant accès à des arts secrets.  
+
+C’est une <span name="image">image</span> séduisante, mais qui a un côté plus sombre. *Moi*, je ne me sentais pas comme un sorcier, alors j’en venais à penser qu’il me manquait une qualité innée nécessaire pour rejoindre cette cabale.  
+Bien que j’aie été fasciné par les langages depuis que je griffonnais des mots-clés inventés dans mon cahier d’école, il m’a fallu des décennies pour trouver le courage d’essayer réellement de les apprendre.  
+Cette qualité « magique », ce sentiment d’exclusivité, m’excluait *moi*.  
 
 <aside name="image">
 
-And its practitioners don't hesitate to play up this image. Two of the seminal
-texts on programming languages feature a [dragon][] and a [wizard][] on their
-covers.
+Et ceux qui la pratiquent n’hésitent pas à renforcer cette image.  
+Deux des textes fondateurs sur les langages de programmation affichent un [dragon][] et un [sorcier][] sur leur couverture.  
 
-[dragon]: https://en.wikipedia.org/wiki/Compilers:_Principles,_Techniques,_and_Tools
-[wizard]: https://mitpress.mit.edu/sites/default/files/sicp/index.html
+[dragon]: https://en.wikipedia.org/wiki/Compilers:_Principles,_Techniques,_and_Tools  
+[sorcier]: https://mitpress.mit.edu/sites/default/files/sicp/index.html  
 
 </aside>
 
-When I did finally start cobbling together my own little interpreters, I quickly
-learned that, of course, there is no magic at all. It's just code, and the
-people who hack on languages are just people.
 
-There *are* a few techniques you don't often encounter outside of languages, and
-some parts are a little difficult. But not more difficult than other obstacles
-you've overcome. My hope is that if you've felt intimidated by languages and
-this book helps you overcome that fear, maybe I'll leave you just a tiny bit
-braver than you were before.
+Lorsque j’ai finalement commencé à assembler mes propres petits interpréteurs, j’ai vite appris que, bien sûr, il n’y a absolument aucune magie.  
+Ce n’est que du code, et les personnes qui bidouillent les langages ne sont que des gens.  
 
-And, who knows, maybe you *will* make the next great language. Someone has to.
+Il *existe* quelques techniques que l’on ne rencontre pas souvent en dehors des langages, et certaines parties sont un peu difficiles.  
+Mais pas plus difficiles que d’autres obstacles que vous avez déjà surmontés.  
+J’espère que si vous vous êtes senti intimidé par les langages et que ce livre vous aide à surmonter cette peur, peut-être que je vous laisserai un tout petit peu plus courageux qu’auparavant.  
 
-## How the Book Is Organized
+Et, qui sait, peut-être que vous *créerez* le prochain grand langage. Il faut bien que quelqu’un le fasse.  
 
-This book is broken into three parts. You're reading the first one now. It's a
-couple of chapters to get you oriented, teach you some of the lingo that
-language hackers use, and introduce you to Lox, the language we'll be
-implementing.
+## Comment le livre est organisé
 
-Each of the other two parts builds one complete Lox interpreter. Within those
-parts, each chapter is structured the same way. The chapter takes a single
-language feature, teaches you the concepts behind it, and walks you through an
-implementation.
+Ce livre est divisé en trois parties. Vous lisez la première maintenant.  
+C’est quelques chapitres pour vous orienter, vous apprendre un peu le jargon utilisé par les bidouilleurs de langages, et vous présenter Lox, le langage que nous allons implémenter.  
 
-It took a good bit of trial and error on my part, but I managed to carve up the
-two interpreters into chapter-sized chunks that build on the previous chapters
-but require nothing from later ones. From the very first chapter, you'll have a
-working program you can run and play with. With each passing chapter, it grows
-increasingly full-featured until you eventually have a complete language.
+Chacune des deux autres parties construit un interpréteur Lox complet.  
+Dans ces parties, chaque chapitre est structuré de la même manière. Le chapitre prend une seule fonctionnalité du langage, vous enseigne les concepts qui la sous-tendent, et vous guide dans son implémentation.  
 
-Aside from copious, scintillating English prose, chapters have a few other
-delightful facets:
+Il m’a fallu pas mal d’essais et d’erreurs, mais j’ai réussi à découper les deux interpréteurs en sections de taille chapitre qui s’appuient sur les chapitres précédents sans nécessiter ceux qui suivent.  
+Dès le tout premier chapitre, vous aurez un programme fonctionnel que vous pouvez exécuter et tester.  
+Au fil des chapitres, il devient de plus en plus complet jusqu’à ce que vous ayez finalement un langage complet.  
 
-### The code
+En plus d’une prose anglaise abondante et captivante, les chapitres ont quelques autres facettes délicieuses :  
 
-We're about *crafting* interpreters, so this book contains real code. Every
-single line of code needed is included, and each snippet tells you where to
-insert it in your ever-growing implementation.
+### Le code
 
-Many other language books and language implementations use tools like [Lex][]
-and <span name="yacc">[Yacc][]</span>, so-called **compiler-compilers**, that
-automatically generate some of the source files for an implementation from some
-higher-level description. There are pros and cons to tools like those, and
-strong opinions -- some might say religious convictions -- on both sides.
+Nous sommes là pour *fabriquer* des interpréteurs, donc ce livre contient du vrai code.  
+Chaque ligne de code nécessaire est incluse, et chaque extrait vous indique où l’insérer dans votre implémentation toujours croissante.  
+
+Beaucoup d’autres livres sur les langages et implémentations de langages utilisent des outils comme [Lex][] et <span name="yacc">[Yacc][]</span>, les soi-disant **compiler-compilers**, qui génèrent automatiquement certains fichiers source d’une implémentation à partir d’une description de plus haut niveau.  
+Il y a des avantages et des inconvénients à ces outils, et des opinions fortes — certains diraient même des convictions religieuses — des deux côtés.  
 
 <aside name="yacc">
 
-Yacc is a tool that takes in a grammar file and produces a source file for a
-compiler, so it's sort of like a "compiler" that outputs a compiler, which is
-where we get the term "compiler-compiler".
+Yacc est un outil qui prend un fichier de grammaire et produit un fichier source pour un compilateur, c’est donc un peu comme un « compilateur » qui produit un compilateur, d’où le terme « compiler-compiler ».  
 
-Yacc wasn't the first of its ilk, which is why it's named "Yacc" -- *Yet
-Another* Compiler-Compiler. A later similar tool is [Bison][], named as a pun on
-the pronunciation of Yacc like "yak".
+Yacc n’a pas été le premier du genre, ce qui explique son nom — *Yet Another* Compiler-Compiler.  
+Un outil similaire ultérieur est [Bison][], nommé en jeu de mots sur la prononciation de Yacc comme « yak ».  
 
-<img src="image/introduction/yak.png" alt="A yak." />
+<img src="image/introduction/yak.png" alt="Un yak." />
 
-[bison]: https://en.wikipedia.org/wiki/GNU_bison
-
-If you find all of these little self-references and puns charming and fun,
-you'll fit right in here. If not, well, maybe the language nerd sense of humor
-is an acquired taste.
+Si vous trouvez toutes ces petites auto-références et jeux de mots charmants et amusants, vous vous sentirez à l’aise ici.  
+Sinon, eh bien, peut-être que le sens de l’humour des nerds de langages est un goût acquis.  
 
 </aside>
 
-We will abstain from using them here. I want to ensure there are no dark corners
-where magic and confusion can hide, so we'll write everything by hand. As you'll
-see, it's not as bad as it sounds, and it means you really will understand each
-line of code and how both interpreters work.
 
-[lex]: https://en.wikipedia.org/wiki/Lex_(software)
-[yacc]: https://en.wikipedia.org/wiki/Yacc
+Nous nous abstiendrons de les utiliser ici. Je veux m’assurer qu’il n’y ait pas de recoins sombres où magie et confusion pourraient se cacher, donc nous écrirons tout à la main.  
+Comme vous le verrez, ce n’est pas aussi terrible que cela en a l’air, et cela signifie que vous comprendrez vraiment chaque ligne de code et comment les deux interpréteurs fonctionnent.  
 
-A book has different constraints from the "real world" and so the coding style
-here might not always reflect the best way to write maintainable production
-software. If I seem a little cavalier about, say, omitting `private` or
-declaring a global variable, understand I do so to keep the code easier on your
-eyes. The pages here aren't as wide as your IDE and every character counts.
+[lex]: https://en.wikipedia.org/wiki/Lex_(software)  
+[yacc]: https://en.wikipedia.org/wiki/Yacc  
 
-Also, the code doesn't have many comments. That's because each handful of lines
-is surrounded by several paragraphs of honest-to-God prose explaining it. When
-you write a book to accompany your program, you are welcome to omit comments
-too. Otherwise, you should probably use `//` a little more than I do.
+Un livre a des contraintes différentes du « monde réel », et donc le style de codage ici peut ne pas toujours refléter la meilleure manière d’écrire un logiciel de production maintenable.  
+Si je semble un peu cavalier à propos, par exemple, d’ommettre `private` ou de déclarer une variable globale, comprenez que je le fais pour rendre le code plus lisible pour vous.  
+Les pages ici ne sont pas aussi larges que votre IDE et chaque caractère compte.  
 
-While the book contains every line of code and teaches what each means, it does
-not describe the machinery needed to compile and run the interpreter. I assume
-you can slap together a makefile or a project in your IDE of choice in order to
-get the code to run. Those kinds of instructions get out of date quickly, and
-I want this book to age like XO brandy, not backyard hooch.
+De plus, le code ne contient pas beaucoup de commentaires.  
+C’est parce que chaque poignée de lignes est entourée de plusieurs paragraphes de prose honnête expliquant son fonctionnement.  
+Lorsque vous écrivez un livre pour accompagner votre programme, vous pouvez également omettre les commentaires.  
+Sinon, vous devriez probablement utiliser `//` un peu plus que moi.  
 
-### Snippets
+Bien que le livre contienne chaque ligne de code et explique ce que chacune signifie, il ne décrit pas la machinerie nécessaire pour compiler et exécuter l’interpréteur.  
+Je suppose que vous pouvez créer un makefile ou un projet dans l’IDE de votre choix pour exécuter le code.  
+Ce genre d’instructions devient vite obsolète, et je veux que ce livre vieillisse comme un XO, pas comme de l’alcool de contrebande maison.  
 
-Since the book contains literally every line of code needed for the
-implementations, the snippets are quite precise. Also, because I try to keep the
-program in a runnable state even when major features are missing, sometimes we
-add temporary code that gets replaced in later snippets.
+### Extraits de code
 
-A snippet with all the bells and whistles looks like this:
+Puisque le livre contient littéralement chaque ligne de code nécessaire pour les implémentations, les extraits sont assez précis.  
+De plus, parce que j’essaie de garder le programme dans un état exécutable même lorsque des fonctionnalités majeures manquent, nous ajoutons parfois du code temporaire qui sera remplacé dans les extraits suivants.  
+
+Un extrait avec toutes les fioritures ressemble à ceci :
 
 <div class="codehilite"><pre class="insert-before">
       default:
 </pre><div class="source-file"><em>lox/Scanner.java</em><br>
-in <em>scanToken</em>()<br>
-replace 1 line</div>
+dans <em>scanToken</em>()<br>
+remplacer 1 ligne</div>
 <pre class="insert">
         <span class="k">if</span> (<span class="i">isDigit</span>(<span class="i">c</span>)) {
           <span class="i">number</span>();
@@ -261,251 +215,208 @@ replace 1 line</div>
 </pre><pre class="insert-after">
         break;
 </pre></div>
-<div class="source-file-narrow"><em>lox/Scanner.java</em>, in <em>scanToken</em>(), replace 1 line</div>
+<div class="source-file-narrow"><em>lox/Scanner.java</em>, dans <em>scanToken</em>(), remplacer 1 ligne</div>
 
-In the center, you have the new code to add. It may have a few faded out lines
-above or below to show where it goes in the existing surrounding code. There is
-also a little blurb telling you in which file and where to place the snippet. If
-that blurb says "replace _ lines", there is some existing code between the faded
-lines that you need to remove and replace with the new snippet.
+
+Au centre, vous avez le nouveau code à ajouter.  
+Il peut y avoir quelques lignes estompées au-dessus ou en dessous pour montrer où il s’insère dans le code existant.  
+Il y a aussi un petit encadré indiquant dans quel fichier et où placer l’extrait.  
+Si cet encadré dit « remplacer _ ligne », il y a du code existant entre les lignes estompées que vous devez supprimer et remplacer par le nouvel extrait.  
 
 ### Asides
 
-<span name="joke">Asides</span> contain biographical sketches, historical
-background, references to related topics, and suggestions of other areas to
-explore. There's nothing that you *need* to know in them to understand later
-parts of the book, so you can skip them if you want. I won't judge you, but I
-might be a little sad.
+<span name="joke">Asides</span> contiennent des profils biographiques, un contexte historique, des références à des sujets connexes et des suggestions d’autres domaines à explorer.  
+Il n’y a rien que vous ayez *besoin* de connaître dedans pour comprendre les parties suivantes du livre, donc vous pouvez les ignorer si vous voulez.  
+Je ne vous jugerai pas, mais je pourrais être un peu triste.  
 
 <aside name="joke">
 
-Well, some asides do, at least. Most of them are just dumb jokes and amateurish
-drawings.
+Eh bien, certains asides en ont besoin, au moins.  
+La plupart d’entre eux sont juste des blagues stupides et des dessins amateurs.  
 
 </aside>
 
-### Challenges
 
-Each chapter ends with a few exercises. Unlike textbook problem sets, which tend
-to review material you already covered, these are to help you learn *more* than
-what's in the chapter. They force you to step off the guided path and explore on
-your own. They will make you research other languages, figure out how to
-implement features, or otherwise get you out of your comfort zone.
+### Défis
 
-<span name="warning">Vanquish</span> the challenges and you'll come away with a
-broader understanding and possibly a few bumps and scrapes. Or skip them if you
-want to stay inside the comfy confines of the tour bus. It's your book.
+Chaque chapitre se termine par quelques exercices. Contrairement aux séries de problèmes des manuels, qui tendent à revoir le matériel que vous avez déjà couvert, ceux-ci sont conçus pour vous aider à apprendre *plus* que ce qui est dans le chapitre.  
+Ils vous obligent à sortir du chemin guidé et à explorer par vous-même.  
+Ils vous feront rechercher d’autres langages, comprendre comment implémenter des fonctionnalités, ou simplement vous sortir de votre zone de confort.  
+
+<span name="warning">Vainquez</span> les défis et vous repartirez avec une compréhension plus large et peut-être quelques bosses et égratignures.  
+Ou sautez-les si vous voulez rester dans le confort du bus touristique. C’est votre livre.  
 
 <aside name="warning">
 
-A word of warning: the challenges often ask you to make changes to the
-interpreter you're building. You'll want to implement those in a copy of your
-code. The later chapters assume your interpreter is in a pristine
-("unchallenged"?) state.
+Un mot d’avertissement : les défis vous demandent souvent d’apporter des modifications à l’interpréteur que vous êtes en train de construire.  
+Vous voudrez implémenter ces modifications dans une copie de votre code.  
+Les chapitres suivants supposent que votre interpréteur est dans un état impeccable (« non défié » ?).  
 
 </aside>
 
-### Design notes
+### Notes de conception
 
-Most "programming language" books are strictly programming language
-*implementation* books. They rarely discuss how one might happen to *design* the
-language being implemented. Implementation is fun because it is so <span
-name="benchmark">precisely defined</span>. We programmers seem to have an
-affinity for things that are black and white, ones and zeroes.
+La plupart des livres sur les « langages de programmation » sont strictement des livres sur l’*implémentation* de langages de programmation.  
+Ils discutent rarement de la manière dont on pourrait *concevoir* le langage qu’on implémente.  
+L’implémentation est amusante parce qu’elle est si <span name="benchmark">précisément définie</span>.  
+Nous, programmeurs, semblons avoir une affinité pour les choses en noir et blanc, des uns et des zéros.  
 
 <aside name="benchmark">
 
-I know a lot of language hackers whose careers are based on this. You slide a
-language spec under their door, wait a few months, and code and benchmark
-results come out.
+Je connais beaucoup de bidouilleurs de langages dont la carrière est basée sur cela.  
+Vous glissez une spécification de langage sous leur porte, attendez quelques mois, et le code et les résultats de benchmarks en sortent.  
 
 </aside>
 
-Personally, I think the world needs only so many implementations of <span
-name="fortran">FORTRAN 77</span>. At some point, you find yourself designing a
-*new* language. Once you start playing *that* game, then the softer, human side
-of the equation becomes paramount. Things like which features are easy to learn,
-how to balance innovation and familiarity, what syntax is more readable and to
-whom.
+Personnellement, je pense que le monde n’a besoin que d’un nombre limité d’implémentations de <span name="fortran">FORTRAN 77</span>.  
+À un moment donné, vous vous retrouvez à concevoir un *nouveau* langage.  
+Une fois que vous commencez à jouer à *ce* jeu, alors le côté plus humain et subtil de l’équation devient primordial.  
+Des choses comme quelles fonctionnalités sont faciles à apprendre, comment équilibrer innovation et familiarité, quelle syntaxe est plus lisible et pour qui.  
 
 <aside name="fortran">
 
-Hopefully your new language doesn't hardcode assumptions about the width of a
-punched card into its grammar.
+Espérons que votre nouveau langage ne codifie pas des hypothèses sur la largeur d’une carte perforée dans sa grammaire.  
 
 </aside>
 
-All of that stuff profoundly affects the success of your new language. I want
-your language to succeed, so in some chapters I end with a "design note", a
-little essay on some corner of the human aspect of programming languages. I'm no
-expert on this -- I don't know if anyone really is -- so take these with a large
-pinch of salt. That should make them tastier food for thought, which is my main
-aim.
+Tout cela affecte profondément le succès de votre nouveau langage.  
+Je veux que votre langage réussisse, donc dans certains chapitres, je termine par une « note de conception », un petit essai sur un aspect humain des langages de programmation.  
+Je ne suis pas un expert là-dessus — je ne sais pas si quelqu’un l’est vraiment — donc prenez ces notes avec une grande pincée de sel.  
+Cela devrait en faire une nourriture plus savoureuse pour la réflexion, ce qui est mon objectif principal.
 
-## The First Interpreter
 
-We'll write our first interpreter, jlox, in <span name="lang">Java</span>. The
-focus is on *concepts*. We'll write the simplest, cleanest code we can to
-correctly implement the semantics of the language. This will get us comfortable
-with the basic techniques and also hone our understanding of exactly how the
-language is supposed to behave.
+## Le premier interpréteur
+
+Nous allons écrire notre premier interpréteur, jlox, en <span name="lang">Java</span>.  
+L’accent est mis sur les *concepts*. Nous écrirons le code le plus simple et le plus clair possible pour implémenter correctement la sémantique du langage.  
+Cela nous permettra de nous familiariser avec les techniques de base et aussi d’affiner notre compréhension de la manière exacte dont le langage est censé se comporter.  
 
 <aside name="lang">
 
-The book uses Java and C, but readers have ported the code to [many other
-languages][port]. If the languages I picked aren't your bag, take a look at
-those.
+Le livre utilise Java et C, mais des lecteurs ont porté le code vers [beaucoup d’autres langages][port].  
+Si les langages que j’ai choisis ne vous conviennent pas, jetez un œil à ceux-là.  
 
 [port]: https://github.com/munificent/craftinginterpreters/wiki/Lox-implementations
 
 </aside>
 
-Java is a great language for this. It's high level enough that we don't get
-overwhelmed by fiddly implementation details, but it's still pretty explicit.
-Unlike in scripting languages, there tends to be less complex machinery hiding
-under the hood, and you've got static types to see what data structures you're
-working with.
+Java est un excellent langage pour cela.  
+Il est suffisamment haut niveau pour que nous ne soyons pas submergés par des détails d’implémentation fastidieux, mais reste assez explicite.  
+Contrairement aux langages de script, il y a tendance à avoir moins de machinerie complexe cachée sous le capot, et vous disposez de types statiques pour voir quelles structures de données vous utilisez.  
 
-I also chose Java specifically because it is an object-oriented language. That
-paradigm swept the programming world in the '90s and is now the dominant way of
-thinking for millions of programmers. Odds are good you're already used to
-organizing code into classes and methods, so we'll keep you in that comfort
-zone.
+J’ai également choisi Java spécifiquement parce que c’est un langage orienté objet.  
+Ce paradigme a envahi le monde de la programmation dans les années 90 et est maintenant la façon dominante de penser pour des millions de programmeurs.  
+Il y a de bonnes chances que vous soyez déjà habitué à organiser le code en classes et méthodes, donc nous resterons dans cette zone de confort.  
 
-While academic language folks sometimes look down on object-oriented languages,
-the reality is that they are widely used even for language work. GCC and LLVM
-are written in C++, as are most JavaScript virtual machines. Object-oriented
-languages are ubiquitous, and the tools and compilers *for* a language are often
-written *in* the <span name="host">same language</span>.
+Bien que les universitaires spécialisés en langages regardent parfois de haut les langages orientés objet, la réalité est qu’ils sont largement utilisés même pour le travail sur les langages.  
+GCC et LLVM sont écrits en C++, tout comme la plupart des machines virtuelles JavaScript.  
+Les langages orientés objet sont omniprésents, et les outils et compilateurs *pour* un langage sont souvent écrits *dans* le <span name="host">même langage</span>.  
 
 <aside name="host">
 
-A compiler reads files in one language, translates them, and outputs files in
-another language. You can implement a compiler in any language, including the
-same language it compiles, a process called **self-hosting**.
+Un compilateur lit des fichiers dans un langage, les traduit et produit des fichiers dans un autre langage.  
+Vous pouvez implémenter un compilateur dans n’importe quel langage, y compris le même langage qu’il compile, un processus appelé **self-hosting**.  
 
-You can't compile your compiler using itself yet, but if you have another
-compiler for your language written in some other language, you use *that* one to
-compile your compiler once. Now you can use the compiled version of your own
-compiler to compile future versions of itself, and you can discard the original
-one compiled from the other compiler. This is called **bootstrapping**, from
-the image of pulling yourself up by your own bootstraps.
+Vous ne pouvez pas encore compiler votre compilateur avec lui-même, mais si vous disposez d’un autre compilateur pour votre langage écrit dans un autre langage, vous utilisez *celui-là* pour compiler votre compilateur une fois.  
+Maintenant, vous pouvez utiliser la version compilée de votre propre compilateur pour compiler les versions futures de celui-ci, et vous pouvez jeter l’original compilé avec l’autre compilateur.  
+Cela s’appelle **bootstrapping**, d’après l’image de se tirer soi-même par ses propres bottes.  
 
-<img src="image/introduction/bootstrap.png" alt="Fact: This is the primary mode of transportation of the American cowboy." />
+<img src="image/introduction/bootstrap.png" alt="Fait : c’est le principal moyen de transport du cowboy américain." />
 
 </aside>
 
-And, finally, Java is hugely popular. That means there's a good chance you
-already know it, so there's less for you to learn to get going in the book. If
-you aren't that familiar with Java, don't freak out. I try to stick to a fairly
-minimal subset of it. I use the diamond operator from Java 7 to make things a
-little more terse, but that's about it as far as "advanced" features go. If you
-know another object-oriented language, like C# or C++, you can muddle through.
+Enfin, Java est extrêmement populaire.  
+Cela signifie qu’il y a de bonnes chances que vous le connaissiez déjà, donc moins de choses à apprendre pour commencer le livre.  
+Si vous n’êtes pas très familier avec Java, ne paniquez pas.  
+J’essaie de m’en tenir à un sous-ensemble assez minimal.  
+J’utilise l’opérateur diamant de Java 7 pour rendre certaines choses un peu plus concises, mais c’est à peu près tout pour les fonctionnalités « avancées ».  
+Si vous connaissez un autre langage orienté objet, comme C# ou C++, vous pouvez vous en sortir.  
 
-By the end of part II, we'll have a simple, readable implementation. It's not
-very fast, but it's correct. However, we are only able to accomplish that by
-building on the Java virtual machine's own runtime facilities. We want to learn
-how Java *itself* implements those things.
+À la fin de la partie II, nous aurons une implémentation simple et lisible.  
+Elle n’est pas très rapide, mais elle est correcte.  
+Cependant, nous ne pouvons y parvenir qu’en nous appuyant sur les propres facilités d’exécution de la machine virtuelle Java.  
+Nous voulons apprendre comment Java *lui-même* implémente ces choses.
 
-## The Second Interpreter
 
-So in the next part, we start all over again, but this time in C. C is the
-perfect language for understanding how an implementation *really* works, all the
-way down to the bytes in memory and the code flowing through the CPU.
+## Le deuxième interpréteur
 
-A big reason that we're using C is so I can show you things C is particularly
-good at, but that *does* mean you'll need to be pretty comfortable with it. You
-don't have to be the reincarnation of Dennis Ritchie, but you shouldn't be
-spooked by pointers either.
+Dans la partie suivante, nous recommençons depuis le début, mais cette fois en C.  
+C est le langage parfait pour comprendre comment une implémentation *fonctionne vraiment*, jusqu’aux octets en mémoire et au code circulant dans le CPU.  
 
-If you aren't there yet, pick up an introductory book on C and chew through it,
-then come back here when you're done. In return, you'll come away from this book
-an even stronger C programmer. That's useful given how many language
-implementations are written in C: Lua, CPython, and Ruby's MRI, to name a few.
+Une grande raison pour laquelle nous utilisons C est que je peux vous montrer des choses dans lesquelles C excelle particulièrement, mais cela signifie que vous devez être assez à l’aise avec ce langage.  
+Vous n’avez pas besoin d’être la réincarnation de Dennis Ritchie, mais vous ne devez pas non plus être effrayé par les pointeurs.  
 
-In our C interpreter, <span name="clox">clox</span>, we are forced to implement
-for ourselves all the things Java gave us for free. We'll write our own dynamic
-array and hash table. We'll decide how objects are represented in memory, and
-build a garbage collector to reclaim them.
+Si vous n’en êtes pas encore là, prenez un livre d’introduction au C et travaillez-le, puis revenez ici une fois terminé.  
+En retour, vous sortirez de ce livre un programmeur C encore plus solide.  
+C’est utile étant donné le nombre d’implémentations de langages écrites en C : Lua, CPython et MRI de Ruby, pour n’en citer que quelques-unes.  
+
+Dans notre interpréteur C, <span name="clox">clox</span>, nous sommes obligés d’implémenter nous-mêmes toutes les fonctionnalités que Java nous fournissait gratuitement.  
+Nous écrirons notre propre tableau dynamique et table de hachage.  
+Nous déciderons comment les objets sont représentés en mémoire, et construirons un ramasse-miettes pour les récupérer.  
 
 <aside name="clox">
 
-I pronounce the name like "sea-locks", but you can say it "clocks" or even
-"cloch", where you pronounce the "x" like the Greeks do if it makes you happy.
+Je prononce le nom « sea-locks », mais vous pouvez dire « clocks » ou même « cloch », où vous prononcez le « x » à la manière des Grecs si cela vous rend heureux.  
 
 </aside>
 
-Our Java implementation was focused on being correct. Now that we have that
-down, we'll turn to also being *fast*. Our C interpreter will contain a <span
-name="compiler">compiler</span> that translates Lox to an efficient bytecode
-representation (don't worry, I'll get into what that means soon), which it then
-executes. This is the same technique used by implementations of Lua, Python,
-Ruby, PHP, and many other successful languages.
+Notre implémentation Java se concentrait sur la correction.  
+Maintenant que nous avons cela, nous allons également viser la *performance*.  
+Notre interpréteur C contiendra un <span name="compiler">compilateur</span> qui traduit Lox en une représentation bytecode efficace (ne vous inquiétez pas, je vais expliquer ce que cela signifie bientôt), qu’il exécute ensuite.  
+C’est la même technique utilisée par les implémentations de Lua, Python, Ruby, PHP et beaucoup d’autres langages à succès.  
 
 <aside name="compiler">
 
-Did you think this was just an interpreter book? It's a compiler book as well.
-Two for the price of one!
+Vous pensiez que ce n’était qu’un livre sur les interpréteurs ? C’est aussi un livre sur les compilateurs.  
+Deux pour le prix d’un !  
 
 </aside>
 
-We'll even try our hand at benchmarking and optimization. By the end, we'll have
-a robust, accurate, fast interpreter for our language, able to keep up with
-other professional caliber implementations out there. Not bad for one book and a
-few thousand lines of code.
+Nous essaierons même le benchmarking et l’optimisation.  
+À la fin, nous aurons un interpréteur robuste, précis et rapide pour notre langage, capable de rivaliser avec d’autres implémentations professionnelles.  
+Pas mal pour un seul livre et quelques milliers de lignes de code.  
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  There are at least six domain-specific languages used in the [little system
-    I cobbled together][repo] to write and publish this book. What are they?
+1.  Il y a au moins six langages spécifiques à un domaine utilisés dans le [petit système que j’ai bricolé][repo] pour écrire et publier ce livre. Quels sont-ils ?  
 
-1.  Get a "Hello, world!" program written and running in Java. Set up whatever
-    makefiles or IDE projects you need to get it working. If you have a
-    debugger, get comfortable with it and step through your program as it runs.
+1.  Écrivez et exécutez un programme « Hello, world! » en Java.  
+    Configurez les makefiles ou projets IDE nécessaires pour le faire fonctionner.  
+    Si vous avez un débogueur, familiarisez-vous avec et suivez votre programme à l’exécution.  
 
-1.  Do the same thing for C. To get some practice with pointers, define a
-    [doubly linked list][] of heap-allocated strings. Write functions to insert,
-    find, and delete items from it. Test them.
+1.  Faites la même chose pour C.  
+    Pour vous entraîner aux pointeurs, définissez une [liste doublement chaînée][] de chaînes allouées sur le tas.  
+    Écrivez des fonctions pour insérer, trouver et supprimer des éléments. Testez-les.  
 
-[repo]: https://github.com/munificent/craftinginterpreters
-[doubly linked list]: https://en.wikipedia.org/wiki/Doubly_linked_list
+[repo]: https://github.com/munificent/craftinginterpreters  
+[doubly linked list]: https://en.wikipedia.org/wiki/Doubly_linked_list  
 
 </div>
 
 <div class="design-note">
 
-## Design Note: What's in a Name?
 
-One of the hardest challenges in writing this book was coming up with a name for
-the language it implements. I went through *pages* of candidates before I found
-one that worked. As you'll discover on the first day you start building your own
-language, naming is deviously hard. A good name satisfies a few criteria:
+## Note de conception : Que contient un nom ?
 
-1.  **It isn't in use.** You can run into all sorts of trouble, legal and
-    social, if you inadvertently step on someone else's name.
+Un des défis les plus difficiles dans l’écriture de ce livre a été de trouver un nom pour le langage qu’il implémente.  
+J’ai parcouru *des pages* de candidats avant d’en trouver un qui fonctionnait.  
+Comme vous le découvrirez le premier jour où vous commencerez à construire votre propre langage, trouver un nom est diaboliquement difficile.  
+Un bon nom satisfait quelques critères :  
 
-2.  **It's easy to pronounce.** If things go well, hordes of people will be
-    saying and writing your language's name. Anything longer than a couple of
-    syllables or a handful of letters will annoy them to no end.
+1.  **Il n’est pas déjà utilisé.** Vous pouvez rencontrer toutes sortes de problèmes, légaux et sociaux, si vous empiétez involontairement sur le nom de quelqu’un d’autre.  
 
-3.  **It's distinct enough to search for.** People will Google your language's
-    name to learn about it, so you want a word that's rare enough that most
-    results point to your docs. Though, with the amount of AI search engines are
-    packing today, that's less of an issue. Still, you won't be doing your users
-    any favors if you name your language "for".
+2.  **Il est facile à prononcer.** Si tout se passe bien, des hordes de personnes diront et écriront le nom de votre langage. Tout nom de plus de quelques syllabes ou quelques lettres les agacera à outrance.  
 
-4.  **It doesn't have negative connotations across a number of cultures.** This
-    is hard to be on guard for, but it's worth considering. The designer of
-    Nimrod ended up renaming his language to "Nim" because too many people
-    remember that Bugs Bunny used "Nimrod" as an insult. (Bugs was using it
-    ironically.)
+3.  **Il est suffisamment distinct pour être recherché.** Les gens Googleront le nom de votre langage pour en savoir plus, donc vous voulez un mot assez rare pour que la plupart des résultats pointent vers votre documentation.  
+    Bien que, avec le volume actuel des moteurs de recherche IA, ce n’est plus vraiment un problème.  
+    Cependant, vous ne rendrez pas service à vos utilisateurs si vous nommez votre langage « for ».  
 
-If your potential name makes it through that gauntlet, keep it. Don't get hung
-up on trying to find an appellation that captures the quintessence of your
-language. If the names of the world's other successful languages teach us
-anything, it's that the name doesn't matter much. All you need is a reasonably
-unique token.
+4.  **Il n’a pas de connotations négatives dans plusieurs cultures.** C’est difficile d’être vigilant à ce sujet, mais cela vaut la peine d’y penser.  
+    Le concepteur de Nimrod a fini par renommer son langage « Nim » parce que trop de gens se souvenaient que Bugs Bunny utilisait « Nimrod » comme une insulte. (Bugs l’utilisait ironiquement.)  
 
-</div>
+Si votre nom potentiel passe ce parcours du combattant, conservez-le.  
+Ne vous bloquez pas à essayer de trouver un nom qui capture la quintessence de votre langage.  
+Si les noms des autres langages à succès dans le monde nous enseignent quelque chose, c’est que le nom n’a pas beaucoup d’importance.  
+Tout ce dont vous avez besoin est un token raisonnablement unique.
