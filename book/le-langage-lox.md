@@ -1,24 +1,25 @@
-> What nicer thing can you do for somebody than make them breakfast?
+> Quelle plus belle chose pouvez-vous faire pour quelqu’un que de lui préparer le petit déjeuner ?
 >
 > <cite>Anthony Bourdain</cite>
 
-We'll spend the rest of this book illuminating every dark and sundry corner of
-the Lox language, but it seems cruel to have you immediately start grinding out
-code for the interpreter without at least a glimpse of what we're going to end
-up with.
+Nous allons passer le reste de ce livre à éclairer chaque recoin sombre et
+varié du langage Lox, mais il semblerait cruel de vous faire commencer
+immédiatement à écrire du code pour l’interpréteur sans au moins un aperçu
+de ce que nous allons obtenir au final.
 
-At the same time, I don't want to drag you through reams of language lawyering
-and specification-ese before you get to touch your text <span
-name="home">editor</span>. So this will be a gentle, friendly introduction to
-Lox. It will leave out a lot of details and edge cases. We've got plenty of time
-for those later.
+En même temps, je ne veux pas vous entraîner à travers des pages et des
+pages de jargon juridique de langage et de spécifications avant que vous ne
+puissiez toucher à votre <span name="home">éditeur</span> de texte. Ce sera donc
+une introduction douce et amicale à Lox. Elle laissera de côté beaucoup de
+détails et de cas particuliers. Nous aurons largement le temps pour cela plus
+tard.
 
 <aside name="home">
 
-A tutorial isn't very fun if you can't try the code out yourself. Alas, you
-don't have a Lox interpreter yet, since you haven't built one!
+Un tutoriel n’est pas très amusant si vous ne pouvez pas essayer le code vous-même.
+Hélas, vous n’avez pas encore d’interpréteur Lox, puisque vous n’en avez pas construit un !
 
-Fear not. You can use [mine][repo].
+N’ayez crainte. Vous pouvez utiliser [le mien][repo].
 
 [repo]: https://github.com/munificent/craftinginterpreters
 
@@ -26,12 +27,13 @@ Fear not. You can use [mine][repo].
 
 ## Hello, Lox
 
-Here's your very first taste of <span name="salmon">Lox</span>:
+Voici votre tout premier avant-goût de <span name="salmon">Lox</span> :
 
 <aside name="salmon">
 
-Your first taste of Lox, the language, that is. I don't know if you've ever had
-the cured, cold-smoked salmon before. If not, give it a try too.
+Votre premier avant-goût de Lox, le langage, bien sûr. Je ne sais pas si vous
+avez déjà goûté au saumon fumé à froid et salé. Si ce n’est pas le cas, essayez
+aussi.
 
 </aside>
 
@@ -40,168 +42,183 @@ the cured, cold-smoked salmon before. If not, give it a try too.
 print "Hello, world!";
 ```
 
-As that `//` line comment and the trailing semicolon imply, Lox's syntax is a
-member of the C family. (There are no parentheses around the string because
-`print` is a built-in statement, and not a library function.)
+Comme le suggèrent le commentaire de ligne `//` et le point-virgule final, la
+syntaxe de Lox appartient à la famille des langages C. (Il n’y a pas de
+parenthèses autour de la chaîne car `print` est une instruction intégrée, et non
+une fonction de bibliothèque.)
 
-Now, I won't claim that <span name="c">C</span> has a *great* syntax. If we
-wanted something elegant, we'd probably mimic Pascal or Smalltalk. If we wanted
-to go full Scandinavian-furniture-minimalism, we'd do a Scheme. Those all have
-their virtues.
+Je ne prétendrai pas que <span name="c">C</span> ait une *excellente* syntaxe.
+Si nous voulions quelque chose d’élégant, nous imiterions probablement Pascal ou
+Smalltalk. Si nous voulions aller jusqu’au minimalisme façon
+« mobilier scandinave », nous ferions un Scheme. Tous ont leurs vertus.
 
 <aside name="c">
 
-I'm surely biased, but I think Lox's syntax is pretty clean. C's most egregious
-grammar problems are around types. Dennis Ritchie had this idea called
-"[declaration reflects use][use]", where variable declarations mirror the
-operations you would have to perform on the variable to get to a value of the
-base type. Clever idea, but I don't think it worked out great in practice.
+Je suis sûrement biaisé, mais je pense que la syntaxe de Lox est plutôt propre.
+Les problèmes de grammaire les plus flagrants de C concernent les types.
+Dennis Ritchie avait cette idée appelée
+« [la déclaration reflète l’utilisation][use] », où les déclarations de variables
+reflètent les opérations que vous devriez effectuer sur la variable pour obtenir
+une valeur du type de base. Idée astucieuse, mais je ne pense pas qu’elle ait
+très bien fonctionné en pratique.
 
 [use]: http://softwareengineering.stackexchange.com/questions/117024/why-was-the-c-syntax-for-arrays-pointers-and-functions-designed-this-way
 
-Lox doesn't have static types, so we avoid that.
+Lox n’a pas de types statiques, donc nous évitons cela.
 
 </aside>
 
-What C-like syntax has instead is something you'll often find more valuable
-in a language: *familiarity*. I know you are already comfortable with that style
-because the two languages we'll be using to *implement* Lox -- Java and C --
-also inherit it. Using a similar syntax for Lox gives you one less thing to
-learn.
+Ce que la syntaxe de type C offre à la place, c’est quelque chose que vous
+trouverez souvent plus précieux dans un langage : *la familiarité*. Je sais que
+vous êtes déjà à l’aise avec ce style parce que les deux langages que nous
+utiliserons pour *implémenter* Lox -- Java et C -- l’héritent aussi. Utiliser
+une syntaxe similaire pour Lox vous donne une chose de moins à apprendre.
 
-## A High-Level Language
+## Un langage de haut niveau
 
-While this book ended up bigger than I was hoping, it's still not big enough to
-fit a huge language like Java in it. In order to fit two complete
-implementations of Lox in these pages, Lox itself has to be pretty compact.
+Bien que ce livre soit finalement plus long que je ne l’espérais, il n’est
+toujours pas assez volumineux pour contenir un langage énorme comme Java. Afin
+de tenir deux implémentations complètes de Lox dans ces pages, Lox lui-même
+doit être assez compact.
 
-When I think of languages that are small but useful, what comes to mind are
-high-level "scripting" languages like <span name="js">JavaScript</span>, Scheme,
-and Lua. Of those three, Lox looks most like JavaScript, mainly because most
-C-syntax languages do. As we'll learn later, Lox's approach to scoping hews
-closely to Scheme. The C flavor of Lox we'll build in [Part III][] is heavily
-indebted to Lua's clean, efficient implementation.
+Quand je pense aux langages petits mais utiles, me viennent à l’esprit des
+langages de "script" de haut niveau comme <span name="js">JavaScript</span>,
+Scheme et Lua. Parmi ces trois, Lox ressemble le plus à JavaScript, principalement
+parce que la plupart des langages à syntaxe C le font. Comme nous l’apprendrons
+plus tard, l’approche de Lox pour la portée des variables est proche de Scheme.
+La saveur C de Lox que nous construirons dans [Partie III][] doit beaucoup à
+l’implémentation propre et efficace de Lua.
 
 [part iii]: a-bytecode-virtual-machine.html
 
 <aside name="js">
 
-Now that JavaScript has taken over the world and is used to build ginormous
-applications, it's hard to think of it as a "little scripting language". But
-Brendan Eich hacked the first JS interpreter into Netscape Navigator in *ten
-days* to make buttons animate on web pages. JavaScript has grown up since then,
-but it was once a cute little language.
+Maintenant que JavaScript a conquis le monde et est utilisé pour construire des
+applications gigantesques, il est difficile de le considérer comme un "petit
+langage de script". Mais Brendan Eich a bricolé le premier interpréteur JS dans
+Netscape Navigator en *dix jours* pour faire animer des boutons sur les pages
+web. JavaScript a bien grandi depuis, mais c’était autrefois un petit langage
+mignon.
 
-Because Eich slapped JS together with roughly the same raw materials and time as
-an episode of MacGyver, it has some weird semantic corners where the duct tape
-and paper clips show through. Things like variable hoisting, dynamically bound
-`this`, holes in arrays, and implicit conversions.
+Parce qu’Eich a assemblé JS avec à peu près les mêmes matériaux bruts et le
+même temps qu’un épisode de MacGyver, il y a quelques coins sémantiques bizarres
+où le ruban adhésif et les trombones transparaissent. Des choses comme le
+hoisting de variables, `this` lié dynamiquement, les trous dans les tableaux et
+les conversions implicites.
 
-I had the luxury of taking my time on Lox, so it should be a little cleaner.
+J’ai eu le luxe de prendre mon temps sur Lox, donc il devrait être un peu plus
+propre.
 
 </aside>
 
-Lox shares two other aspects with those three languages:
+Lox partage deux autres aspects avec ces trois langages :
 
-### Dynamic typing
+### Typage dynamique
 
-Lox is dynamically typed. Variables can store values of any type, and a single
-variable can even store values of different types at different times. If you try
-to perform an operation on values of the wrong type -- say, dividing a number by
-a string -- then the error is detected and reported at runtime.
+Lox est dynamiquement typé. Les variables peuvent stocker des valeurs de
+n’importe quel type, et une seule variable peut même contenir des valeurs de
+types différents à différents moments. Si vous essayez d’effectuer une
+opération sur des valeurs du mauvais type -- par exemple, diviser un nombre par
+une chaîne -- l’erreur est détectée et signalée à l’exécution.
 
-There are plenty of reasons to like <span name="static">static</span> types, but
-they don't outweigh the pragmatic reasons to pick dynamic types for Lox. A
-static type system is a ton of work to learn and implement. Skipping it gives
-you a simpler language and a shorter book. We'll get our interpreter up and
-executing bits of code sooner if we defer our type checking to runtime.
+Il y a beaucoup de raisons d’aimer les types <span name="static">statiques</span>,
+mais elles ne l’emportent pas sur les raisons pragmatiques de choisir des types
+dynamiques pour Lox. Un système de types statique représente beaucoup de travail
+à apprendre et à implémenter. L’éviter vous donne un langage plus simple et un
+livre plus court. Nous pourrons faire exécuter notre interpréteur plus rapidement
+si nous reportons la vérification des types à l’exécution.
 
 <aside name="static">
 
-After all, the two languages we'll be using to *implement* Lox are both
-statically typed.
+Après tout, les deux langages que nous utiliserons pour *implémenter* Lox sont
+tous deux statiquement typés.
 
 </aside>
 
-### Automatic memory management
+### Gestion automatique de la mémoire
 
-High-level languages exist to eliminate error-prone, low-level drudgery, and what
-could be more tedious than manually managing the allocation and freeing of
-storage? No one rises and greets the morning sun with, "I can't wait to figure
-out the correct place to call `free()` for every byte of memory I allocate
-today!"
+Les langages de haut niveau existent pour éliminer les tâches laborieuses et
+sujettes aux erreurs de bas niveau, et quoi de plus fastidieux que de gérer
+manuellement l’allocation et la libération de la mémoire ? Personne ne se lève
+en saluant le soleil du matin en disant : « J’ai hâte de trouver le bon endroit
+pour appeler `free()` pour chaque octet de mémoire que j’alloue aujourd’hui ! »
 
-There are two main <span name="gc">techniques</span> for managing memory:
-**reference counting** and **tracing garbage collection** (usually just called
-**garbage collection** or **GC**). Ref counters are much simpler to implement --
-I think that's why Perl, PHP, and Python all started out using them. But, over
-time, the limitations of ref counting become too troublesome. All of those
-languages eventually ended up adding a full tracing GC, or at least enough of
-one to clean up object cycles.
+Il existe deux principales <span name="gc">techniques</span> pour gérer la mémoire :
+**comptage de références** et **ramasse-miettes par traçage** (généralement
+appelé simplement **garbage collection** ou **GC**). Les compteurs de références
+sont beaucoup plus simples à implémenter -- je pense que c’est pour cela que
+Perl, PHP et Python ont tous commencé par les utiliser. Mais, avec le temps, les
+limitations du comptage de références deviennent trop contraignantes. Tous ces
+langages ont fini par ajouter un vrai GC par traçage, ou au moins suffisamment
+pour nettoyer les cycles d’objets.
 
 <aside name="gc">
 
-In practice, ref counting and tracing are more ends of a continuum than
-opposing sides. Most ref counting systems end up doing some tracing to handle
-cycles, and the write barriers of a generational collector look a bit like
-retain calls if you squint.
+En pratique, le comptage de références et le traçage sont plus les extrémités
+d’un continuum que des côtés opposés. La plupart des systèmes de comptage de
+références finissent par faire un peu de traçage pour gérer les cycles, et les
+barrières d’écriture d’un collecteur générationnel ressemblent un peu à des appels
+de `retain` si on plisse les yeux.
 
-For lots more on this, see "[A Unified Theory of Garbage Collection][gc]" (PDF).
+Pour en savoir plus, voir "[A Unified Theory of Garbage Collection][gc]" (PDF).
 
 [gc]: https://researcher.watson.ibm.com/researcher/files/us-bacon/Bacon04Unified.pdf
 
 </aside>
 
-Tracing garbage collection has a fearsome reputation. It *is* a little harrowing
-working at the level of raw memory. Debugging a GC can sometimes leave you
-seeing hex dumps in your dreams. But, remember, this book is about dispelling
-magic and slaying those monsters, so we *are* going to write our own garbage
-collector. I think you'll find the algorithm is quite simple and a lot of fun to
-implement.
+Le ramasse-miettes par traçage a une réputation redoutable. Travailler au niveau
+de la mémoire brute est *un peu effrayant*. Déboguer un GC peut parfois vous
+laisser voir des dumps hexadécimaux dans vos rêves. Mais rappelez-vous, ce livre
+vise à dissiper la magie et à terrasser ces monstres, donc nous allons *écrire
+notre propre ramasse-miettes*. Je pense que vous trouverez l’algorithme assez
+simple et très amusant à implémenter.
 
-## Data Types
+## Types de données
 
-In Lox's little universe, the atoms that make up all matter are the built-in
-data types. There are only a few:
+Dans le petit univers de Lox, les atomes qui composent toute matière sont les
+types de données intégrés. Il n’y en a que quelques-uns :
 
-*   **<span name="bool">Booleans</span>.** You can't code without logic and you
-    can't logic without Boolean values. "True" and "false", the yin and yang of
-    software. Unlike some ancient languages that repurpose an existing type to
-    represent truth and falsehood, Lox has a dedicated Boolean type. We may
-    be roughing it on this expedition, but we aren't *savages*.
+*   **<span name="bool">Booléens</span>.** On ne peut pas coder sans logique
+    et on ne peut pas faire de logique sans valeurs booléennes. "True" et
+    "false", le yin et le yang du logiciel. Contrairement à certains langages
+    anciens qui réutilisent un type existant pour représenter la vérité et le
+    faux, Lox a un type Booléen dédié. Nous pouvons être en mode expédition
+    rudimentaire, mais nous ne sommes pas des *sauvages*.
 
     <aside name="bool">
 
-    Boolean variables are the only data type in Lox named after a person, George
-    Boole, which is why "Boolean" is capitalized. He died in 1864, nearly a
-    century before digital computers turned his algebra into electricity. I
-    wonder what he'd think to see his name all over billions of lines of Java
-    code.
+    Les variables booléennes sont le seul type de données dans Lox nommé d’après
+    une personne, George Boole, c’est pourquoi "Boolean" est en majuscule. Il
+    est mort en 1864, près d’un siècle avant que les ordinateurs numériques ne
+    transforment son algèbre en électricité. Je me demande ce qu’il penserait de
+    voir son nom sur des milliards de lignes de code Java.
 
     </aside>
 
-    There are two Boolean values, obviously, and a literal for each one.
+    Il y a évidemment deux valeurs booléennes, et un littéral pour chacune.
 
     ```lox
     true;  // Not false.
     false; // Not *not* false.
     ```
 
-*   **Numbers.** Lox has only one kind of number: double-precision floating
-    point. Since floating-point numbers can also represent a wide range of
-    integers, that covers a lot of territory, while keeping things simple.
+*   **Nombres.** Lox n’a qu’un seul type de nombre : le nombre à virgule flottante
+    en double précision. Comme les nombres flottants peuvent également représenter
+    une large gamme d’entiers, cela couvre beaucoup de terrain tout en gardant
+    les choses simples.
 
-    Full-featured languages have lots of syntax for numbers -- hexadecimal,
-    scientific notation, octal, all sorts of fun stuff. We'll settle for basic
-    integer and decimal literals.
+    Les langages complets disposent de beaucoup de syntaxe pour les nombres --
+    hexadécimal, notation scientifique, octal, toutes sortes de choses amusantes.
+    Nous nous contenterons des littéraux entiers et décimaux de base.
 
     ```lox
     1234;  // An integer.
     12.34; // A decimal number.
     ```
 
-*   **Strings.** We've already seen one string literal in the first example.
-    Like most languages, they are enclosed in double quotes.
+*   **Chaînes de caractères.** Nous avons déjà vu un littéral de chaîne dans le
+    premier exemple. Comme dans la plupart des langages, elles sont encadrées
+    par des guillemets doubles.
 
     ```lox
     "I am a string";
@@ -209,39 +226,40 @@ data types. There are only a few:
     "123"; // This is a string, not a number.
     ```
 
-    As we'll see when we get to implementing them, there is quite a lot of
-    complexity hiding in that innocuous sequence of <span
-    name="char">characters</span>.
+    Comme nous le verrons lorsque nous les implémenterons, il y a pas mal de
+complexité cachée dans cette innocente séquence de <span name="char">caractères</span>.
 
-    <aside name="char">
+<aside name="char">
 
-    Even that word "character" is a trickster. Is it ASCII? Unicode? A
-    code point or a "grapheme cluster"? How are characters encoded? Is each
-    character a fixed size, or can they vary?
+Même le mot "caractère" est trompeur. Est-ce de l'ASCII ? Unicode ? Un point
+de code ou un "grapheme cluster" ? Comment les caractères sont-ils codés ? Chaque
+caractère a-t-il une taille fixe, ou peut-elle varier ?
 
-    </aside>
+</aside>
 
-*   **Nil.** There's one last built-in value who's never invited to the party
-    but always seems to show up. It represents "no value". It's called "null" in
-    many other languages. In Lox we spell it `nil`. (When we get to implementing
-    it, that will help distinguish when we're talking about Lox's `nil` versus
-    Java or C's `null`.)
+*   **Nil.** Il y a une dernière valeur intégrée qui n'est jamais invitée à la
+    fête mais semble toujours apparaître. Elle représente "aucune valeur". Elle
+    s'appelle "null" dans de nombreux autres langages. Dans Lox, nous l'écrivons
+    `nil`. (Lorsque nous l'implémenterons, cela aidera à distinguer le `nil` de
+    Lox du `null` de Java ou C.)
 
-    There are good arguments for not having a null value in a language since
-    null pointer errors are the scourge of our industry. If we were doing a
-    statically typed language, it would be worth trying to ban it. In a
-    dynamically typed one, though, eliminating it is often more annoying
-    than having it.
+Il y a de bons arguments pour ne pas avoir de valeur nulle dans un langage,
+puisque les erreurs de pointeur nul sont le fléau de notre industrie. Si nous
+avions un langage statiquement typé, cela vaudrait la peine d'essayer de l'interdire.
+Dans un langage dynamiquement typé, cependant, l'éliminer est souvent plus ennuyeux
+que de l'avoir.
 
 ## Expressions
 
-If built-in data types and their literals are atoms, then **expressions** must
-be the molecules. Most of these will be familiar.
+Si les types de données intégrés et leurs littéraux sont des atomes, alors
+les **expressions** doivent être les molécules. La plupart d'entre elles vous
+seront familières.
 
-### Arithmetic
+### Arithmétique
 
-Lox features the basic arithmetic operators you know and love from C and other
-languages:
+Lox propose les opérateurs arithmétiques de base que vous connaissez et
+appréciez depuis C et d'autres langages :
+
 
 ```lox
 add + me;
@@ -250,43 +268,45 @@ multiply * me;
 divide / me;
 ```
 
-The subexpressions on either side of the operator are **operands**. Because
-there are *two* of them, these are called **binary** operators. (It has nothing
-to do with the ones-and-zeroes use of "binary".) Because the operator is <span
-name="fixity">fixed</span> *in* the middle of the operands, these are also
-called **infix** operators (as opposed to **prefix** operators where the
-operator comes before the operands, and **postfix** where it comes after).
+Les sous-expressions de chaque côté de l'opérateur sont des **opérandes**. Comme
+il y en a *deux*, on les appelle des opérateurs **binaires**. (Cela n'a rien à voir
+avec l'utilisation de "binaire" pour les uns et les zéros.) Comme l'opérateur est
+<span name="fixity">fixé</span> *au milieu* des opérandes, on les appelle aussi
+des opérateurs **infixes** (par opposition aux opérateurs **préfixes** où
+l'opérateur précède les opérandes, et **postfixes** où il les suit).
 
 <aside name="fixity">
 
-There are some operators that have more than two operands and the operators are
-interleaved between them. The only one in wide usage is the "conditional" or
-"ternary" operator of C and friends:
+Il existe quelques opérateurs qui ont plus de deux opérandes et les opérateurs
+sont intercalés entre elles. Le seul d'usage répandu est l'opérateur "conditionnel"
+ou "ternaire" de C et ses amis :
 
 ```c
 condition ? thenArm : elseArm;
 ```
 
-Some call these **mixfix** operators. A few languages let you define your own
-operators and control how they are positioned -- their "fixity".
+Certains appellent ces opérateurs **mixfix**. Quelques langages permettent de
+définir vos propres opérateurs et de contrôler leur positionnement -- leur
+"fixité".
 
 </aside>
 
-One arithmetic operator is actually *both* an infix and a prefix one. The `-`
-operator can also be used to negate a number.
+Un opérateur arithmétique est en fait *à la fois* infixe et préfixe. L'opérateur `-`
+peut également être utilisé pour négativer un nombre.
 
 ```lox
 -negateMe;
 ```
 
-All of these operators work on numbers, and it's an error to pass any other
-types to them. The exception is the `+` operator -- you can also pass it two
-strings to concatenate them.
+Tous ces opérateurs fonctionnent sur des nombres, et il est erroné de leur passer
+d'autres types. L'exception est l'opérateur `+` -- vous pouvez aussi lui passer
+deux chaînes pour les concaténer.
 
-### Comparison and equality
+### Comparaison et égalité
 
-Moving along, we have a few more operators that always return a Boolean result.
-We can compare numbers (and only numbers), using Ye Olde Comparison Operators.
+Continuons, nous avons quelques opérateurs supplémentaires qui renvoient toujours
+un résultat booléen. Nous pouvons comparer des nombres (et seulement des nombres)
+en utilisant les Vieux Opérateurs de Comparaison.
 
 ```lox
 less < than;
@@ -295,49 +315,44 @@ greater > than;
 greaterThan >= orEqual;
 ```
 
-We can test two values of any kind for equality or inequality.
+Nous pouvons tester l'égalité ou l'inégalité de deux valeurs de n'importe quel type.
 
 ```lox
 1 == 2;         // false.
 "cat" != "dog"; // true.
 ```
 
-Even different types.
+Même de types différents.
 
 ```lox
 314 == "pi"; // false.
 ```
 
-Values of different types are *never* equivalent.
+Les valeurs de types différents ne sont *jamais* équivalentes.
 
 ```lox
 123 == "123"; // false.
 ```
 
-I'm generally against implicit conversions.
+Je suis généralement contre les conversions implicites.
 
-### Logical operators
+### Opérateurs logiques
 
-The not operator, a prefix `!`, returns `false` if its operand is true, and vice
-versa.
+L'opérateur not, un préfixe `!`, renvoie `false` si son opérande est vrai, et vice versa.
 
 ```lox
 !true;  // false.
 !false; // true.
 ```
 
-The other two logical operators really are control flow constructs in the guise
-of expressions. An <span name="and">`and`</span> expression determines if two
-values are *both* true. It returns the left operand if it's false, or the
-right operand otherwise.
+Les deux autres opérateurs logiques sont en réalité des constructions de flux de contrôle déguisées en expressions. Une expression <span name="and">`and`</span> détermine si deux valeurs sont *toutes deux* vraies. Elle renvoie l'opérande de gauche si elle est fausse, ou l'opérande de droite sinon.
 
 ```lox
 true and false; // false.
 true and true;  // true.
 ```
 
-And an `or` expression determines if *either* of two values (or both) are true.
-It returns the left operand if it is true and the right operand otherwise.
+Et une expression `or` détermine si *l'une ou l'autre* des deux valeurs (ou les deux) est vraie. Elle renvoie l'opérande de gauche si elle est vraie, et l'opérande de droite sinon.
 
 ```lox
 false or false; // false.
@@ -346,62 +361,41 @@ true or false;  // true.
 
 <aside name="and">
 
-I used `and` and `or` for these instead of `&&` and `||` because Lox doesn't use
-`&` and `|` for bitwise operators. It felt weird to introduce the
-double-character forms without the single-character ones.
+J'ai utilisé `and` et `or` pour ceux-ci au lieu de `&&` et `||` parce que Lox n'utilise pas `&` et `|` pour les opérateurs binaires. Cela m'aurait paru étrange d'introduire les formes à deux caractères sans les formes à un seul caractère.
 
-I also kind of like using words for these since they are really control flow
-structures and not simple operators.
+J'aime aussi un peu utiliser des mots pour ceux-ci, car ce sont vraiment des structures de contrôle et non de simples opérateurs.
 
 </aside>
 
-The reason `and` and `or` are like control flow structures is that they
-**short-circuit**. Not only does `and` return the left operand if it is false,
-it doesn't even *evaluate* the right one in that case. Conversely
-(contrapositively?), if the left operand of an `or` is true, the right is
-skipped.
+La raison pour laquelle `and` et `or` ressemblent à des structures de contrôle est qu'ils **court-circuitent**. Non seulement `and` renvoie l'opérande de gauche si elle est fausse, mais il n'*évalue* même pas l'opérande de droite dans ce cas. Inversement (contrapositivement ?), si l'opérande de gauche d'un `or` est vraie, la droite est ignorée.
 
-### Precedence and grouping
+### Précedence et regroupement
 
-All of these operators have the same precedence and associativity that you'd
-expect coming from C. (When we get to parsing, we'll get *way* more precise
-about that.) In cases where the precedence isn't what you want, you can use `()`
-to group stuff.
+Tous ces opérateurs ont la même précédence et associativité que ce à quoi vous vous attendez venant de C. (Lorsque nous aborderons l'analyse syntaxique, nous serons *beaucoup* plus précis à ce sujet.) Dans les cas où la précédence n'est pas ce que vous voulez, vous pouvez utiliser `()` pour regrouper des éléments.
 
 ```lox
 var average = (min + max) / 2;
 ```
 
-Since they aren't very technically interesting, I've cut the remainder of the
-typical operator menagerie out of our little language. No bitwise, shift,
-modulo, or conditional operators. I'm not grading you, but you will get bonus
-points in my heart if you augment your own implementation of Lox with them.
+Comme elles ne sont pas très intéressantes techniquement, j'ai supprimé le reste de la ménagerie typique des opérateurs de notre petit langage. Pas d'opérateurs bit à bit, de décalage, modulo ou conditionnels. Je ne vous note pas, mais vous gagnerez des points bonus dans mon cœur si vous ajoutez ces opérateurs à votre propre implémentation de Lox.
 
-Those are the expression forms (except for a couple related to specific features
-that we'll get to later), so let's move up a level.
+Ce sont les formes d'expressions (sauf quelques-unes liées à des fonctionnalités spécifiques que nous aborderons plus tard), passons donc à un niveau supérieur.
 
-## Statements
+## Instructions
 
-Now we're at statements. Where an expression's main job is to produce a *value*,
-a statement's job is to produce an *effect*. Since, by definition, statements
-don't evaluate to a value, to be useful they have to otherwise change the world
-in some way -- usually modifying some state, reading input, or producing output.
+Nous en arrivons maintenant aux instructions. Là où la tâche principale d'une expression est de produire une *valeur*, la tâche d'une instruction est de produire un *effet*. Comme, par définition, les instructions ne renvoient pas de valeur, pour être utiles elles doivent autrement changer le monde d'une certaine manière — généralement en modifiant un état, en lisant une entrée ou en produisant une sortie.
 
-You've seen a couple of kinds of statements already. The first one was:
+Vous avez déjà vu quelques types d'instructions. La première était :
 
 ```lox
 print "Hello, world!";
 ```
 
-A <span name="print">`print` statement</span> evaluates a single expression
-and displays the result to the user. You've also seen some statements like:
+Une <span name="print">instruction `print`</span> évalue une seule expression et affiche le résultat à l'utilisateur. Vous avez également vu quelques instructions comme :
 
 <aside name="print">
 
-Baking `print` into the language instead of just making it a core library
-function is a hack. But it's a *useful* hack for us: it means our in-progress
-interpreter can start producing output before we've implemented all of the
-machinery required to define functions, look them up by name, and call them.
+Intégrer `print` directement dans le langage au lieu d'en faire simplement une fonction de bibliothèque de base est un petit hack. Mais c'est un hack *utile* pour nous : cela signifie que notre interpréteur en cours de développement peut commencer à produire des sorties avant que nous ayons implémenté toute la machinerie nécessaire pour définir des fonctions, les rechercher par nom et les appeler.
 
 </aside>
 
@@ -409,12 +403,9 @@ machinery required to define functions, look them up by name, and call them.
 "some expression";
 ```
 
-An expression followed by a semicolon (`;`) promotes the expression to
-statement-hood. This is called (imaginatively enough), an **expression
-statement**.
+Une expression suivie d'un point-virgule (`;`) transforme l'expression en instruction. Cela s'appelle (de manière assez imaginative) une **instruction-expression**.
 
-If you want to pack a series of statements where a single one is expected, you
-can wrap them up in a **block**.
+Si vous voulez regrouper une série d'instructions là où une seule est attendue, vous pouvez les envelopper dans un **bloc**.
 
 ```lox
 {
@@ -423,18 +414,15 @@ can wrap them up in a **block**.
 }
 ```
 
-Blocks also affect scoping, which leads us to the next section...
+Les blocs influencent également la portée, ce qui nous amène à la section suivante...
 
 ## Variables
 
-You declare variables using `var` statements. If you <span
-name="omit">omit</span> the initializer, the variable's value defaults to `nil`.
+Vous déclarez des variables à l’aide d’instructions `var`. Si vous <span name="omit">omettrez</span> l’initialiseur, la valeur de la variable sera par défaut `nil`.
 
 <aside name="omit">
 
-This is one of those cases where not having `nil` and forcing every variable to
-be initialized to some value would be more annoying than dealing with `nil`
-itself.
+C’est l’un de ces cas où l’absence de `nil` et l’obligation d’initialiser chaque variable à une valeur serait plus contraignante que de gérer `nil` lui-même.
 
 </aside>
 
@@ -443,7 +431,8 @@ var imAVariable = "here is my value";
 var iAmNil;
 ```
 
-Once declared, you can, naturally, access and assign a variable using its name.
+Une fois déclarée, vous pouvez naturellement accéder à une variable et lui
+attribuer une valeur en utilisant son nom.
 
 <span name="breakfast"></span>
 
@@ -456,35 +445,39 @@ print breakfast; // "beignets".
 
 <aside name="breakfast">
 
-Can you tell that I tend to work on this book in the morning before I've had
-anything to eat?
+Pouvez-vous deviner que j’ai tendance à travailler sur ce livre le matin avant
+d’avoir mangé quoi que ce soit ?
 
 </aside>
 
-I won't get into the rules for variable scope here, because we're going to spend
-a surprising amount of time in later chapters mapping every square inch of the
-rules. In most cases, it works like you would expect coming from C or Java.
+Je ne vais pas entrer dans les règles de portée des variables ici, car nous
+allons passer un temps surprenant dans les chapitres suivants à cartographier
+chaque centimètre carré de ces règles. Dans la plupart des cas, cela fonctionne
+comme vous pourriez vous y attendre en venant de C ou Java.
 
-## Control Flow
+## Contrôle de flux
 
-It's hard to write <span name="flow">useful</span> programs if you can't skip
-some code or execute some more than once. That means control flow. In addition
-to the logical operators we already covered, Lox lifts three statements straight
-from C.
+Il est difficile d’écrire des programmes <span name="flow">utiles</span> si
+vous ne pouvez pas sauter certains morceaux de code ou en exécuter d’autres
+plusieurs fois. Cela signifie qu’il faut du contrôle de flux. En plus des
+opérateurs logiques que nous avons déjà couverts, Lox reprend trois instructions
+directement de C.
 
 <aside name="flow">
 
-We already have `and` and `or` for branching, and we *could* use recursion to
-repeat code, so that's theoretically sufficient. It would be pretty awkward to
-program that way in an imperative-styled language, though.
+Nous avons déjà `and` et `or` pour les branchements, et nous *pourrions* utiliser
+la récursion pour répéter du code, donc théoriquement, cela suffirait. Mais ce
+serait assez maladroit de programmer ainsi dans un langage à style impératif.
 
-Scheme, on the other hand, has no built-in looping constructs. It *does* rely on
-recursion for repetition. Smalltalk has no built-in branching constructs, and
-relies on dynamic dispatch for selectively executing code.
+Scheme, en revanche, n’a pas de constructions intégrées pour les boucles. Il
+s’appuie *effectivement* sur la récursion pour la répétition. Smalltalk, de son
+côté, n’a pas non plus de structures intégrées pour les branchements, et repose
+sur le *dynamic dispatch* pour exécuter sélectivement du code.
 
 </aside>
 
-An `if` statement executes one of two statements based on some condition.
+Une instruction `if` exécute l’une des deux instructions en fonction d’une
+condition.
 
 ```lox
 if (condition) {
@@ -494,8 +487,8 @@ if (condition) {
 }
 ```
 
-A `while` <span name="do">loop</span> executes the body repeatedly as long as
-the condition expression evaluates to true.
+Une boucle `while` <span name="do">(`loop`)</span> exécute le corps
+répétitivement tant que l’expression de condition s’évalue à vrai.
 
 ```lox
 var a = 1;
@@ -507,13 +500,14 @@ while (a < 10) {
 
 <aside name="do">
 
-I left `do while` loops out of Lox because they aren't that common and wouldn't
-teach you anything that you won't already learn from `while`. Go ahead and add
-it to your implementation if it makes you happy. It's your party.
+J’ai laissé les boucles `do while` en dehors de Lox parce qu’elles ne sont pas
+très courantes et ne vous apprendraient rien que vous n’apprendrez déjà avec
+`while`. Allez-y et ajoutez-les à votre implémentation si cela vous fait
+plaisir. C’est votre fête.
 
 </aside>
 
-Finally, we have `for` loops.
+Enfin, nous avons les boucles `for`.
 
 ```lox
 for (var a = 1; a < 10; a = a + 1) {
@@ -521,46 +515,43 @@ for (var a = 1; a < 10; a = a + 1) {
 }
 ```
 
-This loop does the same thing as the previous `while` loop. Most modern
-languages also have some sort of <span name="foreach">`for-in`</span> or
-`foreach` loop for explicitly iterating over various sequence types. In a real
-language, that's nicer than the crude C-style `for` loop we got here. Lox keeps
-it basic.
+Cette boucle fait la même chose que la boucle `while` précédente.  
+La plupart des langages modernes disposent aussi d’une sorte de boucle <span name="foreach">`for-in`</span> ou `foreach` permettant d’itérer explicitement sur différents types de séquences.  
+Dans un vrai langage, c’est plus agréable que la boucle `for` à la C que nous avons ici.  
+Lox reste basique.
 
 <aside name="foreach">
 
-This is a concession I made because of how the implementation is split across
-chapters. A `for-in` loop needs some sort of dynamic dispatch in the iterator
-protocol to handle different kinds of sequences, but we don't get that until
-after we're done with control flow. We could circle back and add `for-in` loops
-later, but I didn't think doing so would teach you anything super interesting.
+C’est une concession que j’ai faite à cause de la manière dont l’implémentation est découpée en chapitres.  
+Une boucle `for-in` nécessite une forme de *dynamic dispatch* dans le protocole des itérateurs pour gérer différents types de séquences, mais nous ne voyons cela qu’après avoir terminé le contrôle de flux.  
+Nous pourrions revenir en arrière et ajouter les boucles `for-in` plus tard, mais je ne pensais pas que cela vous apprendrait quelque chose de particulièrement intéressant.
 
 </aside>
 
-## Functions
+## Fonctions
 
-A function call expression looks the same as it does in C.
+Une expression d’appel de fonction ressemble à ce que l’on trouve en C.
 
 ```lox
 makeBreakfast(bacon, eggs, toast);
 ```
 
-You can also call a function without passing anything to it.
+Vous pouvez également appeler une fonction sans lui passer d’argument.  
 
 ```lox
 makeBreakfast();
 ```
 
-Unlike in, say, Ruby, the parentheses are mandatory in this case. If you leave them
-off, the name doesn't *call* the function, it just refers to it.
+Contrairement à Ruby par exemple, les parenthèses sont obligatoires dans ce cas.  
+Si vous les omettez, le nom ne *fait pas appel* à la fonction, il ne fait que s’y référer.  
 
-A language isn't very fun if you can't define your own functions. In Lox, you do
-that with <span name="fun">`fun`</span>.
+Un langage n’est pas très amusant si vous ne pouvez pas définir vos propres fonctions.  
+En Lox, vous faites cela avec <span name="fun">`fun`</span>.  
 
 <aside name="fun">
 
-I've seen languages that use `fn`, `fun`, `func`, and `function`. I'm still
-hoping to discover a `funct`, `functi`, or `functio` somewhere.
+J’ai vu des langages qui utilisent `fn`, `fun`, `func` et `function`.  
+J’espère encore tomber un jour sur un `funct`, `functi` ou `functio`.
 
 </aside>
 
@@ -570,34 +561,32 @@ fun printSum(a, b) {
 }
 ```
 
-Now's a good time to clarify some <span name="define">terminology</span>. Some
-people throw around "parameter" and "argument" like they are interchangeable
-and, to many, they are. We're going to spend a lot of time splitting the finest
-of downy hairs around semantics, so let's sharpen our words. From here on out:
+C’est le bon moment pour clarifier un peu de <span name="define">terminologie</span>.  
+Certaines personnes utilisent « paramètre » et « argument » comme s’ils étaient interchangeables et, pour beaucoup, ils le sont.  
+Mais nous allons passer pas mal de temps à couper les cheveux en quatre sur des questions de sémantique, donc autant être précis dans nos mots.  
+À partir de maintenant :
 
-*   An **argument** is an actual value you pass to a function when you call it.
-    So a function *call* has an *argument* list. Sometimes you hear **actual
-    parameter** used for these.
+*   Un **argument** est une valeur réelle que vous passez à une fonction lorsque vous l’appelez.  
+    Ainsi, un *appel* de fonction possède une liste d’*arguments*.  
+    Parfois, on parle de **paramètre effectif** pour désigner ceux-ci.
 
-*   A **parameter** is a variable that holds the value of the argument inside
-    the body of the function. Thus, a function *declaration* has a *parameter*
-    list. Others call these **formal parameters** or simply **formals**.
+*   Un **paramètre** est une variable qui contient la valeur de l’argument à l’intérieur du corps de la fonction.  
+    Ainsi, une *déclaration* de fonction possède une liste de *paramètres*.  
+    D’autres les appellent **paramètres formels** ou simplement **formels**.
 
 <aside name="define">
 
-Speaking of terminology, some statically typed languages like C make a
-distinction between *declaring* a function and *defining* it. A declaration
-binds the function's type to its name so that calls can be type-checked but does
-not provide a body. A definition declares the function and also fills in the
-body so that the function can be compiled.
+En parlant de terminologie, certains langages statiquement typés comme C font une distinction entre *déclarer* une fonction et la *définir*.  
+Une déclaration associe le type de la fonction à son nom, afin que les appels puissent être vérifiés par le compilateur, mais elle ne fournit pas de corps.  
+Une définition déclare la fonction et fournit également son corps, ce qui permet de la compiler.
 
-Since Lox is dynamically typed, this distinction isn't meaningful. A function
-declaration fully specifies the function including its body.
+Comme Lox est dynamiquement typé, cette distinction n’a pas lieu d’être.  
+Une déclaration de fonction en Lox spécifie entièrement la fonction, y compris son corps.
 
 </aside>
 
-The body of a function is always a block. Inside it, you can return a value
-using a `return` statement.
+Le corps d’une fonction est toujours un bloc.  
+À l’intérieur, vous pouvez retourner une valeur à l’aide de l’instruction `return`.
 
 ```lox
 fun returnSum(a, b) {
@@ -605,19 +594,18 @@ fun returnSum(a, b) {
 }
 ```
 
-If execution reaches the end of the block without hitting a `return`, it
-<span name="sneaky">implicitly</span> returns `nil`.
+Si l’exécution atteint la fin du bloc sans rencontrer de `return`, elle renvoie <span name="sneaky">implicitement</span> `nil`.
 
 <aside name="sneaky">
 
-See, I told you `nil` would sneak in when we weren't looking.
+Vous voyez, je vous avais dit que `nil` se glisserait quand on ne regarde pas.
 
 </aside>
 
-### Closures
+### Fermetures (Closures)
 
-Functions are *first class* in Lox, which just means they are real values that
-you can get a reference to, store in variables, pass around, etc. This works:
+Les fonctions sont des valeurs *de première classe* dans Lox, ce qui signifie simplement que ce sont de vraies valeurs auxquelles vous pouvez faire référence, stocker dans des variables, passer en argument, etc.  
+Cela fonctionne ainsi :
 
 ```lox
 fun addPair(a, b) {
@@ -631,8 +619,7 @@ fun identity(a) {
 print identity(addPair)(1, 2); // Prints "3".
 ```
 
-Since function declarations are statements, you can declare local functions
-inside another function.
+Puisque les déclarations de fonctions sont des instructions, vous pouvez déclarer des fonctions locales à l'intérieur d'une autre fonction.
 
 ```lox
 fun outerFunction() {
@@ -644,8 +631,7 @@ fun outerFunction() {
 }
 ```
 
-If you combine local functions, first-class functions, and block scope, you run
-into this interesting situation:
+Si vous combinez fonctions locales, fonctions de première classe et portée des blocs, vous vous retrouvez dans cette situation intéressante :
 
 ```lox
 fun returnFunction() {
@@ -662,123 +648,125 @@ var fn = returnFunction();
 fn();
 ```
 
-Here, `inner()` accesses a local variable declared outside of its body in the
-surrounding function. Is this kosher? Now that lots of languages have borrowed
-this feature from Lisp, you probably know the answer is yes.
+Ici, `inner()` accède à une variable locale déclarée en dehors de son corps dans la
+fonction environnante. Est-ce que c'est correct ? Maintenant que de nombreux langages ont emprunté
+cette fonctionnalité à Lisp, vous connaissez probablement la réponse : oui.
 
-For that to work, `inner()` has to "hold on" to references to any surrounding
-variables that it uses so that they stay around even after the outer function
-has returned. We call functions that do this <span
-name="closure">**closures**</span>. These days, the term is often used for *any*
-first-class function, though it's sort of a misnomer if the function doesn't
-happen to close over any variables.
+Pour que cela fonctionne, `inner()` doit "s'accrocher" aux références de toutes les variables
+environnantes qu'elle utilise afin qu'elles restent disponibles même après que la fonction externe
+soit retournée. Nous appelons les fonctions qui font cela <span
+name="closure">**fermetures**</span>. De nos jours, le terme est souvent utilisé pour *toute*
+fonction de première classe, bien que ce soit en quelque sorte un terme impropre si la fonction
+ne se trouve pas fermer sur des variables.
 
 <aside name="closure">
 
-Peter J. Landin coined the term "closure". Yes, he invented damn near half the
-terms in programming languages. Most of them came out of one incredible paper,
-"[The Next 700 Programming Languages][svh]".
+Peter J. Landin a inventé le terme "closure". Oui, il a inventé pratiquement la moitié des
+termes dans les langages de programmation. La plupart d'entre eux sont sortis d'un article
+incroyable, "[The Next 700 Programming Languages][svh]".
 
 [svh]: https://homepages.inf.ed.ac.uk/wadler/papers/papers-we-love/landin-next-700.pdf
 
-In order to implement these kind of functions, you need to create a data
-structure that bundles together the function's code and the surrounding
-variables it needs. He called this a "closure" because it *closes over* and
-holds on to the variables it needs.
+Afin d'implémenter ce genre de fonctions, vous devez créer une structure de données
+qui regroupe le code de la fonction et les variables environnantes dont elle a besoin.
+Il a appelé cela une "closure" parce qu'elle *se ferme sur* et s'accroche aux
+variables dont elle a besoin.
 
 </aside>
 
-As you can imagine, implementing these adds some complexity because we can no
-longer assume variable scope works strictly like a stack where local variables
-evaporate the moment the function returns. We're going to have a fun time
-learning how to make these work correctly and efficiently.
+Comme vous pouvez l'imaginer, implémenter ces fonctionnalités ajoute de la complexité car nous ne
+pouvons plus supposer que la portée des variables fonctionne strictement comme une pile où les
+variables locales s'évaporent au moment où la fonction retourne. Nous allons passer un moment
+amusant à apprendre comment faire fonctionner ces mécanismes correctement et efficacement.
 
 ## Classes
 
-Since Lox has dynamic typing, lexical (roughly, "block") scope, and closures,
-it's about halfway to being a functional language. But as you'll see, it's
-*also* about halfway to being an object-oriented language. Both paradigms have a
-lot going for them, so I thought it was worth covering some of each.
+Puisque Lox a un typage dynamique, une portée lexicale (en gros, de "bloc"), et des fermetures,
+il est à peu près à mi-chemin d'être un langage fonctionnel. Mais comme vous le verrez, il est
+*aussi* à peu près à mi-chemin d'être un langage orienté objet. Les deux paradigmes ont beaucoup
+d'atouts, donc j'ai pensé que cela valait la peine de couvrir un peu de chacun.
 
-Since classes have come under fire for not living up to their hype, let me first
-explain why I put them into Lox and this book. There are really two questions:
+Puisque les classes ont été critiquées pour ne pas être à la hauteur de leur battage médiatique,
+laissez-moi d'abord expliquer pourquoi je les ai mises dans Lox et ce livre. Il y a vraiment deux
+questions :
 
-### Why might any language want to be object oriented?
+### Pourquoi un langage pourrait-il vouloir être orienté objet ?
 
-Now that object-oriented languages like Java have sold out and only play arena
-shows, it's not cool to like them anymore. Why would anyone make a *new*
-language with objects? Isn't that like releasing music on 8-track?
+Maintenant que les langages orientés objet comme Java ont vendu leur âme et ne jouent que dans des
+salles d'arène, ce n'est plus cool de les aimer. Pourquoi quelqu'un créerait-il un *nouveau*
+langage avec des objets ? N'est-ce pas comme sortir de la musique sur des 8-pistes ?
 
-It is true that the "all inheritance all the time" binge of the '90s produced
-some monstrous class hierarchies, but **object-oriented programming** (**OOP**)
-is still pretty rad. Billions of lines of successful code have been written in
-OOP languages, shipping millions of apps to happy users. Likely a majority of
-working programmers today are using an object-oriented language. They can't all
-be *that* wrong.
+Il est vrai que la frénésie "tout héritage tout le temps" des années 90 a produit des hiérarchies
+de classes monstrueuses, mais la **programmation orientée objet** (**POO**) est encore plutôt
+géniale. Des milliards de lignes de code réussi ont été écrites dans des langages POO, livrant
+des millions d'applications à des utilisateurs heureux. Probablement qu'une majorité des
+programmeurs qui travaillent aujourd'hui utilisent un langage orienté objet. Ils ne peuvent pas
+tous se tromper *à ce point*.
 
-In particular, for a dynamically typed language, objects are pretty handy. We
-need *some* way of defining compound data types to bundle blobs of stuff
-together.
+En particulier, pour un langage typé dynamiquement, les objets sont plutôt pratiques. Nous avons
+besoin de *quelque* moyen de définir des types de données composés pour regrouper des blobs de
+trucs ensemble.
 
-If we can also hang methods off of those, then we avoid the need to prefix all
-of our functions with the name of the data type they operate on to avoid
-colliding with similar functions for different types. In, say, Racket, you end
-up having to name your functions like `hash-copy` (to copy a hash table) and
-`vector-copy` (to copy a vector) so that they don't step on each other. Methods
-are scoped to the object, so that problem goes away.
+Si nous pouvons aussi accrocher des méthodes à ceux-ci, alors nous évitons le besoin de préfixer
+toutes nos fonctions avec le nom du type de données sur lequel elles opèrent pour éviter d'entrer
+en collision avec des fonctions similaires pour différents types. Dans, disons, Racket, vous
+finissez par devoir nommer vos fonctions comme `hash-copy` (pour copier une table de hachage) et
+`vector-copy` (pour copier un vecteur) afin qu'elles ne se marchent pas dessus. Les méthodes sont
+délimitées à l'objet, donc ce problème disparaît.
 
-### Why is Lox object oriented?
+### Pourquoi Lox est-il orienté objet ?
 
-I could claim objects are groovy but still out of scope for the book. Most
-programming language books, especially ones that try to implement a whole
-language, leave objects out. To me, that means the topic isn't well covered.
-With such a widespread paradigm, that omission makes me sad.
+Je pourrais prétendre que les objets sont géniaux mais quand même hors du périmètre du livre. La
+plupart des livres sur les langages de programmation, en particulier ceux qui essaient
+d'implémenter un langage complet, laissent les objets de côté. Pour moi, cela signifie que le
+sujet n'est pas bien couvert. Avec un paradigme si répandu, cette omission me rend triste.
 
-Given how many of us spend all day *using* OOP languages, it seems like the
-world could use a little documentation on how to *make* one. As you'll see, it
-turns out to be pretty interesting. Not as hard as you might fear, but not as
-simple as you might presume, either.
+Étant donné combien d'entre nous passent toute la journée à *utiliser* des langages POO, il
+semble que le monde pourrait utiliser un peu de documentation sur comment en *faire* un. Comme
+vous le verrez, il s'avère que c'est plutôt intéressant. Pas aussi difficile que vous pourriez
+le craindre, mais pas aussi simple que vous pourriez le présumer non plus.
 
-### Classes or prototypes
+### Classes ou prototypes
 
-When it comes to objects, there are actually two approaches to them, [classes][]
-and [prototypes][]. Classes came first, and are more common thanks to C++, Java,
-C#, and friends. Prototypes were a virtually forgotten offshoot until JavaScript
-accidentally took over the world.
+Quand il s'agit d'objets, il y a en fait deux approches, les [classes][] et les [prototypes][].
+Les classes sont venues en premier, et sont plus courantes grâce à C++, Java, C#, et leurs amis.
+Les prototypes étaient une ramification pratiquement oubliée jusqu'à ce que JavaScript prenne
+accidentellement le contrôle du monde.
 
 [classes]: https://en.wikipedia.org/wiki/Class-based_programming
 [prototypes]: https://en.wikipedia.org/wiki/Prototype-based_programming
 
-In class-based languages, there are two core concepts: instances and classes.
-Instances store the state for each object and have a reference to the instance's
-class. Classes contain the methods and inheritance chain. To call a method on an
-instance, there is always a level of indirection. You <span
-name="dispatch">look</span> up the instance's class and then you find the method
-*there*:
+Dans les langages basés sur les classes, il y a deux concepts centraux : les instances et les
+classes. Les instances stockent l'état de chaque objet et ont une référence à la classe de
+l'instance. Les classes contiennent les méthodes et la chaîne d'héritage. Pour appeler une
+méthode sur une instance, il y a toujours un niveau d'indirection. Vous <span
+name="dispatch">cherchez</span> la classe de l'instance et puis vous trouvez la méthode
+*là* :
 
 <aside name="dispatch">
 
-In a statically typed language like C++, method lookup typically happens at
-compile time based on the *static* type of the instance, giving you **static
-dispatch**. In contrast, **dynamic dispatch** looks up the class of the actual
-instance object at runtime. This is how virtual methods in statically typed
-languages and all methods in a dynamically typed language like Lox work.
+Dans un langage typé statiquement comme C++, la recherche de méthode se fait typiquement au
+moment de la compilation basée sur le type *statique* de l'instance, vous donnant une
+**répartition statique**. En contraste, la **répartition dynamique** cherche la classe de
+l'objet instance actuel au moment de l'exécution. C'est ainsi que les méthodes virtuelles dans
+les langages typés statiquement et toutes les méthodes dans un langage typé dynamiquement comme
+Lox fonctionnent.
 
 </aside>
 
 <img src="image/the-lox-language/class-lookup.png" alt="How fields and methods are looked up on classes and instances" />
 
-Prototype-based languages <span name="blurry">merge</span> these two concepts.
-There are only objects -- no classes -- and each individual object may contain
-state and methods. Objects can directly inherit from each other (or "delegate
-to" in prototypal lingo):
+Les langages basés sur les prototypes <span name="blurry">fusionnent</span> ces deux concepts.
+Il n'y a que des objets -- pas de classes -- et chaque objet individuel peut contenir
+un état et des méthodes. Les objets peuvent hériter directement les uns des autres (ou "déléguer
+à" dans le jargon prototypal) :
 
 <aside name="blurry">
 
-In practice the line between class-based and prototype-based languages blurs.
-JavaScript's "constructor function" notion [pushes you pretty hard][js new]
-towards defining class-like objects. Meanwhile, class-based Ruby is perfectly
-happy to let you attach methods to individual instances.
+En pratique, la ligne entre les langages basés sur les classes et basés sur les prototypes
+s'estompe. La notion de "fonction constructeur" de JavaScript [vous pousse assez fort][js new]
+vers la définition d'objets ressemblant à des classes. Pendant ce temps, Ruby basé sur les classes
+est parfaitement heureux de vous laisser attacher des méthodes à des instances individuelles.
 
 [js new]: http://gameprogrammingpatterns.com/prototype.html#what-about-javascript
 
@@ -786,42 +774,43 @@ happy to let you attach methods to individual instances.
 
 <img src="image/the-lox-language/prototype-lookup.png" alt="How fields and methods are looked up in a prototypal system" />
 
-This means that in some ways prototypal languages are more fundamental than
-classes. They are really neat to implement because they're *so* simple. Also,
-they can express lots of unusual patterns that classes steer you away from.
+Cela signifie que d'une certaine manière les langages prototypaux sont plus fondamentaux que
+les classes. Ils sont vraiment chouettes à implémenter parce qu'ils sont *tellement* simples.
+Aussi, ils peuvent exprimer beaucoup de modèles inhabituels dont les classes vous détournent.
 
-But I've looked at a *lot* of code written in prototypal languages -- including
-[some of my own devising][finch]. Do you know what people generally do with all
-of the power and flexibility of prototypes? ...They use them to reinvent
-classes.
+Mais j'ai regardé *beaucoup* de code écrit dans des langages prototypaux -- incluant
+[certains de ma propre conception][finch]. Savez-vous ce que les gens font généralement avec
+tout le pouvoir et la flexibilité des prototypes ? ...Ils les utilisent pour réinventer
+les classes.
 
 [finch]: http://finch.stuffwithstuff.com/
 
-I don't know *why* that is, but people naturally seem to prefer a class-based
-(Classic? Classy?) style. Prototypes *are* simpler in the language, but they
-seem to accomplish that only by <span name="waterbed">pushing</span> the
-complexity onto the user. So, for Lox, we'll save our users the trouble and bake
-classes right in.
+Je ne sais pas *pourquoi* c'est ainsi, mais les gens semblent naturellement préférer un
+style basé sur les classes (Classique ? Classe ?). Les prototypes *sont* plus simples dans
+le langage, mais ils semblent accomplir cela seulement en <span name="waterbed">poussant</span>
+la complexité sur l'utilisateur. Donc, pour Lox, nous épargnerons à nos utilisateurs cette
+peine et intégrerons les classes directement.
 
 <aside name="waterbed">
 
-Larry Wall, Perl's inventor/prophet calls this the "[waterbed theory][]". Some
-complexity is essential and cannot be eliminated. If you push it down in one
-place, it swells up in another.
+Larry Wall, l'inventeur/prophète de Perl appelle cela la "[théorie du matelas à eau][waterbed theory]".
+Une certaine complexité est essentielle et ne peut être éliminée. Si vous la poussez vers le bas
+à un endroit, elle gonfle à un autre.
 
 [waterbed theory]: http://wiki.c2.com/?WaterbedTheory
 
-Prototypal languages don't so much *eliminate* the complexity of classes as they
-do make the *user* take that complexity by building their own class-like
-metaprogramming libraries.
+Les langages prototypaux n'*éliminent* pas tant la complexité des classes qu'ils ne font
+que l'utilisateur prenne cette complexité en construisant ses propres bibliothèques de
+métaprogrammation ressemblant à des classes.
 
 </aside>
 
-### Classes in Lox
+### Classes dans Lox
 
-Enough rationale, let's see what we actually have. Classes encompass a
-constellation of features in most languages. For Lox, I've selected what I think
-are the brightest stars. You declare a class and its methods like so:
+Assez de justification, voyons ce que nous avons réellement. Les classes englobent une
+constellation de fonctionnalités dans la plupart des langages. Pour Lox, j'ai sélectionné
+ce que je pense être les étoiles les plus brillantes. Vous déclarez une classe et ses
+méthodes comme ceci :
 
 ```lox
 class Breakfast {
@@ -835,15 +824,14 @@ class Breakfast {
 }
 ```
 
-The body of a class contains its methods. They look like function declarations
-but without the `fun` <span name="method">keyword</span>. When the class
-declaration is executed, Lox creates a class object and stores that in a
-variable named after the class. Just like functions, classes are first class in
-Lox.
+Le corps d'une classe contient ses méthodes. Elles ressemblent à des déclarations de fonction
+mais sans le mot-clé <span name="method">`fun`</span>. Quand la déclaration de classe
+est exécutée, Lox crée un objet classe et le stocke dans une variable nommée d'après la
+classe. Tout comme les fonctions, les classes sont de première classe dans Lox.
 
 <aside name="method">
 
-They are still just as fun, though.
+Elles sont quand même tout aussi amusantes (fun), cependant.
 
 </aside>
 
@@ -855,32 +843,32 @@ var someVariable = Breakfast;
 someFunction(Breakfast);
 ```
 
-Next, we need a way to create instances. We could add some sort of `new`
-keyword, but to keep things simple, in Lox the class itself is a factory
-function for instances. Call a class like a function, and it produces a new
-instance of itself.
+Ensuite, nous avons besoin d'un moyen de créer des instances. Nous pourrions ajouter une sorte
+de mot-clé `new`, mais pour garder les choses simples, dans Lox la classe elle-même est une
+fonction factory pour les instances. Appelez une classe comme une fonction, et elle produit
+une nouvelle instance d'elle-même.
 
 ```lox
 var breakfast = Breakfast();
 print breakfast; // "Breakfast instance".
 ```
 
-### Instantiation and initialization
+### Instanciation et initialisation
 
-Classes that only have behavior aren't super useful. The idea behind
-object-oriented programming is encapsulating behavior *and state* together. To
-do that, you need fields. Lox, like other dynamically typed languages, lets you
-freely add properties onto objects.
+Les classes qui n'ont que du comportement ne sont pas super utiles. L'idée derrière
+la programmation orientée objet est d'encapsuler le comportement *et l'état* ensemble.
+Pour faire cela, vous avez besoin de champs. Lox, comme d'autres langages typés
+dynamiquement, vous permet d'ajouter librement des propriétés aux objets.
 
 ```lox
 breakfast.meat = "sausage";
 breakfast.bread = "sourdough";
 ```
 
-Assigning to a field creates it if it doesn't already exist.
+Assigner à un champ le crée s'il n'existe pas déjà.
 
-If you want to access a field or method on the current object from within a
-method, you use good old `this`.
+Si vous voulez accéder à un champ ou une méthode sur l'objet courant depuis une
+méthode, vous utilisez le bon vieux `this`.
 
 ```lox
 class Breakfast {
@@ -893,11 +881,11 @@ class Breakfast {
 }
 ```
 
-Part of encapsulating data within an object is ensuring the object is in a valid
-state when it's created. To do that, you can define an initializer. If your
-class has a method named `init()`, it is called automatically when the object is
-constructed. Any parameters passed to the class are forwarded to its
-initializer.
+Une partie de l'encapsulation des données dans un objet consiste à s'assurer que l'objet
+est dans un état valide quand il est créé. Pour faire cela, vous pouvez définir un
+initialisateur. Si votre classe a une méthode nommée `init()`, elle est appelée
+automatiquement quand l'objet est construit. Tous les paramètres passés à la classe
+sont transmis à son initialisateur.
 
 ```lox
 class Breakfast {
@@ -914,12 +902,12 @@ baconAndToast.serve("Dear Reader");
 // "Enjoy your bacon and toast, Dear Reader."
 ```
 
-### Inheritance
+### Héritage
 
-Every object-oriented language lets you not only define methods, but reuse them
-across multiple classes or objects. For that, Lox supports single inheritance.
-When you declare a class, you can specify a class that it inherits from using a less-than
-<span name="less">(`<`)</span> operator.
+Chaque langage orienté objet vous permet non seulement de définir des méthodes, mais
+de les réutiliser à travers plusieurs classes ou objets. Pour cela, Lox supporte
+l'héritage simple. Quand vous déclarez une classe, vous pouvez spécifier une classe
+dont elle hérite en utilisant un opérateur inférieur à <span name="less">(`<`)</span>.
 
 ```lox
 class Brunch < Breakfast {
@@ -931,42 +919,44 @@ class Brunch < Breakfast {
 
 <aside name="less">
 
-Why the `<` operator? I didn't feel like introducing a new keyword like
-`extends`. Lox doesn't use `:` for anything else so I didn't want to reserve
-that either. Instead, I took a page from Ruby and used `<`.
+Pourquoi l'opérateur `<` ? Je n'avais pas envie d'introduire un nouveau mot-clé comme
+`extends`. Lox n'utilise pas `:` pour quoi que ce soit d'autre donc je ne voulais
+pas réserver cela non plus. Au lieu de cela, j'ai pris une page de Ruby et utilisé `<`.
 
-If you know any type theory, you'll notice it's not a *totally* arbitrary
-choice. Every instance of a subclass is an instance of its superclass too, but
-there may be instances of the superclass that are not instances of the subclass.
-That means, in the universe of objects, the set of subclass objects is smaller
-than the superclass's set, though type nerds usually use `<:` for that relation.
+Si vous connaissez un peu de théorie des types, vous remarquerez que ce n'est pas un
+choix *totalement* arbitraire. Chaque instance d'une sous-classe est aussi une instance
+de sa superclasse, mais il peut y avoir des instances de la superclasse qui ne sont
+pas des instances de la sous-classe. Cela signifie, dans l'univers des objets, que
+l'ensemble des objets de la sous-classe est plus petit que l'ensemble de la superclasse,
+bien que les nerds de la théorie des types utilisent habituellement `<:` pour cette
+relation.
 
 </aside>
 
-Here, Brunch is the **derived class** or **subclass**, and Breakfast is the
-**base class** or **superclass**.
+Ici, Brunch est la **classe dérivée** ou **sous-classe**, et Breakfast est la
+**classe de base** ou **superclasse**.
 
-Every method defined in the superclass is also available to its subclasses.
+Chaque méthode définie dans la superclasse est aussi disponible pour ses sous-classes.
 
 ```lox
 var benedict = Brunch("ham", "English muffin");
 benedict.serve("Noble Reader");
 ```
 
-Even the `init()` method gets <span name="init">inherited</span>. In practice,
-the subclass usually wants to define its own `init()` method too. But the
-original one also needs to be called so that the superclass can maintain its
-state. We need some way to call a method on our own *instance* without hitting
-our own *methods*.
+Même la méthode `init()` est <span name="init">héritée</span>. En pratique,
+la sous-classe veut habituellement définir sa propre méthode `init()` aussi. Mais
+l'originale doit aussi être appelée pour que la superclasse puisse maintenir son
+état. Nous avons besoin d'un moyen d'appeler une méthode sur notre propre *instance*
+sans toucher nos propres *méthodes*.
 
 <aside name="init">
 
-Lox is different from C++, Java, and C#, which do not inherit constructors, but
-similar to Smalltalk and Ruby, which do.
+Lox est différent de C++, Java, et C#, qui n'héritent pas des constructeurs, mais
+similaire à Smalltalk et Ruby, qui le font.
 
 </aside>
 
-As in Java, you use `super` for that.
+Comme en Java, vous utilisez `super` pour cela.
 
 ```lox
 class Brunch < Breakfast {
@@ -977,120 +967,128 @@ class Brunch < Breakfast {
 }
 ```
 
-That's about it for object orientation. I tried to keep the feature set minimal.
-The structure of the book did force one compromise. Lox is not a *pure*
-object-oriented language. In a true OOP language every object is an instance of
-a class, even primitive values like numbers and Booleans.
+C'est à peu près tout pour l'orientation objet. J'ai essayé de garder l'ensemble des
+fonctionnalités minimal. La structure du livre a forcé un compromis. Lox n'est pas un
+langage orienté objet *pur*. Dans un vrai langage POO, chaque objet est une instance
+d'une classe, même les valeurs primitives comme les nombres et les Booléens.
 
-Because we don't implement classes until well after we start working with the
-built-in types, that would have been hard. So values of primitive types aren't
-real objects in the sense of being instances of classes. They don't have methods
-or properties. If I were trying to make Lox a real language for real users, I
-would fix that.
+Parce que nous n'implémentons pas les classes jusqu'à bien après avoir commencé à
+travailler avec les types intégrés, cela aurait été difficile. Donc les valeurs des
+types primitifs ne sont pas de vrais objets au sens d'être des instances de classes.
+Elles n'ont pas de méthodes ou de propriétés. Si j'essayais de faire de Lox un vrai
+langage pour de vrais utilisateurs, je corrigerais cela.
 
-## The Standard Library
+## La Bibliothèque Standard
 
-We're almost done. That's the whole language, so all that's left is the "core"
-or "standard" library -- the set of functionality that is implemented directly
-in the interpreter and that all user-defined behavior is built on top of.
+Nous avons presque terminé. C'est tout le langage, donc tout ce qui reste est la
+bibliothèque "noyau" ou "standard" -- l'ensemble de fonctionnalités qui est
+implémenté directement dans l'interpréteur et sur lequel tout le comportement
+défini par l'utilisateur est construit.
 
-This is the saddest part of Lox. Its standard library goes beyond minimalism and
-veers close to outright nihilism. For the sample code in the book, we only need
-to demonstrate that code is running and doing what it's supposed to do. For
-that, we already have the built-in `print` statement.
+C'est la partie la plus triste de Lox. Sa bibliothèque standard va au-delà du
+minimalisme et penche près du nihilisme pur. Pour le code d'exemple dans le livre,
+nous avons seulement besoin de démontrer que le code fonctionne et fait ce qu'il
+est censé faire. Pour cela, nous avons déjà l'instruction `print` intégrée.
 
-Later, when we start optimizing, we'll write some benchmarks and see how long it
-takes to execute code. That means we need to track time, so we'll define one
-built-in function, `clock()`, that returns the number of seconds since the
-program started.
+Plus tard, quand nous commencerons à optimiser, nous écrirons quelques benchmarks
+et verrons combien de temps il faut pour exécuter le code. Cela signifie que nous
+avons besoin de suivre le temps, donc nous définirons une fonction intégrée,
+`clock()`, qui retourne le nombre de secondes depuis que le programme a commencé.
 
-And... that's it. I know, right? It's embarrassing.
+Et... c'est tout. Je sais, n'est-ce pas ? C'est embarrassant.
 
-If you wanted to turn Lox into an actual useful language, the very first thing
-you should do is flesh this out. String manipulation, trigonometric functions,
-file I/O, networking, heck, even *reading input from the user* would help. But we
-don't need any of that for this book, and adding it wouldn't teach you anything
-interesting, so I've left it out.
+Si vous vouliez transformer Lox en un langage réellement utile, la toute première
+chose que vous devriez faire est étoffer cela. Manipulation de chaînes, fonctions
+trigonométriques, I/O de fichiers, réseau, bon sang, même *lire l'entrée de
+l'utilisateur* aiderait. Mais nous n'avons besoin de rien de tout cela pour ce
+livre, et l'ajouter ne vous apprendrait rien d'intéressant, donc je l'ai laissé
+de côté.
 
-Don't worry, we'll have plenty of exciting stuff in the language itself to keep
-us busy.
+Ne vous inquiétez pas, nous aurons plein de trucs excitants dans le langage
+lui-même pour nous occuper.
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1. Write some sample Lox programs and run them (you can use the implementations
-   of Lox in [my repository][repo]). Try to come up with edge case behavior I
-   didn't specify here. Does it do what you expect? Why or why not?
+1. Écrivez quelques programmes Lox d'exemple et exécutez-les (vous pouvez utiliser
+  les implémentations de Lox dans [mon dépôt][repo]). Essayez de trouver des
+  comportements de cas limites que je n'ai pas spécifiés ici. Est-ce que cela
+  fait ce que vous attendez ? Pourquoi ou pourquoi pas ?
 
-2. This informal introduction leaves a *lot* unspecified. List several open
-   questions you have about the language's syntax and semantics. What do you
-   think the answers should be?
+2. Cette introduction informelle laisse *beaucoup* de choses non spécifiées.
+  Listez plusieurs questions ouvertes que vous avez sur la syntaxe et la
+  sémantique du langage. Que pensez-vous que les réponses devraient être ?
 
-3. Lox is a pretty tiny language. What features do you think it is missing that
-   would make it annoying to use for real programs? (Aside from the standard
-   library, of course.)
+3. Lox est un langage assez petit. Quelles fonctionnalités pensez-vous qu'il
+  manque qui rendraient son utilisation ennuyeuse pour de vrais programmes ?
+  (Mis à part la bibliothèque standard, bien sûr.)
 
 </div>
 
 <div class="design-note">
 
-## Design Note: Expressions and Statements
+## Note de Conception : Expressions et Instructions
 
-Lox has both expressions and statements. Some languages omit the latter.
-Instead, they treat declarations and control flow constructs as expressions too.
-These "everything is an expression" languages tend to have functional pedigrees
-and include most Lisps, SML, Haskell, Ruby, and CoffeeScript.
+Lox a à la fois des expressions et des instructions. Certains langages omettent
+ces dernières. Au lieu de cela, ils traitent les déclarations et les constructions
+de flux de contrôle comme des expressions aussi. Ces langages "tout est une
+expression" tendent à avoir des pedigrees fonctionnels et incluent la plupart des
+Lisps, SML, Haskell, Ruby, et CoffeeScript.
 
-To do that, for each "statement-like" construct in the language, you need to
-decide what value it evaluates to. Some of those are easy:
+Pour faire cela, pour chaque construction "ressemblant à une instruction" dans le
+langage, vous devez décider à quelle valeur elle s'évalue. Certaines d'entre elles
+sont faciles :
 
-*   An `if` expression evaluates to the result of whichever branch is chosen.
-    Likewise, a `switch` or other multi-way branch evaluates to whichever case
-    is picked.
+*   Une expression `if` s'évalue au résultat de quelque branche soit choisie.
+   De même, un `switch` ou autre branche multi-voies s'évalue à quelque cas
+   soit choisi.
 
-*   A variable declaration evaluates to the value of the variable.
+*   Une déclaration de variable s'évalue à la valeur de la variable.
 
-*   A block evaluates to the result of the last expression in the sequence.
+*   Un bloc s'évalue au résultat de la dernière expression dans la séquence.
 
-Some get a little stranger. What should a loop evaluate to? A `while` loop in
-CoffeeScript evaluates to an array containing each element that the body
-evaluated to. That can be handy, or a waste of memory if you don't need the
-array.
+Certaines deviennent un peu plus étranges. À quoi une boucle devrait-elle s'évaluer ?
+Une boucle `while` dans CoffeeScript s'évalue à un tableau contenant chaque élément
+auquel le corps s'est évalué. Cela peut être pratique, ou un gaspillage de mémoire
+si vous n'avez pas besoin du tableau.
 
-You also have to decide how these statement-like expressions compose with other
-expressions -- you have to fit them into the grammar's precedence table. For
-example, Ruby allows:
+Vous devez aussi décider comment ces expressions ressemblant à des instructions se
+composent avec d'autres expressions -- vous devez les adapter dans la table de
+précédence de la grammaire. Par exemple, Ruby permet :
 
 ```ruby
 puts 1 + if true then 2 else 3 end + 4
 ```
 
-Is this what you'd expect? Is it what your *users* expect? How does this affect
-how you design the syntax for your "statements"? Note that Ruby has an explicit
-`end` to tell when the `if` expression is complete. Without it, the `+ 4` would
-likely be parsed as part of the `else` clause.
+Est-ce que c'est ce que vous attendriez ? Est-ce que c'est ce que vos *utilisateurs*
+attendent ? Comment cela affecte-t-il la façon dont vous concevez la syntaxe pour vos
+"instructions" ? Notez que Ruby a un `end` explicite pour dire quand l'expression `if`
+est complète. Sans cela, le `+ 4` serait probablement analysé comme partie de la
+clause `else`.
 
-Turning every statement into an expression forces you to answer a few hairy
-questions like that. In return, you eliminate some redundancy. C has both blocks
-for sequencing statements, and the comma operator for sequencing expressions. It
-has both the `if` statement and the `?:` conditional operator. If everything was
-an expression in C, you could unify each of those.
+Transformer chaque instruction en expression vous force à répondre à quelques questions
+épineuses comme cela. En retour, vous éliminez une certaine redondance. C a à la fois
+des blocs pour séquencer les instructions, et l'opérateur virgule pour séquencer les
+expressions. Il a à la fois l'instruction `if` et l'opérateur conditionnel `?:`. Si
+tout était une expression en C, vous pourriez unifier chacun d'entre eux.
 
-Languages that do away with statements usually also feature **implicit returns**
--- a function automatically returns whatever value its body evaluates to without
-need for some explicit `return` syntax. For small functions and methods, this is
-really handy. In fact, many languages that do have statements have added syntax
-like `=>` to be able to define functions whose body is the result of evaluating
-a single expression.
+Les langages qui se débarrassent des instructions ont aussi habituellement des
+**retours implicites** -- une fonction retourne automatiquement quelle que soit la
+valeur à laquelle son corps s'évalue sans besoin d'une syntaxe `return` explicite.
+Pour les petites fonctions et méthodes, c'est vraiment pratique. En fait, beaucoup
+de langages qui ont des instructions ont ajouté une syntaxe comme `=>` pour pouvoir
+définir des fonctions dont le corps est le résultat de l'évaluation d'une seule
+expression.
 
-But making *all* functions work that way can be a little strange. If you aren't
-careful, your function will leak a return value even if you only intend it to
-produce a side effect. In practice, though, users of these languages don't find
-it to be a problem.
+Mais faire fonctionner *toutes* les fonctions de cette façon peut être un peu étrange.
+Si vous n'êtes pas prudent, votre fonction va laisser fuir une valeur de retour même
+si vous n'avez l'intention que de produire un effet de bord. En pratique, cependant,
+les utilisateurs de ces langages ne trouvent pas que c'est un problème.
 
-For Lox, I gave it statements for prosaic reasons. I picked a C-like syntax for
-familiarity's sake, and trying to take the existing C statement syntax and
-interpret it like expressions gets weird pretty fast.
+Pour Lox, je lui ai donné des instructions pour des raisons prosaïques. J'ai choisi
+une syntaxe ressemblant à C par souci de familiarité, et essayer de prendre la
+syntaxe d'instruction C existante et l'interpréter comme des expressions devient
+bizarre assez rapidement.
 
 </div>
