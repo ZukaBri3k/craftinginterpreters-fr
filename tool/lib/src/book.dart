@@ -15,9 +15,9 @@ const _tableOfContents = {
     'Acknowledgements',
     'Table of Contents',
   ],
-  'Welcome': [
+  'Bienvenue': [
     'Introduction',
-    'A Map of the Territory',
+    'Une carte du territoire',
     'The Lox Language',
   ],
   'A Tree-Walk Interpreter': [
