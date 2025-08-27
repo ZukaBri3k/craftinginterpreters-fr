@@ -20,7 +20,7 @@ const _tableOfContents = {
     'Une carte du territoire',
     'Le langage Lox',
   ],
-  'A Tree-Walk Interpreter': [
+  'Un interpréteur à parcours d\'arbre': [
     'Scanning',
     'Representing Code',
     'Parsing Expressions',
