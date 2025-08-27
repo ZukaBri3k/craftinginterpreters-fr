@@ -18,6 +18,55 @@ const _tableOfContents = {
   'Bienvenue': [
     'Introduction',
     'Une carte du territoire',
+    'Le langage Lox',
+  ],
+  'A Tree-Walk Interpreter': [
+    'Scanning',
+    'Representing Code',
+    'Parsing Expressions',
+    'Evaluating Expressions',
+    'Statements and State',
+    'Control Flow',
+    'Functions',
+    'Resolving and Binding',
+    'Classes',
+    'Inheritance',
+  ],
+  'A Bytecode Virtual Machine': [
+    'Chunks of Bytecode',
+    'A Virtual Machine',
+    'Scanning on Demand',
+    'Compiling Expressions',
+    'Types of Values',
+    'Strings',
+    'Hash Tables',
+    'Global Variables',
+    'Local Variables',
+    'Jumping Back and Forth',
+    'Calls and Functions',
+    'Closures',
+    'Garbage Collection',
+    'Classes and Instances',
+    'Methods and Initializers',
+    'Superclasses',
+    'Optimization',
+  ],
+  'Backmatter': [
+    'Appendix I',
+    'Appendix II',
+  ],
+};
+
+const _tableOfContentsOriginal = {
+  '': [
+    'Crafting Interpreters',
+    'Dedication',
+    'Acknowledgements',
+    'Table of Contents',
+  ],
+  'Welcome': [
+    'Introduction',
+    'A map of the territory',
     'The Lox Language',
   ],
   'A Tree-Walk Interpreter': [
