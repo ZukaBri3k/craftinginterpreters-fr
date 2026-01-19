@@ -37,21 +37,20 @@
 <h3><a href="#top">Appels et fonctions<small>24</small></a></h3>
 
 <ul>
-    <li><a href="#function-objects"><small>24.1</small> Function Objects</a></li>
-    <li><a href="#compiling-to-function-objects"><small>24.2</small> Compiling to Function Objects</a></li>
-    <li><a href="#call-frames"><small>24.3</small> Call Frames</a></li>
-    <li><a href="#function-declarations"><small>24.4</small> Function Declarations</a></li>
-    <li><a href="#function-calls"><small>24.5</small> Function Calls</a></li>
-    <li><a href="#return-statements"><small>24.6</small> Return Statements</a></li>
-    <li><a href="#native-functions"><small>24.7</small> Native Functions</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
+    <li><a href="#objets-fonction"><small>24.1</small> Objets Fonction</a></li>
+    <li><a href="#compiler-vers-des-objets-fonction"><small>24.2</small> Compiler vers des Objets Fonction</a></li>
+    <li><a href="#cadres-dappel-call-frames"><small>24.3</small> Cadres d&#x27;Appel (Call Frames)</a></li>
+    <li><a href="#déclarations-de-fonction"><small>24.4</small> Déclarations de Fonction</a></li>
+    <li><a href="#appels-de-fonction"><small>24.5</small> Appels de Fonction</a></li>
+    <li><a href="#instructions-return"><small>24.6</small> Instructions Return</a></li>
+    <li><a href="#fonctions-natives"><small>24.7</small> Fonctions Natives</a></li>
+    <li><a href="#défis"><small>24.8</small> Défis</a></li>
 </ul>
 
 
 <div class="prev-next">
     <a href="sauts-avant-et-arrière.html" title="Sauts avant et arrière" class="left">&larr;&nbsp;Previous</a>
-    <a href="a-bytecode-virtual-machine.html" title="A Bytecode Virtual Machine">&uarr;&nbsp;Up</a>
+    <a href="une-machine-virtuelle-à-bytecode.html" title="Une machine virtuelle à bytecode">&uarr;&nbsp;Up</a>
     <a href="fermetures.html" title="Fermetures" class="right">Next&nbsp;&rarr;</a>
 </div>  </div>
 </nav>
@@ -70,21 +69,20 @@
 <h3><a href="#top">Appels et fonctions<small>24</small></a></h3>
 
 <ul>
-    <li><a href="#function-objects"><small>24.1</small> Function Objects</a></li>
-    <li><a href="#compiling-to-function-objects"><small>24.2</small> Compiling to Function Objects</a></li>
-    <li><a href="#call-frames"><small>24.3</small> Call Frames</a></li>
-    <li><a href="#function-declarations"><small>24.4</small> Function Declarations</a></li>
-    <li><a href="#function-calls"><small>24.5</small> Function Calls</a></li>
-    <li><a href="#return-statements"><small>24.6</small> Return Statements</a></li>
-    <li><a href="#native-functions"><small>24.7</small> Native Functions</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
+    <li><a href="#objets-fonction"><small>24.1</small> Objets Fonction</a></li>
+    <li><a href="#compiler-vers-des-objets-fonction"><small>24.2</small> Compiler vers des Objets Fonction</a></li>
+    <li><a href="#cadres-dappel-call-frames"><small>24.3</small> Cadres d&#x27;Appel (Call Frames)</a></li>
+    <li><a href="#déclarations-de-fonction"><small>24.4</small> Déclarations de Fonction</a></li>
+    <li><a href="#appels-de-fonction"><small>24.5</small> Appels de Fonction</a></li>
+    <li><a href="#instructions-return"><small>24.6</small> Instructions Return</a></li>
+    <li><a href="#fonctions-natives"><small>24.7</small> Fonctions Natives</a></li>
+    <li><a href="#défis"><small>24.8</small> Défis</a></li>
 </ul>
 
 
 <div class="prev-next">
     <a href="sauts-avant-et-arrière.html" title="Sauts avant et arrière" class="left">&larr;&nbsp;Previous</a>
-    <a href="a-bytecode-virtual-machine.html" title="A Bytecode Virtual Machine">&uarr;&nbsp;Up</a>
+    <a href="une-machine-virtuelle-à-bytecode.html" title="Une machine virtuelle à bytecode">&uarr;&nbsp;Up</a>
     <a href="fermetures.html" title="Fermetures" class="right">Next&nbsp;&rarr;</a>
 </div>  </div>
   <a id="expand-nav">≡</a>
@@ -97,37 +95,17 @@
   <h1>Appels et fonctions</h1>
 
 <blockquote>
-<p>Any problem in computer science can be solved with another level of
-indirection. Except for the problem of too many layers of indirection.</p>
+<p>Tout problème en informatique peut être résolu avec un autre niveau d&rsquo;indirection. Sauf pour le problème de trop de couches d&rsquo;indirection.</p>
 <p><cite>David Wheeler</cite></p>
 </blockquote>
-<p>This chapter is a beast. I try to break features into bite-sized pieces, but
-sometimes you gotta swallow the whole <span name="eat">meal</span>. Our next
-task is functions. We could start with only function declarations, but that&rsquo;s
-not very useful when you can&rsquo;t call them. We could do calls, but there&rsquo;s nothing
-to call. And all of the runtime support needed in the VM to support both of
-those isn&rsquo;t very rewarding if it isn&rsquo;t hooked up to anything you can see. So
-we&rsquo;re going to do it all. It&rsquo;s a lot, but we&rsquo;ll feel good when we&rsquo;re done.</p>
+<p>Ce chapitre est un monstre. J&rsquo;essaie de briser les fonctionnalités en morceaux de la taille d&rsquo;une bouchée, mais parfois vous devez avaler le <span name="eat">repas</span> entier. Notre tâche suivante est les fonctions. Nous pourrions commencer avec seulement les déclarations de fonction, mais ce n&rsquo;est pas très utile quand vous ne pouvez pas les appeler. Nous pourrions faire les appels, mais il n&rsquo;y a rien à appeler. Et tout le support runtime nécessaire dans la VM pour supporter ces deux est peu gratifiant s&rsquo;il n&rsquo;est pas accroché à quelque chose que vous pouvez voir. Donc nous allons tout faire. C&rsquo;est beaucoup, mais nous nous sentirons bien quand nous aurons fini.</p>
 <aside name="eat">
-<p>Eating<span class="em">&mdash;</span>consumption<span class="em">&mdash;</span>is a weird metaphor for a creative act. But most of the
-biological processes that produce &ldquo;output&rdquo; are a little less, ahem, decorous.</p>
+<p>Manger<span class="em">&mdash;</span>la consommation<span class="em">&mdash;</span>est une métaphore bizarre pour un acte créatif. Mais la plupart des processus biologiques qui produisent de la &ldquo;sortie&rdquo; sont un peu moins, ahem, bienséants.</p>
 </aside>
-<h2><a href="#function-objects" id="function-objects"><small>24&#8202;.&#8202;1</small>Function Objects</a></h2>
-<p>The most interesting structural change in the VM is around the stack. We already
-<em>have</em> a stack for local variables and temporaries, so we&rsquo;re partway there. But
-we have no notion of a <em>call</em> stack. Before we can make much progress, we&rsquo;ll
-have to fix that. But first, let&rsquo;s write some code. I always feel better once I
-start moving. We can&rsquo;t do much without having some kind of representation for
-functions, so we&rsquo;ll start there. From the VM&rsquo;s perspective, what is a function?</p>
-<p>A function has a body that can be executed, so that means some bytecode. We
-could compile the entire program and all of its function declarations into one
-big monolithic Chunk. Each function would have a pointer to the first
-instruction of its code inside the Chunk.</p>
-<p>This is roughly how compilation to native code works where you end up with one
-solid blob of machine code. But for our bytecode VM, we can do something a
-little higher level. I think a cleaner model is to give each function its own
-Chunk. We&rsquo;ll want some other metadata too, so let&rsquo;s go ahead and stuff it all in
-a struct now.</p>
+<h2><a href="#objets-fonction" id="objets-fonction"><small>24&#8202;.&#8202;1</small>Objets Fonction</a></h2>
+<p>Le changement structurel le plus intéressant dans la VM est autour de la pile. Nous avons déjà <em>une</em> pile pour les variables locales et les temporaires, donc nous y sommes en partie. Mais nous n&rsquo;avons aucune notion d&rsquo;une pile d&rsquo;<em>appels</em>. Avant que nous puissions faire beaucoup de progrès, nous devrons réparer cela. Mais d&rsquo;abord, écrivons un peu de code. Je me sens toujours mieux une fois que je commence à bouger. Nous ne pouvons pas faire grand-chose sans avoir quelque sorte de représentation pour les fonctions, donc nous commencerons là. De la perspective de la VM, qu&rsquo;est-ce qu&rsquo;une fonction ?</p>
+<p>Une fonction a un corps qui peut être exécuté, donc cela signifie du bytecode. Nous pourrions compiler le programme entier et toutes ses déclarations de fonction en un gros Chunk monolithique. Chaque fonction aurait un pointeur vers la première instruction de son code à l&rsquo;intérieur du Chunk.</p>
+<p>C&rsquo;est grosso modo comment la compilation vers du code natif fonctionne où vous finissez avec un blob solide de code machine. Mais pour notre VM à bytecode, nous pouvons faire quelque chose d&rsquo;un peu plus haut niveau. Je pense qu&rsquo;un modèle plus propre est de donner à chaque fonction son propre Chunk. Nous voudrons quelques autres métadonnées aussi, donc allons de l&rsquo;avant et fourrons tout cela dans une structure maintenant.</p>
 <div class="codehilite"><pre class="insert-before">  struct Obj* next;
 };
 </pre><div class="source-file"><em>object.h</em><br>
@@ -146,17 +124,11 @@ struct ObjString {
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, add after struct <em>Obj</em></div>
 
-<p>Functions are first class in Lox, so they need to be actual Lox objects. Thus
-ObjFunction has the same Obj header that all object types share. The <code>arity</code>
-field stores the number of parameters the function expects. Then, in addition to
-the chunk, we store the function&rsquo;s <span name="name">name</span>. That will be
-handy for reporting readable runtime errors.</p>
+<p>Les fonctions sont de première classe dans Lox, donc elles ont besoin d&rsquo;être de vrais objets Lox. Ainsi ObjFunction a le même en-tête Obj que tous les types objets partagent. Le champ <code>arity</code> stocke le nombre de paramètres que la fonction attend. Ensuite, en plus du fragment (chunk), nous stockons le <span name="name">nom</span> de la fonction. Cela sera pratique pour rapporter des erreurs d&rsquo;exécution lisibles.</p>
 <aside name="name">
-<p>Humans don&rsquo;t seem to find numeric bytecode offsets particularly illuminating in
-crash dumps.</p>
+<p>Les humains ne semblent pas trouver les décalages de bytecode numériques particulièrement éclairants dans les vidages sur plantage.</p>
 </aside>
-<p>This is the first time the &ldquo;object&rdquo; module has needed to reference Chunk, so we
-get an include.</p>
+<p>C&rsquo;est la première fois que le module &ldquo;object&rdquo; a eu besoin de référencer Chunk, donc nous obtenons une inclusion.</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;common.h&quot;
 </pre><div class="source-file"><em>object.h</em></div>
 <pre class="insert"><span class="a">#include &quot;chunk.h&quot;</span>
@@ -164,9 +136,7 @@ get an include.</p>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em></div>
 
-<p>Like we did with strings, we define some accessories to make Lox functions
-easier to work with in C. Sort of a poor man&rsquo;s object orientation. First, we&rsquo;ll
-declare a C function to create a new Lox function.</p>
+<p>Comme nous l&rsquo;avons fait avec les chaînes, nous définissons quelques accessoires pour rendre les fonctions Lox plus faciles à travailler en C. Sorte d&rsquo;orientation objet du pauvre. D&rsquo;abord, nous déclarerons une fonction C pour créer une nouvelle fonction Lox.</p>
 <div class="codehilite"><pre class="insert-before">  uint32_t hash;
 };
 
@@ -177,7 +147,7 @@ add after struct <em>ObjString</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, add after struct <em>ObjString</em></div>
 
-<p>The implementation is over here:</p>
+<p>L&rsquo;implémentation est par ici :</p>
 <div class="codehilite"><div class="source-file"><em>object.c</em><br>
 add after <em>allocateObject</em>()</div>
 <pre><span class="t">ObjFunction</span>* <span class="i">newFunction</span>() {
@@ -190,12 +160,8 @@ add after <em>allocateObject</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, add after <em>allocateObject</em>()</div>
 
-<p>We use our friend <code>ALLOCATE_OBJ()</code> to allocate memory and initialize the
-object&rsquo;s header so that the VM knows what type of object it is. Instead of
-passing in arguments to initialize the function like we did with ObjString, we
-set the function up in a sort of blank state<span class="em">&mdash;</span>zero arity, no name, and no
-code. That will get filled in later after the function is created.</p>
-<p>Since we have a new kind of object, we need a new object type in the enum.</p>
+<p>Nous utilisons notre ami <code>ALLOCATE_OBJ()</code> pour allouer la mémoire et initialiser l&rsquo;en-tête de l&rsquo;objet pour que la VM sache quel type d&rsquo;objet c&rsquo;est. Au lieu de passer des arguments pour initialiser la fonction comme nous l&rsquo;avons fait avec ObjString, nous configurons la fonction dans une sorte d&rsquo;état vide<span class="em">&mdash;</span>arité zéro, pas de nom, et pas de code. Cela sera rempli plus tard après que la fonction est créée.</p>
+<p>Puisque nous avons un nouveau genre d&rsquo;objet, nous avons besoin d&rsquo;un nouveau type d&rsquo;objet dans l&rsquo;énumération.</p>
 <div class="codehilite"><pre class="insert-before">typedef enum {
 </pre><div class="source-file"><em>object.h</em><br>
 in enum <em>ObjType</em></div>
@@ -205,8 +171,7 @@ in enum <em>ObjType</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, in enum <em>ObjType</em></div>
 
-<p>When we&rsquo;re done with a function object, we must return the bits it borrowed back
-to the operating system.</p>
+<p>Quand nous avons fini avec un objet fonction, nous devons rendre les bits qu&rsquo;il a empruntés au système d&rsquo;exploitation.</p>
 <div class="codehilite"><pre class="insert-before">  switch (object-&gt;type) {
 </pre><div class="source-file"><em>memory.c</em><br>
 in <em>freeObject</em>()</div>
@@ -220,16 +185,11 @@ in <em>freeObject</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>memory.c</em>, in <em>freeObject</em>()</div>
 
-<p>This switch case is <span name="free-name">responsible</span> for freeing the
-ObjFunction itself as well as any other memory it owns. Functions own their
-chunk, so we call Chunk&rsquo;s destructor-like function.</p>
+<p>Ce <code>switch case</code> est <span name="free-name">responsable</span> de libérer l&rsquo;ObjFunction elle-même aussi bien que toute autre mémoire qu&rsquo;elle possède. Les fonctions possèdent leur fragment, donc nous appelons la fonction de type destructeur de Chunk.</p>
 <aside name="free-name">
-<p>We don&rsquo;t need to explicitly free the function&rsquo;s name because it&rsquo;s an ObjString.
-That means we can let the garbage collector manage its lifetime for us. Or, at
-least, we&rsquo;ll be able to once we <a href="garbage-collection.html">implement a garbage collector</a>.</p>
+<p>Nous n&rsquo;avons pas besoin de libérer explicitement le nom de la fonction parce que c&rsquo;est une ObjString. Cela signifie que nous pouvons laisser le ramasse-miettes gérer sa durée de vie pour nous. Ou, au moins, nous pourrons une fois que nous <a href="garbage-collection.html">implémenterons un ramasse-miettes</a>.</p>
 </aside>
-<p>Lox lets you print any object, and functions are first-class objects, so we
-need to handle them too.</p>
+<p>Lox vous laisse afficher n&rsquo;importe quel objet, et les fonctions sont des objets de première classe, donc nous devons les gérer aussi.</p>
 <div class="codehilite"><pre class="insert-before">  switch (OBJ_TYPE(value)) {
 </pre><div class="source-file"><em>object.c</em><br>
 in <em>printObject</em>()</div>
@@ -240,7 +200,7 @@ in <em>printObject</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, in <em>printObject</em>()</div>
 
-<p>This calls out to:</p>
+<p>Cela appelle vers :</p>
 <div class="codehilite"><div class="source-file"><em>object.c</em><br>
 add after <em>copyString</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">printFunction</span>(<span class="t">ObjFunction</span>* <span class="i">function</span>) {
@@ -249,9 +209,8 @@ add after <em>copyString</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, add after <em>copyString</em>()</div>
 
-<p>Since a function knows its name, it may as well say it.</p>
-<p>Finally, we have a couple of macros for converting values to functions. First,
-make sure your value actually <em>is</em> a function.</p>
+<p>Puisqu&rsquo;une fonction connaît son nom, elle peut aussi bien le dire.</p>
+<p>Finalement, nous avons une couple de macros pour convertir des valeurs en fonctions. D&rsquo;abord, assurez-vous que votre valeur <em>est</em> réellement une fonction.</p>
 <div class="codehilite"><pre class="insert-before">#define OBJ_TYPE(value)        (AS_OBJ(value)-&gt;type)
 
 </pre><div class="source-file"><em>object.h</em></div>
@@ -260,8 +219,7 @@ make sure your value actually <em>is</em> a function.</p>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em></div>
 
-<p>Assuming that evaluates to true, you can then safely cast the Value to an
-ObjFunction pointer using this:</p>
+<p>Supposant que cela évalue à vrai, vous pouvez alors sûrement caster la Value vers un pointeur ObjFunction en utilisant ceci :</p>
 <div class="codehilite"><pre class="insert-before">#define IS_STRING(value)       isObjType(value, OBJ_STRING)
 
 </pre><div class="source-file"><em>object.h</em></div>
@@ -270,30 +228,14 @@ ObjFunction pointer using this:</p>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em></div>
 
-<p>With that, our object model knows how to represent functions. I&rsquo;m feeling warmed
-up now. You ready for something a little harder?</p>
-<h2><a href="#compiling-to-function-objects" id="compiling-to-function-objects"><small>24&#8202;.&#8202;2</small>Compiling to Function Objects</a></h2>
-<p>Right now, our compiler assumes it is always compiling to one single chunk. With
-each function&rsquo;s code living in separate chunks, that gets more complex. When the
-compiler reaches a function declaration, it needs to emit code into the
-function&rsquo;s chunk when compiling its body. At the end of the function body, the
-compiler needs to return to the previous chunk it was working with.</p>
-<p>That&rsquo;s fine for code inside function bodies, but what about code that isn&rsquo;t? The
-&ldquo;top level&rdquo; of a Lox program is also imperative code and we need a chunk to
-compile that into. We can simplify the compiler and VM by placing that top-level
-code inside an automatically defined function too. That way, the compiler is
-always within some kind of function body, and the VM always runs code by
-invoking a function. It&rsquo;s as if the entire program is <span
-name="wrap">wrapped</span> inside an implicit <code>main()</code> function.</p>
+<p>Avec ça, notre modèle objet sait comment représenter les fonctions. Je me sens chauffé maintenant. Vous êtes prêt pour quelque chose d&rsquo;un peu plus dur ?</p>
+<h2><a href="#compiler-vers-des-objets-fonction" id="compiler-vers-des-objets-fonction"><small>24&#8202;.&#8202;2</small>Compiler vers des Objets Fonction</a></h2>
+<p>En ce moment, notre compilateur suppose qu&rsquo;il compile toujours vers un seul fragment unique. Avec le code de chaque fonction vivant dans des fragments séparés, cela devient plus complexe. Quand le compilateur atteint une déclaration de fonction, il a besoin d&rsquo;émettre du code dans le fragment de la fonction lors de la compilation de son corps. À la fin du corps de fonction, le compilateur a besoin de retourner au fragment précédent avec lequel il travaillait.</p>
+<p>C&rsquo;est bien pour le code à l&rsquo;intérieur des corps de fonction, mais qu&rsquo;en est-il du code qui ne l&rsquo;est pas ? Le &ldquo;niveau supérieur&rdquo; (top level) d&rsquo;un programme Lox est aussi du code impératif et nous avons besoin d&rsquo;un fragment dans lequel compiler cela. Nous pouvons simplifier le compilateur et la VM en plaçant ce code de niveau supérieur à l&rsquo;intérieur d&rsquo;une fonction définie automatiquement aussi. De cette façon, le compilateur est toujours à l&rsquo;intérieur de quelque sorte de corps de fonction, et la VM court toujours du code en invoquant une fonction. C&rsquo;est comme si le programme entier était <span name="wrap">enveloppé</span> à l&rsquo;intérieur d&rsquo;une fonction implicite <code>main()</code>.</p>
 <aside name="wrap">
-<p>One semantic corner where that analogy breaks down is global variables. They
-have special scoping rules different from local variables, so in that way, the
-top level of a script isn&rsquo;t like a function body.</p>
+<p>Un coin sémantique où cette analogie s&rsquo;effondre est les variables globales. Elles ont des règles de portée spéciales différentes des variables locales, donc de cette façon, le niveau supérieur d&rsquo;un script n&rsquo;est pas comme un corps de fonction.</p>
 </aside>
-<p>Before we get to user-defined functions, then, let&rsquo;s do the reorganization to
-support that implicit top-level function. It starts with the Compiler struct.
-Instead of pointing directly to a Chunk that the compiler writes to, it instead
-has a reference to the function object being built.</p>
+<p>Avant que nous arrivions aux fonctions définies par l&rsquo;utilisateur, alors, faisons la réorganisation pour supporter cette fonction implicite de niveau supérieur. Cela commence avec la structure Compiler. Au lieu de pointer directement vers un Chunk auquel le compilateur écrit, il a au lieu de cela une référence vers l&rsquo;objet fonction étant construit.</p>
 <div class="codehilite"><pre class="insert-before">typedef struct {
 </pre><div class="source-file"><em>compiler.c</em><br>
 in struct <em>Compiler</em></div>
@@ -304,10 +246,7 @@ in struct <em>Compiler</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in struct <em>Compiler</em></div>
 
-<p>We also have a little FunctionType enum. This lets the compiler tell when it&rsquo;s
-compiling top-level code versus the body of a function. Most of the compiler
-doesn&rsquo;t care about this<span class="em">&mdash;</span>that&rsquo;s why it&rsquo;s a useful abstraction<span class="em">&mdash;</span>but in one or
-two places the distinction is meaningful. We&rsquo;ll get to one later.</p>
+<p>Nous avons aussi une petite énumération FunctionType. Cela laisse le compilateur dire quand il compile du code de niveau supérieur versus le corps d&rsquo;une fonction. La plupart du compilateur ne se soucie pas de cela<span class="em">&mdash;</span>c&rsquo;est pourquoi c&rsquo;est une abstraction utile<span class="em">&mdash;</span>mais dans un ou deux endroits la distinction est significative. Nous en arriverons à un plus tard.</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after struct <em>Local</em></div>
 <pre><span class="k">typedef</span> <span class="k">enum</span> {
@@ -317,15 +256,9 @@ add after struct <em>Local</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after struct <em>Local</em></div>
 
-<p>Every place in the compiler that was writing to the Chunk now needs to go
-through that <code>function</code> pointer. Fortunately, many <span
-name="current">chapters</span> ago, we encapsulated access to the chunk in the
-<code>currentChunk()</code> function. We only need to fix that and the rest of the compiler
-is happy.</p>
+<p>Chaque endroit dans le compilateur qui écrivait au Chunk a maintenant besoin de passer par ce pointeur <code>function</code>. Heureusement, il y a de nombreux <span name="current">chapitres</span>, nous avons encapsulé l&rsquo;accès au fragment dans la fonction <code>currentChunk()</code>. Nous avons seulement besoin de réparer ça et le reste du compilateur est heureux.</p>
 <aside name="current">
-<p>It&rsquo;s almost like I had a crystal ball that could see into the future and knew
-we&rsquo;d need to change the code later. But, really, it&rsquo;s because I wrote all the
-code for the book before any of the text.</p>
+<p>C&rsquo;est presque comme si j&rsquo;avais une boule de cristal qui pouvait voir dans le futur et savait que nous aurions besoin de changer le code plus tard. Mais, vraiment, c&rsquo;est parce que j&rsquo;ai écrit tout le code pour le livre avant n&rsquo;importe lequel des textes.</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">Compiler* current = NULL;
 </pre><div class="source-file"><em>compiler.c</em><br>
@@ -342,13 +275,9 @@ static void errorAt(Token* token, const char* message) {
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after variable <em>current</em>, replace 5 lines</div>
 
-<p>The current chunk is always the chunk owned by the function we&rsquo;re in the middle
-of compiling. Next, we need to actually create that function. Previously, the VM
-passed a Chunk to the compiler which filled it with code. Instead, the compiler
-will create and return a function that contains the compiled top-level code<span class="em">&mdash;</span>which is all we support right now<span class="em">&mdash;</span>of the user&rsquo;s program.</p>
-<h3><a href="#creating-functions-at-compile-time" id="creating-functions-at-compile-time"><small>24&#8202;.&#8202;2&#8202;.&#8202;1</small>Creating functions at compile time</a></h3>
-<p>We start threading this through in <code>compile()</code>, which is the main entry point
-into the compiler.</p>
+<p>Le fragment courant est toujours le fragment possédé par la fonction que nous sommes au milieu de compiler. Ensuite, nous avons besoin de créer réellement cette fonction. Précédemment, la VM passait un Chunk au compilateur qui le remplissait avec du code. Au lieu de cela, le compilateur créera et renverra une fonction qui contient le code de niveau supérieur compilé<span class="em">&mdash;</span>ce qui est tout ce que nous supportons pour l&rsquo;instant<span class="em">&mdash;</span>du programme de l&rsquo;utilisateur.</p>
+<h3><a href="#créer-des-fonctions-au-moment-de-la-compilation" id="créer-des-fonctions-au-moment-de-la-compilation"><small>24&#8202;.&#8202;2&#8202;.&#8202;1</small>Créer des fonctions au moment de la compilation</a></h3>
+<p>Nous commençons à enfiler cela à travers <code>compile()</code>, qui est le point d&rsquo;entrée principal dans le compilateur.</p>
 <div class="codehilite"><pre class="insert-before">  Compiler compiler;
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>compile</em>()<br>
@@ -360,8 +289,7 @@ replace 2 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>compile</em>(), replace 2 lines</div>
 
-<p>There are a bunch of changes in how the compiler is initialized. First, we
-initialize the new Compiler fields.</p>
+<p>Il y a un tas de changements dans comment le compilateur est initialisé. D&rsquo;abord, nous initialisons les nouveaux champs de Compiler.</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 function <em>initCompiler</em>()<br>
 replace 1 line</div>
@@ -372,7 +300,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, function <em>initCompiler</em>(), replace 1 line</div>
 
-<p>Then we allocate a new function object to compile into.</p>
+<p>Ensuite nous allouons un nouvel objet fonction dans lequel compiler.</p>
 <div class="codehilite"><pre class="insert-before">  compiler-&gt;scopeDepth = 0;
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>initCompiler</em>()</div>
@@ -383,23 +311,13 @@ in <em>initCompiler</em>()</div>
 
 <p><span name="null"></span></p>
 <aside name="null">
-<p>I know, it looks dumb to null the <code>function</code> field only to immediately assign it
-a value a few lines later. More garbage collection-related paranoia.</p>
+<p>Je sais, cela semble bête de mettre à null le champ <code>function</code> seulement pour lui assigner immédiatement une valeur quelques lignes plus tard. Plus de paranoïa liée au ramasse-miettes.</p>
 </aside>
-<p>Creating an ObjFunction in the compiler might seem a little strange. A function
-object is the <em>runtime</em> representation of a function, but here we are creating
-it at compile time. The way to think of it is that a function is similar to a
-string or number literal. It forms a bridge between the compile time and runtime
-worlds. When we get to function <em>declarations</em>, those really <em>are</em> literals<span class="em">&mdash;</span>they are a notation that produces values of a built-in type. So the <span
-name="closure">compiler</span> creates function objects during compilation.
-Then, at runtime, they are simply invoked.</p>
+<p>Créer une ObjFunction dans le compilateur pourrait sembler un peu étrange. Un objet fonction est la représentation <em>runtime</em> d&rsquo;une fonction, mais ici nous le créons au moment de la compilation. La façon de penser à cela est qu&rsquo;une fonction est similaire à un littéral chaîne ou nombre. Elle forme un pont entre les mondes de la compilation et de l&rsquo;exécution. Quand nous arrivons aux <em>déclarations</em> de fonction, celles-ci <em>sont</em> réellement des littéraux<span class="em">&mdash;</span>c&rsquo;est une notation qui produit des valeurs d&rsquo;un type intégré. Donc le <span name="closure">compilateur</span> crée des objets fonction durant la compilation. Ensuite, à l&rsquo;exécution, ils sont simplement invoqués.</p>
 <aside name="closure">
-<p>We can create functions at compile time because they contain only data available
-at compile time. The function&rsquo;s code, name, and arity are all fixed. When we add
-closures in the <a href="closures.html">next chapter</a>, which capture variables at runtime,
-the story gets more complex.</p>
+<p>Nous pouvons créer des fonctions au moment de la compilation parce qu&rsquo;elles contiennent seulement des données disponibles à la compilation. Le code, le nom, et l&rsquo;arité de la fonction sont tous fixes. Quand nous ajouterons les fermetures dans le <a href="closures.html">chapitre suivant</a>, qui capturent des variables à l&rsquo;exécution, l&rsquo;histoire devient plus complexe.</p>
 </aside>
-<p>Here is another strange piece of code:</p>
+<p>Voici un autre morceau de code étrange :</p>
 <div class="codehilite"><pre class="insert-before">  current = compiler;
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>initCompiler</em>()</div>
@@ -413,13 +331,8 @@ in <em>initCompiler</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>initCompiler</em>()</div>
 
-<p>Remember that the compiler&rsquo;s <code>locals</code> array keeps track of which stack slots are
-associated with which local variables or temporaries. From now on, the compiler
-implicitly claims stack slot zero for the VM&rsquo;s own internal use. We give it an
-empty name so that the user can&rsquo;t write an identifier that refers to it. I&rsquo;ll
-explain what this is about when it becomes useful.</p>
-<p>That&rsquo;s the initialization side. We also need a couple of changes on the other
-end when we finish compiling some code.</p>
+<p>Rappelez-vous que le tableau <code>locals</code> du compilateur garde la trace de quels emplacements de pile sont associés avec quelles variables locales ou temporaires. À partir de maintenant, le compilateur réclame implicitement l&rsquo;emplacement de pile zéro pour le propre usage interne de la VM. Nous lui donnons un nom vide pour que l&rsquo;utilisateur ne puisse pas écrire un identifiant qui s&rsquo;y réfère. J&rsquo;expliquerai de quoi il s&rsquo;agit quand cela deviendra utile.</p>
+<p>C&rsquo;est le côté initialisation. Nous avons aussi besoin d&rsquo;une couple de changements à l&rsquo;autre bout quand nous avons fini de compiler du code.</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 function <em>endCompiler</em>()<br>
 replace 1 line</div>
@@ -428,9 +341,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, function <em>endCompiler</em>(), replace 1 line</div>
 
-<p>Previously, when <code>interpret()</code> called into the compiler, it passed in a Chunk to
-be written to. Now that the compiler creates the function object itself, we
-return that function. We grab it from the current compiler here:</p>
+<p>Précédemment, quand <code>interpret()</code> appelait vers le compilateur, il passait un Chunk pour y écrire. Maintenant que le compilateur crée l&rsquo;objet fonction lui-même, nous renvoyons cette fonction. Nous l&rsquo;attrapons depuis le compilateur courant ici :</p>
 <div class="codehilite"><pre class="insert-before">  emitReturn();
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>endCompiler</em>()</div>
@@ -440,7 +351,7 @@ in <em>endCompiler</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>endCompiler</em>()</div>
 
-<p>And then return it to <code>compile()</code> like so:</p>
+<p>Et ensuite la renvoyons à <code>compile()</code> comme ceci :</p>
 <div class="codehilite"><pre class="insert-before">#endif
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>endCompiler</em>()</div>
@@ -451,10 +362,7 @@ in <em>endCompiler</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>endCompiler</em>()</div>
 
-<p>Now is a good time to make another tweak in this function. Earlier, we added
-some diagnostic code to have the VM dump the disassembled bytecode so we could
-debug the compiler. We should fix that to keep working now that the generated
-chunk is wrapped in a function.</p>
+<p>Maintenant est un bon moment pour faire un autre ajustement dans cette fonction. Plus tôt, nous avions ajouté du code de diagnostic pour faire vider par la VM le bytecode désassemblé pour que nous puissions déboguer le compilateur. Nous devrions réparer cela pour qu&rsquo;il continue de fonctionner maintenant que le fragment généré est enveloppé dans une fonction.</p>
 <div class="codehilite"><pre class="insert-before">#ifdef DEBUG_PRINT_CODE
   if (!parser.hadError) {
 </pre><div class="source-file"><em>compiler.c</em><br>
@@ -467,10 +375,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>endCompiler</em>(), replace 1 line</div>
 
-<p>Notice the check in here to see if the function&rsquo;s name is <code>NULL</code>? User-defined
-functions have names, but the implicit function we create for the top-level code
-does not, and we need to handle that gracefully even in our own diagnostic code.
-Speaking of which:</p>
+<p>Remarquez la vérification là-dedans pour voir si le nom de la fonction est <code>NULL</code> ? Les fonctions définies par l&rsquo;utilisateur ont des noms, mais la fonction implicite que nous créons pour le code de niveau supérieur n&rsquo;en a pas, et nous avons besoin de gérer cela gracieusement même dans notre propre code de diagnostic. En parlant de quoi :</p>
 <div class="codehilite"><pre class="insert-before">static void printFunction(ObjFunction* function) {
 </pre><div class="source-file"><em>object.c</em><br>
 in <em>printFunction</em>()</div>
@@ -482,14 +387,11 @@ in <em>printFunction</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, in <em>printFunction</em>()</div>
 
-<p>There&rsquo;s no way for a <em>user</em> to get a reference to the top-level function and try
-to print it, but our <code>DEBUG_TRACE_EXECUTION</code> <span
-name="debug">diagnostic</span> code that prints the entire stack can and does.</p>
+<p>Il n&rsquo;y a aucun moyen pour un <em>utilisateur</em> d&rsquo;obtenir une référence à la fonction de niveau supérieur et essayer de l&rsquo;afficher, mais notre code de <span name="debug">diagnostic</span> <code>DEBUG_TRACE_EXECUTION</code> qui affiche la pile entière peut et le fait.</p>
 <aside name="debug">
-<p>It is no fun if the diagnostic code we use to find bugs itself causes the VM to
-segfault!</p>
+<p>Ce n&rsquo;est pas drôle si le code de diagnostic que nous utilisons pour trouver des bugs cause lui-même la VM de segfault !</p>
 </aside>
-<p>Bumping up a level to <code>compile()</code>, we adjust its signature.</p>
+<p>Montant d&rsquo;un niveau à <code>compile()</code>, nous ajustons sa signature.</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;vm.h&quot;
 
 </pre><div class="source-file"><em>compiler.h</em><br>
@@ -502,8 +404,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.h</em>, function <em>compile</em>(), replace 1 line</div>
 
-<p>Instead of taking a chunk, now it returns a function. Over in the
-implementation:</p>
+<p>Au lieu de prendre un fragment, maintenant elle renvoie une fonction. Par ici dans l&rsquo;implémentation :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 function <em>compile</em>()<br>
 replace 1 line</div>
@@ -512,8 +413,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, function <em>compile</em>(), replace 1 line</div>
 
-<p>Finally we get to some actual code. We change the very end of the function to
-this:</p>
+<p>Finalement nous arrivons à du code réel. Nous changeons la toute fin de la fonction pour ceci :</p>
 <div class="codehilite"><pre class="insert-before">  while (!match(TOKEN_EOF)) {
     declaration();
   }
@@ -527,48 +427,22 @@ replace 2 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>compile</em>(), replace 2 lines</div>
 
-<p>We get the function object from the compiler. If there were no compile errors,
-we return it. Otherwise, we signal an error by returning <code>NULL</code>. This way, the
-VM doesn&rsquo;t try to execute a function that may contain invalid bytecode.</p>
-<p>Eventually, we will update <code>interpret()</code> to handle the new declaration of
-<code>compile()</code>, but first we have some other changes to make.</p>
-<h2><a href="#call-frames" id="call-frames"><small>24&#8202;.&#8202;3</small>Call Frames</a></h2>
-<p>It&rsquo;s time for a big conceptual leap. Before we can implement function
-declarations and calls, we need to get the VM ready to handle them. There are
-two main problems we need to worry about:</p>
-<h3><a href="#allocating-local-variables" id="allocating-local-variables"><small>24&#8202;.&#8202;3&#8202;.&#8202;1</small>Allocating local variables</a></h3>
-<p>The compiler allocates stack slots for local variables. How should that work
-when the set of local variables in a program is distributed across multiple
-functions?</p>
-<p>One option would be to keep them totally separate. Each function would get its
-own dedicated set of slots in the VM stack that it would own <span
-name="static">forever</span>, even when the function isn&rsquo;t being called. Each
-local variable in the entire program would have a bit of memory in the VM that
-it keeps to itself.</p>
+<p>Nous obtenons l&rsquo;objet fonction depuis le compilateur. S&rsquo;il n&rsquo;y avait pas d&rsquo;erreurs de compilation, nous le renvoyons. Sinon, nous signalons une erreur en renvoyant <code>NULL</code>. De cette façon, la VM n&rsquo;essaie pas d&rsquo;exécuter une fonction qui peut contenir du bytecode invalide.</p>
+<p>Éventuellement, nous mettrons à jour <code>interpret()</code> pour gérer la nouvelle déclaration de <code>compile()</code>, mais d&rsquo;abord nous avons quelques autres changements à faire.</p>
+<h2><a href="#cadres-dappel-call-frames" id="cadres-dappel-call-frames"><small>24&#8202;.&#8202;3</small>Cadres d&rsquo;Appel (Call Frames)</a></h2>
+<p>Il est temps pour un grand bond conceptuel. Avant que nous puissions implémenter les déclarations et les appels de fonction, nous devons préparer la VM à les gérer. Il y a deux problèmes principaux dont nous devons nous soucier :</p>
+<h3><a href="#allouer-les-variables-locales" id="allouer-les-variables-locales"><small>24&#8202;.&#8202;3&#8202;.&#8202;1</small>Allouer les variables locales</a></h3>
+<p>Le compilateur alloue des emplacements de pile pour les variables locales. Comment cela devrait-il marcher quand l&rsquo;ensemble des variables locales dans un programme est distribué à travers de multiples fonctions ?</p>
+<p>Une option serait de les garder totalement séparées. Chaque fonction obtiendrait son propre ensemble dédié d&rsquo;emplacements dans la pile de la VM qu&rsquo;elle posséderait pour <span name="static">toujours</span>, même quand la fonction n&rsquo;est pas en train d&rsquo;être appelée. Chaque variable locale dans le programme entier aurait un bout de mémoire dans la VM qu&rsquo;elle garde pour elle-même.</p>
 <aside name="static">
-<p>It&rsquo;s basically what you&rsquo;d get if you declared every local variable in a C
-program using <code>static</code>.</p>
+<p>C&rsquo;est fondamentalement ce que vous obtiendriez si vous déclariez chaque variable locale dans un programme C en utilisant <code>static</code>.</p>
 </aside>
-<p>Believe it or not, early programming language implementations worked this way.
-The first Fortran compilers statically allocated memory for each variable. The
-obvious problem is that it&rsquo;s really inefficient. Most functions are not in the
-middle of being called at any point in time, so sitting on unused memory for
-them is wasteful.</p>
-<p>The more fundamental problem, though, is recursion. With recursion, you can be
-&ldquo;in&rdquo; multiple calls to the same function at the same time. Each needs its <span
-name="fortran">own</span> memory for its local variables. In jlox, we solved
-this by dynamically allocating memory for an environment each time a function
-was called or a block entered. In clox, we don&rsquo;t want that kind of performance
-cost on every function call.</p>
+<p>Croyez-le ou non, les premières implémentations de langages de programmation fonctionnaient de cette façon. Les premiers compilateurs Fortran allouaient statiquement la mémoire pour chaque variable. Le problème évident est que c&rsquo;est vraiment inefficace. La plupart des fonctions ne sont pas au milieu d&rsquo;être appelées à n&rsquo;importe quel point dans le temps, donc s&rsquo;asseoir sur de la mémoire inutilisée pour elles est du gaspillage.</p>
+<p>Le problème plus fondamental, cependant, est la récursivité. Avec la récursivité, vous pouvez être &ldquo;dans&rdquo; de multiples appels à la même fonction en même temps. Chacun a besoin de sa <span name="fortran">propre</span> mémoire pour ses variables locales. Dans jlox, nous avons résolu cela en allouant dynamiquement de la mémoire pour un environnement chaque fois qu&rsquo;une fonction était appelée ou un bloc entré. Dans clox, nous ne voulons pas ce genre de coût de performance à chaque appel de fonction.</p>
 <aside name="fortran">
-<p>Fortran avoided this problem by disallowing recursion entirely. Recursion was
-considered an advanced, esoteric feature at the time.</p>
+<p>Fortran évitait ce problème en interdisant la récursivité entièrement. La récursivité était considérée comme une fonctionnalité avancée, ésotérique à l&rsquo;époque.</p>
 </aside>
-<p>Instead, our solution lies somewhere between Fortran&rsquo;s static allocation and
-jlox&rsquo;s dynamic approach. The value stack in the VM works on the observation that
-local variables and temporaries behave in a last-in first-out fashion.
-Fortunately for us, that&rsquo;s still true even when you add function calls into the
-mix. Here&rsquo;s an example:</p>
+<p>Au lieu de cela, notre solution repose quelque part entre l&rsquo;allocation statique de Fortran et l&rsquo;approche dynamique de jlox. La pile de valeurs dans la VM fonctionne sur l&rsquo;observation que les variables locales et les temporaires se comportent d&rsquo;une façon dernier-récent premier-sorti (LIFO). Heureusement pour nous, c&rsquo;est toujours vrai même quand vous ajoutez les appels de fonction dans le mélange. Voici un exemple :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">first</span>() {
   <span class="k">var</span> <span class="i">a</span> = <span class="n">1</span>;
   <span class="i">second</span>();
@@ -582,22 +456,11 @@ mix. Here&rsquo;s an example:</p>
 
 <span class="i">first</span>();
 </pre></div>
-<p>Step through the program and look at which variables are in memory at each point
-in time:</p><img src="image/calls-and-functions/calls.png" alt="Tracing through the execution of the previous program, showing the stack of variables at each step." />
-<p>As execution flows through the two calls, every local variable obeys the
-principle that any variable declared after it will be discarded before the first
-variable needs to be. This is true even across calls. We know we&rsquo;ll be done with
-<code>c</code> and <code>d</code> before we are done with <code>a</code>. It seems we should be able to allocate
-local variables on the VM&rsquo;s value stack.</p>
-<p>Ideally, we still determine <em>where</em> on the stack each variable will go at
-compile time. That keeps the bytecode instructions for working with variables
-simple and fast. In the above example, we could <span
-name="imagine">imagine</span> doing so in a straightforward way, but that
-doesn&rsquo;t always work out. Consider:</p>
+<p>Parcourez le programme et regardez quelles variables sont en mémoire à chaque point dans le temps :</p><img src="image/calls-and-functions/calls.png" alt="Traçage à travers l'exécution du programme précédent, montrant la pile de variables à chaque étape." />
+<p>Comme l&rsquo;exécution coule à travers les deux appels, chaque variable locale obéit au principe que toute variable déclarée après elle sera jetée avant que la première variable ait besoin de l&rsquo;être. C&rsquo;est vrai même à travers les appels. Nous savons que nous aurons fini avec <code>c</code> et <code>d</code> avant que nous ayons fini avec <code>a</code>. Il semble que nous devrions être capables d&rsquo;allouer les variables locales sur la pile de valeurs de la VM.</p>
+<p>Idéalement, nous déterminons toujours <em>où</em> sur la pile chaque variable ira au moment de la compilation. Cela garde les instructions bytecode pour travailler avec les variables simples et rapides. Dans l&rsquo;exemple ci-dessus, nous pourrions <span name="imagine">imaginer</span> faire ainsi d&rsquo;une manière directe, mais cela ne s&rsquo;arrange pas toujours. Considérez :</p>
 <aside name="imagine">
-<p>I say &ldquo;imagine&rdquo; because the compiler can&rsquo;t actually figure this out. Because
-functions are first class in Lox, we can&rsquo;t determine which functions call which
-others at compile time.</p>
+<p>Je dis &ldquo;imaginer&rdquo; parce que le compilateur ne peut pas réellement déterminer cela. Parce que les fonctions sont de première classe dans Lox, nous ne pouvons pas déterminer quelles fonctions appellent lesquelles autres à la compilation.</p>
 </aside>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">first</span>() {
   <span class="k">var</span> <span class="i">a</span> = <span class="n">1</span>;
@@ -613,59 +476,21 @@ others at compile time.</p>
 
 <span class="i">first</span>();
 </pre></div>
-<p>In the first call to <code>second()</code>, <code>c</code> and <code>d</code> would go into slots 1 and 2. But in
-the second call, we need to have made room for <code>b</code>, so <code>c</code> and <code>d</code> need to be in
-slots 2 and 3. Thus the compiler can&rsquo;t pin down an exact slot for each local
-variable across function calls. But <em>within</em> a given function, the <em>relative</em>
-locations of each local variable are fixed. Variable <code>d</code> is always in the slot
-right after <code>c</code>. This is the key insight.</p>
-<p>When a function is called, we don&rsquo;t know where the top of the stack will be
-because it can be called from different contexts. But, wherever that top happens
-to be, we do know where all of the function&rsquo;s local variables will be relative
-to that starting point. So, like many problems, we solve our allocation problem
-with a level of indirection.</p>
-<p>At the beginning of each function call, the VM records the location of the first
-slot where that function&rsquo;s own locals begin. The instructions for working with
-local variables access them by a slot index relative to that, instead of
-relative to the bottom of the stack like they do today. At compile time, we
-calculate those relative slots. At runtime, we convert that relative slot to an
-absolute stack index by adding the function call&rsquo;s starting slot.</p>
-<p>It&rsquo;s as if the function gets a &ldquo;window&rdquo; or &ldquo;frame&rdquo; within the larger stack where
-it can store its locals. The position of the <strong>call frame</strong> is determined at
-runtime, but within and relative to that region, we know where to find things.</p><img src="image/calls-and-functions/window.png" alt="The stack at the two points when second() is called, with a window hovering over each one showing the pair of stack slots used by the function." />
-<p>The historical name for this recorded location where the function&rsquo;s locals start
-is a <strong>frame pointer</strong> because it points to the beginning of the function&rsquo;s call
-frame. Sometimes you hear <strong>base pointer</strong>, because it points to the base stack
-slot on top of which all of the function&rsquo;s variables live.</p>
-<p>That&rsquo;s the first piece of data we need to track. Every time we call a function,
-the VM determines the first stack slot where that function&rsquo;s variables begin.</p>
-<h3><a href="#return-addresses" id="return-addresses"><small>24&#8202;.&#8202;3&#8202;.&#8202;2</small>Return addresses</a></h3>
-<p>Right now, the VM works its way through the instruction stream by incrementing
-the <code>ip</code> field. The only interesting behavior is around control flow
-instructions which offset the <code>ip</code> by larger amounts. <em>Calling</em> a function is
-pretty straightforward<span class="em">&mdash;</span>simply set <code>ip</code> to point to the first instruction in
-that function&rsquo;s chunk. But what about when the function is done?</p>
-<p>The VM needs to <span name="return">return</span> back to the chunk where the
-function was called from and resume execution at the instruction immediately
-after the call. Thus, for each function call, we need to track where we jump
-back to when the call completes. This is called a <strong>return address</strong> because
-it&rsquo;s the address of the instruction that the VM returns to after the call.</p>
-<p>Again, thanks to recursion, there may be multiple return addresses for a single
-function, so this is a property of each <em>invocation</em> and not the function
-itself.</p>
+<p>Dans le premier appel à <code>second()</code>, <code>c</code> et <code>d</code> iraient dans les emplacements 1 et 2. Mais dans le second appel, nous avons besoin d&rsquo;avoir fait de la place pour <code>b</code>, donc <code>c</code> et <code>d</code> ont besoin d&rsquo;être dans les emplacements 2 et 3. Ainsi le compilateur ne peut pas épingler un emplacement exact pour chaque variable locale à travers les appels de fonction. Mais <em>au sein</em> d&rsquo;une fonction donnée, les emplacements <em>relatifs</em> de chaque variable locale sont fixes. La variable <code>d</code> est toujours dans l&rsquo;emplacement juste après <code>c</code>. C&rsquo;est l&rsquo;intuition clé.</p>
+<p>Quand une fonction est appelée, nous ne savons pas où le sommet de la pile sera parce qu&rsquo;elle peut être appelée depuis différents contextes. Mais, peu importe où ce sommet se trouve être, nous savons où toutes les variables locales de la fonction seront relativement à ce point de départ. Donc, comme beaucoup de problèmes, nous résolvons notre problème d&rsquo;allocation avec un niveau d&rsquo;indirection.</p>
+<p>Au début de chaque appel de fonction, la VM enregistre l&rsquo;emplacement du premier emplacement où les propres locales de cette fonction commencent. Les instructions pour travailler avec les variables locales y accèdent par un index d&rsquo;emplacement relatif à cela, au lieu de relatif au bas de la pile comme elles le font aujourd&rsquo;hui. À la compilation, nous calculons ces emplacements relatifs. À l&rsquo;exécution, nous convertissons cet emplacement relatif en un index de pile absolu en ajoutant l&rsquo;emplacement de départ de l&rsquo;appel de fonction.</p>
+<p>C&rsquo;est comme si la fonction obtenait une &ldquo;fenêtre&rdquo; ou un &ldquo;cadre&rdquo; au sein de la plus grande pile où elle peut stocker ses locales. La position du <strong>cadre d&rsquo;appel</strong> (call frame) est déterminée à l&rsquo;exécution, mais au sein et relativement à cette région, nous savons où trouver les choses.</p><img src="image/calls-and-functions/window.png" alt="La pile aux deux points quand second() est appelée, avec une fenêtre planant au-dessus de chacun montrant la paire d'emplacements de pile utilisée par la fonction." />
+<p>Le nom historique pour cet emplacement enregistré où les locales de la fonction commencent est un <strong>pointeur de cadre</strong> parce qu&rsquo;il pointe vers le début du cadre d&rsquo;appel de la fonction. Parfois vous entendez <strong>pointeur de base</strong>, parce qu&rsquo;il pointe vers l&rsquo;emplacement de pile de base au-dessus duquel toutes les variables de la fonction vivent.</p>
+<p>C&rsquo;est le premier morceau de données que nous avons besoin de suivre. Chaque fois que nous appelons une fonction, la VM détermine le premier emplacement de pile où les variables de cette fonction commencent.</p>
+<h3><a href="#adresses-de-retour" id="adresses-de-retour"><small>24&#8202;.&#8202;3&#8202;.&#8202;2</small>Adresses de retour</a></h3>
+<p>En ce moment, la VM travaille son chemin à travers le flux d&rsquo;instruction en incrémentant le champ <code>ip</code>. Le seul comportement intéressant est autour des instructions de contrôle de flux qui décalent l&rsquo;<code>ip</code> de montants plus grands. <em>Appeler</em> une fonction est assez direct<span class="em">&mdash;</span>réglez simplement <code>ip</code> pour pointer vers la première instruction dans le fragment de cette fonction. Mais qu&rsquo;en est-il quand la fonction est finie ?</p>
+<p>La VM a besoin de <span name="return">retourner</span> au fragment où la fonction a été appelée et reprendre l&rsquo;exécution à l&rsquo;instruction immédiatement après l&rsquo;appel. Ainsi, pour chaque appel de fonction, nous avons besoin de suivre où nous sautons en retour quand l&rsquo;appel se complète. Ceci est appelé une <strong>adresse de retour</strong> parce que c&rsquo;est l&rsquo;adresse de l&rsquo;instruction à laquelle la VM retourne après l&rsquo;appel.</p>
+<p>Encore, grâce à la récursivité, il peut y avoir de multiples adresses de retour pour une seule fonction, donc ceci est une propriété de chaque <em>invocation</em> et non de la fonction elle-même.</p>
 <aside name="return">
-<p>The authors of early Fortran compilers had a clever trick for implementing
-return addresses. Since they <em>didn&rsquo;t</em> support recursion, any given function
-needed only a single return address at any point in time. So when a function was
-called at runtime, the program would <em>modify its own code</em> to change a jump
-instruction at the end of the function to jump back to its caller. Sometimes the
-line between genius and madness is hair thin.</p>
+<p>Les auteurs des premiers compilateurs Fortran avaient un truc malin pour implémenter les adresses de retour. Puisqu&rsquo;ils ne supportaient <em>pas</em> la récursivité, toute fonction donnée avait besoin seulement d&rsquo;une seule adresse de retour à n&rsquo;importe quel point dans le temps. Donc quand une fonction était appelée à l&rsquo;exécution, le programme <em>modifiait son propre code</em> pour changer une instruction de saut à la fin de la fonction pour sauter en retour vers son appelant. Parfois la ligne entre génie et folie est fine comme un cheveu.</p>
 </aside>
-<h3><a href="#the-call-stack" id="the-call-stack"><small>24&#8202;.&#8202;3&#8202;.&#8202;3</small>The call stack</a></h3>
-<p>So for each live function invocation<span class="em">&mdash;</span>each call that hasn&rsquo;t returned yet<span class="em">&mdash;</span>we
-need to track where on the stack that function&rsquo;s locals begin, and where the
-caller should resume. We&rsquo;ll put this, along with some other stuff, in a new
-struct.</p>
+<h3><a href="#la-pile-dappels" id="la-pile-dappels"><small>24&#8202;.&#8202;3&#8202;.&#8202;3</small>La pile d&rsquo;appels</a></h3>
+<p>Donc pour chaque invocation de fonction vivante<span class="em">&mdash;</span>chaque appel qui n&rsquo;a pas retourné encore<span class="em">&mdash;</span>nous avons besoin de suivre où sur la pile les locales de cette fonction commencent, et où l&rsquo;appelant devrait reprendre. Nous mettrons cela, avec quelques autres trucs, dans une nouvelle structure.</p>
 <div class="codehilite"><pre class="insert-before">#define STACK_MAX 256
 </pre><div class="source-file"><em>vm.h</em></div>
 <pre class="insert">
@@ -681,29 +506,14 @@ typedef struct {
 </pre></div>
 <div class="source-file-narrow"><em>vm.h</em></div>
 
-<p>A CallFrame represents a single ongoing function call. The <code>slots</code> field points
-into the VM&rsquo;s value stack at the first slot that this function can use. I gave
-it a plural name because<span class="em">&mdash;</span>thanks to C&rsquo;s weird &ldquo;pointers are sort of arrays&rdquo;
-thing<span class="em">&mdash;</span>we&rsquo;ll treat it like an array.</p>
-<p>The implementation of return addresses is a little different from what I
-described above. Instead of storing the return address in the callee&rsquo;s frame,
-the caller stores its own <code>ip</code>. When we return from a function, the VM will jump
-to the <code>ip</code> of the caller&rsquo;s CallFrame and resume from there.</p>
-<p>I also stuffed a pointer to the function being called in here. We&rsquo;ll use that to
-look up constants and for a few other things.</p>
-<p>Each time a function is called, we create one of these structs. We could <span
-name="heap">dynamically</span> allocate them on the heap, but that&rsquo;s slow.
-Function calls are a core operation, so they need to be as fast as possible.
-Fortunately, we can make the same observation we made for variables: function
-calls have stack semantics. If <code>first()</code> calls <code>second()</code>, the call to
-<code>second()</code> will complete before <code>first()</code> does.</p>
+<p>Une CallFrame représente un seul appel de fonction en cours. Le champ <code>slots</code> pointe dans la pile de valeurs de la VM au premier emplacement que cette fonction peut utiliser. Je lui ai donné un nom pluriel parce que<span class="em">&mdash;</span>grâce au truc bizarre de C &ldquo;les pointeurs sont en quelque sorte des tableaux&rdquo;<span class="em">&mdash;</span>nous le traiterons comme un tableau.</p>
+<p>L&rsquo;implémentation des adresses de retour est un peu différente de ce que j&rsquo;ai décrit ci-dessus. Au lieu de stocker l&rsquo;adresse de retour dans le cadre de l&rsquo;appelé, l&rsquo;appelant stocke son propre <code>ip</code>. Quand nous retournons d&rsquo;une fonction, la VM sautera à l&rsquo;<code>ip</code> de la CallFrame de l&rsquo;appelant et reprendra de là.</p>
+<p>J&rsquo;ai aussi fourré un pointeur vers la fonction étant appelée ici. Nous utiliserons cela pour rechercher des constantes et pour quelques autres choses.</p>
+<p>Chaque fois qu&rsquo;une fonction est appelée, nous créons une de ces structures. Nous pourrions les allouer <span name="heap">dynamiquement</span> sur le tas, mais c&rsquo;est lent. Les appels de fonction sont une opération centrale, donc ils ont besoin d&rsquo;être aussi rapides que possible. Heureusement, nous pouvons faire la même observation que nous avons faite pour les variables : les appels de fonction ont une sémantique de pile. Si <code>first()</code> appelle <code>second()</code>, l&rsquo;appel à <code>second()</code> se complétera avant que <code>first()</code> ne le fasse.</p>
 <aside name="heap">
-<p>Many Lisp implementations dynamically allocate stack frames because it
-simplifies implementing <a href="https://en.wikipedia.org/wiki/Continuation">continuations</a>. If your language supports
-continuations, then function calls do <em>not</em> always have stack semantics.</p>
+<p>Beaucoup d&rsquo;implémentations Lisp allouent dynamiquement les cadres de pile parce que cela simplifie l&rsquo;implémentation des <a href="https://fr.wikipedia.org/wiki/Continuation">continuations</a>. Si votre langage supporte les continuations, alors les appels de fonction n&rsquo;ont <em>pas</em> toujours une sémantique de pile.</p>
 </aside>
-<p>So over in the VM, we create an array of these CallFrame structs up front and
-treat it as a stack, like we do with the value array.</p>
+<p>Donc là-bas dans la VM, nous créons un tableau de ces structures CallFrame à l&rsquo;avance et le traitons comme une pile, comme nous le faisons avec le tableau de valeurs.</p>
 <div class="codehilite"><pre class="insert-before">typedef struct {
 </pre><div class="source-file"><em>vm.h</em><br>
 in struct <em>VM</em><br>
@@ -715,13 +525,8 @@ replace 2 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.h</em>, in struct <em>VM</em>, replace 2 lines</div>
 
-<p>This array replaces the <code>chunk</code> and <code>ip</code> fields we used to have directly in the
-VM. Now each CallFrame has its own <code>ip</code> and its own pointer to the ObjFunction
-that it&rsquo;s executing. From there, we can get to the function&rsquo;s chunk.</p>
-<p>The new <code>frameCount</code> field in the VM stores the current height of the CallFrame
-stack<span class="em">&mdash;</span>the number of ongoing function calls. To keep clox simple, the array&rsquo;s
-capacity is fixed. This means, as in many language implementations, there is a
-maximum call depth we can handle. For clox, it&rsquo;s defined here:</p>
+<p>Ce tableau remplace les champs <code>chunk</code> et <code>ip</code> que nous avions l&rsquo;habitude d&rsquo;avoir directement dans la VM. Maintenant chaque CallFrame a son propre <code>ip</code> et son propre pointeur vers l&rsquo;ObjFunction qu&rsquo;elle exécute. De là, nous pouvons aller au fragment de la fonction.</p>
+<p>Le nouveau champ <code>frameCount</code> dans la VM stocke la hauteur courante de la pile CallFrame<span class="em">&mdash;</span>le nombre d&rsquo;appels de fonction en cours. Pour garder clox simple, la capacité du tableau est fixe. Cela signifie, comme dans beaucoup d&rsquo;implémentations de langage, qu&rsquo;il existe une profondeur d&rsquo;appel maximale que nous pouvons gérer. Pour clox, c&rsquo;est défini ici :</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;value.h&quot;
 
 </pre><div class="source-file"><em>vm.h</em><br>
@@ -734,13 +539,9 @@ typedef struct {
 </pre></div>
 <div class="source-file-narrow"><em>vm.h</em>, replace 1 line</div>
 
-<p>We also redefine the value stack&rsquo;s <span name="plenty">size</span> in terms of
-that to make sure we have plenty of stack slots even in very deep call trees.
-When the VM starts up, the CallFrame stack is empty.</p>
+<p>Nous redéfinissons aussi la <span name="plenty">taille</span> de la pile de valeurs en termes de cela pour nous assurer que nous avons plein d&rsquo;emplacements de pile même dans des arbres d&rsquo;appel très profonds. Quand la VM démarre, la pile CallFrame est vide.</p>
 <aside name="plenty">
-<p>It is still possible to overflow the stack if enough function calls use enough
-temporaries in addition to locals. A robust implementation would guard against
-this, but I&rsquo;m trying to keep things simple.</p>
+<p>Il est toujours possible de déborder la pile si assez d&rsquo;appels de fonction utilisent assez de temporaires en plus des locales. Une implémentation robuste se garderait contre cela, mais j&rsquo;essaie de garder les choses simples.</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">  vm.stackTop = vm.stack;
 </pre><div class="source-file"><em>vm.c</em><br>
@@ -750,7 +551,7 @@ in <em>resetStack</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>resetStack</em>()</div>
 
-<p>The &ldquo;vm.h&rdquo; header needs access to ObjFunction, so we add an include.</p>
+<p>L&rsquo;en-tête &ldquo;vm.h&rdquo; a besoin d&rsquo;accéder à ObjFunction, donc nous ajoutons une inclusion.</p>
 <div class="codehilite"><pre class="insert-before">#define clox_vm_h
 
 </pre><div class="source-file"><em>vm.h</em><br>
@@ -760,12 +561,8 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.h</em>, replace 1 line</div>
 
-<p>Now we&rsquo;re ready to move over to the VM&rsquo;s implementation file. We&rsquo;ve got some
-grunt work ahead of us. We&rsquo;ve moved <code>ip</code> out of the VM struct and into
-CallFrame. We need to fix every line of code in the VM that touches <code>ip</code> to
-handle that. Also, the instructions that access local variables by stack slot
-need to be updated to do so relative to the current CallFrame&rsquo;s <code>slots</code> field.</p>
-<p>We&rsquo;ll start at the top and plow through it.</p>
+<p>Maintenant nous sommes prêts à bouger vers le fichier d&rsquo;implémentation de la VM. Nous avons du sale boulot devant nous. Nous avons déplacé le <code>ip</code> hors de la structure VM et dans CallFrame. Nous avons besoin de réparer chaque ligne de code dans la VM qui touche à <code>ip</code> pour gérer cela. Aussi, les instructions qui accèdent aux variables locales par emplacement de pile ont besoin d&rsquo;être mises à jour pour le faire relativement au champ <code>slots</code> de la CallFrame courante.</p>
+<p>Nous commencerons au sommet et labourerons à travers.</p>
 <div class="codehilite"><pre class="insert-before">static InterpretResult run() {
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>run</em>()<br>
@@ -785,18 +582,11 @@ replace 4 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>(), replace 4 lines</div>
 
-<p>First, we store the current topmost CallFrame in a <span
-name="local">local</span> variable inside the main bytecode execution function.
-Then we replace the bytecode access macros with versions that access <code>ip</code>
-through that variable.</p>
+<p>D&rsquo;abord, nous stockons la CallFrame la plus haute courante dans une variable <span name="local">locale</span> à l&rsquo;intérieur de la fonction principale d&rsquo;exécution bytecode. Ensuite nous remplaçons les macros d&rsquo;accès au bytecode par des versions qui accèdent à <code>ip</code> à travers cette variable.</p>
 <aside name="local">
-<p>We could access the current frame by going through the CallFrame array every
-time, but that&rsquo;s verbose. More importantly, storing the frame in a local
-variable encourages the C compiler to keep that pointer in a register. That
-speeds up access to the frame&rsquo;s <code>ip</code>. There&rsquo;s no <em>guarantee</em> that the compiler
-will do this, but there&rsquo;s a good chance it will.</p>
+<p>Nous pourrions accéder au cadre courant en passant par le tableau CallFrame chaque fois, mais c&rsquo;est verbeux. Plus important, stocker le cadre dans une variable locale encourage le compilateur C à garder ce pointeur dans un registre. Cela accélère l&rsquo;accès à l&rsquo;<code>ip</code> du cadre. Il n&rsquo;y a pas de <em>garantie</em> que le compilateur fera cela, mais il y a une bonne chance qu&rsquo;il le fasse.</p>
 </aside>
-<p>Now onto each instruction that needs a little tender loving care.</p>
+<p>Maintenant sur chaque instruction qui a besoin d&rsquo;un peu d&rsquo;amour et de soin.</p>
 <div class="codehilite"><pre class="insert-before">      case OP_GET_LOCAL: {
         uint8_t slot = READ_BYTE();
 </pre><div class="source-file"><em>vm.c</em><br>
@@ -807,11 +597,8 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>(), replace 1 line</div>
 
-<p>Previously, <code>OP_GET_LOCAL</code> read the given local slot directly from the VM&rsquo;s
-stack array, which meant it indexed the slot starting from the bottom of the
-stack. Now, it accesses the current frame&rsquo;s <code>slots</code> array, which means it
-accesses the given numbered slot relative to the beginning of that frame.</p>
-<p>Setting a local variable works the same way.</p>
+<p>Précédemment, <code>OP_GET_LOCAL</code> lisait l&rsquo;emplacement local donné directement depuis le tableau de pile de la VM, ce qui signifiait qu&rsquo;il indexait l&rsquo;emplacement commençant depuis le bas de la pile. Maintenant, il accède au tableau <code>slots</code> du cadre courant, ce qui signifie qu&rsquo;il accède à l&rsquo;emplacement numéroté donné relativement au début de ce cadre.</p>
+<p>Régler une variable locale fonctionne de la même façon.</p>
 <div class="codehilite"><pre class="insert-before">      case OP_SET_LOCAL: {
         uint8_t slot = READ_BYTE();
 </pre><div class="source-file"><em>vm.c</em><br>
@@ -822,8 +609,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>(), replace 1 line</div>
 
-<p>The jump instructions used to modify the VM&rsquo;s <code>ip</code> field. Now, they do the same
-for the current frame&rsquo;s <code>ip</code>.</p>
+<p>Les instructions de saut avaient l&rsquo;habitude de modifier le champ <code>ip</code> de la VM. Maintenant, elles font la même chose pour l&rsquo;<code>ip</code> du cadre courant.</p>
 <div class="codehilite"><pre class="insert-before">      case OP_JUMP: {
         uint16_t offset = READ_SHORT();
 </pre><div class="source-file"><em>vm.c</em><br>
@@ -834,7 +620,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>(), replace 1 line</div>
 
-<p>Same with the conditional jump:</p>
+<p>Même chose avec le saut conditionnel :</p>
 <div class="codehilite"><pre class="insert-before">      case OP_JUMP_IF_FALSE: {
         uint16_t offset = READ_SHORT();
 </pre><div class="source-file"><em>vm.c</em><br>
@@ -845,7 +631,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>(), replace 1 line</div>
 
-<p>And our backward-jumping loop instruction:</p>
+<p>Et notre instruction de boucle sautant en arrière :</p>
 <div class="codehilite"><pre class="insert-before">      case OP_LOOP: {
         uint16_t offset = READ_SHORT();
 </pre><div class="source-file"><em>vm.c</em><br>
@@ -856,8 +642,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>(), replace 1 line</div>
 
-<p>We have some diagnostic code that prints each instruction as it executes to help
-us debug our VM. That needs to work with the new structure too.</p>
+<p>Nous avons du code de diagnostic qui imprime chaque instruction comme elle s&rsquo;exécute pour nous aider à déboguer notre VM. Cela a besoin de fonctionner avec la nouvelle structure aussi.</p>
 <div class="codehilite"><pre class="insert-before">    printf(&quot;\n&quot;);
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>run</em>()<br>
@@ -868,11 +653,8 @@ replace 2 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>(), replace 2 lines</div>
 
-<p>Instead of passing in the VM&rsquo;s <code>chunk</code> and <code>ip</code> fields, now we read from the
-current CallFrame.</p>
-<p>You know, that wasn&rsquo;t too bad, actually. Most instructions just use the macros
-so didn&rsquo;t need to be touched. Next, we jump up a level to the code that calls
-<code>run()</code>.</p>
+<p>Au lieu de passer les champs <code>chunk</code> et <code>ip</code> de la VM, maintenant nous lisons depuis la CallFrame courante.</p>
+<p>Vous savez, ce n&rsquo;était pas trop mal, en fait. La plupart des instructions utilisent juste les macros donc n&rsquo;ont pas eu besoin d&rsquo;être touchées. Ensuite, nous sautons d&rsquo;un niveau au code qui appelle <code>run()</code>.</p>
 <div class="codehilite"><pre class="insert-before">InterpretResult interpret(const char* source) {
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>interpret</em>()<br>
@@ -891,19 +673,9 @@ replace 10 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>interpret</em>(), replace 10 lines</div>
 
-<p>We finally get to wire up our earlier compiler changes to the back-end changes
-we just made. First, we pass the source code to the compiler. It returns us a
-new ObjFunction containing the compiled top-level code. If we get <code>NULL</code> back,
-it means there was some compile-time error which the compiler has already
-reported. In that case, we bail out since we can&rsquo;t run anything.</p>
-<p>Otherwise, we store the function on the stack and prepare an initial CallFrame
-to execute its code. Now you can see why the compiler sets aside stack slot zero<span class="em">&mdash;</span>that stores the function being called. In the new CallFrame, we point to the
-function, initialize its <code>ip</code> to point to the beginning of the function&rsquo;s
-bytecode, and set up its stack window to start at the very bottom of the VM&rsquo;s
-value stack.</p>
-<p>This gets the interpreter ready to start executing code. After finishing, the VM
-used to free the hardcoded chunk. Now that the ObjFunction owns that code, we
-don&rsquo;t need to do that anymore, so the end of <code>interpret()</code> is simply this:</p>
+<p>Nous arrivons finalement à brancher nos changements de compilateur précédents aux changements back-end que nous venons de faire. D&rsquo;abord, nous passons le code source au compilateur. Il nous renvoie une nouvelle ObjFunction contenant le code de niveau supérieur compilé. Si nous obtenons <code>NULL</code> en retour, cela signifie qu&rsquo;il y a eu quelque erreur au moment de la compilation que le compilateur a déjà rapportée. Dans ce cas, nous abandonnons puisque nous ne pouvons rien exécuter.</p>
+<p>Sinon, nous stockons la fonction sur la pile et préparons une CallFrame initiale pour exécuter son code. Maintenant vous pouvez voir pourquoi le compilateur met de côté l&rsquo;emplacement de pile zéro<span class="em">&mdash;</span>cela stocke la fonction étant appelée. Dans la nouvelle CallFrame, nous pointons vers la fonction, initialisons son <code>ip</code> pour pointer vers le début du bytecode de la fonction, et configurons sa fenêtre de pile pour commencer tout au bas de la pile de valeurs de la VM.</p>
+<p>Cela prépare l&rsquo;interpréteur à commencer à exécuter du code. Après avoir fini, la VM avait l&rsquo;habitude de libérer le fragment codé en dur. Maintenant que l&rsquo;ObjFunction possède ce code, nous n&rsquo;avons plus besoin de faire cela, donc la fin de <code>interpret()</code> est simplement ceci :</p>
 <div class="codehilite"><pre class="insert-before">  frame-&gt;slots = vm.stack;
 
 </pre><div class="source-file"><em>vm.c</em><br>
@@ -914,8 +686,7 @@ replace 4 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>interpret</em>(), replace 4 lines</div>
 
-<p>The last piece of code referring to the old VM fields is <code>runtimeError()</code>. We&rsquo;ll
-revisit that later in the chapter, but for now let&rsquo;s change it to this:</p>
+<p>Le dernier morceau de code se référant aux vieux champs de la VM est <code>runtimeError()</code>. Nous revisiterons cela plus tard dans le chapitre, mais pour l&rsquo;instant changeons-le pour ceci :</p>
 <div class="codehilite"><pre class="insert-before">  fputs(&quot;\n&quot;, stderr);
 
 </pre><div class="source-file"><em>vm.c</em><br>
@@ -928,20 +699,12 @@ replace 2 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>runtimeError</em>(), replace 2 lines</div>
 
-<p>Instead of reading the chunk and <code>ip</code> directly from the VM, it pulls those from
-the topmost CallFrame on the stack. That should get the function working again
-and behaving as it did before.</p>
-<p>Assuming we did all of that correctly, we got clox back to a runnable
-state. Fire it up and it does<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>exactly what it did before. We haven&rsquo;t added
-any new features yet, so this is kind of a let down. But all of the
-infrastructure is there and ready for us now. Let&rsquo;s take advantage of it.</p>
-<h2><a href="#function-declarations" id="function-declarations"><small>24&#8202;.&#8202;4</small>Function Declarations</a></h2>
-<p>Before we can do call expressions, we need something to call, so we&rsquo;ll do
-function declarations first. The <span name="fun">fun</span> starts with a
-keyword.</p>
+<p>Au lieu de lire le fragment et l&rsquo;<code>ip</code> directement depuis la VM, il tire ceux-ci depuis la CallFrame la plus haute sur la pile. Cela devrait faire fonctionner la fonction à nouveau et se comporter comme elle le faisait avant.</p>
+<p>Supposant que nous avons fait tout cela correctement, nous avons ramené clox à un état exécutable. Démarrez-le et il fait<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>exactement ce qu&rsquo;il faisait avant. Nous n&rsquo;avons ajouté aucune nouvelle fonctionnalité encore, donc c&rsquo;est un peu une déception. Mais toute l&rsquo;infrastructure est là et prête pour nous maintenant. Tirons-en avantage.</p>
+<h2><a href="#déclarations-de-fonction" id="déclarations-de-fonction"><small>24&#8202;.&#8202;4</small>Déclarations de Fonction</a></h2>
+<p>Avant que nous puissions faire des expressions d&rsquo;appel, nous avons besoin de quelque chose à appeler, donc nous ferons les déclarations de fonction d&rsquo;abord. Le <span name="fun">fun</span> commence avec un mot-clé.</p>
 <aside name="fun">
-<p>Yes, I am going to make a dumb joke about the <code>fun</code> keyword every time it
-comes up.</p>
+<p>Oui, je vais faire une blague bête sur le mot-clé <code>fun</code> à chaque fois qu&rsquo;il apparaît.</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">static void declaration() {
 </pre><div class="source-file"><em>compiler.c</em><br>
@@ -954,7 +717,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>declaration</em>(), replace 1 line</div>
 
-<p>That passes control to here:</p>
+<p>Cela passe le contrôle ici :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>block</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">funDeclaration</span>() {
@@ -966,24 +729,11 @@ add after <em>block</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>block</em>()</div>
 
-<p>Functions are first-class values, and a function declaration simply creates and
-stores one in a newly declared variable. So we parse the name just like any
-other variable declaration. A function declaration at the top level will bind
-the function to a global variable. Inside a block or other function, a function
-declaration creates a local variable.</p>
-<p>In an earlier chapter, I explained how variables <a href="local-variables.html#another-scope-edge-case">get defined in two
-stages</a>. This ensures you can&rsquo;t access a variable&rsquo;s value inside the
-variable&rsquo;s own initializer. That would be bad because the variable doesn&rsquo;t
-<em>have</em> a value yet.</p>
-<p>Functions don&rsquo;t suffer from this problem. It&rsquo;s safe for a function to refer to
-its own name inside its body. You can&rsquo;t <em>call</em> the function and execute the body
-until after it&rsquo;s fully defined, so you&rsquo;ll never see the variable in an
-uninitialized state. Practically speaking, it&rsquo;s useful to allow this in order to
-support recursive local functions.</p>
-<p>To make that work, we mark the function declaration&rsquo;s variable &ldquo;initialized&rdquo; as
-soon as we compile the name, before we compile the body. That way the name can
-be referenced inside the body without generating an error.</p>
-<p>We do need one check, though.</p>
+<p>Les fonctions sont des valeurs de première classe, et une déclaration de fonction crée et stocke simplement une dans une variable nouvellement déclarée. Donc nous analysons le nom juste comme n&rsquo;importe quelle autre déclaration de variable. Une déclaration de fonction au niveau supérieur liera la fonction à une variable globale. À l&rsquo;intérieur d&rsquo;un bloc ou autre fonction, une déclaration de fonction crée une variable locale.</p>
+<p>Dans un chapitre précédent, j&rsquo;ai expliqué comment les variables <a href="variables-locales.html#un-autre-cas-limite-de-port%C3%A9e">sont définies en deux étapes</a>. Cela assure que vous ne pouvez pas accéder à la valeur d&rsquo;une variable à l&rsquo;intérieur de l&rsquo;initialisateur de la variable elle-même. Cela serait mauvais parce que la variable n&rsquo;a pas de valeur <em>encore</em>.</p>
+<p>Les fonctions ne souffrent pas de ce problème. Il est sûr pour une fonction de se référer à son propre nom à l&rsquo;intérieur de son corps. Vous ne pouvez pas <em>appeler</em> la fonction et exécuter le corps jusqu&rsquo;à ce qu&rsquo;elle soit pleinement définie, donc vous ne verrez jamais la variable dans un état non initialisé. Pratiquement parlant, il est utile de permettre ceci afin de supporter les fonctions locales récursives.</p>
+<p>Pour faire fonctionner cela, nous marquons la variable de la déclaration de fonction &ldquo;initialisée&rdquo; aussitôt que nous compilons le nom, avant que nous compilions le corps. De cette façon le nom peut être référencé à l&rsquo;intérieur du corps sans générer une erreur.</p>
+<p>Nous avons besoin d&rsquo;une vérification, cependant.</p>
 <div class="codehilite"><pre class="insert-before">static void markInitialized() {
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>markInitialized</em>()</div>
@@ -992,18 +742,9 @@ in <em>markInitialized</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>markInitialized</em>()</div>
 
-<p>Before, we called <code>markInitialized()</code> only when we already knew we were in a
-local scope. Now, a top-level function declaration will also call this function.
-When that happens, there is no local variable to mark initialized<span class="em">&mdash;</span>the
-function is bound to a global variable.</p>
-<p>Next, we compile the function itself<span class="em">&mdash;</span>its parameter list and block body. For
-that, we use a separate helper function. That helper generates code that
-leaves the resulting function object on top of the stack. After that, we call
-<code>defineVariable()</code> to store that function back into the variable we declared for
-it.</p>
-<p>I split out the code to compile the parameters and body because we&rsquo;ll reuse it
-later for parsing method declarations inside classes. Let&rsquo;s build it
-incrementally, starting with this:</p>
+<p>Avant, nous appelions <code>markInitialized()</code> seulement quand nous savions déjà que nous étions dans une portée locale. Maintenant, une déclaration de fonction de niveau supérieur appellera aussi cette fonction. Quand cela arrive, il n&rsquo;y a pas de variable locale à marquer initialisée<span class="em">&mdash;</span>la fonction est liée à une variable globale.</p>
+<p>Ensuite, nous compilons la fonction elle-même<span class="em">&mdash;</span>sa liste de paramètres et son corps de bloc. Pour cela, nous utilisons une fonction aide séparée. Cette aide génère du code qui laisse l&rsquo;objet fonction résultant au sommet de la pile. Après cela, nous appelons <code>defineVariable()</code> pour stocker cette fonction en retour dans la variable que nous avons déclarée pour elle.</p>
+<p>J&rsquo;ai séparé le code pour compiler les paramètres et le corps parce que nous le réutiliserons plus tard pour analyser les déclarations de méthode à l&rsquo;intérieur des classes. Construisons-le incrémentalement, commençant avec ceci :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>block</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">function</span>(<span class="t">FunctionType</span> <span class="i">type</span>) {
@@ -1023,39 +764,17 @@ add after <em>block</em>()</div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>block</em>()</div>
 
 <aside name="no-end-scope">
-<p>This <code>beginScope()</code> doesn&rsquo;t have a corresponding <code>endScope()</code> call. Because we
-end Compiler completely when we reach the end of the function body, there&rsquo;s no
-need to close the lingering outermost scope.</p>
+<p>Ce <code>beginScope()</code> n&rsquo;a pas d&rsquo;appel <code>endScope()</code> correspondant. Parce que nous terminons Compiler complètement quand nous atteignons la fin du corps de la fonction, il n&rsquo;y a pas besoin de fermer la portée la plus extérieure persistante.</p>
 </aside>
-<p>For now, we won&rsquo;t worry about parameters. We parse an empty pair of parentheses
-followed by the body. The body starts with a left curly brace, which we parse
-here. Then we call our existing <code>block()</code> function, which knows how to compile
-the rest of a block including the closing brace.</p>
-<h3><a href="#a-stack-of-compilers" id="a-stack-of-compilers"><small>24&#8202;.&#8202;4&#8202;.&#8202;1</small>A stack of compilers</a></h3>
-<p>The interesting parts are the compiler stuff at the top and bottom. The Compiler
-struct stores data like which slots are owned by which local variables, how many
-blocks of nesting we&rsquo;re currently in, etc. All of that is specific to a single
-function. But now the front end needs to handle compiling multiple functions
-<span name="nested">nested</span> within each other.</p>
+<p>Pour l&rsquo;instant, nous ne nous soucierons pas des paramètres. Nous analysons une paire vide de parenthèses suivies par le corps. Le corps commence avec une accolade gauche, que nous analysons ici. Ensuite nous appelons notre fonction <code>block()</code> existante, qui sait comment compiler le reste d&rsquo;un bloc incluant l&rsquo;accolade fermante.</p>
+<h3><a href="#une-pile-de-compilateurs" id="une-pile-de-compilateurs"><small>24&#8202;.&#8202;4&#8202;.&#8202;1</small>Une pile de compilateurs</a></h3>
+<p>Les parties intéressantes sont les trucs de compilateur au sommet et au bas. La structure Compiler stocke des données comme quels emplacements sont possédés par quelles variables locales, combien de blocs d&rsquo;imbrication nous sommes actuellement dedans, etc. Tout cela est spécifique à une fonction unique. Mais maintenant le front end a besoin de gérer la compilation de multiples fonctions <span name="nested">imbriquées</span> les unes dans les autres.</p>
 <aside name="nested">
-<p>Remember that the compiler treats top-level code as the body of an implicit
-function, so as soon as we add <em>any</em> function declarations, we&rsquo;re in a world of
-nested functions.</p>
+<p>Rappelez-vous que le compilateur traite le code de niveau supérieur comme le corps d&rsquo;une fonction implicite, donc aussitôt que nous ajoutons <em>n&rsquo;importe quelles</em> déclarations de fonction, nous sommes dans un monde de fonctions imbriquées.</p>
 </aside>
-<p>The trick for managing that is to create a separate Compiler for each function
-being compiled. When we start compiling a function declaration, we create a new
-Compiler on the C stack and initialize it. <code>initCompiler()</code> sets that Compiler
-to be the current one. Then, as we compile the body, all of the functions that
-emit bytecode write to the chunk owned by the new Compiler&rsquo;s function.</p>
-<p>After we reach the end of the function&rsquo;s block body, we call <code>endCompiler()</code>.
-That yields the newly compiled function object, which we store as a constant in
-the <em>surrounding</em> function&rsquo;s constant table. But, wait, how do we get back to
-the surrounding function? We lost it when <code>initCompiler()</code> overwrote the current
-compiler pointer.</p>
-<p>We fix that by treating the series of nested Compiler structs as a stack. Unlike
-the Value and CallFrame stacks in the VM, we won&rsquo;t use an array. Instead, we use
-a linked list. Each Compiler points back to the Compiler for the function that
-encloses it, all the way back to the root Compiler for the top-level code.</p>
+<p>Le truc pour gérer cela est de créer un Compiler séparé pour chaque fonction étant compilée. Quand nous commençons à compiler une déclaration de fonction, nous créons un nouveau Compiler sur la pile C et l&rsquo;initialisons. <code>initCompiler()</code> règle ce Compiler pour être le courant. Ensuite, comme nous compilons le corps, toutes les fonctions qui émettent du bytecode écrivent au fragment possédé par la fonction du nouveau Compiler.</p>
+<p>Après que nous atteignons la fin du corps de bloc de la fonction, nous appelons <code>endCompiler()</code>. Cela produit l&rsquo;objet fonction nouvellement compilé, que nous stockons comme une constante dans la table des constantes de la fonction <em>enveloppante</em>. Mais, attendez, comment revenons-nous à la fonction enveloppante ? Nous l&rsquo;avons perdue quand <code>initCompiler()</code> a écrasé le pointeur de compilateur courant.</p>
+<p>Nous réparons cela en traitant la série de structures Compiler imbriquées comme une pile. Contrairement aux piles Value et CallFrame dans la VM, nous n&rsquo;utiliserons pas un tableau. Au lieu de cela, nous utilisons une liste chaînée. Chaque Compiler pointe en arrière vers le Compiler pour la fonction qui l&rsquo;entoure, tout le chemin de retour au Compiler racine pour le code de niveau supérieur.</p>
 <div class="codehilite"><pre class="insert-before">} FunctionType;
 
 </pre><div class="source-file"><em>compiler.c</em><br>
@@ -1067,11 +786,8 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after enum <em>FunctionType</em>, replace 1 line</div>
 
-<p>Inside the Compiler struct, we can&rsquo;t reference the Compiler <em>typedef</em> since that
-declaration hasn&rsquo;t finished yet. Instead, we give a name to the struct itself
-and use that for the field&rsquo;s type. C is weird.</p>
-<p>When initializing a new Compiler, we capture the about-to-no-longer-be-current
-one in that pointer.</p>
+<p>À l&rsquo;intérieur de la structure Compiler, nous ne pouvons pas référencer le <em>typedef</em> Compiler puisque cette déclaration n&rsquo;a pas fini encore. Au lieu de cela, nous donnons un nom à la structure elle-même et utilisons cela pour le type du champ. Le C est bizarre.</p>
+<p>Lors de l&rsquo;initialisation d&rsquo;un nouveau Compiler, nous capturons celui sur-le-point-de-ne-plus-être-courant dans ce pointeur.</p>
 <div class="codehilite"><pre class="insert-before">static void initCompiler(Compiler* compiler, FunctionType type) {
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>initCompiler</em>()</div>
@@ -1080,8 +796,7 @@ in <em>initCompiler</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>initCompiler</em>()</div>
 
-<p>Then when a Compiler finishes, it pops itself off the stack by restoring the
-previous compiler to be the new current one.</p>
+<p>Ensuite quand un Compiler finit, il se dépile lui-même de la pile en restaurant le compilateur précédent pour être le nouveau courant.</p>
 <div class="codehilite"><pre class="insert-before">#endif
 
 </pre><div class="source-file"><em>compiler.c</em><br>
@@ -1091,22 +806,12 @@ in <em>endCompiler</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>endCompiler</em>()</div>
 
-<p>Note that we don&rsquo;t even need to <span name="compiler">dynamically</span>
-allocate the Compiler structs. Each is stored as a local variable in the C stack<span class="em">&mdash;</span>either in <code>compile()</code> or <code>function()</code>. The linked list of Compilers threads
-through the C stack. The reason we can get an unbounded number of them is
-because our compiler uses recursive descent, so <code>function()</code> ends up calling
-itself recursively when you have nested function declarations.</p>
+<p>Notez que nous n&rsquo;avons même pas besoin d&rsquo;allouer <span name="compiler">dynamiquement</span> les structures Compiler. Chacune est stockée comme une variable locale dans la pile C<span class="em">&mdash;</span>soit dans <code>compile()</code> ou <code>function()</code>. La liste chaînée de Compilers s&rsquo;enfile à travers la pile C. La raison pour laquelle nous pouvons obtenir un nombre illimité d&rsquo;entre eux est parce que notre compilateur utilise la descente récursive, donc <code>function()</code> finit par s&rsquo;appeler elle-même récursivement quand vous avez des déclarations de fonction imbriquées.</p>
 <aside name="compiler">
-<p>Using the native stack for Compiler structs does mean our compiler has a
-practical limit on how deeply nested function declarations can be. Go too far
-and you could overflow the C stack. If we want the compiler to be more robust
-against pathological or even malicious code<span class="em">&mdash;</span>a real concern for tools like
-JavaScript VMs<span class="em">&mdash;</span>it would be good to have our compiler artificially limit the
-amount of function nesting it permits.</p>
+<p>Utiliser la pile native pour les structures Compiler signifie bien que notre compilateur a une limite pratique sur jusqu&rsquo;à quelle profondeur les déclarations de fonction imbriquées peuvent être. Allez trop loin et vous pourriez déborder la pile C. Si nous voulons que le compilateur soit plus robuste contre le code pathologique ou même malveillant<span class="em">&mdash;</span>une vraie préoccupation pour des outils comme les VMs JavaScript<span class="em">&mdash;</span>il serait bon d&rsquo;avoir notre compilateur limiter artificiellement la quantité d&rsquo;imbrication de fonction qu&rsquo;il permet.</p>
 </aside>
-<h3><a href="#function-parameters" id="function-parameters"><small>24&#8202;.&#8202;4&#8202;.&#8202;2</small>Function parameters</a></h3>
-<p>Functions aren&rsquo;t very useful if you can&rsquo;t pass arguments to them, so let&rsquo;s do
-parameters next.</p>
+<h3><a href="#paramètres-de-fonction" id="paramètres-de-fonction"><small>24&#8202;.&#8202;4&#8202;.&#8202;2</small>Paramètres de fonction</a></h3>
+<p>Les fonctions ne sont pas très utiles si vous ne pouvez pas leur passer des arguments, donc faisons les paramètres ensuite.</p>
 <div class="codehilite"><pre class="insert-before">  consume(TOKEN_LEFT_PAREN, &quot;Expect '(' after function name.&quot;);
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>function</em>()</div>
@@ -1124,17 +829,8 @@ in <em>function</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>function</em>()</div>
 
-<p>Semantically, a parameter is simply a local variable declared in the outermost
-lexical scope of the function body. We get to use the existing compiler support
-for declaring named local variables to parse and compile parameters. Unlike
-local variables, which have initializers, there&rsquo;s no code here to initialize the
-parameter&rsquo;s value. We&rsquo;ll see how they are initialized later when we do argument
-passing in function calls.</p>
-<p>While we&rsquo;re at it, we note the function&rsquo;s arity by counting how many parameters
-we parse. The other piece of metadata we store with a function is its name. When
-compiling a function declaration, we call <code>initCompiler()</code> right after we parse
-the function&rsquo;s name. That means we can grab the name right then from the
-previous token.</p>
+<p>Sémantiquement, un paramètre est simplement une variable locale déclarée dans la portée lexicale la plus extérieure du corps de la fonction. Nous arrivons à utiliser le support existant du compilateur pour déclarer des variables locales nommées pour analyser et compiler les paramètres. Contrairement aux variables locales, qui ont des initialisateurs, il n&rsquo;y a pas de code ici pour initialiser la valeur du paramètre. Nous verrons comment ils sont initialisés plus tard quand nous ferons le passage d&rsquo;arguments dans les appels de fonction.</p>
+<p>Pendant que nous y sommes, nous notons l&rsquo;arité de la fonction en comptant combien de paramètres nous analysons. L&rsquo;autre morceau de métadonnée que nous stockons avec une fonction est son nom. Lors de la compilation d&rsquo;une déclaration de fonction, nous appelons <code>initCompiler()</code> juste après que nous analysons le nom de la fonction. Cela signifie que nous pouvons attraper le nom juste là depuis le jeton précédent.</p>
 <div class="codehilite"><pre class="insert-before">  current = compiler;
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>initCompiler</em>()</div>
@@ -1148,31 +844,21 @@ in <em>initCompiler</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>initCompiler</em>()</div>
 
-<p>Note that we&rsquo;re careful to create a copy of the name string. Remember, the
-lexeme points directly into the original source code string. That string may get
-freed once the code is finished compiling. The function object we create in the
-compiler outlives the compiler and persists until runtime. So it needs its own
-heap-allocated name string that it can keep around.</p>
-<p>Rad. Now we can compile function declarations, like this:</p>
+<p>Notez que nous faisons attention de créer une copie de la chaîne de nom. Rappelez-vous, le lexème pointe directement dans la chaîne de code source originale. Cette chaîne peut être libérée une fois que le code est fini de compiler. L&rsquo;objet fonction que nous créons dans le compilateur survit au compilateur et persiste jusqu&rsquo;à l&rsquo;exécution. Donc il a besoin de sa propre chaîne de nom allouée sur le tas qu&rsquo;il peut garder autour.</p>
+<p>Radical. Maintenant nous pouvons compiler les déclarations de fonction, comme ceci :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">areWeHavingItYet</span>() {
   <span class="k">print</span> <span class="s">&quot;Yes we are!&quot;</span>;
 }
 
 <span class="k">print</span> <span class="i">areWeHavingItYet</span>;
 </pre></div>
-<p>We just can&rsquo;t do anything <span name="useful">useful</span> with them.</p>
+<p>Nous ne pouvons juste rien faire d&rsquo;<span name="useful">utile</span> avec elles.</p>
 <aside name="useful">
-<p>We can print them! I guess that&rsquo;s not very useful, though.</p>
+<p>Nous pouvons les afficher ! Je devine que ce n&rsquo;est pas très utile, cependant.</p>
 </aside>
-<h2><a href="#function-calls" id="function-calls"><small>24&#8202;.&#8202;5</small>Function Calls</a></h2>
-<p>By the end of this section, we&rsquo;ll start to see some interesting behavior. The
-next step is calling functions. We don&rsquo;t usually think of it this way, but a
-function call expression is kind of an infix <code>(</code> operator. You have a
-high-precedence expression on the left for the thing being called<span class="em">&mdash;</span>usually
-just a single identifier. Then the <code>(</code> in the middle, followed by the argument
-expressions separated by commas, and a final <code>)</code> to wrap it up at the end.</p>
-<p>That odd grammatical perspective explains how to hook the syntax into our
-parsing table.</p>
+<h2><a href="#appels-de-fonction" id="appels-de-fonction"><small>24&#8202;.&#8202;5</small>Appels de Fonction</a></h2>
+<p>À la fin de cette section, nous commencerons à voir quelque comportement intéressant. L&rsquo;étape suivante est d&rsquo;appeler les fonctions. Nous ne pensons pas habituellement à cela de cette façon, mais une expression d&rsquo;appel de fonction est une sorte d&rsquo;opérateur <code>(</code> infixe. Vous avez une expression de haute priorité sur la gauche pour la chose étant appelée<span class="em">&mdash;</span>habituellement juste un identifiant simple. Ensuite la <code>(</code> au milieu, suivie par les expressions arguments séparées par des virgules, et une <code>)</code> finale pour envelopper le tout à la fin.</p>
+<p>Cette perspective grammaticale étrange explique comment accrocher la syntaxe dans notre table d&rsquo;analyse.</p>
 <div class="codehilite"><pre class="insert-before">ParseRule rules[] = {
 </pre><div class="source-file"><em>compiler.c</em><br>
 add after <em>unary</em>()<br>
@@ -1182,8 +868,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>unary</em>(), replace 1 line</div>
 
-<p>When the parser encounters a left parenthesis following an expression, it
-dispatches to a new parser function.</p>
+<p>Quand l&rsquo;analyseur rencontre une parenthèse gauche suivant une expression, il répartit vers une nouvelle fonction d&rsquo;analyseur.</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>binary</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">call</span>(<span class="t">bool</span> <span class="i">canAssign</span>) {
@@ -1193,12 +878,8 @@ add after <em>binary</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>binary</em>()</div>
 
-<p>We&rsquo;ve already consumed the <code>(</code> token, so next we compile the arguments using a
-separate <code>argumentList()</code> helper. That function returns the number of arguments
-it compiled. Each argument expression generates code that leaves its value on
-the stack in preparation for the call. After that, we emit a new <code>OP_CALL</code>
-instruction to invoke the function, using the argument count as an operand.</p>
-<p>We compile the arguments using this friend:</p>
+<p>Nous avons déjà consommé le jeton <code>(</code>, donc ensuite nous compilons les arguments en utilisant une aide <code>argumentList()</code> séparée. Cette fonction renvoie le nombre d&rsquo;arguments qu&rsquo;elle a compilés. Chaque expression argument génère du code qui laisse sa valeur sur la pile en préparation pour l&rsquo;appel. Après cela, nous émettons une nouvelle instruction <code>OP_CALL</code> pour invoquer la fonction, utilisant le compte d&rsquo;arguments comme un opérande.</p>
+<p>Nous compilons les arguments en utilisant cette amie :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>defineVariable</em>()</div>
 <pre><span class="k">static</span> <span class="t">uint8_t</span> <span class="i">argumentList</span>() {
@@ -1215,14 +896,8 @@ add after <em>defineVariable</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>defineVariable</em>()</div>
 
-<p>That code should look familiar from jlox. We chew through arguments as long as
-we find commas after each expression. Once we run out, we consume the final
-closing parenthesis and we&rsquo;re done.</p>
-<p>Well, almost. Back in jlox, we added a compile-time check that you don&rsquo;t pass
-more than 255 arguments to a call. At the time, I said that was because clox
-would need a similar limit. Now you can see why<span class="em">&mdash;</span>since we stuff the argument
-count into the bytecode as a single-byte operand, we can only go up to 255. We
-need to verify that in this compiler too.</p>
+<p>Ce code devrait sembler familier de jlox. Nous mâchons à travers les arguments tant que nous trouvons des virgules après chaque expression. Une fois que nous sommes à court, nous consommons la parenthèse fermante finale et nous avons fini.</p>
+<p>Eh bien, presque. De retour dans jlox, nous avions ajouté une vérification à la compilation que vous ne passez pas plus de 255 arguments à un appel. À l&rsquo;époque, j&rsquo;ai dit que c&rsquo;était parce que clox aurait besoin d&rsquo;une limite similaire. Maintenant vous pouvez voir pourquoi<span class="em">&mdash;</span>puisque nous fourrons le compte d&rsquo;arguments dans le bytecode comme un opérande d&rsquo;un seul octet, nous ne pouvons aller que jusqu&rsquo;à 255. Nous avons besoin de vérifier cela dans ce compilateur aussi.</p>
 <div class="codehilite"><pre class="insert-before">      expression();
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>argumentList</em>()</div>
@@ -1233,8 +908,7 @@ in <em>argumentList</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>argumentList</em>()</div>
 
-<p>That&rsquo;s the front end. Let&rsquo;s skip over to the back end, with a quick stop in the
-middle to declare the new instruction.</p>
+<p>C&rsquo;est le front end. Sautons vers le back end, avec un arrêt rapide au milieu pour déclarer la nouvelle instruction.</p>
 <div class="codehilite"><pre class="insert-before">  OP_LOOP,
 </pre><div class="source-file"><em>chunk.h</em><br>
 in enum <em>OpCode</em></div>
@@ -1243,50 +917,24 @@ in enum <em>OpCode</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>chunk.h</em>, in enum <em>OpCode</em></div>
 
-<h3><a href="#binding-arguments-to-parameters" id="binding-arguments-to-parameters"><small>24&#8202;.&#8202;5&#8202;.&#8202;1</small>Binding arguments to parameters</a></h3>
-<p>Before we get to the implementation, we should think about what the stack looks
-like at the point of a call and what we need to do from there. When we reach the
-call instruction, we have already executed the expression for the function being
-called, followed by its arguments. Say our program looks like this:</p>
+<h3><a href="#lier-les-arguments-aux-paramètres" id="lier-les-arguments-aux-paramètres"><small>24&#8202;.&#8202;5&#8202;.&#8202;1</small>Lier les arguments aux paramètres</a></h3>
+<p>Avant que nous n&rsquo;arrivions à l&rsquo;implémentation, nous devrions penser à ce à quoi la pile ressemble au point d&rsquo;un appel et ce que nous devons faire à partir de là. Quand nous atteignons l&rsquo;instruction d&rsquo;appel, nous avons déjà exécuté l&rsquo;expression pour la fonction étant appelée, suivie par ses arguments. Disons que notre programme ressemble à ceci :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">sum</span>(<span class="i">a</span>, <span class="i">b</span>, <span class="i">c</span>) {
   <span class="k">return</span> <span class="i">a</span> + <span class="i">b</span> + <span class="i">c</span>;
 }
 
 <span class="k">print</span> <span class="n">4</span> + <span class="i">sum</span>(<span class="n">5</span>, <span class="n">6</span>, <span class="n">7</span>);
 </pre></div>
-<p>If we pause the VM right on the <code>OP_CALL</code> instruction for that call to <code>sum()</code>,
-the stack looks like this:</p><img src="image/calls-and-functions/argument-stack.png" alt="Stack: 4, fn sum, 5, 6, 7." />
-<p>Picture this from the perspective of <code>sum()</code> itself. When the compiler compiled
-<code>sum()</code>, it automatically allocated slot zero. Then, after that, it allocated
-local slots for the parameters <code>a</code>, <code>b</code>, and <code>c</code>, in order. To perform a call to
-<code>sum()</code>, we need a CallFrame initialized with the function being called and a
-region of stack slots that it can use. Then we need to collect the arguments
-passed to the function and get them into the corresponding slots for the
-parameters.</p>
-<p>When the VM starts executing the body of <code>sum()</code>, we want its stack window to
-look like this:</p><img src="image/calls-and-functions/parameter-window.png" alt="The same stack with the sum() function's call frame window surrounding fn sum, 5, 6, and 7." />
-<p>Do you notice how the argument slots that the caller sets up and the parameter
-slots the callee needs are both in exactly the right order? How convenient! This
-is no coincidence. When I talked about each CallFrame having its own window into
-the stack, I never said those windows must be <em>disjoint</em>. There&rsquo;s nothing
-preventing us from overlapping them, like this:</p><img src="image/calls-and-functions/overlapping-windows.png" alt="The same stack with the top-level call frame covering the entire stack and the sum() function's call frame window surrounding fn sum, 5, 6, and 7." />
-<p><span name="lua">The</span> top of the caller&rsquo;s stack contains the function
-being called followed by the arguments in order. We know the caller doesn&rsquo;t have
-any other slots above those in use because any temporaries needed when
-evaluating argument expressions have been discarded by now. The bottom of the
-callee&rsquo;s stack overlaps so that the parameter slots exactly line up with where
-the argument values already live.</p>
+<p>Si nous mettons la VM en pause juste sur l&rsquo;instruction <code>OP_CALL</code> pour cet appel à <code>sum()</code>, la pile ressemble à ceci :</p><img src="image/calls-and-functions/argument-stack.png" alt="Pile : 4, fn sum, 5, 6, 7." />
+<p>Imaginez ceci de la perspective de <code>sum()</code> elle-même. Quand le compilateur a compilé <code>sum()</code>, il a automatiquement alloué l&rsquo;emplacement zéro. Ensuite, après cela, il a alloué des emplacements locaux pour les paramètres <code>a</code>, <code>b</code>, et <code>c</code>, dans l&rsquo;ordre. Pour effectuer un appel à <code>sum()</code>, nous avons besoin d&rsquo;une CallFrame initialisée avec la fonction étant appelée et une région d&rsquo;emplacements de pile qu&rsquo;elle peut utiliser. Ensuite nous avons besoin de collecter les arguments passés à la fonction et les obtenir dans les emplacements correspondants pour les paramètres.</p>
+<p>Quand la VM commence à exécuter le corps de <code>sum()</code>, nous voulons que sa fenêtre de pile ressemble à ceci :</p><img src="image/calls-and-functions/parameter-window.png" alt="La même pile avec la fenêtre de cadre d'appel de la fonction sum() entourant fn sum, 5, 6, et 7." />
+<p>Remarquez-vous comment les emplacements d&rsquo;argument que l&rsquo;appelant configure et les emplacements de paramètre dont l&rsquo;appelé a besoin sont tous deux dans exactement le bon ordre ? Quelle commodité ! Ce n&rsquo;est pas une coïncidence. Quand j&rsquo;ai parlé de chaque CallFrame ayant sa propre fenêtre dans la pile, je n&rsquo;ai jamais dit que ces fenêtres doivent être <em>disjointes</em>. Il n&rsquo;y a rien qui nous empêche de les chevaucher, comme ceci :</p><img src="image/calls-and-functions/overlapping-windows.png" alt="La même pile avec le cadre d'appel de niveau supérieur couvrant la pile entière et la fenêtre de cadre d'appel de la fonction sum() entourant fn sum, 5, 6, et 7." />
+<p><span name="lua">Le</span> sommet de la pile de l&rsquo;appelant contient la fonction étant appelée suivie par les arguments dans l&rsquo;ordre. Nous savons que l&rsquo;appelant n&rsquo;a pas d&rsquo;autres emplacements au-dessus de ceux-ci en usage parce que tous les temporaires nécessaires lors de l&rsquo;évaluation des expressions arguments ont été jetés maintenant. Le bas de la pile de l&rsquo;appelé chevauche de sorte que les emplacements paramètre s&rsquo;alignent exactement avec où les valeurs argument vivent déjà.</p>
 <aside name="lua">
-<p>Different bytecode VMs and real CPU architectures have different <em>calling
-conventions</em>, which is the specific mechanism they use to pass arguments, store
-the return address, etc. The mechanism I use here is based on Lua&rsquo;s clean, fast
-virtual machine.</p>
+<p>Différentes VMs à bytecode et architectures CPU réelles ont différentes <em>conventions d&rsquo;appel</em>, qui est le mécanisme spécifique qu&rsquo;elles utilisent pour passer les arguments, stocker l&rsquo;adresse de retour, etc. Le mécanisme que j&rsquo;utilise ici est basé sur la machine virtuelle propre, rapide de Lua.</p>
 </aside>
-<p>This means that we don&rsquo;t need to do <em>any</em> work to &ldquo;bind an argument to a
-parameter&rdquo;. There&rsquo;s no copying values between slots or across environments. The
-arguments are already exactly where they need to be. It&rsquo;s hard to beat that for
-performance.</p>
-<p>Time to implement the call instruction.</p>
+<p>Cela signifie que nous n&rsquo;avons pas besoin de faire <em>aucun</em> travail pour &ldquo;lier un argument à un paramètre&rdquo;. Il n&rsquo;y a pas de copie de valeurs entre des emplacements ou à travers des environnements. Les arguments sont déjà exactement où ils ont besoin d&rsquo;être. Il est dur de battre cela pour la performance.</p>
+<p>Temps d&rsquo;implémenter l&rsquo;instruction d&rsquo;appel.</p>
 <div class="codehilite"><pre class="insert-before">      }
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>run</em>()</div>
@@ -1301,15 +949,8 @@ in <em>run</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>()</div>
 
-<p>We need to know the function being called and the number of arguments passed to
-it. We get the latter from the instruction&rsquo;s operand. That also tells us where
-to find the function on the stack by counting past the argument slots from the
-top of the stack. We hand that data off to a separate <code>callValue()</code> function. If
-that returns <code>false</code>, it means the call caused some sort of runtime error. When
-that happens, we abort the interpreter.</p>
-<p>If <code>callValue()</code> is successful, there will be a new frame on the CallFrame stack
-for the called function. The <code>run()</code> function has its own cached pointer to the
-current frame, so we need to update that.</p>
+<p>Nous avons besoin de connaître la fonction étant appelée et le nombre d&rsquo;arguments passés à elle. Nous obtenons ce dernier du opérande de l&rsquo;instruction. Cela nous dit aussi où trouver la fonction sur la pile en comptant passé les emplacements argument depuis le sommet de la pile. Nous remettons ces données à une fonction <code>callValue()</code> séparée. Si celle-ci renvoie <code>false</code>, cela signifie que l&rsquo;appel a causé quelque sorte d&rsquo;erreur d&rsquo;exécution. Quand cela arrive, nous avortons l&rsquo;interpréteur.</p>
+<p>Si <code>callValue()</code> a du succès, il y aura un nouveau cadre sur la pile CallFrame pour la fonction appelée. La fonction <code>run()</code> a son propre pointeur mis en cache vers le cadre courant, donc nous avons besoin de mettre à jour cela.</p>
 <div class="codehilite"><pre class="insert-before">          return INTERPRET_RUNTIME_ERROR;
         }
 </pre><div class="source-file"><em>vm.c</em><br>
@@ -1319,10 +960,7 @@ in <em>run</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>()</div>
 
-<p>Since the bytecode dispatch loop reads from that <code>frame</code> variable, when the VM
-goes to execute the next instruction, it will read the <code>ip</code> from the newly
-called function&rsquo;s CallFrame and jump to its code. The work for executing that
-call begins here:</p>
+<p>Puisque la boucle de répartition bytecode lit depuis cette variable <code>frame</code>, quand la VM va exécuter l&rsquo;instruction suivante, elle lira l&rsquo;<code>ip</code> depuis la CallFrame de la fonction nouvellement appelée et sautera vers son code. Le travail pour exécuter cet appel commence ici :</p>
 <div class="codehilite"><div class="source-file"><em>vm.c</em><br>
 add after <em>peek</em>()</div>
 <pre><span class="k">static</span> <span class="t">bool</span> <span class="i">callValue</span>(<span class="t">Value</span> <span class="i">callee</span>, <span class="t">int</span> <span class="i">argCount</span>) {
@@ -1341,18 +979,13 @@ add after <em>peek</em>()</div>
 <div class="source-file-narrow"><em>vm.c</em>, add after <em>peek</em>()</div>
 
 <aside name="switch">
-<p>Using a <code>switch</code> statement to check a single type is overkill now, but will make
-sense when we add cases to handle other callable types.</p>
+<p>Utiliser une instruction <code>switch</code> pour vérifier un type unique est excessif maintenant, mais aura du sens quand nous ajouterons des cas pour gérer d&rsquo;autres types appelables.</p>
 </aside>
-<p>There&rsquo;s more going on here than just initializing a new CallFrame. Because Lox
-is dynamically typed, there&rsquo;s nothing to prevent a user from writing bad code
-like:</p>
+<p>Il y a plus qui se passe ici que juste initialiser une nouvelle CallFrame. Parce que Lox est typé dynamiquement, il n&rsquo;y a rien pour empêcher un utilisateur d&rsquo;écrire du mauvais code comme :</p>
 <div class="codehilite"><pre><span class="k">var</span> <span class="i">notAFunction</span> = <span class="n">123</span>;
 <span class="i">notAFunction</span>();
 </pre></div>
-<p>If that happens, the runtime needs to safely report an error and halt. So the
-first thing we do is check the type of the value that we&rsquo;re trying to call. If
-it&rsquo;s not a function, we error out. Otherwise, the actual call happens here:</p>
+<p>Si cela arrive, le runtime a besoin de rapporter sûrement une erreur et s&rsquo;arrêter. Donc la première chose que nous faisons est de vérifier le type de la valeur que nous essayons d&rsquo;appeler. Si ce n&rsquo;est pas une fonction, nous sortons en erreur. Sinon, l&rsquo;appel réel arrive ici :</p>
 <div class="codehilite"><div class="source-file"><em>vm.c</em><br>
 add after <em>peek</em>()</div>
 <pre><span class="k">static</span> <span class="t">bool</span> <span class="i">call</span>(<span class="t">ObjFunction</span>* <span class="i">function</span>, <span class="t">int</span> <span class="i">argCount</span>) {
@@ -1365,15 +998,10 @@ add after <em>peek</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, add after <em>peek</em>()</div>
 
-<p>This simply initializes the next CallFrame on the stack. It stores a pointer to
-the function being called and points the frame&rsquo;s <code>ip</code> to the beginning of the
-function&rsquo;s bytecode. Finally, it sets up the <code>slots</code> pointer to give the frame
-its window into the stack. The arithmetic there ensures that the arguments
-already on the stack line up with the function&rsquo;s parameters:</p><img src="image/calls-and-functions/arithmetic.png" alt="The arithmetic to calculate frame-&gt;slots from stackTop and argCount." />
-<p>The funny little <code>- 1</code> is to account for stack slot zero which the compiler set
-aside for when we add methods later. The parameters start at slot one so we
-make the window start one slot earlier to align them with the arguments.</p>
-<p>Before we move on, let&rsquo;s add the new instruction to our disassembler.</p>
+<p>Ceci initialise simplement la prochaine CallFrame sur la pile. Cela stocke un pointeur vers la fonction étant appelée et pointe l&rsquo;<code>ip</code> du cadre vers le début du bytecode de la fonction. Finalement, cela configure le pointeur <code>slots</code> pour donner au cadre sa fenêtre dans la pile. L&rsquo;arithmétique là assure que les arguments déjà sur la pile s&rsquo;alignent avec les paramètres de la fonction :</p>
+<p><img src="image/calls-and-functions/arithmetic.png" alt="L'arithmétique pour calculer frame->slots à partir de stackTop et argCount.&rdquo; /></p>
+<p>Le petit <code>- 1</code> rigolo est pour prendre en compte l&rsquo;emplacement de pile zéro que le compilateur a mis de côté pour quand nous ajouterons les méthodes plus tard. Les paramètres commencent à l&rsquo;emplacement un donc nous faisons commencer la fenêtre un emplacement plus tôt pour les aligner avec les arguments.</p>
+<p>Avant que nous passions à autre chose, ajoutons la nouvelle instruction à notre désassembleur.</p>
 <div class="codehilite"><pre class="insert-before">      return jumpInstruction(&quot;OP_LOOP&quot;, -1, chunk, offset);
 </pre><div class="source-file"><em>debug.c</em><br>
 in <em>disassembleInstruction</em>()</div>
@@ -1383,9 +1011,7 @@ in <em>disassembleInstruction</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>debug.c</em>, in <em>disassembleInstruction</em>()</div>
 
-<p>And one more quick side trip. Now that we have a handy function for initiating a
-CallFrame, we may as well use it to set up the first frame for executing the
-top-level code.</p>
+<p>Et un autre petit voyage rapide. Maintenant que nous avons une fonction pratique pour initier une CallFrame, nous pouvons aussi bien l&rsquo;utiliser pour configurer le premier cadre pour exécuter le code de niveau supérieur.</p>
 <div class="codehilite"><pre class="insert-before">  push(OBJ_VAL(function));
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>interpret</em>()<br>
@@ -1397,13 +1023,9 @@ replace 4 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>interpret</em>(), replace 4 lines</div>
 
-<p>OK, now back to calls<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
-<h3><a href="#runtime-error-checking" id="runtime-error-checking"><small>24&#8202;.&#8202;5&#8202;.&#8202;2</small>Runtime error checking</a></h3>
-<p>The overlapping stack windows work based on the assumption that a call passes
-exactly one argument for each of the function&rsquo;s parameters. But, again, because
-Lox ain&rsquo;t statically typed, a foolish user could pass too many or too few
-arguments. In Lox, we&rsquo;ve defined that to be a runtime error, which we report
-like so:</p>
+<p>OK, maintenant retour aux appels<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
+<h3><a href="#vérification-derreur-&agrave;-lexécution" id="vérification-derreur-&agrave;-lexécution"><small>24&#8202;.&#8202;5&#8202;.&#8202;2</small>Vérification d&rsquo;erreur &agrave; l&rsquo;exécution</a></h3>
+<p>Les fenêtres de pile chevauchantes fonctionnent basées sur l&rsquo;hypothèse qu&rsquo;un appel passe exactement un argument pour chacun des paramètres de la fonction. Mais, encore, parce que Lox n&rsquo;est pas typé statiquement, un utilisateur insensé pourrait passer trop ou trop peu d&rsquo;arguments. Dans Lox, nous avons défini cela comme étant une erreur d&rsquo;exécution, que nous rapportons comme ceci :</p>
 <div class="codehilite"><pre class="insert-before">static bool call(ObjFunction* function, int argCount) {
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>call</em>()</div>
@@ -1417,11 +1039,8 @@ in <em>call</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>call</em>()</div>
 
-<p>Pretty straightforward. This is why we store the arity of each function inside
-the ObjFunction for it.</p>
-<p>There&rsquo;s another error we need to report that&rsquo;s less to do with the user&rsquo;s
-foolishness than our own. Because the CallFrame array has a fixed size, we need
-to ensure a deep call chain doesn&rsquo;t overflow it.</p>
+<p>Assez direct. C&rsquo;est pourquoi nous stockons l&rsquo;arité de chaque fonction à l&rsquo;intérieur de l&rsquo;ObjFunction pour elle.</p>
+<p>Il y a une autre erreur que nous devons rapporter qui a moins à voir avec la bêtise de l&rsquo;utilisateur qu&rsquo;avec la nôtre. Parce que le tableau CallFrame a une taille fixe, nous devons nous assurer qu&rsquo;une chaîne d&rsquo;appels profonde ne le déborde pas.</p>
 <div class="codehilite"><pre class="insert-before">  }
 
 </pre><div class="source-file"><em>vm.c</em><br>
@@ -1435,19 +1054,10 @@ in <em>call</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>call</em>()</div>
 
-<p>In practice, if a program gets anywhere close to this limit, there&rsquo;s most likely
-a bug in some runaway recursive code.</p>
-<h3><a href="#printing-stack-traces" id="printing-stack-traces"><small>24&#8202;.&#8202;5&#8202;.&#8202;3</small>Printing stack traces</a></h3>
-<p>While we&rsquo;re on the subject of runtime errors, let&rsquo;s spend a little time making
-them more useful. Stopping on a runtime error is important to prevent the VM
-from crashing and burning in some ill-defined way. But simply aborting doesn&rsquo;t
-help the user fix their code that <em>caused</em> that error.</p>
-<p>The classic tool to aid debugging runtime failures is a <strong>stack trace</strong><span class="em">&mdash;</span>a
-print out of each function that was still executing when the program died, and
-where the execution was at the point that it died. Now that we have a call stack
-and we&rsquo;ve conveniently stored each function&rsquo;s name, we can show that entire
-stack when a runtime error disrupts the harmony of the user&rsquo;s existence. It
-looks like this:</p>
+<p>En pratique, si un programme arrive n&rsquo;importe où près de cette limite, il y a très probablement un bug dans quelque code récursif emballé.</p>
+<h3><a href="#afficher-les-traces-de-pile" id="afficher-les-traces-de-pile"><small>24&#8202;.&#8202;5&#8202;.&#8202;3</small>Afficher les traces de pile</a></h3>
+<p>Pendant que nous sommes sur le sujet des erreurs d&rsquo;exécution, passons un peu de temps à les rendre plus utiles. S&rsquo;arrêter sur une erreur d&rsquo;exécution est important pour empêcher la VM de planter et brûler d&rsquo;une manière mal définie. Mais simplement avorter n&rsquo;aide pas l&rsquo;utilisateur à réparer son code qui a <em>causé</em> cette erreur.</p>
+<p>L&rsquo;outil classique pour aider à déboguer les échecs d&rsquo;exécution est une <strong>trace de pile</strong><span class="em">&mdash;</span>une impression de chaque fonction qui était encore en train d&rsquo;exécuter quand le programme est mort, et où l&rsquo;exécution était au point où il est mort. Maintenant que nous avons une pile d&rsquo;appels et que nous avons commodément stocké le nom de chaque fonction, nous pouvons montrer cette pile entière quand une erreur d&rsquo;exécution perturbe l&rsquo;harmonie de l&rsquo;existence de l&rsquo;utilisateur. Cela ressemble à ceci :</p>
 <div class="codehilite"><pre class="insert-before">  fputs(&quot;\n&quot;, stderr);
 
 </pre><div class="source-file"><em>vm.c</em><br>
@@ -1472,29 +1082,14 @@ replace 4 lines</div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>runtimeError</em>(), replace 4 lines</div>
 
 <aside name="minus">
-<p>The <code>- 1</code> is because the IP is already sitting on the next instruction to be
-executed but we want the stack trace to point to the previous failed
-instruction.</p>
+<p>Le <code>- 1</code> est parce que l&rsquo;IP est déjà assis sur la prochaine instruction à être exécutée mais nous voulons que la trace de pile pointe vers l&rsquo;instruction échouée précédente.</p>
 </aside>
-<p>After printing the error message itself, we walk the call stack from <span
-name="top">top</span> (the most recently called function) to bottom (the
-top-level code). For each frame, we find the line number that corresponds to the
-current <code>ip</code> inside that frame&rsquo;s function. Then we print that line number along
-with the function name.</p>
+<p>Après avoir affiché le message d&rsquo;erreur lui-même, nous marchons la pile d&rsquo;appels du <span name="top">haut</span> (la fonction la plus récemment appelée) au bas (le code de niveau supérieur). Pour chaque cadre, nous trouvons le numéro de ligne qui correspond à l&rsquo;<code>ip</code> courant à l&rsquo;intérieur de la fonction de ce cadre. Ensuite nous affichons ce numéro de ligne avec le nom de la fonction.</p>
 <aside name="top">
-<p>There is some disagreement on which order stack frames should be shown in a
-trace. Most put the innermost function as the first line and work their way
-towards the bottom of the stack. Python prints them out in the opposite order.
-So reading from top to bottom tells you how your program got to where it is, and
-the last line is where the error actually occurred.</p>
-<p>There&rsquo;s a logic to that style. It ensures you can always see the innermost
-function even if the stack trace is too long to fit on one screen. On the other
-hand, the &ldquo;<a href="https://en.wikipedia.org/wiki/Inverted_pyramid_(journalism)">inverted pyramid</a>&rdquo; from journalism tells us we should put the most
-important information <em>first</em> in a block of text. In a stack trace, that&rsquo;s the
-function where the error actually occurred. Most other language implementations
-do that.</p>
+<p>Il y a quelque désaccord sur dans quel ordre les cadres de pile devraient être montrés dans une trace. La plupart mettent la fonction la plus intérieure comme la première ligne et travaillent leur chemin vers le bas de la pile. Python les imprime dans l&rsquo;ordre opposé. Donc lire de haut en bas vous dit comment votre programme est arrivé où il est, et la dernière ligne est où l&rsquo;erreur s&rsquo;est réellement produite.</p>
+<p>Il y a une logique à ce style. Cela assure que vous pouvez toujours voir la fonction la plus intérieure même si la trace de pile est trop longue pour tenir sur un écran. D&rsquo;un autre côté, la &ldquo;<a href="https://fr.wikipedia.org/wiki/Plan_de_la_pyramide_invers%C3%A9e">pyramide inversée</a>&rdquo; du journalisme nous dit que nous devrions mettre l&rsquo;information la plus importante <em>d&rsquo;abord</em> dans un bloc de texte. Dans une trace de pile, c&rsquo;est la fonction où l&rsquo;erreur s&rsquo;est réellement produite. La plupart des autres implémentations de langage font cela.</p>
 </aside>
-<p>For example, if you run this broken program:</p>
+<p>Par exemple, si vous exécutez ce programme cassé :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">a</span>() { <span class="i">b</span>(); }
 <span class="k">fun</span> <span class="i">b</span>() { <span class="i">c</span>(); }
 <span class="k">fun</span> <span class="i">c</span>() {
@@ -1503,20 +1098,16 @@ do that.</p>
 
 <span class="i">a</span>();
 </pre></div>
-<p>It prints out:</p>
+<p>Il affiche :</p>
 <div class="codehilite"><pre>Expected 0 arguments but got 2.
 [line 4] in c()
 [line 2] in b()
 [line 1] in a()
 [line 7] in script
 </pre></div>
-<p>That doesn&rsquo;t look too bad, does it?</p>
-<h3><a href="#returning-from-functions" id="returning-from-functions"><small>24&#8202;.&#8202;5&#8202;.&#8202;4</small>Returning from functions</a></h3>
-<p>We&rsquo;re getting close. We can call functions, and the VM will execute them. But we
-can&rsquo;t <em>return</em> from them yet. We&rsquo;ve had an <code>OP_RETURN</code> instruction for quite
-some time, but it&rsquo;s always had some kind of temporary code hanging out in it
-just to get us out of the bytecode loop. The time has arrived for a real
-implementation.</p>
+<p>Cela ne semble pas trop mal, n&rsquo;est-ce pas ?</p>
+<h3><a href="#retourner-des-fonctions" id="retourner-des-fonctions"><small>24&#8202;.&#8202;5&#8202;.&#8202;4</small>Retourner des fonctions</a></h3>
+<p>Nous nous approchons. Nous pouvons appeler des fonctions, et la VM les exécutera. Mais nous ne pouvons pas <em>retourner</em> d&rsquo;elles encore. Nous avons eu une instruction <code>OP_RETURN</code> depuis pas mal de temps, mais elle a toujours eu quelque sorte de code temporaire traînant dedans juste pour nous sortir de la boucle bytecode. Le temps est arrivé pour une vraie implémentation.</p>
 <div class="codehilite"><pre class="insert-before">      case OP_RETURN: {
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>run</em>()<br>
@@ -1536,24 +1127,10 @@ replace 2 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>(), replace 2 lines</div>
 
-<p>When a function returns a value, that value will be on top of the stack. We&rsquo;re
-about to discard the called function&rsquo;s entire stack window, so we pop that
-return value off and hang on to it. Then we discard the CallFrame for the
-returning function. If that was the very last CallFrame, it means we&rsquo;ve finished
-executing the top-level code. The entire program is done, so we pop the main
-script function from the stack and then exit the interpreter.</p>
-<p>Otherwise, we discard all of the slots the callee was using for its parameters
-and local variables. That includes the same slots the caller used to pass the
-arguments. Now that the call is done, the caller doesn&rsquo;t need them anymore. This
-means the top of the stack ends up right at the beginning of the returning
-function&rsquo;s stack window.</p>
-<p>We push the return value back onto the stack at that new, lower location. Then
-we update the <code>run()</code> function&rsquo;s cached pointer to the current frame. Just like
-when we began a call, on the next iteration of the bytecode dispatch loop, the
-VM will read <code>ip</code> from that frame, and execution will jump back to the caller,
-right where it left off, immediately after the <code>OP_CALL</code> instruction.</p><img src="image/calls-and-functions/return.png" alt="Each step of the return process: popping the return value, discarding the call frame, pushing the return value." />
-<p>Note that we assume here that the function <em>did</em> actually return a value, but
-a function can implicitly return by reaching the end of its body:</p>
+<p>Quand une fonction renvoie une valeur, cette valeur sera au sommet de la pile. Nous sommes sur le point de jeter la fenêtre de pile entière de la fonction appelée, donc nous dépilons cette valeur de retour et nous y accrochons. Ensuite nous jetons la CallFrame pour la fonction retournante. Si c&rsquo;était la toute dernière CallFrame, cela signifie que nous avons fini d&rsquo;exécuter le code de niveau supérieur. Le programme entier est fini, donc nous dépilons la fonction de script principale de la pile et ensuite sortons de l&rsquo;interpréteur.</p>
+<p>Sinon, nous jetons tous les emplacements que l&rsquo;appelé utilisait pour ses paramètres et variables locales. Cela inclut les mêmes emplacements que l&rsquo;appelant a utilisés pour passer les arguments. Maintenant que l&rsquo;appel est fait, l&rsquo;appelant n&rsquo;en a plus besoin. Cela signifie que le sommet de la pile finit juste au début de la fenêtre de pile de la fonction retournante.</p>
+<p>Nous empilons la valeur de retour en arrière sur la pile à ce nouvel emplacement, plus bas. Ensuite nous mettons à jour le pointeur mis en cache de la fonction <code>run()</code> vers le cadre courant. Juste comme quand nous avons commencé un appel, à la prochaine itération de la boucle de répartition bytecode, la VM lira l&rsquo;<code>ip</code> depuis ce cadre, et l&rsquo;exécution sautera en retour vers l&rsquo;appelant, juste où elle a laissé, immédiatement après l&rsquo;instruction <code>OP_CALL</code>.</p><img src="image/calls-and-functions/return.png" alt="Chaque étape du processus de retour : dépiler la valeur de retour, jeter le cadre d'appel, empiler la valeur de retour." />
+<p>Notez que nous supposons ici que la fonction <em>a</em> réellement renvoyé une valeur, mais une fonction peut implicitement retourner en atteignant la fin de son corps :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">noReturn</span>() {
   <span class="k">print</span> <span class="s">&quot;Do stuff&quot;</span>;
   <span class="c">// No return here.</span>
@@ -1561,8 +1138,7 @@ a function can implicitly return by reaching the end of its body:</p>
 
 <span class="k">print</span> <span class="i">noReturn</span>(); <span class="c">// ???</span>
 </pre></div>
-<p>We need to handle that correctly too. The language is specified to implicitly
-return <code>nil</code> in that case. To make that happen, we add this:</p>
+<p>Nous avons besoin de gérer cela correctement aussi. Le langage est spécifié pour retourner implicitement <code>nil</code> dans ce cas. Pour faire arriver cela, nous ajoutons ceci :</p>
 <div class="codehilite"><pre class="insert-before">static void emitReturn() {
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>emitReturn</em>()</div>
@@ -1572,13 +1148,9 @@ in <em>emitReturn</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>emitReturn</em>()</div>
 
-<p>The compiler calls <code>emitReturn()</code> to write the <code>OP_RETURN</code> instruction at the
-end of a function body. Now, before that, it emits an instruction to push <code>nil</code>
-onto the stack. And with that, we have working function calls! They can even
-take parameters! It almost looks like we know what we&rsquo;re doing here.</p>
-<h2><a href="#return-statements" id="return-statements"><small>24&#8202;.&#8202;6</small>Return Statements</a></h2>
-<p>If you want a function that returns something other than the implicit <code>nil</code>, you
-need a <code>return</code> statement. Let&rsquo;s get that working.</p>
+<p>Le compilateur appelle <code>emitReturn()</code> pour écrire l&rsquo;instruction <code>OP_RETURN</code> à la fin d&rsquo;un corps de fonction. Maintenant, avant cela, il émet une instruction pour empiler <code>nil</code> sur la pile. Et avec ça, nous avons des appels de fonction fonctionnels ! Ils peuvent même prendre des paramètres ! Cela ressemble à presque que nous savons ce que nous faisons ici.</p>
+<h2><a href="#instructions-return" id="instructions-return"><small>24&#8202;.&#8202;6</small>Instructions Return</a></h2>
+<p>Si vous voulez une fonction qui renvoie quelque chose d&rsquo;autre que le <code>nil</code> implicite, vous avez besoin d&rsquo;une instruction <code>return</code>. Faisons fonctionner ça.</p>
 <div class="codehilite"><pre class="insert-before">    ifStatement();
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>statement</em>()</div>
@@ -1588,7 +1160,7 @@ in <em>statement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>statement</em>()</div>
 
-<p>When the compiler sees a <code>return</code> keyword, it goes here:</p>
+<p>Quand le compilateur voit un mot-clé <code>return</code>, il va ici :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>printStatement</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">returnStatement</span>() {
@@ -1603,35 +1175,16 @@ add after <em>printStatement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>printStatement</em>()</div>
 
-<p>The return value expression is optional, so the parser looks for a semicolon
-token to tell if a value was provided. If there is no return value, the
-statement implicitly returns <code>nil</code>. We implement that by calling <code>emitReturn()</code>,
-which emits an <code>OP_NIL</code> instruction. Otherwise, we compile the return value
-expression and return it with an <code>OP_RETURN</code> instruction.</p>
-<p>This is the same <code>OP_RETURN</code> instruction we&rsquo;ve already implemented<span class="em">&mdash;</span>we don&rsquo;t
-need any new runtime code. This is quite a difference from jlox. There, we had
-to use exceptions to unwind the stack when a <code>return</code> statement was executed.
-That was because you could return from deep inside some nested blocks. Since
-jlox recursively walks the AST, that meant there were a bunch of Java method
-calls we needed to escape out of.</p>
-<p>Our bytecode compiler flattens that all out. We do recursive descent during
-parsing, but at runtime, the VM&rsquo;s bytecode dispatch loop is completely flat.
-There is no recursion going on at the C level at all. So returning, even from
-within some nested blocks, is as straightforward as returning from the end of
-the function&rsquo;s body.</p>
-<p>We&rsquo;re not totally done, though. The new <code>return</code> statement gives us a new
-compile error to worry about. Returns are useful for returning from functions
-but the top level of a Lox program is imperative code too. You shouldn&rsquo;t be able
-to <span name="worst">return</span> from there.</p>
+<p>L&rsquo;expression valeur de retour est optionnelle, donc l&rsquo;analyseur cherche un jeton point-virgule pour dire si une valeur a été fournie. S&rsquo;il n&rsquo;y a pas de valeur de retour, l&rsquo;instruction renvoie implicitement <code>nil</code>. Nous implémentons cela en appelant <code>emitReturn()</code>, qui émet une instruction <code>OP_NIL</code>. Sinon, nous compilons l&rsquo;expression valeur de retour et la renvoyons avec une instruction <code>OP_RETURN</code>.</p>
+<p>C&rsquo;est la même instruction <code>OP_RETURN</code> que nous avons déjà implémentée<span class="em">&mdash;</span>nous n&rsquo;avons pas besoin de nouveau code runtime. C&rsquo;est tout une différence de jlox. Là, nous devions utiliser des exceptions pour dérouler la pile quand une instruction <code>return</code> était exécutée. C&rsquo;était parce que vous pouviez retourner depuis le fond de quelques blocs imbriqués. Puisque jlox marche récursivement l&rsquo;AST, cela signifiait qu&rsquo;il y avait un tas d&rsquo;appels de méthode Java desquels nous avions besoin d&rsquo;échapper.</p>
+<p>Notre compilateur bytecode aplatit tout cela. Nous faisons une descente récursive durant l&rsquo;analyse, mais à l&rsquo;exécution, la boucle de répartition bytecode de la VM est complètement plate. Il n&rsquo;y a pas de récursivité se passant au niveau C du tout. Donc retourner, même depuis l&rsquo;intérieur de quelques blocs imbriqués, est aussi direct que retourner depuis la fin du corps de la fonction.</p>
+<p>Nous n&rsquo;avons pas totalement fini, cependant. La nouvelle instruction <code>return</code> nous donne une nouvelle erreur de compilation dont il faut se soucier. Les retours sont utiles pour retourner depuis des fonctions mais le niveau supérieur d&rsquo;un programme Lox est du code impératif aussi. Vous ne devriez pas être capable de <span name="worst">retourner</span> depuis là.</p>
 <div class="codehilite"><pre><span class="k">return</span> <span class="s">&quot;What?!&quot;</span>;
 </pre></div>
 <aside name="worst">
-<p>Allowing <code>return</code> at the top level isn&rsquo;t the worst idea in the world. It would
-give you a natural way to terminate a script early. You could maybe even use a
-returned number to indicate the process&rsquo;s exit code.</p>
+<p>Permettre <code>return</code> au niveau supérieur n&rsquo;est pas la pire idée du monde. Cela vous donnerait un moyen naturel de terminer un script tôt. Vous pourriez peut-être même utiliser un nombre retourné pour indiquer le code de sortie du processus.</p>
 </aside>
-<p>We&rsquo;ve specified that it&rsquo;s a compile error to have a <code>return</code> statement outside
-of any function, which we implement like so:</p>
+<p>Nous avons spécifié que c&rsquo;est une erreur de compilation d&rsquo;avoir une instruction <code>return</code> en dehors de toute fonction, que nous implémentons comme ceci :</p>
 <div class="codehilite"><pre class="insert-before">static void returnStatement() {
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>returnStatement</em>()</div>
@@ -1643,35 +1196,14 @@ in <em>returnStatement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>returnStatement</em>()</div>
 
-<p>This is one of the reasons we added that FunctionType enum to the compiler.</p>
-<h2><a href="#native-functions" id="native-functions"><small>24&#8202;.&#8202;7</small>Native Functions</a></h2>
-<p>Our VM is getting more powerful. We&rsquo;ve got functions, calls, parameters,
-returns. You can define lots of different functions that can call each other in
-interesting ways. But, ultimately, they can&rsquo;t really <em>do</em> anything. The only
-user-visible thing a Lox program can do, regardless of its complexity, is print.
-To add more capabilities, we need to expose them to the user.</p>
-<p>A programming language implementation reaches out and touches the material world
-through <strong>native functions</strong>. If you want to be able to write programs that
-check the time, read user input, or access the file system, we need to add
-native functions<span class="em">&mdash;</span>callable from Lox but implemented in C<span class="em">&mdash;</span>that expose those
-capabilities.</p>
-<p>At the language level, Lox is fairly complete<span class="em">&mdash;</span>it&rsquo;s got closures, classes,
-inheritance, and other fun stuff. One reason it feels like a toy language is
-because it has almost no native capabilities. We could turn it into a real
-language by adding a long list of them.</p>
-<p>However, grinding through a pile of OS operations isn&rsquo;t actually very
-educational. Once you&rsquo;ve seen how to bind one piece of C code to Lox, you get
-the idea. But you do need to see <em>one</em>, and even a single native function
-requires us to build out all the machinery for interfacing Lox with C. So we&rsquo;ll
-go through that and do all the hard work. Then, when that&rsquo;s done, we&rsquo;ll add one
-tiny native function just to prove that it works.</p>
-<p>The reason we need new machinery is because, from the implementation&rsquo;s
-perspective, native functions are different from Lox functions. When they are
-called, they don&rsquo;t push a CallFrame, because there&rsquo;s no bytecode code for that
-frame to point to. They have no bytecode chunk. Instead, they somehow reference
-a piece of native C code.</p>
-<p>We handle this in clox by defining native functions as an entirely different
-object type.</p>
+<p>C&rsquo;est une des raisons pour lesquelles nous avons ajouté cette énumération FunctionType au compilateur.</p>
+<h2><a href="#fonctions-natives" id="fonctions-natives"><small>24&#8202;.&#8202;7</small>Fonctions Natives</a></h2>
+<p>Notre VM devient plus puissante. Nous avons des fonctions, des appels, des paramètres, des retours. Vous pouvez définir beaucoup de fonctions différentes qui peuvent s&rsquo;appeler les unes les autres de façons intéressantes. Mais, ultimement, elles ne peuvent pas vraiment <em>faire</em> quoi que ce soit. La seule chose visible par l&rsquo;utilisateur qu&rsquo;un programme Lox peut faire, indépendamment de sa complexité, est d&rsquo;afficher. Pour ajouter plus de capacités, nous avons besoin de les exposer à l&rsquo;utilisateur.</p>
+<p>Une implémentation de langage de programmation tend la main et touche le monde matériel à travers des <strong>fonctions natives</strong>. Si vous voulez être capable d&rsquo;écrire des programmes qui vérifient l&rsquo;heure, lisent une entrée utilisateur, ou accèdent au système de fichiers, nous avons besoin d&rsquo;ajouter des fonctions natives<span class="em">&mdash;</span>appelables depuis Lox mais implémentées en C<span class="em">&mdash;</span>qui exposent ces capacités.</p>
+<p>Au niveau du langage, Lox est passablement complet<span class="em">&mdash;</span>il a des fermetures, des classes, de l&rsquo;héritage, et d&rsquo;autres trucs amusants. Une raison pour laquelle il se sent comme un langage jouet est parce qu&rsquo;il n&rsquo;a presque pas de capacités natives. Nous pourrions le transformer en un vrai langage en ajoutant une longue liste d&rsquo;entre elles.</p>
+<p>Cependant, moudre à travers une pile d&rsquo;opérations OS n&rsquo;est pas réellement très éducatif. Une fois que vous avez vu comment lier un morceau de code C à Lox, vous avez l&rsquo;idée. Mais vous avez besoin d&rsquo;en voir <em>une</em>, et même une seule fonction native nous demande de construire toute la machinerie pour interfacer Lox avec C. Donc nous passerons à travers cela et ferons tout le travail dur. Ensuite, quand c&rsquo;est fait, nous ajouterons une minuscule fonction native juste pour prouver que cela fonctionne.</p>
+<p>La raison pour laquelle nous avons besoin de nouvelle machinerie est parce que, de la perspective de l&rsquo;implémentation, les fonctions natives sont différentes des fonctions Lox. Quand elles sont appelées, elles n&rsquo;empilent pas de CallFrame, parce qu&rsquo;il n&rsquo;y a pas de code bytecode vers lequel ce cadre peut pointer. Elles n&rsquo;ont pas de fragment bytecode. Au lieu de cela, elles référencent d&rsquo;une manière ou d&rsquo;une autre un morceau de code C natif.</p>
+<p>Nous gérons cela dans clox en définissant les fonctions natives comme un type d&rsquo;objet entièrement différent.</p>
 <div class="codehilite"><pre class="insert-before">} ObjFunction;
 </pre><div class="source-file"><em>object.h</em><br>
 add after struct <em>ObjFunction</em></div>
@@ -1689,13 +1221,8 @@ struct ObjString {
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, add after struct <em>ObjFunction</em></div>
 
-<p>The representation is simpler than ObjFunction<span class="em">&mdash;</span>merely an Obj header and a
-pointer to the C function that implements the native behavior. The native
-function takes the argument count and a pointer to the first argument on the
-stack. It accesses the arguments through that pointer. Once it&rsquo;s done, it
-returns the result value.</p>
-<p>As always, a new object type carries some accoutrements with it. To create an
-ObjNative, we declare a constructor-like function.</p>
+<p>La représentation est plus simple qu&rsquo;ObjFunction<span class="em">&mdash;</span>simplement un en-tête Obj et un pointeur vers la fonction C qui implémente le comportement natif. La fonction native prend le compte d&rsquo;arguments et un pointeur vers le premier argument sur la pile. Elle accède aux arguments à travers ce pointeur. Une fois qu&rsquo;elle a fini, elle renvoie la valeur résultat.</p>
+<p>Comme toujours, un nouveau type d&rsquo;objet transporte quelques accoutrements avec lui. Pour créer une ObjNative, nous déclarons une fonction de type constructeur.</p>
 <div class="codehilite"><pre class="insert-before">ObjFunction* newFunction();
 </pre><div class="source-file"><em>object.h</em><br>
 add after <em>newFunction</em>()</div>
@@ -1704,7 +1231,7 @@ add after <em>newFunction</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, add after <em>newFunction</em>()</div>
 
-<p>We implement that like so:</p>
+<p>Nous implémentons cela ainsi :</p>
 <div class="codehilite"><div class="source-file"><em>object.c</em><br>
 add after <em>newFunction</em>()</div>
 <pre><span class="t">ObjNative</span>* <span class="i">newNative</span>(<span class="t">NativeFn</span> <span class="i">function</span>) {
@@ -1715,9 +1242,7 @@ add after <em>newFunction</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, add after <em>newFunction</em>()</div>
 
-<p>The constructor takes a C function pointer to wrap in an ObjNative. It sets up
-the object header and stores the function. For the header, we need a new object
-type.</p>
+<p>Le constructeur prend un pointeur de fonction C pour l&rsquo;envelopper dans une ObjNative. Il configure l&rsquo;en-tête de l&rsquo;objet et stocke la fonction. Pour l&rsquo;en-tête, nous avons besoin d&rsquo;un nouveau type d&rsquo;objet.</p>
 <div class="codehilite"><pre class="insert-before">typedef enum {
   OBJ_FUNCTION,
 </pre><div class="source-file"><em>object.h</em><br>
@@ -1728,7 +1253,7 @@ in enum <em>ObjType</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, in enum <em>ObjType</em></div>
 
-<p>The VM also needs to know how to deallocate a native function object.</p>
+<p>La VM a aussi besoin de savoir comment désallouer un objet fonction native.</p>
 <div class="codehilite"><pre class="insert-before">    }
 </pre><div class="source-file"><em>memory.c</em><br>
 in <em>freeObject</em>()</div>
@@ -1739,8 +1264,7 @@ in <em>freeObject</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>memory.c</em>, in <em>freeObject</em>()</div>
 
-<p>There isn&rsquo;t much here since ObjNative doesn&rsquo;t own any extra memory. The other
-capability all Lox objects support is being printed.</p>
+<p>Il n&rsquo;y a pas grand-chose ici puisque ObjNative ne possède aucune mémoire supplémentaire. L&rsquo;autre capacité que tous les objets Lox supportent est d&rsquo;être affiché.</p>
 <div class="codehilite"><pre class="insert-before">      break;
 </pre><div class="source-file"><em>object.c</em><br>
 in <em>printObject</em>()</div>
@@ -1751,8 +1275,7 @@ in <em>printObject</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, in <em>printObject</em>()</div>
 
-<p>In order to support dynamic typing, we have a macro to see if a value is a
-native function.</p>
+<p>Afin de supporter le typage dynamique, nous avons une macro pour voir si une valeur est une fonction native.</p>
 <div class="codehilite"><pre class="insert-before">#define IS_FUNCTION(value)     isObjType(value, OBJ_FUNCTION)
 </pre><div class="source-file"><em>object.h</em></div>
 <pre class="insert"><span class="a">#define IS_NATIVE(value)       isObjType(value, OBJ_NATIVE)</span>
@@ -1760,8 +1283,7 @@ native function.</p>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em></div>
 
-<p>Assuming that returns true, this macro extracts the C function pointer from a
-Value representing a native function:</p>
+<p>Supposant que cela renvoie vrai, cette macro extrait le pointeur de fonction C depuis une Value représentant une fonction native :</p>
 <div class="codehilite"><pre class="insert-before">#define AS_FUNCTION(value)     ((ObjFunction*)AS_OBJ(value))
 </pre><div class="source-file"><em>object.h</em></div>
 <pre class="insert"><span class="a">#define AS_NATIVE(value) \</span>
@@ -1770,11 +1292,8 @@ Value representing a native function:</p>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em></div>
 
-<p>All of this baggage lets the VM treat native functions like any other object.
-You can store them in variables, pass them around, throw them birthday parties,
-etc. Of course, the operation we actually care about is <em>calling</em> them<span class="em">&mdash;</span>using
-one as the left-hand operand in a call expression.</p>
-<p>Over in <code>callValue()</code> we add another type case.</p>
+<p>Tout ce bagage laisse la VM traiter les fonctions natives comme n&rsquo;importe quel autre objet. Vous pouvez les stocker dans des variables, les passer autour comme des anniversaires, leur faire des fêtes d&rsquo;anniversaire, etc. Bien sûr, l&rsquo;opération dont nous nous soucions réellement est <em>les appeler</em><span class="em">&mdash;</span>en utiliser une comme l&rsquo;opérande de main gauche dans une expression d&rsquo;appel.</p>
+<p>Là-bas dans <code>callValue()</code> nous ajoutons un autre cas de type.</p>
 <div class="codehilite"><pre class="insert-before">      case OBJ_FUNCTION:<span name="switch"> </span>
         return call(AS_FUNCTION(callee), argCount);
 </pre><div class="source-file"><em>vm.c</em><br>
@@ -1790,14 +1309,8 @@ in <em>callValue</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>callValue</em>()</div>
 
-<p>If the object being called is a native function, we invoke the C function right
-then and there. There&rsquo;s no need to muck with CallFrames or anything. We just
-hand off to C, get the result, and stuff it back in the stack. This makes native
-functions as fast as we can get.</p>
-<p>With this, users should be able to call native functions, but there aren&rsquo;t any
-to call. Without something like a foreign function interface, users can&rsquo;t define
-their own native functions. That&rsquo;s our job as VM implementers. We&rsquo;ll start with
-a helper to define a new native function exposed to Lox programs.</p>
+<p>Si l&rsquo;objet étant appelé est une fonction native, nous invoquons la fonction C juste là et maintenant. Il n&rsquo;y a pas besoin de boue avec des CallFrames ou quoi que ce soit. Nous passons juste la main au C, obtenons le résultat, et le fourrons de retour dans la pile. Cela rend les fonctions natives aussi rapides que nous le pouvons.</p>
+<p>Avec cela, les utilisateurs devraient être capables d&rsquo;appeler des fonctions natives, mais il n&rsquo;y en a aucune à appeler. Sans quelque chose comme une interface de fonction étrangère, les utilisateurs ne peuvent pas définir leurs propres fonctions natives. C&rsquo;est notre travail en tant qu&rsquo;implémenteurs de VM. Nous commencerons avec un aide pour définir une nouvelle fonction native exposée aux programmes Lox.</p>
 <div class="codehilite"><div class="source-file"><em>vm.c</em><br>
 add after <em>runtimeError</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">defineNative</span>(<span class="k">const</span> <span class="t">char</span>* <span class="i">name</span>, <span class="t">NativeFn</span> <span class="i">function</span>) {
@@ -1810,23 +1323,12 @@ add after <em>runtimeError</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, add after <em>runtimeError</em>()</div>
 
-<p>It takes a pointer to a C function and the name it will be known as in Lox.
-We wrap the function in an ObjNative and then store that in a global variable
-with the given name.</p>
-<p>You&rsquo;re probably wondering why we push and pop the name and function on the
-stack. That looks weird, right? This is the kind of stuff you have to worry
-about when <span name="worry">garbage</span> collection gets involved. Both
-<code>copyString()</code> and <code>newNative()</code> dynamically allocate memory. That means once we
-have a GC, they can potentially trigger a collection. If that happens, we need
-to ensure the collector knows we&rsquo;re not done with the name and ObjFunction so
-that it doesn&rsquo;t free them out from under us. Storing them on the value stack
-accomplishes that.</p>
+<p>Elle prend un pointeur vers une fonction C et le nom sous lequel elle sera connue dans Lox. Nous enveloppons la fonction dans une ObjNative et ensuite stockons cela dans une variable globale avec le nom donné.</p>
+<p>Vous vous demandez probablement pourquoi nous empilons et dépilons le nom et la fonction sur la pile. Cela semble bizarre, non ? C&rsquo;est le genre de trucs dont vous avez à vous soucier quand le ramassage de <span name="worry">miettes</span> devient impliqué. À la fois <code>copyString()</code> et <code>newNative()</code> allouent dynamiquement de la mémoire. Cela signifie qu&rsquo;une fois que nous avons un GC, ils peuvent potentiellement déclencher une collecte. Si cela arrive, nous avons besoin de nous assurer que le collecteur sait que nous n&rsquo;avons pas fini avec le nom et l&rsquo;ObjFunction pour qu&rsquo;il ne les libère pas sous nous. Les stocker sur la pile de valeurs accomplit cela.</p>
 <aside name="worry">
-<p>Don&rsquo;t worry if you didn&rsquo;t follow all that. It will make a lot more sense once we
-get around to <a href="garbage-collection.html">implementing the GC</a>.</p>
+<p>Ne vous inquiétez pas si vous n&rsquo;avez pas suivi tout cela. Cela aura beaucoup plus de sens une fois que nous arriverons à <a href="garbage-collection.html">implémenter le GC</a>.</p>
 </aside>
-<p>It feels silly, but after all of that work, we&rsquo;re going to add only one
-little native function.</p>
+<p>Cela semble idiot, mais après tout ce travail, nous allons ajouter seulement une petite fonction native.</p>
 <div class="codehilite"><div class="source-file"><em>vm.c</em><br>
 add after variable <em>vm</em></div>
 <pre><span class="k">static</span> <span class="t">Value</span> <span class="i">clockNative</span>(<span class="t">int</span> <span class="i">argCount</span>, <span class="t">Value</span>* <span class="i">args</span>) {
@@ -1835,8 +1337,7 @@ add after variable <em>vm</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, add after variable <em>vm</em></div>
 
-<p>This returns the elapsed time since the program started running, in seconds. It&rsquo;s
-handy for benchmarking Lox programs. In Lox, we&rsquo;ll name it <code>clock()</code>.</p>
+<p>Celle-ci renvoie le temps écoulé depuis que le programme a commencé à tourner, en secondes. C&rsquo;est pratique pour benchmarker les programmes Lox. Dans Lox, nous la nommerons <code>clock()</code>.</p>
 <div class="codehilite"><pre class="insert-before">  initTable(&amp;vm.strings);
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>initVM</em>()</div>
@@ -1847,8 +1348,7 @@ in <em>initVM</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>initVM</em>()</div>
 
-<p>To get to the C standard library <code>clock()</code> function, the &ldquo;vm&rdquo; module needs an
-include.</p>
+<p>Pour aller à la fonction <code>clock()</code> de la bibliothèque standard C, le module &ldquo;vm&rdquo; a besoin d&rsquo;une inclusion.</p>
 <div class="codehilite"><pre class="insert-before">#include &lt;string.h&gt;
 </pre><div class="source-file"><em>vm.c</em></div>
 <pre class="insert"><span class="a">#include &lt;time.h&gt;</span>
@@ -1858,8 +1358,7 @@ include.</p>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em></div>
 
-<p>That was a lot of material to work through, but we did it! Type this in and try
-it out:</p>
+<p>C&rsquo;était beaucoup de matériel à travailler, mais nous l&rsquo;avons fait ! Tapez ceci et essayez-le :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">fib</span>(<span class="i">n</span>) {
   <span class="k">if</span> (<span class="i">n</span> &lt; <span class="n">2</span>) <span class="k">return</span> <span class="i">n</span>;
   <span class="k">return</span> <span class="i">fib</span>(<span class="i">n</span> - <span class="n">2</span>) + <span class="i">fib</span>(<span class="i">n</span> - <span class="n">1</span>);
@@ -1869,55 +1368,27 @@ it out:</p>
 <span class="k">print</span> <span class="i">fib</span>(<span class="n">35</span>);
 <span class="k">print</span> <span class="i">clock</span>() - <span class="i">start</span>;
 </pre></div>
-<p>We can write a really inefficient recursive Fibonacci function. Even better, we
-can measure just <span name="faster"><em>how</em></span> inefficient it is. This is, of
-course, not the smartest way to calculate a Fibonacci number. But it is a good
-way to stress test a language implementation&rsquo;s support for function calls. On my
-machine, running this in clox is about five times faster than in jlox. That&rsquo;s
-quite an improvement.</p>
+<p>Nous pouvons écrire une fonction Fibonacci récursive vraiment inefficace. Encore mieux, nous pouvons mesurer juste <span name="faster"><em>combien</em></span> elle est inefficace. C&rsquo;est, bien sûr, pas le moyen le plus intelligent de calculer un nombre de Fibonacci. Mais c&rsquo;est un bon moyen de tester en stress le support d&rsquo;une implémentation de langage pour les appels de fonction. Sur ma machine, exécuter ceci dans clox est environ cinq fois plus rapide que dans jlox. C&rsquo;est toute une amélioration.</p>
 <aside name="faster">
-<p>It&rsquo;s a little slower than a comparable Ruby program run in Ruby 2.4.3p205, and
-about 3x faster than one run in Python 3.7.3. And we still have a lot of simple
-optimizations we can do in our VM.</p>
+<p>C&rsquo;est un peu plus lent qu&rsquo;un programme Ruby comparable exécuté dans Ruby 2.4.3p205, et environ 3x plus rapide qu&rsquo;un exécuté dans Python 3.7.3. Et nous avons encore beaucoup d&rsquo;optimisations simples que nous pouvons faire dans notre VM.</p>
 </aside>
 <div class="challenges">
-<h2><a href="#challenges" id="challenges">Challenges</a></h2>
+<h2><a href="#défis" id="défis"><small>24&#8202;.&#8202;8</small>Défis</a></h2>
 <ol>
 <li>
-<p>Reading and writing the <code>ip</code> field is one of the most frequent operations
-inside the bytecode loop. Right now, we access it through a pointer to the
-current CallFrame. That requires a pointer indirection which may force the
-CPU to bypass the cache and hit main memory. That can be a real performance
-sink.</p>
-<p>Ideally, we&rsquo;d keep the <code>ip</code> in a native CPU register. C doesn&rsquo;t let us
-<em>require</em> that without dropping into inline assembly, but we can structure
-the code to encourage the compiler to make that optimization. If we store
-the <code>ip</code> directly in a C local variable and mark it <code>register</code>, there&rsquo;s a
-good chance the C compiler will accede to our polite request.</p>
-<p>This does mean we need to be careful to load and store the local <code>ip</code> back
-into the correct CallFrame when starting and ending function calls.
-Implement this optimization. Write a couple of benchmarks and see how it
-affects the performance. Do you think the extra code complexity is worth it?</p>
+<p>Lire et écrire le champ <code>ip</code> est une des opérations les plus fréquentes à l&rsquo;intérieur de la boucle bytecode. En ce moment, nous y accédons à travers un pointeur vers la CallFrame courante. Cela nécessite une indirection de pointeur qui peut forcer le CPU à contourner le cache et frapper la mémoire principale. Cela peut être un vrai gouffre de performance.</p>
+<p>Idéalement, nous garderions l&rsquo;<code>ip</code> dans un registre CPU natif. C ne nous laisse pas <em>exiger</em> cela sans tomber dans l&rsquo;assembleur inline, mais nous pouvons structurer le code pour encourager le compilateur à faire cette optimisation. Si nous stockons l&rsquo;<code>ip</code> directement dans une variable locale C et la marquons <code>register</code>, il y a une bonne chance que le compilateur C accède à notre requête polie.</p>
+<p>Cela signifie bien que nous devons faire attention de charger et stocker l&rsquo;<code>ip</code> local en retour dans la bonne CallFrame lors du démarrage et de la fin des appels de fonction. Implémentez cette optimisation. Écrivez une couple de benchmarks et voyez comment cela affecte la performance. Pensez-vous que la complexité de code supplémentaire en vaut la peine ?</p>
 </li>
 <li>
-<p>Native function calls are fast in part because we don&rsquo;t validate that the
-call passes as many arguments as the function expects. We really should, or
-an incorrect call to a native function without enough arguments could cause
-the function to read uninitialized memory. Add arity checking.</p>
+<p>Les appels de fonction native sont rapides en partie parce que nous ne validons pas que l&rsquo;appel passe autant d&rsquo;arguments que la fonction attend. Nous devrions vraiment, ou un appel incorrect à une fonction native sans assez d&rsquo;arguments pourrait causer la fonction de lire de la mémoire non initialisée. Ajoutez la vérification d&rsquo;arité.</p>
 </li>
 <li>
-<p>Right now, there&rsquo;s no way for a native function to signal a runtime error.
-In a real implementation, this is something we&rsquo;d need to support because
-native functions live in the statically typed world of C but are called
-from dynamically typed Lox land. If a user, say, tries to pass a string to
-<code>sqrt()</code>, that native function needs to report a runtime error.</p>
-<p>Extend the native function system to support that. How does this capability
-affect the performance of native calls?</p>
+<p>En ce moment, il n&rsquo;y a pas de moyen pour une fonction native de signaler une erreur d&rsquo;exécution. Dans une vraie implémentation, c&rsquo;est quelque chose que nous aurions besoin de supporter parce que les fonctions natives vivent dans le monde typé statiquement du C mais sont appelées depuis le pays Lox typé dynamiquement. Si un utilisateur, disons, essaie de passer une chaîne à <code>sqrt()</code>, cette fonction native a besoin de rapporter une erreur d&rsquo;exécution.</p>
+<p>Étendez le système de fonction native pour supporter cela. Comment cette capacité affecte-t-elle la performance des appels natifs ?</p>
 </li>
 <li>
-<p>Add some more native functions to do things you find useful. Write some
-programs using those. What did you add? How do they affect the feel of the
-language and how practical it is?</p>
+<p>Ajoutez quelques fonctions natives de plus pour faire des choses que vous trouvez utiles. Écrivez quelques programmes utilisant celles-ci. Qu&rsquo;avez-vous ajouté ? Comment affectent-elles le feeling du langage et à quel point il est pratique ?</p>
 </li>
 </ol>
 </div>

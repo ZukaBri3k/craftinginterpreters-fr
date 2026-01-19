@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
+<title>Une machine virtuelle à bytecode &middot; Crafting Interpreters</title>
+
+<!-- Tell mobile browsers we're optimized for them and they don't need to crop
+     the viewport. -->
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="stylesheet" type="text/css" href="style.css" />
+
+<!-- Oh, God, Source Code Pro is so beautiful it makes me want to cry. -->
+<link href='https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,600' rel='stylesheet' type='text/css'>
+
+<link rel="icon" type="image/png" href="image/favicon.png" />
+<script src="jquery-3.4.1.min.js"></script>
+<script src="script.js"></script>
+
+<!-- Google analytics -->
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-42804721-2', 'auto');
+  ga('send', 'pageview');
+</script>
+
+</head>
+<body id="top">
+
+<!-- <div class="scrim"></div> -->
+<nav class="wide">
+  <a href="/"><img src="image/logotype.png" title="Crafting Interpreters"></a>
+  <div class="contents">
+<h2><small>III</small>Une machine virtuelle à bytecode</h2>
+
+<ul>
+    <li><a href="morceaux-de-bytecode.html"><small>14</small>Morceaux de bytecode</a></li>
+    <li><a href="machine-virtuelle.html"><small>15</small>Machine virtuelle</a></li>
+    <li><a href="analyse-à-la-demande.html"><small>16</small>Analyse à la demande</a></li>
+    <li><a href="compilation-des-expressions.html"><small>17</small>Compilation des expressions</a></li>
+    <li><a href="types-de-valeurs.html"><small>18</small>Types de valeurs</a></li>
+    <li><a href="chaînes-de-caractères.html"><small>19</small>Chaînes de caractères</a></li>
+    <li><a href="tables-de-hachage.html"><small>20</small>Tables de hachage</a></li>
+    <li><a href="variables-globales.html"><small>21</small>Variables globales</a></li>
+    <li><a href="variables-locales.html"><small>22</small>Variables locales</a></li>
+    <li><a href="sauts-avant-et-arrière.html"><small>23</small>Sauts avant et arrière</a></li>
+    <li><a href="appels-et-fonctions.html"><small>24</small>Appels et fonctions</a></li>
+    <li><a href="fermetures.html"><small>25</small>Fermetures</a></li>
+    <li><a href="ramasse-miettes.html"><small>26</small>Ramasse-miettes</a></li>
+    <li><a href="classes-et-instances.html"><small>27</small>Classes et instances</a></li>
+    <li><a href="méthodes-et-initialisateurs.html"><small>28</small>Méthodes et initialisateurs</a></li>
+    <li><a href="super-classes.html"><small>29</small>Super-classes</a></li>
+    <li><a href="optimisation.html"><small>30</small>Optimisation</a></li>
+</ul>
+
+
+<div class="prev-next">
+    <a href="héritage.html" title="Héritage" class="left">&larr;&nbsp;Previous</a>
+    <a href="contents.html" title="Table of Contents">&uarr;&nbsp;Up</a>
+    <a href="morceaux-de-bytecode.html" title="Morceaux de bytecode" class="right">Next&nbsp;&rarr;</a>
+</div>  </div>
+</nav>
+
+<nav class="narrow">
+<a href="/"><img src="image/logotype.png" title="Crafting Interpreters"></a>
+<a href="héritage.html" title="Héritage" class="prev">←</a>
+<a href="morceaux-de-bytecode.html" title="Morceaux de bytecode" class="next">→</a>
+</nav>
+
+<div class="page">
+<div class="nav-wrapper">
+<nav class="floating">
+  <a href="/"><img src="image/logotype.png" title="Crafting Interpreters"></a>
+  <div class="expandable">
+<h2><small>III</small>Une machine virtuelle à bytecode</h2>
+
+<ul>
+    <li><a href="morceaux-de-bytecode.html"><small>14</small>Morceaux de bytecode</a></li>
+    <li><a href="machine-virtuelle.html"><small>15</small>Machine virtuelle</a></li>
+    <li><a href="analyse-à-la-demande.html"><small>16</small>Analyse à la demande</a></li>
+    <li><a href="compilation-des-expressions.html"><small>17</small>Compilation des expressions</a></li>
+    <li><a href="types-de-valeurs.html"><small>18</small>Types de valeurs</a></li>
+    <li><a href="chaînes-de-caractères.html"><small>19</small>Chaînes de caractères</a></li>
+    <li><a href="tables-de-hachage.html"><small>20</small>Tables de hachage</a></li>
+    <li><a href="variables-globales.html"><small>21</small>Variables globales</a></li>
+    <li><a href="variables-locales.html"><small>22</small>Variables locales</a></li>
+    <li><a href="sauts-avant-et-arrière.html"><small>23</small>Sauts avant et arrière</a></li>
+    <li><a href="appels-et-fonctions.html"><small>24</small>Appels et fonctions</a></li>
+    <li><a href="fermetures.html"><small>25</small>Fermetures</a></li>
+    <li><a href="ramasse-miettes.html"><small>26</small>Ramasse-miettes</a></li>
+    <li><a href="classes-et-instances.html"><small>27</small>Classes et instances</a></li>
+    <li><a href="méthodes-et-initialisateurs.html"><small>28</small>Méthodes et initialisateurs</a></li>
+    <li><a href="super-classes.html"><small>29</small>Super-classes</a></li>
+    <li><a href="optimisation.html"><small>30</small>Optimisation</a></li>
+</ul>
+
+
+<div class="prev-next">
+    <a href="héritage.html" title="Héritage" class="left">&larr;&nbsp;Previous</a>
+    <a href="contents.html" title="Table of Contents">&uarr;&nbsp;Up</a>
+    <a href="morceaux-de-bytecode.html" title="Morceaux de bytecode" class="right">Next&nbsp;&rarr;</a>
+</div>  </div>
+  <a id="expand-nav">≡</a>
+</nav>
+</div>
+
+<article class="chapter">
+
+  <div class="number">III</div>
+  <h1 class="part">Une machine virtuelle à bytecode</h1>
+
+<p>Notre interpréteur Java, jlox, nous a appris beaucoup des fondamentaux des langages de programmation, mais nous avons encore beaucoup à apprendre. D&rsquo;abord, si vous lancez des programmes Lox intéressants dans jlox, vous découvrirez que c&rsquo;est douloureusement lent. Le style d&rsquo;interprétation qu&rsquo;il utilise<span class="em">&mdash;</span>parcourir l&rsquo;AST directement<span class="em">&mdash;</span>est assez bon pour <em>certains</em> usages du monde réel, mais laisse beaucoup à désirer pour un langage de script à usage général.</p>
+<p>Aussi, nous comptons implicitement sur des fonctionnalités d&rsquo;exécution de la JVM elle-même. Nous prenons pour acquis que des choses comme <code>instanceof</code> en Java fonctionnent <em>d&rsquo;une manière ou d&rsquo;une autre</em>. Et nous ne nous inquiétons jamais une seconde de la gestion de la mémoire parce que le ramasse-miettes de la JVM s&rsquo;en occupe pour nous.</p>
+<p>Quand nous étions concentrés sur des concepts de haut niveau, c&rsquo;était bien de passer outre ceux-ci. Mais maintenant que nous connaissons notre chemin autour d&rsquo;un interpréteur, il est temps de creuser vers ces couches plus basses et de construire notre propre machine virtuelle à partir de rien en n&rsquo;utilisant rien de plus que la bibliothèque standard C<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
+
+<footer>
+<a href="morceaux-de-bytecode.html" class="next">
+  Next Chapter: &ldquo;Morceaux de bytecode&rdquo; &rarr;
+</a>
+Handcrafted by Robert Nystrom&ensp;&mdash;&ensp;<a href="https://github.com/munificent/craftinginterpreters/blob/master/LICENSE" target="_blank">&copy; 2015&hairsp;&ndash;&hairsp;2021</a>
+</footer>
+</article>
+
+</div>
+</body>
+</html>

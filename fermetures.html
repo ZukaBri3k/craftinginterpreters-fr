@@ -37,19 +37,18 @@
 <h3><a href="#top">Fermetures<small>25</small></a></h3>
 
 <ul>
-    <li><a href="#closure-objects"><small>25.1</small> Closure Objects</a></li>
+    <li><a href="#objets-fermeture"><small>25.1</small> Objets Fermeture</a></li>
     <li><a href="#upvalues"><small>25.2</small> Upvalues</a></li>
-    <li><a href="#upvalue-objects"><small>25.3</small> Upvalue Objects</a></li>
-    <li><a href="#closed-upvalues"><small>25.4</small> Closed Upvalues</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
-    <li class="end-part"><a href="#design-note"><small>note</small>Closing Over the Loop Variable</a></li>
+    <li><a href="#objets-upvalue"><small>25.3</small> Objets Upvalue</a></li>
+    <li><a href="#upvalues-fermées"><small>25.4</small> Upvalues fermées</a></li>
+    <li><a href="#défis"><small>25.5</small> Défis</a></li>
+    <li><a href="#note-de-conception--fermer-sur-la-variable-de-boucle"><small>25.6</small> Note de Conception : Fermer sur la Variable de Boucle</a></li>
 </ul>
 
 
 <div class="prev-next">
     <a href="appels-et-fonctions.html" title="Appels et fonctions" class="left">&larr;&nbsp;Previous</a>
-    <a href="a-bytecode-virtual-machine.html" title="A Bytecode Virtual Machine">&uarr;&nbsp;Up</a>
+    <a href="une-machine-virtuelle-à-bytecode.html" title="Une machine virtuelle à bytecode">&uarr;&nbsp;Up</a>
     <a href="ramasse-miettes.html" title="Ramasse-miettes" class="right">Next&nbsp;&rarr;</a>
 </div>  </div>
 </nav>
@@ -68,19 +67,18 @@
 <h3><a href="#top">Fermetures<small>25</small></a></h3>
 
 <ul>
-    <li><a href="#closure-objects"><small>25.1</small> Closure Objects</a></li>
+    <li><a href="#objets-fermeture"><small>25.1</small> Objets Fermeture</a></li>
     <li><a href="#upvalues"><small>25.2</small> Upvalues</a></li>
-    <li><a href="#upvalue-objects"><small>25.3</small> Upvalue Objects</a></li>
-    <li><a href="#closed-upvalues"><small>25.4</small> Closed Upvalues</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
-    <li class="end-part"><a href="#design-note"><small>note</small>Closing Over the Loop Variable</a></li>
+    <li><a href="#objets-upvalue"><small>25.3</small> Objets Upvalue</a></li>
+    <li><a href="#upvalues-fermées"><small>25.4</small> Upvalues fermées</a></li>
+    <li><a href="#défis"><small>25.5</small> Défis</a></li>
+    <li><a href="#note-de-conception--fermer-sur-la-variable-de-boucle"><small>25.6</small> Note de Conception : Fermer sur la Variable de Boucle</a></li>
 </ul>
 
 
 <div class="prev-next">
     <a href="appels-et-fonctions.html" title="Appels et fonctions" class="left">&larr;&nbsp;Previous</a>
-    <a href="a-bytecode-virtual-machine.html" title="A Bytecode Virtual Machine">&uarr;&nbsp;Up</a>
+    <a href="une-machine-virtuelle-à-bytecode.html" title="Une machine virtuelle à bytecode">&uarr;&nbsp;Up</a>
     <a href="ramasse-miettes.html" title="Ramasse-miettes" class="right">Next&nbsp;&rarr;</a>
 </div>  </div>
   <a id="expand-nav">≡</a>
@@ -93,14 +91,10 @@
   <h1>Fermetures</h1>
 
 <blockquote>
-<p>As the man said, for every complex problem there&rsquo;s a simple solution, and it&rsquo;s
-wrong.</p>
-<p><cite>Umberto Eco, <em>Foucault&rsquo;s Pendulum</em></cite></p>
+<p>Comme l&rsquo;homme l&rsquo;a dit, pour chaque problème complexe il y a une solution simple, et elle est fausse.</p>
+<p><cite>Umberto Eco, <em>Le Pendule de Foucault</em></cite></p>
 </blockquote>
-<p>Thanks to our diligent labor in <a href="calls-and-functions.html">the last chapter</a>, we have a virtual
-machine with working functions. What it lacks is closures. Aside from global
-variables, which are their own breed of animal, a function has no way to
-reference a variable declared outside of its own body.</p>
+<p>Grâce à notre travail diligent dans <a href="appels-et-fonctions.html">le dernier chapitre</a>, nous avons une machine virtuelle avec des fonctions fonctionnelles. Ce qui lui manque, ce sont les fermetures (closures). À part les variables globales, qui sont leur propre race d&rsquo;animal, une fonction n&rsquo;a aucun moyen de référencer une variable déclarée en dehors de son propre corps.</p>
 <div class="codehilite"><pre><span class="k">var</span> <span class="i">x</span> = <span class="s">&quot;global&quot;</span>;
 <span class="k">fun</span> <span class="i">outer</span>() {
   <span class="k">var</span> <span class="i">x</span> = <span class="s">&quot;outer&quot;</span>;
@@ -111,13 +105,8 @@ reference a variable declared outside of its own body.</p>
 }
 <span class="i">outer</span>();
 </pre></div>
-<p>Run this example now and it prints &ldquo;global&rdquo;. It&rsquo;s supposed to print &ldquo;outer&rdquo;. To
-fix this, we need to include the entire lexical scope of all surrounding
-functions when resolving a variable.</p>
-<p>This problem is harder in clox than it was in jlox because our bytecode VM
-stores locals on a stack. We used a stack because I claimed locals have stack
-semantics<span class="em">&mdash;</span>variables are discarded in the reverse order that they are created.
-But with closures, that&rsquo;s only <em>mostly</em> true.</p>
+<p>Exécutez cet exemple maintenant et il affiche &ldquo;global&rdquo;. Il est supposé afficher &ldquo;outer&rdquo;. Pour corriger cela, nous devons inclure la portée lexicale entière de toutes les fonctions environnantes lors de la résolution d&rsquo;une variable.</p>
+<p>Ce problème est plus difficile dans clox qu&rsquo;il ne l&rsquo;était dans jlox parce que notre VM à bytecode stocke les locales sur une pile. Nous avons utilisé une pile parce que j&rsquo;ai prétendu que les locales ont une sémantique de pile<span class="em">&mdash;</span>les variables sont jetées dans l&rsquo;ordre inverse de leur création. Mais avec les fermetures, c&rsquo;est seulement <em>surtout</em> vrai.</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">makeClosure</span>() {
   <span class="k">var</span> <span class="i">local</span> = <span class="s">&quot;local&quot;</span>;
   <span class="k">fun</span> <span class="i">closure</span>() {
@@ -129,59 +118,26 @@ But with closures, that&rsquo;s only <em>mostly</em> true.</p>
 <span class="k">var</span> <span class="i">closure</span> = <span class="i">makeClosure</span>();
 <span class="i">closure</span>();
 </pre></div>
-<p>The outer function <code>makeClosure()</code> declares a variable, <code>local</code>. It also creates
-an inner function, <code>closure()</code> that captures that variable. Then <code>makeClosure()</code>
-returns a reference to that function. Since the closure <span
-name="flying">escapes</span> while holding on to the local variable, <code>local</code> must
-outlive the function call where it was created.</p>
-<aside name="flying"><img src="image/closures/flying.png" class="above" alt="A local variable flying away from the stack."/>
-<p>Oh no, it&rsquo;s escaping!</p>
+<p>La fonction extérieure <code>makeClosure()</code> déclare une variable, <code>local</code>. Elle crée aussi une fonction intérieure, <code>closure()</code> qui capture cette variable. Ensuite <code>makeClosure()</code> renvoie une référence à cette fonction. Puisque la fermeture <span name="flying">s&rsquo;échappe</span> tout en tenant la variable locale, <code>local</code> doit survivre à l&rsquo;appel de fonction où elle a été créée.</p>
+<aside name="flying"><img src="image/closures/flying.png" class="above" alt="Une variable locale s'envolant de la pile."/>
+<p>Oh non, elle s&rsquo;échappe !</p>
 </aside>
-<p>We could solve this problem by dynamically allocating memory for all local
-variables. That&rsquo;s what jlox does by putting everything in those Environment
-objects that float around in Java&rsquo;s heap. But we don&rsquo;t want to. Using a <span
-name="stack">stack</span> is <em>really</em> fast. Most local variables are <em>not</em>
-captured by closures and do have stack semantics. It would suck to make all of
-those slower for the benefit of the rare local that is captured.</p>
+<p>Nous pourrions résoudre ce problème en allouant dynamiquement la mémoire pour toutes les variables locales. C&rsquo;est ce que jlox fait en mettant tout dans ces objets Environment qui flottent dans le tas de Java. Mais nous ne voulons pas. Utiliser une <span name="stack">pile</span> est <em>vraiment</em> rapide. La plupart des variables locales ne sont <em>pas</em> capturées par des fermetures et ont bien une sémantique de pile. Cela craindrait de rendre toutes celles-là plus lentes pour le bénéfice de la rare locale qui est capturée.</p>
 <aside name="stack">
-<p>There is a reason that C and Java use the stack for their local variables, after
-all.</p>
+<p>Il y a une raison pour laquelle C et Java utilisent la pile pour leurs variables locales, après tout.</p>
 </aside>
-<p>This means a more complex approach than we used in our Java interpreter. Because
-some locals have very different lifetimes, we will have two implementation
-strategies. For locals that aren&rsquo;t used in closures, we&rsquo;ll keep them just as
-they are on the stack. When a local is captured by a closure, we&rsquo;ll adopt
-another solution that lifts them onto the heap where they can live as long as
-needed.</p>
-<p>Closures have been around since the early Lisp days when bytes of memory and CPU
-cycles were more precious than emeralds. Over the intervening decades, hackers
-devised all <span name="lambda">manner</span> of ways to compile closures to
-optimized runtime representations. Some are more efficient but require a more
-complex compilation process than we could easily retrofit into clox.</p>
+<p>Cela signifie une approche plus complexe que celle que nous avons utilisée dans notre interpréteur Java. Parce que certaines locales ont des durées de vie très différentes, nous aurons deux stratégies d&rsquo;implémentation. Pour les locales qui ne sont pas utilisées dans des fermetures, nous les garderons juste comme elles sont sur la pile. Quand une locale est capturée par une fermeture, nous adopterons une autre solution qui les soulève sur le tas où elles peuvent vivre aussi longtemps que nécessaire.</p>
+<p>Les fermetures sont là depuis les premiers jours de Lisp quand les octets de mémoire et les cycles CPU étaient plus précieux que des émeraudes. Au cours des décennies intermédiaires, les hackers ont conçu toute <span name="lambda">sorte</span> de moyens de compiler les fermetures vers des représentations runtime optimisées. Certaines sont plus efficaces mais requièrent un processus de compilation plus complexe que nous pourrions facilement adapter dans clox.</p>
 <aside name="lambda">
-<p>Search for &ldquo;closure conversion&rdquo; or &ldquo;lambda lifting&rdquo; to start exploring.</p>
+<p>Cherchez &ldquo;closure conversion&rdquo; ou &ldquo;lambda lifting&rdquo; pour commencer à explorer.</p>
 </aside>
-<p>The technique I explain here comes from the design of the Lua VM. It is fast,
-parsimonious with memory, and implemented with relatively little code. Even more
-impressive, it fits naturally into the single-pass compilers clox and Lua both
-use. It is somewhat intricate, though. It might take a while before all the
-pieces click together in your mind. We&rsquo;ll build them one step at a time, and
-I&rsquo;ll try to introduce the concepts in stages.</p>
-<h2><a href="#closure-objects" id="closure-objects"><small>25&#8202;.&#8202;1</small>Closure Objects</a></h2>
-<p>Our VM represents functions at runtime using ObjFunction. These objects are
-created by the front end during compilation. At runtime, all the VM does is load
-the function object from a constant table and bind it to a name. There is no
-operation to &ldquo;create&rdquo; a function at runtime. Much like string and number <span
-name="literal">literals</span>, they are constants instantiated purely at
-compile time.</p>
+<p>La technique que j&rsquo;explique ici vient de la conception de la VM Lua. Elle est rapide, parcimonieuse avec la mémoire, et implémentée avec relativement peu de code. Encore plus impressionnant, elle s&rsquo;adapte naturellement dans les compilateurs à une seule passe que clox et Lua utilisent tous deux. Elle est quelque peu complexe, cependant. Cela pourrait prendre un moment avant que toutes les pièces s&rsquo;emboîtent ensemble dans votre esprit. Nous les construirons une étape à la fois, et j&rsquo;essaierai d&rsquo;introduire les concepts par étapes.</p>
+<h2><a href="#objets-fermeture" id="objets-fermeture"><small>25&#8202;.&#8202;1</small>Objets Fermeture</a></h2>
+<p>Notre VM représente les fonctions à l&rsquo;exécution utilisant ObjFunction. Ces objets sont créés par le front end durant la compilation. À l&rsquo;exécution, tout ce que la VM fait est de charger l&rsquo;objet fonction depuis une table de constantes et le lier à un nom. Il n&rsquo;y a pas d&rsquo;opération pour &ldquo;créer&rdquo; une fonction à l&rsquo;exécution. Tout comme les <span name="literal">littéraux</span> chaînes et nombres, ce sont des constantes instanciées purement à la compilation.</p>
 <aside name="literal">
-<p>In other words, a function declaration in Lox <em>is</em> a kind of literal<span class="em">&mdash;</span>a piece
-of syntax that defines a constant value of a built-in type.</p>
+<p>En d&rsquo;autres termes, une déclaration de fonction dans Lox <em>est</em> une sorte de littéral<span class="em">&mdash;</span>un morceau de syntaxe qui définit une valeur constante d&rsquo;un type intégré.</p>
 </aside>
-<p>That made sense because all of the data that composes a function is known at
-compile time: the chunk of bytecode compiled from the function&rsquo;s body, and the
-constants used in the body. Once we introduce closures, though, that
-representation is no longer sufficient. Take a gander at:</p>
+<p>Cela avait du sens parce que toutes les données qui composent une fonction sont connues à la compilation : le morceau de bytecode compilé depuis le corps de la fonction, et les constantes utilisées dans le corps. Une fois que nous introduisons les fermetures, cependant, cette représentation n&rsquo;est plus suffisante. Jetez un coup d&rsquo;œil à :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">makeClosure</span>(<span class="i">value</span>) {
   <span class="k">fun</span> <span class="i">closure</span>() {
     <span class="k">print</span> <span class="i">value</span>;
@@ -194,29 +150,12 @@ representation is no longer sufficient. Take a gander at:</p>
 <span class="i">doughnut</span>();
 <span class="i">bagel</span>();
 </pre></div>
-<p>The <code>makeClosure()</code> function defines and returns a function. We call it twice
-and get two closures back. They are created by the same nested function
-declaration, <code>closure</code>, but close over different values. When we call the two
-closures, each prints a different string. That implies we need some runtime
-representation for a closure that captures the local variables surrounding the
-function as they exist when the function declaration is <em>executed</em>, not just
-when it is compiled.</p>
-<p>We&rsquo;ll work our way up to capturing variables, but a good first step is defining
-that object representation. Our existing ObjFunction type represents the <span
-name="raw">&ldquo;raw&rdquo;</span> compile-time state of a function declaration, since all
-closures created from a single declaration share the same code and constants. At
-runtime, when we execute a function declaration, we wrap the ObjFunction in a
-new ObjClosure structure. The latter has a reference to the underlying bare
-function along with runtime state for the variables the function closes over.</p>
+<p>La fonction <code>makeClosure()</code> définit et renvoie une fonction. Nous l&rsquo;appelons deux fois et obtenons deux fermetures en retour. Elles sont créées par la même déclaration de fonction imbriquée, <code>closure</code>, mais ferment sur des valeurs différentes. Quand nous appelons les deux fermetures, chacune affiche une chaîne différente. Cela implique que nous avons besoin de quelque représentation runtime pour une fermeture qui capture les variables locales entourant la fonction telles qu&rsquo;elles existent quand la déclaration de fonction est <em>exécutée</em>, pas juste quand elle est compilée.</p>
+<p>Nous travaillerons notre chemin jusqu&rsquo;à capturer les variables, mais une bonne première étape est de définir cette représentation objet. Notre type ObjFunction existant représente l&rsquo;état <span name="raw">&ldquo;brut&rdquo;</span> à la compilation d&rsquo;une déclaration de fonction, puisque toutes les fermetures créées depuis une seule déclaration partagent le même code et constantes. À l&rsquo;exécution, quand nous exécutons une déclaration de fonction, nous enveloppons l&rsquo;ObjFunction dans une nouvelle structure ObjClosure. Cette dernière a une référence vers la fonction nue sous-jacente avec l&rsquo;état runtime pour les variables sur lesquelles la fonction ferme.</p>
 <aside name="raw">
-<p>The Lua implementation refers to the raw function object containing the bytecode
-as a &ldquo;prototype&rdquo;, which is a great word to describe this, except that word also
-gets overloaded to refer to <a href="https://en.wikipedia.org/wiki/Prototype-based_programming">prototypal inheritance</a>.</p>
-</aside><img src="image/closures/obj-closure.png" alt="An ObjClosure with a reference to an ObjFunction."/>
-<p>We&rsquo;ll wrap every function in an ObjClosure, even if the function doesn&rsquo;t
-actually close over and capture any surrounding local variables. This is a
-little wasteful, but it simplifies the VM because we can always assume that the
-function we&rsquo;re calling is an ObjClosure. That new struct starts out like this:</p>
+<p>L&rsquo;implémentation Lua se réfère à l&rsquo;objet fonction brut contenant le bytecode comme un &ldquo;prototype&rdquo;, ce qui est un super mot pour décrire ceci, sauf que ce mot est aussi surchargé pour se référer à <a href="https://en.wikipedia.org/wiki/Prototype-based_programming">l&rsquo;héritage prototypal</a>.</p>
+</aside><img src="image/closures/obj-closure.png" alt="Une ObjClosure avec une référence vers une ObjFunction."/>
+<p>Nous envelopperons chaque fonction dans une ObjClosure, même si la fonction ne ferme pas réellement sur et capture aucune variable locale environnante. C&rsquo;est un peu &ldquo;gaspilleur&rdquo;, mais cela simplifie la VM parce que nous pouvons toujours supposer que la fonction que nous appelons est une ObjClosure. Cette nouvelle structure commence comme ceci :</p>
 <div class="codehilite"><div class="source-file"><em>object.h</em><br>
 add after struct <em>ObjString</em></div>
 <pre><span class="k">typedef</span> <span class="k">struct</span> {
@@ -226,9 +165,7 @@ add after struct <em>ObjString</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, add after struct <em>ObjString</em></div>
 
-<p>Right now, it simply points to an ObjFunction and adds the necessary object
-header stuff. Grinding through the usual ceremony for adding a new object type
-to clox, we declare a C function to create a new closure.</p>
+<p>Juste maintenant, elle pointe simplement vers une ObjFunction et ajoute les trucs d&rsquo;en-tête d&rsquo;objet nécessaires. Mèlant à travers la cérémonie habituelle pour ajouter un nouveau type d&rsquo;objet à clox, nous déclarons une fonction C pour créer une nouvelle fermeture.</p>
 <div class="codehilite"><pre class="insert-before">} ObjClosure;
 
 </pre><div class="source-file"><em>object.h</em><br>
@@ -238,7 +175,7 @@ add after struct <em>ObjClosure</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, add after struct <em>ObjClosure</em></div>
 
-<p>Then we implement it here:</p>
+<p>Ensuite nous l&rsquo;implémentons ici :</p>
 <div class="codehilite"><div class="source-file"><em>object.c</em><br>
 add after <em>allocateObject</em>()</div>
 <pre><span class="t">ObjClosure</span>* <span class="i">newClosure</span>(<span class="t">ObjFunction</span>* <span class="i">function</span>) {
@@ -249,8 +186,7 @@ add after <em>allocateObject</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, add after <em>allocateObject</em>()</div>
 
-<p>It takes a pointer to the ObjFunction it wraps. It also initializes the type
-field to a new type.</p>
+<p>Elle prend un appel vers l&rsquo;ObjFunction qu&rsquo;elle enveloppe. Elle initialise aussi le champ type à un nouveau type.</p>
 <div class="codehilite"><pre class="insert-before">typedef enum {
 </pre><div class="source-file"><em>object.h</em><br>
 in enum <em>ObjType</em></div>
@@ -259,7 +195,7 @@ in enum <em>ObjType</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, in enum <em>ObjType</em></div>
 
-<p>And when we&rsquo;re done with a closure, we release its memory.</p>
+<p>Et quand nous avons fini avec une fermeture, nous relâchons sa mémoire.</p>
 <div class="codehilite"><pre class="insert-before">  switch (object-&gt;type) {
 </pre><div class="source-file"><em>memory.c</em><br>
 in <em>freeObject</em>()</div>
@@ -271,17 +207,10 @@ in <em>freeObject</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>memory.c</em>, in <em>freeObject</em>()</div>
 
-<p>We free only the ObjClosure itself, not the ObjFunction. That&rsquo;s because the
-closure doesn&rsquo;t <em>own</em> the function. There may be multiple closures that all
-reference the same function, and none of them claims any special privilege over
-it. We can&rsquo;t free the ObjFunction until <em>all</em> objects referencing it are gone<span class="em">&mdash;</span>including even the surrounding function whose constant table contains it.
-Tracking that sounds tricky, and it is! That&rsquo;s why we&rsquo;ll write a garbage
-collector soon to manage it for us.</p>
-<p>We also have the usual <span name="macro">macros</span> for checking a value&rsquo;s
-type.</p>
+<p>Nous libérons seulement l&rsquo;ObjClosure elle-même, pas l&rsquo;ObjFunction. C&rsquo;est parce que la fermeture ne <em>possède</em> pas la fonction. Il peut y avoir de multiples fermetures qui référencent toutes la même fonction, et aucune d&rsquo;elles ne réclame de privilège spécial sur elle. Nous ne pouvons pas libérer l&rsquo;ObjFunction jusqu&rsquo;à ce que <em>tous</em> les objets la référençant soient partis<span class="em">&mdash;</span>incluant même la fonction environnante dont la table de constantes la contient. Suivre cela semble délicat, et ça l&rsquo;est ! C&rsquo;est pourquoi nous écrirons un ramasse-miettes bientôt pour le gérer pour nous.</p>
+<p>Nous avons aussi les <span name="macro">macros</span> habituelles pour vérifier le type d&rsquo;une valeur.</p>
 <aside name="macro">
-<p>Perhaps I should have defined a macro to make it easier to generate these
-macros. Maybe that would be a little too meta.</p>
+<p>Peut-être que j&rsquo;aurais dû définir une macro pour rendre plus facile de générer ces macros. Peut-être que ce serait un peu trop méta.</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">#define OBJ_TYPE(value)        (AS_OBJ(value)-&gt;type)
 
@@ -291,7 +220,7 @@ macros. Maybe that would be a little too meta.</p>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em></div>
 
-<p>And to cast a value:</p>
+<p>Et pour caster une valeur :</p>
 <div class="codehilite"><pre class="insert-before">#define IS_STRING(value)       isObjType(value, OBJ_STRING)
 
 </pre><div class="source-file"><em>object.h</em></div>
@@ -300,7 +229,7 @@ macros. Maybe that would be a little too meta.</p>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em></div>
 
-<p>Closures are first-class objects, so you can print them.</p>
+<p>Les fermetures sont des objets de première classe, donc vous pouvez les afficher.</p>
 <div class="codehilite"><pre class="insert-before">  switch (OBJ_TYPE(value)) {
 </pre><div class="source-file"><em>object.c</em><br>
 in <em>printObject</em>()</div>
@@ -311,15 +240,9 @@ in <em>printObject</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, in <em>printObject</em>()</div>
 
-<p>They display exactly as ObjFunction does. From the user&rsquo;s perspective, the
-difference between ObjFunction and ObjClosure is purely a hidden implementation
-detail. With that out of the way, we have a working but empty representation for
-closures.</p>
-<h3><a href="#compiling-to-closure-objects" id="compiling-to-closure-objects"><small>25&#8202;.&#8202;1&#8202;.&#8202;1</small>Compiling to closure objects</a></h3>
-<p>We have closure objects, but our VM never creates them. The next step is getting
-the compiler to emit instructions to tell the runtime when to create a new
-ObjClosure to wrap a given ObjFunction. This happens right at the end of a
-function declaration.</p>
+<p>Elles s&rsquo;affichent exactement comme ObjFunction le fait. De la perspective de l&rsquo;utilisateur, la différence entre ObjFunction et ObjClosure est purement un détail d&rsquo;implémentation caché. Avec cela hors du chemin, nous avons une représentation fonctionnelle mais vide pour les fermetures.</p>
+<h3><a href="#compiler-vers-des-objets-fermeture" id="compiler-vers-des-objets-fermeture"><small>25&#8202;.&#8202;1&#8202;.&#8202;1</small>Compiler vers des objets fermeture</a></h3>
+<p>Nous avons des objets fermeture, mais notre VM ne les crée jamais. L&rsquo;étape suivante est d&rsquo;obtenir du compilateur qu&rsquo;il émette des instructions pour dire au runtime quand créer une nouvelle ObjClosure pour envelopper une ObjFunction donnée. Cela arrive juste à la fin d&rsquo;une déclaration de fonction.</p>
 <div class="codehilite"><pre class="insert-before">  ObjFunction* function = endCompiler();
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>function</em>()<br>
@@ -329,9 +252,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>function</em>(), replace 1 line</div>
 
-<p>Before, the final bytecode for a function declaration was a single <code>OP_CONSTANT</code>
-instruction to load the compiled function from the surrounding function&rsquo;s
-constant table and push it onto the stack. Now we have a new instruction.</p>
+<p>Avant, le bytecode final pour une déclaration de fonction était une seule instruction <code>OP_CONSTANT</code> pour charger la fonction compilée depuis la table de constantes de la fonction environnante et l&rsquo;empiler sur la pile. Maintenant nous avons une nouvelle instruction.</p>
 <div class="codehilite"><pre class="insert-before">  OP_CALL,
 </pre><div class="source-file"><em>chunk.h</em><br>
 in enum <em>OpCode</em></div>
@@ -340,11 +261,8 @@ in enum <em>OpCode</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>chunk.h</em>, in enum <em>OpCode</em></div>
 
-<p>Like <code>OP_CONSTANT</code>, it takes a single operand that represents a constant table
-index for the function. But when we get over to the runtime implementation, we
-do something more interesting.</p>
-<p>First, let&rsquo;s be diligent VM hackers and slot in disassembler support for the
-instruction.</p>
+<p>Comme <code>OP_CONSTANT</code>, elle prend un seul opérande qui représente un index de table de constantes pour la fonction. Mais quand nous arrivons à l&rsquo;implémentation runtime, nous faisons quelque chose de plus intéressant.</p>
+<p>D&rsquo;abord, soyons des hackers de VM diligents et insérons le support du désassembleur pour l&rsquo;instruction.</p>
 <div class="codehilite"><pre class="insert-before">    case OP_CALL:
       return byteInstruction(&quot;OP_CALL&quot;, chunk, offset);
 </pre><div class="source-file"><em>debug.c</em><br>
@@ -361,15 +279,9 @@ in <em>disassembleInstruction</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>debug.c</em>, in <em>disassembleInstruction</em>()</div>
 
-<p>There&rsquo;s more going on here than we usually have in the disassembler. By the end
-of the chapter, you&rsquo;ll discover that <code>OP_CLOSURE</code> is quite an unusual
-instruction. It&rsquo;s straightforward right now<span class="em">&mdash;</span>just a single byte operand<span class="em">&mdash;</span>but
-we&rsquo;ll be adding to it. This code here anticipates that future.</p>
-<h3><a href="#interpreting-function-declarations" id="interpreting-function-declarations"><small>25&#8202;.&#8202;1&#8202;.&#8202;2</small>Interpreting function declarations</a></h3>
-<p>Most of the work we need to do is in the runtime. We have to handle the new
-instruction, naturally. But we also need to touch every piece of code in the VM
-that works with ObjFunction and change it to use ObjClosure instead<span class="em">&mdash;</span>function
-calls, call frames, etc. We&rsquo;ll start with the instruction, though.</p>
+<p>Il y a plus se passant ici que ce que nous avons habituellement dans le désassembleur. À la fin du chapitre, vous découvrirez que <code>OP_CLOSURE</code> est une instruction assez inhabituelle. C&rsquo;est direct pour l&rsquo;instant<span class="em">&mdash;</span>juste un opérande d&rsquo;un seul octet<span class="em">&mdash;</span>mais nous y ajouterons. Ce code ici anticipe ce futur.</p>
+<h3><a href="#interpréter-les-déclarations-de-fonction" id="interpréter-les-déclarations-de-fonction"><small>25&#8202;.&#8202;1&#8202;.&#8202;2</small>Interpréter les déclarations de fonction</a></h3>
+<p>La plupart du travail que nous avons besoin de faire est dans le runtime. Nous devons gérer la nouvelle instruction, naturellement. Mais nous avons aussi besoin de toucher chaque morceau de code dans la VM qui travaille avec ObjFunction et le changer pour utiliser ObjClosure à la place<span class="em">&mdash;</span>appels de fonction, cadres d&rsquo;appel, etc. Nous commencerons avec l&rsquo;instruction, cependant.</p>
 <div class="codehilite"><pre class="insert-before">      }
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>run</em>()</div>
@@ -383,10 +295,8 @@ in <em>run</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>()</div>
 
-<p>Like the <code>OP_CONSTANT</code> instruction we used before, first we load the compiled
-function from the constant table. The difference now is that we wrap that
-function in a new ObjClosure and push the result onto the stack.</p>
-<p>Once you have a closure, you&rsquo;ll eventually want to call it.</p>
+<p>Comme l&rsquo;instruction <code>OP_CONSTANT</code> que nous utilisions avant, d&rsquo;abord nous chargeons la fonction compilée depuis la table de constantes. La différence maintenant est que nous enveloppons cette fonction dans une nouvelle ObjClosure et empilons le résultat sur la pile.</p>
+<p>Une fois que vous avez une fermeture, vous voudrez éventuellement l&rsquo;appeler.</p>
 <div class="codehilite"><pre class="insert-before">    switch (OBJ_TYPE(callee)) {
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>callValue</em>()<br>
@@ -397,18 +307,11 @@ replace 2 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>callValue</em>(), replace 2 lines</div>
 
-<p>We remove the code for calling objects whose type is <code>OBJ_FUNCTION</code>. Since we
-wrap all functions in ObjClosures, the runtime will never try to invoke a bare
-ObjFunction anymore. Those objects live only in constant tables and get
-immediately <span name="naked">wrapped</span> in closures before anything else
-sees them.</p>
+<p>Nous retirons le code pour appeler les objets dont le type est <code>OBJ_FUNCTION</code>. Puisque nous enveloppons toutes les fonctions dans des ObjClosures, le runtime n&rsquo;essaiera jamais d&rsquo;invoquer une ObjFunction nue désormais. Ces objets vivent seulement dans les tables de constantes et sont immédiatement <span name="naked">enveloppés</span> dans des fermetures avant que quoi que ce soit d&rsquo;autre les voie.</p>
 <aside name="naked">
-<p>We don&rsquo;t want any naked functions wandering around the VM! What would the
-neighbors say?</p>
+<p>Nous ne voulons pas de fonctions nues errant autour de la VM ! Que diraient les voisins ?</p>
 </aside>
-<p>We replace the old code with very similar code for calling a closure instead.
-The only difference is the type of object we pass to <code>call()</code>. The real changes
-are over in that function. First, we update its signature.</p>
+<p>Nous remplaçons le vieux code avec un code très similaire pour appeler une fermeture à la place. La seule différence est le type d&rsquo;objet que nous passons à <code>call()</code>. Les vrais changements sont là-bas dans cette fonction. D&rsquo;abord, nous mettons à jour sa signature.</p>
 <div class="codehilite"><div class="source-file"><em>vm.c</em><br>
 function <em>call</em>()<br>
 replace 1 line</div>
@@ -417,9 +320,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, function <em>call</em>(), replace 1 line</div>
 
-<p>Then, in the body, we need to fix everything that referenced the function to
-handle the fact that we&rsquo;ve introduced a layer of indirection. We start with the
-arity checking:</p>
+<p>Ensuite, dans le corps, nous avons besoin de réparer tout ce qui référençait la fonction pour gérer le fait que nous avons introduit une couche d&rsquo;indirection. Nous commençons avec la vérification d&rsquo;arité :</p>
 <div class="codehilite"><pre class="insert-before">static bool call(ObjClosure* closure, int argCount) {
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>call</em>()<br>
@@ -431,10 +332,7 @@ replace 3 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>call</em>(), replace 3 lines</div>
 
-<p>The only change is that we unwrap the closure to get to the underlying function.
-The next thing <code>call()</code> does is create a new CallFrame. We change that code to
-store the closure in the CallFrame and get the bytecode pointer from the
-closure&rsquo;s function.</p>
+<p>Le seul changement est que nous déballons la fermeture pour obtenir la fonction sous-jacente. La prochaine chose que <code>call()</code> fait est de créer une nouvelle CallFrame. Nous changeons ce code pour stocker la fermeture dans la CallFrame et obtenir le pointeur de bytecode depuis la fonction de la fermeture.</p>
 <div class="codehilite"><pre class="insert-before">  CallFrame* frame = &amp;vm.frames[vm.frameCount++];
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>call</em>()<br>
@@ -445,7 +343,7 @@ replace 2 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>call</em>(), replace 2 lines</div>
 
-<p>This necessitates changing the declaration of CallFrame too.</p>
+<p>Cela nécessite de changer la déclaration de CallFrame aussi.</p>
 <div class="codehilite"><pre class="insert-before">typedef struct {
 </pre><div class="source-file"><em>vm.h</em><br>
 in struct <em>CallFrame</em><br>
@@ -455,9 +353,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.h</em>, in struct <em>CallFrame</em>, replace 1 line</div>
 
-<p>That change triggers a few other cascading changes. Every place in the VM that
-accessed CallFrame&rsquo;s function needs to use a closure instead. First, the macro
-for reading a constant from the current function&rsquo;s constant table:</p>
+<p>Ce changement déclenche quelques autres changements en cascade. Chaque endroit dans la VM qui accédait à la fonction de CallFrame a besoin d&rsquo;utiliser une fermeture à la place. D&rsquo;abord, la macro pour lire une constante depuis la table de constantes de la fonction courante :</p>
 <div class="codehilite"><pre class="insert-before">    (uint16_t)((frame-&gt;ip[-2] &lt;&lt; 8) | frame-&gt;ip[-1]))
 
 </pre><div class="source-file"><em>vm.c</em><br>
@@ -471,8 +367,7 @@ replace 2 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>(), replace 2 lines</div>
 
-<p>When <code>DEBUG_TRACE_EXECUTION</code> is enabled, it needs to get to the chunk from the
-closure.</p>
+<p>Quand <code>DEBUG_TRACE_EXECUTION</code> est activé, il a besoin d&rsquo;obtenir le morceau (chunk) depuis la fermeture.</p>
 <div class="codehilite"><pre class="insert-before">    printf(&quot;\n&quot;);
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>run</em>()<br>
@@ -483,7 +378,7 @@ replace 2 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>(), replace 2 lines</div>
 
-<p>Likewise when reporting a runtime error:</p>
+<p>De même lors du rapport d&rsquo;une erreur d&rsquo;exécution :</p>
 <div class="codehilite"><pre class="insert-before">    CallFrame* frame = &amp;vm.frames[i];
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>runtimeError</em>()<br>
@@ -493,8 +388,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>runtimeError</em>(), replace 1 line</div>
 
-<p>Almost there. The last piece is the blob of code that sets up the very first
-CallFrame to begin executing the top-level code for a Lox script.</p>
+<p>Presque là. La dernière pièce est le blob de code qui configure la toute première CallFrame pour commencer à exécuter le code de niveau supérieur pour un script Lox.</p>
 <div class="codehilite"><pre class="insert-before">  push(OBJ_VAL(function));
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>interpret</em>()<br>
@@ -509,38 +403,16 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>interpret</em>(), replace 1 line</div>
 
-<p><span name="pop">The</span> compiler still returns a raw ObjFunction when
-compiling a script. That&rsquo;s fine, but it means we need to wrap it in an
-ObjClosure here, before the VM can execute it.</p>
+<p><span name="pop">Le</span> compilateur renvoie toujours une ObjFunction brute lors de la compilation d&rsquo;un script. C&rsquo;est bien, mais cela signifie que nous devons l&rsquo;envelopper dans une ObjClosure ici, avant que la VM puisse l&rsquo;exécuter.</p>
 <aside name="pop">
-<p>The code looks a little silly because we still push the original ObjFunction
-onto the stack. Then we pop it after creating the closure, only to then push the
-closure. Why put the ObjFunction on there at all? As usual, when you see weird
-stack stuff going on, it&rsquo;s to keep the <a href="garbage-collection.html">forthcoming garbage collector</a> aware
-of some heap-allocated objects.</p>
+<p>Le code semble un peu bête parce que nous empilons toujours l&rsquo;ObjFunction originale sur la pile. Ensuite nous la dépilons après avoir créé la fermeture, seulement pour ensuite empiler la fermeture. Pourquoi mettre l&rsquo;ObjFunction là du tout ? Comme d&rsquo;habitude, quand vous voyez des trucs de pile bizarres se passer, c&rsquo;est pour garder le <a href="ramasse-miettes.html">futur ramasse-miettes</a> conscient de certains objets alloués sur le tas.</p>
 </aside>
-<p>We are back to a working interpreter. The <em>user</em> can&rsquo;t tell any difference, but
-the compiler now generates code telling the VM to create a closure for each
-function declaration. Every time the VM executes a function declaration, it
-wraps the ObjFunction in a new ObjClosure. The rest of the VM now handles those
-ObjClosures floating around. That&rsquo;s the boring stuff out of the way. Now we&rsquo;re
-ready to make these closures actually <em>do</em> something.</p>
+<p>Nous sommes de retour à un interpréteur fonctionnel. L&rsquo;<em>utilisateur</em> ne peut voir aucune différence, mais le compilateur génère maintenant du code disant à la VM de créer une fermeture pour chaque déclaration de fonction. Chaque fois que la VM exécute une déclaration de fonction, elle enveloppe l&rsquo;ObjFunction dans une nouvelle ObjClosure. Le reste de la VM gère maintenant ces ObjClosures flottant autour. C&rsquo;est le truc ennuyeux hors du chemin. Maintenant nous sommes prêts à faire que ces fermetures <em>fassent</em> réellement quelque chose.</p>
 <h2><a href="#upvalues" id="upvalues"><small>25&#8202;.&#8202;2</small>Upvalues</a></h2>
-<p>Our existing instructions for reading and writing local variables are limited to
-a single function&rsquo;s stack window. Locals from a surrounding function are outside
-of the inner function&rsquo;s window. We&rsquo;re going to need some new instructions.</p>
-<p>The easiest approach might be an instruction that takes a relative stack slot
-offset that can reach <em>before</em> the current function&rsquo;s window. That would work if
-closed-over variables were always on the stack. But as we saw earlier, these
-variables sometimes outlive the function where they are declared. That means
-they won&rsquo;t always be on the stack.</p>
-<p>The next easiest approach, then, would be to take any local variable that gets
-closed over and have it always live on the heap. When the local variable
-declaration in the surrounding function is executed, the VM would allocate
-memory for it dynamically. That way it could live as long as needed.</p>
-<p>This would be a fine approach if clox didn&rsquo;t have a single-pass compiler. But
-that restriction we chose in our implementation makes things harder. Take a look
-at this example:</p>
+<p>Nos instructions existantes pour lire et écrire les variables locales sont limitées à la fenêtre de pile d&rsquo;une seule fonction. Les locales d&rsquo;une fonction environnante sont en dehors de la fenêtre de la fonction intérieure. Nous allons avoir besoin de quelques nouvelles instructions.</p>
+<p>L&rsquo;approche la plus facile pourrait être une instruction qui prend un décalage d&rsquo;emplacement de pile relatif qui peut atteindre <em>avant</em> la fenêtre de la fonction courante. Cela fonctionnerait si les variables fermées étaient toujours sur la pile. Mais comme nous l&rsquo;avons vu plus tôt, ces variables survivent parfois à la fonction où elles sont déclarées. Cela signifie qu&rsquo;elles ne seront pas toujours sur la pile.</p>
+<p>L&rsquo;approche suivante la plus facile, alors, serait de prendre toute variable locale qui est fermée (closed over) et de l&rsquo;avoir toujours vivant sur le tas. Quand la déclaration de variable locale dans la fonction environnante est exécutée, la VM allouerait de la mémoire pour elle dynamiquement. De cette façon elle pourrait vivre aussi longtemps que nécessaire.</p>
+<p>Ce serait une bonne approche si clox n&rsquo;avait pas un compilateur à une seule passe. Mais cette restriction que nous avons choisie dans notre implémentation rend les choses plus difficiles. Jetez un œil à cet exemple :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">outer</span>() {
   <span class="k">var</span> <span class="i">x</span> = <span class="n">1</span>;    <span class="c">// (1)</span>
   <span class="i">x</span> = <span class="n">2</span>;        <span class="c">// (2)</span>
@@ -550,23 +422,10 @@ at this example:</p>
   <span class="i">inner</span>();
 }
 </pre></div>
-<p>Here, the compiler compiles the declaration of <code>x</code> at <code>(1)</code> and emits code for
-the assignment at <code>(2)</code>. It does that before reaching the declaration of
-<code>inner()</code> at <code>(3)</code> and discovering that <code>x</code> is in fact closed over. We don&rsquo;t
-have an easy way to go back and fix that already-emitted code to treat <code>x</code>
-specially. Instead, we want a solution that allows a closed-over variable to
-live on the stack exactly like a normal local variable <em>until the point that it
-is closed over</em>.</p>
-<p>Fortunately, thanks to the Lua dev team, we have a solution. We use a level of
-indirection that they call an <strong>upvalue</strong>. An upvalue refers to a local variable
-in an enclosing function. Every closure maintains an array of upvalues, one for
-each surrounding local variable that the closure uses.</p>
-<p>The upvalue points back into the stack to where the variable it captured lives.
-When the closure needs to access a closed-over variable, it goes through the
-corresponding upvalue to reach it. When a function declaration is first executed
-and we create a closure for it, the VM creates the array of upvalues and wires
-them up to &ldquo;capture&rdquo; the surrounding local variables that the closure needs.</p>
-<p>For example, if we throw this program at clox,</p>
+<p>Ici, le compilateur compile la déclaration de <code>x</code> à <code>(1)</code> et émet du code pour l&rsquo;assignation à <code>(2)</code>. Il fait cela avant d&rsquo;atteindre la déclaration de <code>inner()</code> à <code>(3)</code> et de découvrir que <code>x</code> est en fait fermée. Nous n&rsquo;avons pas un moyen facile de revenir en arrière et corriger ce code déjà émis pour traiter <code>x</code> spécialement. Au lieu de cela, nous voulons une solution qui permet à une variable fermée de vivre sur la pile exactement comme une variable locale normale <em>jusqu&rsquo;au point qu&rsquo;elle soit fermée</em>.</p>
+<p>Heureusement, grâce à l&rsquo;équipe de dev Lua, nous avons une solution. Nous utilisons un niveau d&rsquo;indirection qu&rsquo;ils appellent une <strong>upvalue</strong>. Une upvalue se réfère à une variable locale dans une fonction englobante. Chaque fermeture maintient un tableau d&rsquo;upvalues, une pour chaque variable locale environnante que la fermeture utilise.</p>
+<p>L&rsquo;upvalue pointe en arrière dans la pile vers où la variable qu&rsquo;elle a capturée vit. Quand la fermeture a besoin d&rsquo;accéder à une variable fermée, elle passe par l&rsquo;upvalue correspondante pour l&rsquo;atteindre. Quand une déclaration de fonction est d&rsquo;abord exécutée et que nous créons une fermeture pour elle, la VM crée le tableau d&rsquo;upvalues et les câble pour &ldquo;capturer&rdquo; les variables locales environnantes dont la fermeture a besoin.</p>
+<p>Par exemple, si nous jetons ce programme à clox,</p>
 <div class="codehilite"><pre>{
   <span class="k">var</span> <span class="i">a</span> = <span class="n">3</span>;
   <span class="k">fun</span> <span class="i">f</span>() {
@@ -574,26 +433,11 @@ them up to &ldquo;capture&rdquo; the surrounding local variables that the closur
   }
 }
 </pre></div>
-<p>the compiler and runtime will conspire together to build up a set of objects in
-memory like this:</p><img src="image/closures/open-upvalue.png" alt="The object graph of the stack, ObjClosure, ObjFunction, and upvalue array."/>
-<p>That might look overwhelming, but fear not. We&rsquo;ll work our way through it. The
-important part is that upvalues serve as the layer of indirection needed to
-continue to find a captured local variable even after it moves off the stack.
-But before we get to all that, let&rsquo;s focus on compiling captured variables.</p>
-<h3><a href="#compiling-upvalues" id="compiling-upvalues"><small>25&#8202;.&#8202;2&#8202;.&#8202;1</small>Compiling upvalues</a></h3>
-<p>As usual, we want to do as much work as possible during compilation to keep
-execution simple and fast. Since local variables are lexically scoped in Lox, we
-have enough knowledge at compile time to resolve which surrounding local
-variables a function accesses and where those locals are declared. That, in
-turn, means we know <em>how many</em> upvalues a closure needs, <em>which</em> variables they
-capture, and <em>which stack slots</em> contain those variables in the declaring
-function&rsquo;s stack window.</p>
-<p>Currently, when the compiler resolves an identifier, it walks the block scopes
-for the current function from innermost to outermost. If we don&rsquo;t find the
-variable in that function, we assume the variable must be a global. We don&rsquo;t
-consider the local scopes of enclosing functions<span class="em">&mdash;</span>they get skipped right over.
-The first change, then, is inserting a resolution step for those outer local
-scopes.</p>
+<p>le compilateur et le runtime conspireront ensemble pour construire un ensemble d&rsquo;objets en mémoire comme ceci :</p><img src="image/closures/open-upvalue.png" alt="Le graphe d'objets de la pile, ObjClosure, ObjFunction, et tableau d'upvalues."/>
+<p>Cela pourrait sembler écrasant, mais n&rsquo;ayez crainte. Nous travaillerons notre chemin à travers. La partie importante est que les upvalues servent comme la couche d&rsquo;indirection nécessaire pour continuer à trouver une variable locale capturée même après qu&rsquo;elle bouge hors de la pile. Mais avant que nous arrivions à tout ça, concentrons-nous sur la compilation des variables capturées.</p>
+<h3><a href="#compiler-les-upvalues" id="compiler-les-upvalues"><small>25&#8202;.&#8202;2&#8202;.&#8202;1</small>Compiler les upvalues</a></h3>
+<p>Comme d&rsquo;habitude, nous voulons faire autant de travail que possible durant la compilation pour garder l&rsquo;exécution simple et rapide. Puisque les variables locales sont lexicalement portées dans Lox, nous avons assez de connaissance à la compilation pour résoudre quelles variables locales environnantes une fonction accède et où ces locales sont déclarées. Cela, à son tour, signifie que nous savons <em>combien</em> d&rsquo;upvalues une fermeture a besoin, <em>quelles</em> variables elles capturent, et <em>quels emplacements de pile</em> contiennent ces variables dans la fenêtre de pile de la fonction déclaratrice.</p>
+<p>Actuellement, quand le compilateur résout un identifiant, il marche les portées de bloc pour la fonction courante de la plus intérieure à la plus extérieure. Si nous ne trouvons pas la variable dans cette fonction, nous supposons que la variable doit être une globale. Nous ne considérons pas les portées locales des fonctions englobantes<span class="em">&mdash;</span>elles sont sautées juste au-dessus. Le premier changement, alors, est d&rsquo;insérer une étape de résolution pour ces portées locales extérieures.</p>
 <div class="codehilite"><pre class="insert-before">  if (arg != -1) {
     getOp = OP_GET_LOCAL;
     setOp = OP_SET_LOCAL;
@@ -606,11 +450,7 @@ in <em>namedVariable</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>namedVariable</em>()</div>
 
-<p>This new <code>resolveUpvalue()</code> function looks for a local variable declared in any
-of the surrounding functions. If it finds one, it returns an &ldquo;upvalue index&rdquo; for
-that variable. (We&rsquo;ll get into what that means later.) Otherwise, it returns -1
-to indicate the variable wasn&rsquo;t found. If it was found, we use these two new
-instructions for reading or writing to the variable through its upvalue:</p>
+<p>Cette nouvelle fonction <code>resolveUpvalue()</code> cherche une variable locale déclarée dans n&rsquo;importe laquelle des fonctions environnantes. Si elle en trouve une, elle renvoie un &ldquo;index d&rsquo;upvalue&rdquo; pour cette variable. (Nous entrerons dans ce que cela signifie plus tard.) Sinon, elle renvoie -1 pour indiquer que la variable n&rsquo;a pas été trouvée. Si elle a été trouvée, nous utilisons ces deux nouvelles instructions pour lire ou écrire à la variable à travers son upvalue :</p>
 <div class="codehilite"><pre class="insert-before">  OP_SET_GLOBAL,
 </pre><div class="source-file"><em>chunk.h</em><br>
 in enum <em>OpCode</em></div>
@@ -620,9 +460,7 @@ in enum <em>OpCode</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>chunk.h</em>, in enum <em>OpCode</em></div>
 
-<p>We&rsquo;re implementing this sort of top-down, so I&rsquo;ll show you how these work at
-runtime soon. The part to focus on now is how the compiler actually resolves the
-identifier.</p>
+<p>Nous implémentons ce genre de haut en bas, donc je vous montrerai comment celles-ci fonctionnent à l&rsquo;exécution bientôt. La partie sur laquelle se concentrer maintenant est comment le compilateur résout réellement l&rsquo;identifiant.</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>resolveLocal</em>()</div>
 <pre><span class="k">static</span> <span class="t">int</span> <span class="i">resolveUpvalue</span>(<span class="t">Compiler</span>* <span class="i">compiler</span>, <span class="t">Token</span>* <span class="i">name</span>) {
@@ -638,21 +476,11 @@ add after <em>resolveLocal</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>resolveLocal</em>()</div>
 
-<p>We call this after failing to resolve a local variable in the current function&rsquo;s
-scope, so we know the variable isn&rsquo;t in the current compiler. Recall that
-Compiler stores a pointer to the Compiler for the enclosing function, and these
-pointers form a linked chain that goes all the way to the root Compiler for the
-top-level code. Thus, if the enclosing Compiler is <code>NULL</code>, we know we&rsquo;ve reached
-the outermost function without finding a local variable. The variable must be
-<span name="undefined">global</span>, so we return -1.</p>
+<p>Nous appelons ceci après avoir échoué à résoudre une variable locale dans la portée de la fonction courante, donc nous savons que la variable n&rsquo;est pas dans le compilateur courant. Rappelez-vous que Compiler stocke un pointeur vers le Compiler pour la fonction englobante, et ces pointeurs forment une chaîne liée qui va tout le chemin au Compiler racine pour le code de niveau supérieur. Ainsi, si le Compiler englobant est <code>NULL</code>, nous savons que nous avons atteint la fonction la plus extérieure sans trouver une variable locale. La variable doit être <span name="undefined">globale</span>, donc nous renvoyons -1.</p>
 <aside name="undefined">
-<p>It might end up being an entirely undefined variable and not even global. But in
-Lox, we don&rsquo;t detect that error until runtime, so from the compiler&rsquo;s
-perspective, it&rsquo;s &ldquo;hopefully global&rdquo;.</p>
+<p>Elle pourrait finir par être une variable entièrement indéfinie et pas même globale. Mais dans Lox, nous ne détectons pas cette erreur jusqu&rsquo;à l&rsquo;exécution, donc de la perspective du compilateur, c&rsquo;est &ldquo;espérons-le globale&rdquo;.</p>
 </aside>
-<p>Otherwise, we try to resolve the identifier as a <em>local</em> variable in the
-<em>enclosing</em> compiler. In other words, we look for it right outside the current
-function. For example:</p>
+<p>Sinon, nous essayons de résoudre l&rsquo;identifiant comme une variable <em>locale</em> dans le compilateur <em>englobant</em>. En d&rsquo;autres termes, nous la cherchons juste en dehors de la fonction courante. Par exemple :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">outer</span>() {
   <span class="k">var</span> <span class="i">x</span> = <span class="n">1</span>;
   <span class="k">fun</span> <span class="i">inner</span>() {
@@ -661,11 +489,7 @@ function. For example:</p>
   <span class="i">inner</span>();
 }
 </pre></div>
-<p>When compiling the identifier expression at <code>(1)</code>, <code>resolveUpvalue()</code> looks for
-a local variable <code>x</code> declared in <code>outer()</code>. If found<span class="em">&mdash;</span>like it is in this
-example<span class="em">&mdash;</span>then we&rsquo;ve successfully resolved the variable. We create an upvalue
-so that the inner function can access the variable through that. The upvalue is
-created here:</p>
+<p>Lors de la compilation de l&rsquo;expression identifiant à <code>(1)</code>, <code>resolveUpvalue()</code> cherche une variable locale <code>x</code> déclarée dans <code>outer()</code>. Si trouvée<span class="em">&mdash;</span>comme elle l&rsquo;est dans cet exemple<span class="em">&mdash;</span>alors nous avons résolu avec succès la variable. Nous créons une upvalue pour que la fonction intérieure puisse accéder à la variable à travers cela. L&rsquo;upvalue est créée ici :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>resolveLocal</em>()</div>
 <pre><span class="k">static</span> <span class="t">int</span> <span class="i">addUpvalue</span>(<span class="t">Compiler</span>* <span class="i">compiler</span>, <span class="t">uint8_t</span> <span class="i">index</span>,
@@ -678,32 +502,13 @@ add after <em>resolveLocal</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>resolveLocal</em>()</div>
 
-<p>The compiler keeps an array of upvalue structures to track the closed-over
-identifiers that it has resolved in the body of each function. Remember how the
-compiler&rsquo;s Local array mirrors the stack slot indexes where locals live at
-runtime? This new upvalue array works the same way. The indexes in the
-compiler&rsquo;s array match the indexes where upvalues will live in the ObjClosure at
-runtime.</p>
-<p>This function adds a new upvalue to that array. It also keeps track of the
-number of upvalues the function uses. It stores that count directly in the
-ObjFunction itself because we&rsquo;ll also <span name="bridge">need</span> that
-number for use at runtime.</p>
+<p>Le compilateur garde un tableau de structures upvalue pour suivre les identifiants fermés qu&rsquo;il a résolus dans le corps de chaque fonction. Rappelez-vous comment le tableau <code>locals</code> du compilateur reflète les index d&rsquo;emplacement de pile où les locales vivent à l&rsquo;exécution ? Ce nouveau tableau d&rsquo;upvalues fonctionne de la même façon. Les index dans le tableau du compilateur correspondent aux index où les upvalues vivront dans l&rsquo;ObjClosure à l&rsquo;exécution.</p>
+<p>Cette fonction ajoute une nouvelle upvalue à ce tableau. Elle garde aussi la trace du nombre d&rsquo;upvalues que la fonction utilise. Elle stocke ce compte directement dans l&rsquo;ObjFunction elle-même parce que nous aurons aussi <span name="bridge">besoin</span> de ce nombre pour l&rsquo;utiliser à l&rsquo;exécution.</p>
 <aside name="bridge">
-<p>Like constants and function arity, the upvalue count is another one of those
-little pieces of data that form the bridge between the compiler and runtime.</p>
+<p>Comme les constantes et l&rsquo;arité de fonction, le compte d&rsquo;upvalue est une autre de ces petites pièces de données qui forment le pont entre le compilateur et le runtime.</p>
 </aside>
-<p>The <code>index</code> field tracks the closed-over local variable&rsquo;s slot index. That way
-the compiler knows <em>which</em> variable in the enclosing function needs to be
-captured. We&rsquo;ll circle back to what that <code>isLocal</code> field is for before too long.
-Finally, <code>addUpvalue()</code> returns the index of the created upvalue in the
-function&rsquo;s upvalue list. That index becomes the operand to the <code>OP_GET_UPVALUE</code>
-and <code>OP_SET_UPVALUE</code> instructions.</p>
-<p>That&rsquo;s the basic idea for resolving upvalues, but the function isn&rsquo;t fully
-baked. A closure may reference the same variable in a surrounding function
-multiple times. In that case, we don&rsquo;t want to waste time and memory creating a
-separate upvalue for each identifier expression. To fix that, before we add a
-new upvalue, we first check to see if the function already has an upvalue that
-closes over that variable.</p>
+<p>Le champ <code>index</code> suit l&rsquo;index d&rsquo;emplacement de la variable locale fermée. De cette façon le compilateur sait <em>quelle</em> variable dans la fonction englobante a besoin d&rsquo;être capturée. Nous reviendrons à ce à quoi ce champ <code>isLocal</code> sert avant trop longtemps. Finalement, <code>addUpvalue()</code> renvoie l&rsquo;index de l&rsquo;upvalue créée dans la liste d&rsquo;upvalues de la fonction. Cet index devient l&rsquo;opérande aux instructions <code>OP_GET_UPVALUE</code> et <code>OP_SET_UPVALUE</code>.</p>
+<p>C&rsquo;est l&rsquo;idée de base pour résoudre les upvalues, mais la fonction n&rsquo;est pas pleinement cuite. Une fermeture peut référencer la même variable dans une fonction environnante de multiples fois. Dans ce cas, nous ne voulons pas gaspiller du temps et de la mémoire à créer une upvalue séparée pour chaque expression identifiant. Pour corriger cela, avant que nous ajoutions une nouvelle upvalue, nous vérifions d&rsquo;abord pour voir si la fonction a déjà une upvalue qui ferme sur cette variable.</p>
 <div class="codehilite"><pre class="insert-before">  int upvalueCount = compiler-&gt;function-&gt;upvalueCount;
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>addUpvalue</em>()</div>
@@ -720,11 +525,8 @@ in <em>addUpvalue</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>addUpvalue</em>()</div>
 
-<p>If we find an upvalue in the array whose slot index matches the one we&rsquo;re
-adding, we just return that <em>upvalue</em> index and reuse it. Otherwise, we fall
-through and add the new upvalue.</p>
-<p>These two functions access and modify a bunch of new state, so let&rsquo;s define
-that. First, we add the upvalue count to ObjFunction.</p>
+<p>Si nous trouvons une upvalue dans le tableau dont l&rsquo;index d&rsquo;emplacement correspond à celui que nous ajoutons, nous retournons juste cet index d&rsquo;<em>upvalue</em> et le réutilisons. Sinon, nous tombons à travers et ajoutons la nouvelle upvalue.</p>
+<p>Ces deux fonctions accèdent et modifient un tas de nouvel état, donc définissons cela. D&rsquo;abord, nous ajoutons le compte d&rsquo;upvalue à ObjFunction.</p>
 <div class="codehilite"><pre class="insert-before">  int arity;
 </pre><div class="source-file"><em>object.h</em><br>
 in struct <em>ObjFunction</em></div>
@@ -733,8 +535,7 @@ in struct <em>ObjFunction</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, in struct <em>ObjFunction</em></div>
 
-<p>We&rsquo;re conscientious C programmers, so we zero-initialize that when an
-ObjFunction is first allocated.</p>
+<p>Nous sommes des programmeurs C consciencieux, donc nous initialisons cela à zéro quand une ObjFunction est d&rsquo;abord allouée.</p>
 <div class="codehilite"><pre class="insert-before">  function-&gt;arity = 0;
 </pre><div class="source-file"><em>object.c</em><br>
 in <em>newFunction</em>()</div>
@@ -743,7 +544,7 @@ in <em>newFunction</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, in <em>newFunction</em>()</div>
 
-<p>In the compiler, we add a field for the upvalue array.</p>
+<p>Dans le compilateur, nous ajoutons un champ pour le tableau d&rsquo;upvalues.</p>
 <div class="codehilite"><pre class="insert-before">  int localCount;
 </pre><div class="source-file"><em>compiler.c</em><br>
 in struct <em>Compiler</em></div>
@@ -752,11 +553,7 @@ in struct <em>Compiler</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in struct <em>Compiler</em></div>
 
-<p>For simplicity, I gave it a fixed size. The <code>OP_GET_UPVALUE</code> and
-<code>OP_SET_UPVALUE</code> instructions encode an upvalue index using a single byte
-operand, so there&rsquo;s a restriction on how many upvalues a function can have<span class="em">&mdash;</span>how many unique variables it can close over. Given that, we can afford a static
-array that large. We also need to make sure the compiler doesn&rsquo;t overflow that
-limit.</p>
+<p>Pour la simplicité, je lui ai donné une taille fixe. Les instructions <code>OP_GET_UPVALUE</code> et <code>OP_SET_UPVALUE</code> encodent un index d&rsquo;upvalue utilisant un opérande d&rsquo;un seul octet, donc il y a une restriction sur combien d&rsquo;upvalues une fonction peut avoir<span class="em">&mdash;</span>combien de variables uniques elle peut fermer. Étant donné cela, nous pouvons nous permettre un tableau statique aussi grand. Nous devons aussi nous assurer que le compilateur ne déborde pas cette limite.</p>
 <div class="codehilite"><pre class="insert-before">    if (upvalue-&gt;index == index &amp;&amp; upvalue-&gt;isLocal == isLocal) {
       return i;
     }
@@ -773,7 +570,7 @@ in <em>addUpvalue</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>addUpvalue</em>()</div>
 
-<p>Finally, the Upvalue struct type itself.</p>
+<p>Finalement, le type struct Upvalue lui-même.</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after struct <em>Local</em></div>
 <pre><span class="k">typedef</span> <span class="k">struct</span> {
@@ -783,12 +580,9 @@ add after struct <em>Local</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after struct <em>Local</em></div>
 
-<p>The <code>index</code> field stores which local slot the upvalue is capturing. The
-<code>isLocal</code> field deserves its own section, which we&rsquo;ll get to next.</p>
-<h3><a href="#flattening-upvalues" id="flattening-upvalues"><small>25&#8202;.&#8202;2&#8202;.&#8202;2</small>Flattening upvalues</a></h3>
-<p>In the example I showed before, the closure is accessing a variable declared in
-the immediately enclosing function. Lox also supports accessing local variables
-declared in <em>any</em> enclosing scope, as in:</p>
+<p>Le champ <code>index</code> stocke quel emplacement local l&rsquo;upvalue capture. Le champ <code>isLocal</code> mérite sa propre section, à laquelle nous arriverons ensuite.</p>
+<h3><a href="#aplatir-les-upvalues" id="aplatir-les-upvalues"><small>25&#8202;.&#8202;2&#8202;.&#8202;2</small>Aplatir les upvalues</a></h3>
+<p>Dans l&rsquo;exemple que j&rsquo;ai montré avant, la fermeture accède à une variable déclarée dans la fonction immédiatement englobante. Lox supporte aussi d&rsquo;accéder aux variables locales déclarées dans <em>n&rsquo;importe quelle</em> portée englobante, comme dans :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">outer</span>() {
   <span class="k">var</span> <span class="i">x</span> = <span class="n">1</span>;
   <span class="k">fun</span> <span class="i">middle</span>() {
@@ -798,16 +592,9 @@ declared in <em>any</em> enclosing scope, as in:</p>
   }
 }
 </pre></div>
-<p>Here, we&rsquo;re accessing <code>x</code> in <code>inner()</code>. That variable is defined not in
-<code>middle()</code>, but all the way out in <code>outer()</code>. We need to handle cases like this
-too. You <em>might</em> think that this isn&rsquo;t much harder since the variable will
-simply be somewhere farther down on the stack. But consider this <span
-name="devious">devious</span> example:</p>
+<p>Ici, nous accédons à <code>x</code> dans <code>inner()</code>. Cette variable est définie non pas dans <code>middle()</code>, mais tout là-bas dans <code>outer()</code>. Nous devons gérer des cas comme ceci aussi. Vous <em>pourriez</em> penser que ce n&rsquo;est pas beaucoup plus dur puisque la variable sera simplement quelque part plus bas sur la pile. Mais considérez cet exemple <span name="devious">sournois</span> :</p>
 <aside name="devious">
-<p>If you work on programming languages long enough, you will develop a
-finely honed skill at creating bizarre programs like this that are technically
-valid but likely to trip up an implementation written by someone with a less
-perverse imagination than you.</p>
+<p>Si vous travaillez sur les langages de programmation assez longtemps, vous développerez une compétence finement aiguisée pour créer des programmes bizarres comme celui-ci qui sont techniquement valides mais susceptibles de faire trébucher une implémentation écrite par quelqu&rsquo;un avec une imagination moins perverse que vous.</p>
 </aside>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">outer</span>() {
   <span class="k">var</span> <span class="i">x</span> = <span class="s">&quot;value&quot;</span>;
@@ -828,45 +615,26 @@ perverse imagination than you.</p>
 <span class="k">var</span> <span class="i">in</span> = <span class="i">mid</span>();
 <span class="i">in</span>();
 </pre></div>
-<p>When you run this, it should print:</p>
+<p>Quand vous exécutez ceci, cela devrait afficher :</p>
 <div class="codehilite"><pre>return from outer
 create inner closure
 value
 </pre></div>
-<p>I know, it&rsquo;s convoluted. The important part is that <code>outer()</code><span class="em">&mdash;</span>where <code>x</code> is
-declared<span class="em">&mdash;</span>returns and pops all of its variables off the stack before the
-<em>declaration</em> of <code>inner()</code> executes. So, at the point in time that we create the
-closure for <code>inner()</code>, <code>x</code> is already off the stack.</p>
-<p>Here, I traced out the execution flow for you:</p><img src="image/closures/execution-flow.png" alt="Tracing through the previous example program."/>
-<p>See how <code>x</code> is popped &#9312; before it is captured &#9313; and then later
-accessed &#9314;? We really have two problems:</p>
+<p>Je sais, c&rsquo;est alambiqué. La partie importante est que <code>outer()</code><span class="em">&mdash;</span>où <code>x</code> est déclarée<span class="em">&mdash;</span>retourne et dépile toutes ses variables de la pile avant que la <em>déclaration</em> de <code>inner()</code> s&rsquo;exécute. Donc, au moment où nous créons la fermeture pour <code>inner()</code>, <code>x</code> est déjà hors de la pile.</p>
+<p>Ici, j&rsquo;ai tracé le flux d&rsquo;exécution pour vous :</p><img src="image/closures/execution-flow.png" alt="Traçant à travers le programme exemple précédent."/>
+<p>Voyez comment <code>x</code> est dépilée &#9312; avant qu&rsquo;elle soit capturée &#9313; et ensuite accédée plus tard &#9314; ? Nous avons vraiment deux problèmes :</p>
 <ol>
 <li>
-<p>We need to resolve local variables that are declared in surrounding
-functions beyond the immediately enclosing one.</p>
+<p>Nous devons résoudre les variables locales qui sont déclarées dans les fonctions environnantes au-delà de celle immédiatement englobante.</p>
 </li>
 <li>
-<p>We need to be able to capture variables that have already left the stack.</p>
+<p>Nous devons être capables de capturer des variables qui ont déjà quitté la pile.</p>
 </li>
 </ol>
-<p>Fortunately, we&rsquo;re in the middle of adding upvalues to the VM, and upvalues are
-explicitly designed for tracking variables that have escaped the stack. So, in a
-clever bit of self-reference, we can use upvalues to allow upvalues to capture
-variables declared outside of the immediately surrounding function.</p>
-<p>The solution is to allow a closure to capture either a local variable or <em>an
-existing upvalue</em> in the immediately enclosing function. If a deeply nested
-function references a local variable declared several hops away, we&rsquo;ll thread it
-through all of the intermediate functions by having each function capture an
-upvalue for the next function to grab.</p><img src="image/closures/linked-upvalues.png" alt="An upvalue in inner() points to an upvalue in middle(), which points to a local variable in outer()."/>
-<p>In the above example, <code>middle()</code> captures the local variable <code>x</code> in the
-immediately enclosing function <code>outer()</code> and stores it in its own upvalue. It
-does this even though <code>middle()</code> itself doesn&rsquo;t reference <code>x</code>. Then, when the
-declaration of <code>inner()</code> executes, its closure grabs the <em>upvalue</em> from the
-ObjClosure for <code>middle()</code> that captured <code>x</code>. A function captures<span class="em">&mdash;</span>either a
-local or upvalue<span class="em">&mdash;</span><em>only</em> from the immediately surrounding function, which is
-guaranteed to still be around at the point that the inner function declaration
-executes.</p>
-<p>In order to implement this, <code>resolveUpvalue()</code> becomes recursive.</p>
+<p>Heureusement, nous sommes au milieu de l&rsquo;ajout des upvalues à la VM, et les upvalues sont explicitement conçues pour suivre les variables qui ont échappé la pile. Donc, dans un morceau intelligent d&rsquo;auto-référence, nous pouvons utiliser les upvalues pour permettre aux upvalues de capturer les variables déclarées en dehors de la fonction immédiatement environnante.</p>
+<p>La solution est de permettre à une fermeture de capturer soit une variable locale ou <em>une upvalue existante</em> dans la fonction immédiatement englobante. Si une fonction profondément imbriquée référence une variable locale déclarée plusieurs sauts plus loin, nous l&rsquo;enfilerons à travers toutes les fonctions intermédiaires en ayant chaque fonction capturer une upvalue pour que la fonction suivante l&rsquo;attrape.</p><img src="image/closures/linked-upvalues.png" alt="Une upvalue dans inner() pointe vers une upvalue dans middle(), qui pointe vers une variable locale dans outer()."/>
+<p>Dans l&rsquo;exemple ci-dessus, <code>middle()</code> capture la variable locale <code>x</code> dans la fonction immédiatement englobante <code>outer()</code> et la stocke dans sa propre upvalue. Elle fait cela même si <code>middle()</code> elle-même ne référence pas <code>x</code>. Ensuite, quand la déclaration de <code>inner()</code> s&rsquo;exécute, sa fermeture attrape l&rsquo;<em>upvalue</em> depuis l&rsquo;ObjClosure pour <code>middle()</code> qui a capturé <code>x</code>. Une fonction capture<span class="em">&mdash;</span>soit une locale ou une upvalue<span class="em">&mdash;</span><em>seulement</em> depuis la fonction immédiatement environnante, qui est garantie d&rsquo;être encore là au point que la déclaration de fonction intérieure s&rsquo;exécute.</p>
+<p>Afin d&rsquo;implémenter cela, <code>resolveUpvalue()</code> devient récursive.</p>
 <div class="codehilite"><pre class="insert-before">  if (local != -1) {
     return addUpvalue(compiler, (uint8_t)local, true);
   }
@@ -882,51 +650,19 @@ in <em>resolveUpvalue</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>resolveUpvalue</em>()</div>
 
-<p>It&rsquo;s only another three lines of code, but I found this function really
-challenging to get right the first time. This in spite of the fact that I wasn&rsquo;t
-inventing anything new, just porting the concept over from Lua. Most recursive
-functions either do all their work before the recursive call (a <strong>pre-order
-traversal</strong>, or &ldquo;on the way down&rdquo;), or they do all the work after the recursive
-call (a <strong>post-order traversal</strong>, or &ldquo;on the way back up&rdquo;). This function does
-both. The recursive call is right in the middle.</p>
-<p>We&rsquo;ll walk through it slowly. First, we look for a matching local variable in
-the enclosing function. If we find one, we capture that local and return. That&rsquo;s
-the <span name="base">base</span> case.</p>
+<p>C&rsquo;est seulement trois autres lignes de code, mais j&rsquo;ai trouvé cette fonction vraiment difficile à avoir juste la première fois. Ceci en dépit du fait que je n&rsquo;inventais rien de nouveau, juste portais le concept depuis Lua. La plupart des fonctions récursives soit font tout leur travail avant l&rsquo;appel récursif (un <strong>parcours pré-ordre</strong>, ou &ldquo;sur la descente&rdquo;), ou elles font tout le travail après l&rsquo;appel récursif (un <strong>parcours post-ordre</strong>, ou &ldquo;sur la remontée&rdquo;). Cette fonction fait les deux. L&rsquo;appel récursif est juste au milieu.</p>
+<p>Nous la parcourrons lentement. D&rsquo;abord, nous cherchons une variable locale correspondante dans la fonction englobante. Si nous en trouvons une, nous capturons cette locale et retournons. C&rsquo;est le cas de <span name="base">base</span>.</p>
 <aside name="base">
-<p>The other base case, of course, is if there is no enclosing function. In that
-case, the variable can&rsquo;t be resolved lexically and is treated as global.</p>
+<p>L&rsquo;autre cas de base, bien sûr, est s&rsquo;il n&rsquo;y a pas de fonction englobante. Dans ce cas, la variable ne peut pas être résolue lexicalement et est traitée comme globale.</p>
 </aside>
-<p>Otherwise, we look for a local variable beyond the immediately enclosing
-function. We do that by recursively calling <code>resolveUpvalue()</code> on the
-<em>enclosing</em> compiler, not the current one. This series of <code>resolveUpvalue()</code>
-calls works its way along the chain of nested compilers until it hits one of
-the base cases<span class="em">&mdash;</span>either it finds an actual local variable to capture or it
-runs out of compilers.</p>
-<p>When a local variable is found, the most deeply <span name="outer">nested</span>
-call to <code>resolveUpvalue()</code> captures it and returns the upvalue index. That
-returns to the next call for the inner function declaration. That call captures
-the <em>upvalue</em> from the surrounding function, and so on. As each nested call to
-<code>resolveUpvalue()</code> returns, we drill back down into the innermost function
-declaration where the identifier we are resolving appears. At each step along
-the way, we add an upvalue to the intervening function and pass the resulting
-upvalue index down to the next call.</p>
+<p>Sinon, nous cherchons une variable locale au-delà de la fonction immédiatement englobante. Nous faisons cela en appelant récursivement <code>resolveUpvalue()</code> sur le compilateur <em>englobant</em>, pas le courant. Cette série d&rsquo;appels <code>resolveUpvalue()</code> travaille son chemin le long de la chaîne de compilateurs imbriqués jusqu&rsquo;à ce qu&rsquo;elle frappe l&rsquo;un des cas de base<span class="em">&mdash;</span>soit elle trouve une variable locale réelle à capturer soit elle tombe à court de compilateurs.</p>
+<p>Quand une variable locale est trouvée, l&rsquo;appel le plus profondément <span name="outer">imbriqué</span> à <code>resolveUpvalue()</code> la capture et renvoie l&rsquo;index d&rsquo;upvalue. Cela retourne à l&rsquo;appel suivant pour la déclaration de fonction intérieure. Cet appel capture l&rsquo;<em>upvalue</em> depuis la fonction environnante, et ainsi de suite. Comme chaque appel imbriqué à <code>resolveUpvalue()</code> retourne, nous forons de retour vers le bas dans la déclaration de fonction la plus intérieure où l&rsquo;identifiant que nous résolvons apparaît. À chaque étape le long du chemin, nous ajoutons une upvalue à la fonction intervenante et passons l&rsquo;index d&rsquo;upvalue résultant vers le bas au prochain appel.</p>
 <aside name="outer">
-<p>Each recursive call to <code>resolveUpvalue()</code> walks <em>out</em> one level of function
-nesting. So an inner <em>recursive call</em> refers to an <em>outer</em> nested declaration.
-The innermost recursive call to <code>resolveUpvalue()</code> that finds the local variable
-will be for the <em>outermost</em> function, just inside the enclosing function where
-that variable is actually declared.</p>
+<p>Chaque appel récursif à <code>resolveUpvalue()</code> marche <em>hors</em> d&rsquo;un niveau d&rsquo;imbrication de fonction. Donc un <em>appel récursif</em> intérieur se réfère à une déclaration imbriquée <em>extérieure</em>. L&rsquo;appel récursif le plus intérieur à <code>resolveUpvalue()</code> qui trouve la variable locale sera pour la fonction la plus <em>extérieure</em>, juste à l&rsquo;intérieur de la fonction englobante où cette variable est réellement déclarée.</p>
 </aside>
-<p>It might help to walk through the original example when resolving <code>x</code>:</p><img src="image/closures/recursion.png" alt="Tracing through a recursive call to resolveUpvalue()."/>
-<p>Note that the new call to <code>addUpvalue()</code> passes <code>false</code> for the <code>isLocal</code>
-parameter. Now you see that that flag controls whether the closure captures a
-local variable or an upvalue from the surrounding function.</p>
-<p>By the time the compiler reaches the end of a function declaration, every
-variable reference has been resolved as either a local, an upvalue, or a global.
-Each upvalue may in turn capture a local variable from the surrounding function,
-or an upvalue in the case of transitive closures. We finally have enough data to
-emit bytecode which creates a closure at runtime that captures all of the
-correct variables.</p>
+<p>Cela pourrait aider de parcourir l&rsquo;exemple original lors de la résolution de <code>x</code> :</p><img src="image/closures/recursion.png" alt="Traçant à travers un appel récursif à resolveUpvalue()."/>
+<p>Notez que le nouvel appel à <code>addUpvalue()</code> passe <code>false</code> pour le paramètre <code>isLocal</code>. Maintenant vous voyez que ce drapeau contrôle si la fermeture capture une variable locale ou une upvalue depuis la fonction environnante.</p>
+<p>Au moment où le compilateur atteint la fin d&rsquo;une déclaration de fonction, chaque référence de variable a été résolue comme soit une locale, une upvalue, ou une globale. Chaque upvalue peut à son tour capturer une variable locale depuis la fonction environnante, ou une upvalue dans le cas de fermetures transitives. Nous avons enfin assez de données pour émettre du bytecode qui crée une fermeture à l&rsquo;exécution qui capture toutes les variables correctes.</p>
 <div class="codehilite"><pre class="insert-before">  emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(function)));
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>function</em>()</div>
@@ -940,14 +676,8 @@ in <em>function</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>function</em>()</div>
 
-<p>The <code>OP_CLOSURE</code> instruction is unique in that it has a variably sized encoding.
-For each upvalue the closure captures, there are two single-byte operands. Each
-pair of operands specifies what that upvalue captures. If the first byte is one,
-it captures a local variable in the enclosing function. If zero, it captures one
-of the function&rsquo;s upvalues. The next byte is the local slot or upvalue index to
-capture.</p>
-<p>This odd encoding means we need some bespoke support in the disassembly code
-for <code>OP_CLOSURE</code>.</p>
+<p>L&rsquo;instruction <code>OP_CLOSURE</code> est unique en ce qu&rsquo;elle a un encodage de taille variable. Pour chaque upvalue que la fermeture capture, il y a deux opérandes d&rsquo;un seul octet. Chaque paire d&rsquo;opérandes spécifie ce que cette upvalue capture. Si le premier octet est un, elle capture une variable locale dans la fonction englobante. Si zéro, elle capture une des upvalues de la fonction. L&rsquo;octet suivant est l&rsquo;emplacement local ou l&rsquo;index d&rsquo;upvalue à capturer.</p>
+<p>Cet encodage bizarre signifie que nous avons besoin de support sur mesure dans le code de désassemblage pour <code>OP_CLOSURE</code>.</p>
 <div class="codehilite"><pre class="insert-before">      printf(&quot;\n&quot;);
 </pre><div class="source-file"><em>debug.c</em><br>
 in <em>disassembleInstruction</em>()</div>
@@ -966,7 +696,7 @@ in <em>disassembleInstruction</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>debug.c</em>, in <em>disassembleInstruction</em>()</div>
 
-<p>For example, take this script:</p>
+<p>Par exemple, prenez ce script :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">outer</span>() {
   <span class="k">var</span> <span class="i">a</span> = <span class="n">1</span>;
   <span class="k">var</span> <span class="i">b</span> = <span class="n">2</span>;
@@ -979,15 +709,14 @@ in <em>disassembleInstruction</em>()</div>
   }
 }
 </pre></div>
-<p>If we disassemble the instruction that creates the closure for <code>inner()</code>, it
-prints this:</p>
+<p>Si nous désassemblons l&rsquo;instruction qui crée la fermeture pour <code>inner()</code>, elle affiche ceci :</p>
 <div class="codehilite"><pre>0004    9 OP_CLOSURE          2 &lt;fn inner&gt;
 0006      |                     upvalue 0
 0008      |                     local 1
 0010      |                     upvalue 1
 0012      |                     local 2
 </pre></div>
-<p>We have two other, simpler instructions to add disassembler support for.</p>
+<p>Nous avons deux autres instructions, plus simples, pour lesquelles ajouter le support du désassembleur.</p>
 <div class="codehilite"><pre class="insert-before">    case OP_SET_GLOBAL:
       return constantInstruction(&quot;OP_SET_GLOBAL&quot;, chunk, offset);
 </pre><div class="source-file"><em>debug.c</em><br>
@@ -1000,8 +729,7 @@ in <em>disassembleInstruction</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>debug.c</em>, in <em>disassembleInstruction</em>()</div>
 
-<p>These both have a single-byte operand, so there&rsquo;s nothing exciting going on. We
-do need to add an include so the debug module can get to <code>AS_FUNCTION()</code>.</p>
+<p>Celles-ci ont toutes deux un opérande d&rsquo;un seul octet, donc il n&rsquo;y a rien d&rsquo;excitant se passant. Nous avons besoin d&rsquo;ajouter une inclusion pour que le module debug puisse accéder à <code>AS_FUNCTION()</code>.</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;debug.h&quot;
 </pre><div class="source-file"><em>debug.c</em></div>
 <pre class="insert"><span class="a">#include &quot;object.h&quot;</span>
@@ -1009,14 +737,9 @@ do need to add an include so the debug module can get to <code>AS_FUNCTION()</co
 </pre></div>
 <div class="source-file-narrow"><em>debug.c</em></div>
 
-<p>With that, our compiler is where we want it. For each function declaration, it
-outputs an <code>OP_CLOSURE</code> instruction followed by a series of operand byte pairs
-for each upvalue it needs to capture at runtime. It&rsquo;s time to hop over to that
-side of the VM and get things running.</p>
-<h2><a href="#upvalue-objects" id="upvalue-objects"><small>25&#8202;.&#8202;3</small>Upvalue Objects</a></h2>
-<p>Each <code>OP_CLOSURE</code> instruction is now followed by the series of bytes that
-specify the upvalues the ObjClosure should own. Before we process those
-operands, we need a runtime representation for upvalues.</p>
+<p>Avec ça, notre compilateur est où nous le voulons. Pour chaque déclaration de fonction, il sort une instruction <code>OP_CLOSURE</code> suivie par une série de paires d&rsquo;octets opérandes pour chaque upvalue qu&rsquo;il a besoin de capturer à l&rsquo;exécution. Il est temps de sauter de l&rsquo;autre côté vers la VM et de faire tourner les choses.</p>
+<h2><a href="#objets-upvalue" id="objets-upvalue"><small>25&#8202;.&#8202;3</small>Objets Upvalue</a></h2>
+<p>Chaque instruction <code>OP_CLOSURE</code> est maintenant suivie par la série d&rsquo;octets qui spécifient les upvalues que l&rsquo;ObjClosure devrait posséder. Avant que nous traitions ces opérandes, nous avons besoin d&rsquo;une représentation runtime pour les upvalues.</p>
 <div class="codehilite"><div class="source-file"><em>object.h</em><br>
 add after struct <em>ObjString</em></div>
 <pre><span class="k">typedef</span> <span class="k">struct</span> <span class="t">ObjUpvalue</span> {
@@ -1026,17 +749,8 @@ add after struct <em>ObjString</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, add after struct <em>ObjString</em></div>
 
-<p>We know upvalues must manage closed-over variables that no longer live on the
-stack, which implies some amount of dynamic allocation. The easiest way to do
-that in our VM is by building on the object system we already have. That way,
-when we implement a garbage collector in <a href="garbage-collection.html">the next chapter</a>, the GC can
-manage memory for upvalues too.</p>
-<p>Thus, our runtime upvalue structure is an ObjUpvalue with the typical Obj header
-field. Following that is a <code>location</code> field that points to the closed-over
-variable. Note that this is a <em>pointer</em> to a Value, not a Value itself. It&rsquo;s a
-reference to a <em>variable</em>, not a <em>value</em>. This is important because it means
-that when we assign to the variable the upvalue captures, we&rsquo;re assigning to the
-actual variable, not a copy. For example:</p>
+<p>Nous savons que les upvalues doivent gérer des variables fermées qui ne vivent plus sur la pile, ce qui implique une certaine quantité d&rsquo;allocation dynamique. La façon la plus facile de faire cela dans notre VM est en construisant sur le système d&rsquo;objet que nous avons déjà. De cette façon, quand nous implémenterons un ramasse-miettes dans <a href="ramasse-miettes.html">le prochain chapitre</a>, le GC pourra gérer la mémoire pour les upvalues aussi.</p>
+<p>Ainsi, notre structure upvalue runtime est une ObjUpvalue avec le champ d&rsquo;en-tête Obj typique. Suivant cela est un champ <code>location</code> qui pointe vers la variable fermée. Notez que c&rsquo;est un <em>pointeur</em> vers une Value, pas une Value elle-même. C&rsquo;est une référence vers une <em>variable</em>, pas une <em>valeur</em>. C&rsquo;est important parce que cela signifie que quand nous assignons à la variable que l&rsquo;upvalue capture, nous assignons à la variable réelle, pas une copie. Par exemple :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">outer</span>() {
   <span class="k">var</span> <span class="i">x</span> = <span class="s">&quot;before&quot;</span>;
   <span class="k">fun</span> <span class="i">inner</span>() {
@@ -1047,10 +761,8 @@ actual variable, not a copy. For example:</p>
 }
 <span class="i">outer</span>();
 </pre></div>
-<p>This program should print &ldquo;assigned&rdquo; even though the closure assigns to <code>x</code> and
-the surrounding function accesses it.</p>
-<p>Because upvalues are objects, we&rsquo;ve got all the usual object machinery, starting
-with a constructor-like function:</p>
+<p>Ce programme devrait afficher &ldquo;assigned&rdquo; même si la fermeture assigne à <code>x</code> et la fonction environnante y accède.</p>
+<p>Parce que les upvalues sont des objets, nous avons toute la machinerie objet habituelle, commençant avec une fonction type constructeur :</p>
 <div class="codehilite"><pre class="insert-before">ObjString* copyString(const char* chars, int length);
 </pre><div class="source-file"><em>object.h</em><br>
 add after <em>copyString</em>()</div>
@@ -1059,8 +771,7 @@ add after <em>copyString</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, add after <em>copyString</em>()</div>
 
-<p>It takes the address of the slot where the closed-over variable lives. Here is
-the implementation:</p>
+<p>Elle prend l&rsquo;adresse de l&rsquo;emplacement où vit la variable fermée. Voici l&rsquo;implémentation :</p>
 <div class="codehilite"><div class="source-file"><em>object.c</em><br>
 add after <em>copyString</em>()</div>
 <pre><span class="t">ObjUpvalue</span>* <span class="i">newUpvalue</span>(<span class="t">Value</span>* <span class="i">slot</span>) {
@@ -1071,8 +782,7 @@ add after <em>copyString</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, add after <em>copyString</em>()</div>
 
-<p>We simply initialize the object and store the pointer. That requires a new
-object type.</p>
+<p>Nous initialisons simplement l&rsquo;objet et stockons le pointeur. Cela requiert un nouveau type d&rsquo;objet.</p>
 <div class="codehilite"><pre class="insert-before">  OBJ_STRING,
 </pre><div class="source-file"><em>object.h</em><br>
 in enum <em>ObjType</em></div>
@@ -1081,7 +791,7 @@ in enum <em>ObjType</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, in enum <em>ObjType</em></div>
 
-<p>And on the back side, a destructor-like function:</p>
+<p>Et sur le côté arrière, une fonction type destructeur :</p>
 <div class="codehilite"><pre class="insert-before">      FREE(ObjString, object);
       break;
     }
@@ -1094,10 +804,8 @@ in <em>freeObject</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>memory.c</em>, in <em>freeObject</em>()</div>
 
-<p>Multiple closures can close over the same variable, so ObjUpvalue does not own
-the variable it references. Thus, the only thing to free is the ObjUpvalue
-itself.</p>
-<p>And, finally, to print:</p>
+<p>De multiples fermetures peuvent fermer sur la même variable, donc ObjUpvalue ne possède pas la variable qu&rsquo;elle référence. Ainsi, la seule chose à libérer est l&rsquo;ObjUpvalue elle-même.</p>
+<p>Et, finalement, pour afficher :</p>
 <div class="codehilite"><pre class="insert-before">    case OBJ_STRING:
       printf(&quot;%s&quot;, AS_CSTRING(value));
       break;
@@ -1110,14 +818,9 @@ in <em>printObject</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, in <em>printObject</em>()</div>
 
-<p>Printing isn&rsquo;t useful to end users. Upvalues are objects only so that we can
-take advantage of the VM&rsquo;s memory management. They aren&rsquo;t first-class values
-that a Lox user can directly access in a program. So this code will never
-actually execute<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>but it keeps the compiler from yelling at us about an
-unhandled switch case, so here we are.</p>
-<h3><a href="#upvalues-in-closures" id="upvalues-in-closures"><small>25&#8202;.&#8202;3&#8202;.&#8202;1</small>Upvalues in closures</a></h3>
-<p>When I first introduced upvalues, I said each closure has an array of them.
-We&rsquo;ve finally worked our way back to implementing that.</p>
+<p>Afficher n&rsquo;est pas utile aux utilisateurs finaux. Les upvalues sont des objets seulement pour que nous puissions prendre avantage de la gestion de mémoire de la VM. Ce ne sont pas des valeurs de première classe qu&rsquo;un utilisateur Lox peut directement accéder dans un programme. Donc ce code ne s&rsquo;exécutera jamais réellement<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>mais il empêche le compilateur de nous crier dessus à propos d&rsquo;un switch case non géré, donc nous y voilà.</p>
+<h3><a href="#upvalues-dans-les-fermetures" id="upvalues-dans-les-fermetures"><small>25&#8202;.&#8202;3&#8202;.&#8202;1</small>Upvalues dans les fermetures</a></h3>
+<p>Quand j&rsquo;ai d&rsquo;abord introduit les upvalues, j&rsquo;ai dit que chaque fermeture en a un tableau. Nous avons finalement travaillé notre chemin de retour pour implémenter cela.</p>
 <div class="codehilite"><pre class="insert-before">  ObjFunction* function;
 </pre><div class="source-file"><em>object.h</em><br>
 in struct <em>ObjClosure</em></div>
@@ -1127,19 +830,11 @@ in struct <em>ObjClosure</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, in struct <em>ObjClosure</em></div>
 
-<p><span name="count">Different</span> closures may have different numbers of
-upvalues, so we need a dynamic array. The upvalues themselves are dynamically
-allocated too, so we end up with a double pointer<span class="em">&mdash;</span>a pointer to a dynamically
-allocated array of pointers to upvalues. We also store the number of elements in
-the array.</p>
+<p><span name="count">Différentes</span> fermetures peuvent avoir différents nombres d&rsquo;upvalues, donc nous avons besoin d&rsquo;un tableau dynamique. Les upvalues elles-mêmes sont allouées dynamiquement aussi, donc nous finissons avec un double pointeur<span class="em">&mdash;</span>un pointeur vers un tableau alloué dynamiquement de pointeurs vers des upvalues. Nous stockons aussi le nombre d&rsquo;éléments dans le tableau.</p>
 <aside name="count">
-<p>Storing the upvalue count in the closure is redundant because the ObjFunction
-that the ObjClosure references also keeps that count. As usual, this weird code
-is to appease the GC. The collector may need to know an ObjClosure&rsquo;s upvalue
-array size after the closure&rsquo;s corresponding ObjFunction has already been freed.</p>
+<p>Stocker le compte d&rsquo;upvalue dans la fermeture est redondant parce que l&rsquo;ObjFunction que l&rsquo;ObjClosure référence garde aussi ce compte. Comme d&rsquo;habitude, ce code bizarre est pour apaiser le GC. Le collecteur peut avoir besoin de connaître la taille du tableau d&rsquo;upvalue d&rsquo;une ObjClosure après que l&rsquo;ObjFunction correspondante de la fermeture a déjà été libérée.</p>
 </aside>
-<p>When we create an ObjClosure, we allocate an upvalue array of the proper size,
-which we determined at compile time and stored in the ObjFunction.</p>
+<p>Quand nous créons une ObjClosure, nous allouons un tableau d&rsquo;upvalue de la taille propre, que nous avons déterminée à la compilation et stockée dans l&rsquo;ObjFunction.</p>
 <div class="codehilite"><pre class="insert-before">ObjClosure* newClosure(ObjFunction* function) {
 </pre><div class="source-file"><em>object.c</em><br>
 in <em>newClosure</em>()</div>
@@ -1153,12 +848,8 @@ in <em>newClosure</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, in <em>newClosure</em>()</div>
 
-<p>Before creating the closure object itself, we allocate the array of upvalues and
-initialize them all to <code>NULL</code>. This weird ceremony around memory is a careful
-dance to please the (forthcoming) garbage collection deities. It ensures the
-memory manager never sees uninitialized memory.</p>
-<p>Then we store the array in the new closure, as well as copy the count over from
-the ObjFunction.</p>
+<p>Avant de créer l&rsquo;objet fermeture lui-même, nous allouons le tableau d&rsquo;upvalues et les initialisons toutes à <code>NULL</code>. Cette cérémonie bizarre autour de la mémoire est une danse prudente pour plaire aux (futures) déités du ramasse-miettes. Cela assure que le gestionnaire de mémoire ne voit jamais de mémoire non initialisée.</p>
+<p>Ensuite nous stockons le tableau dans la nouvelle fermeture, aussi bien que copions le compte depuis l&rsquo;ObjFunction.</p>
 <div class="codehilite"><pre class="insert-before">  closure-&gt;function = function;
 </pre><div class="source-file"><em>object.c</em><br>
 in <em>newClosure</em>()</div>
@@ -1168,7 +859,7 @@ in <em>newClosure</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, in <em>newClosure</em>()</div>
 
-<p>When we free an ObjClosure, we also free the upvalue array.</p>
+<p>Quand nous libérons une ObjClosure, nous libérons aussi le tableau d&rsquo;upvalue.</p>
 <div class="codehilite"><pre class="insert-before">    case OBJ_CLOSURE: {
 </pre><div class="source-file"><em>memory.c</em><br>
 in <em>freeObject</em>()</div>
@@ -1179,11 +870,8 @@ in <em>freeObject</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>memory.c</em>, in <em>freeObject</em>()</div>
 
-<p>ObjClosure does not own the ObjUpvalue objects themselves, but it does own <em>the
-array</em> containing pointers to those upvalues.</p>
-<p>We fill the upvalue array over in the interpreter when it creates a closure.
-This is where we walk through all of the operands after <code>OP_CLOSURE</code> to see what
-kind of upvalue each slot captures.</p>
+<p>ObjClosure ne possède pas les objets ObjUpvalue eux-mêmes, mais elle possède bien <em>le tableau</em> contenant les pointeurs vers ces upvalues.</p>
+<p>Nous remplissons le tableau d&rsquo;upvalue là-bas dans l&rsquo;interpréteur quand il crée une fermeture. C&rsquo;est où nous marchons à travers tous les opérandes après <code>OP_CLOSURE</code> pour voir quel genre d&rsquo;upvalue chaque emplacement capture.</p>
 <div class="codehilite"><pre class="insert-before">        push(OBJ_VAL(closure));
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>run</em>()</div>
@@ -1201,23 +889,9 @@ in <em>run</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>()</div>
 
-<p>This code is the magic moment when a closure comes to life. We iterate over each
-upvalue the closure expects. For each one, we read a pair of operand bytes. If
-the upvalue closes over a local variable in the enclosing function, we let
-<code>captureUpvalue()</code> do the work.</p>
-<p>Otherwise, we capture an upvalue from the surrounding function. An <code>OP_CLOSURE</code>
-instruction is emitted at the end of a function declaration. At the moment that
-we are executing that declaration, the <em>current</em> function is the surrounding
-one. That means the current function&rsquo;s closure is stored in the CallFrame at the
-top of the callstack. So, to grab an upvalue from the enclosing function, we can
-read it right from the <code>frame</code> local variable, which caches a reference to that
-CallFrame.</p>
-<p>Closing over a local variable is more interesting. Most of the work happens in a
-separate function, but first we calculate the argument to pass to it. We need to
-grab a pointer to the captured local&rsquo;s slot in the surrounding function&rsquo;s stack
-window. That window begins at <code>frame-&gt;slots</code>, which points to slot zero. Adding
-<code>index</code> offsets that to the local slot we want to capture. We pass that pointer
-here:</p>
+<p>Ce code est le moment magique où une fermeture prend vie. Nous itérons sur chaque upvalue que la fermeture attend. Pour chacune, nous lisons une paire d&rsquo;octets opérandes. Si l&rsquo;upvalue ferme sur une variable locale dans la fonction englobante, nous laissons <code>captureUpvalue()</code> faire le travail.</p>
+<p>Sinon, nous capturons une upvalue depuis la fonction environnante. Une instruction <code>OP_CLOSURE</code> est émise à la fin d&rsquo;une déclaration de fonction. Au moment que nous exécutons cette déclaration, la fonction <em>courante</em> est celle environnante. Cela signifie que la fermeture de la fonction courante est stockée dans la CallFrame au sommet de la pile d&rsquo;appels. Donc, pour attraper une upvalue depuis la fonction englobante, nous pouvons la lire juste depuis la variable locale <code>frame</code>, qui cache une référence vers cette CallFrame.</p>
+<p>Fermer sur une variable locale est plus intéressant. La plupart du travail se passe dans une fonction séparée, mais d&rsquo;abord nous calculons l&rsquo;argument à lui passer. Nous avons besoin d&rsquo;attraper un pointeur vers l&rsquo;emplacement de la locale capturée dans la fenêtre de pile de la fonction environnante. Cette fenêtre commence à <code>frame-&gt;slots</code>, qui pointe vers l&rsquo;emplacement zéro. Ajouter <code>index</code> décale cela vers l&rsquo;emplacement local que nous voulons capturer. Nous passons ce pointeur ici :</p>
 <div class="codehilite"><div class="source-file"><em>vm.c</em><br>
 add after <em>callValue</em>()</div>
 <pre><span class="k">static</span> <span class="t">ObjUpvalue</span>* <span class="i">captureUpvalue</span>(<span class="t">Value</span>* <span class="i">local</span>) {
@@ -1227,16 +901,9 @@ add after <em>callValue</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, add after <em>callValue</em>()</div>
 
-<p>This seems a little silly. All it does is create a new ObjUpvalue that captures
-the given stack slot and returns it. Did we need a separate function for this?
-Well, no, not <em>yet</em>. But you know we are going to end up sticking more code in
-here.</p>
-<p>First, let&rsquo;s wrap up what we&rsquo;re working on. Back in the interpreter code for
-handling <code>OP_CLOSURE</code>, we eventually finish iterating through the upvalue
-array and initialize each one. When that completes, we have a new closure with
-an array full of upvalues pointing to variables.</p>
-<p>With that in hand, we can implement the instructions that work with those
-upvalues.</p>
+<p>Cela semble un peu bête. Tout ce qu&rsquo;elle fait est de créer une nouvelle ObjUpvalue qui capture l&rsquo;emplacement de pile donné et la renvoie. Avions-nous besoin d&rsquo;une fonction séparée pour cela ? Eh bien, non, pas <em>encore</em>. Mais vous savez que nous allons finir par coller plus de code ici.</p>
+<p>D&rsquo;abord, emballons ce sur quoi nous travaillons. De retour dans le code de l&rsquo;interpréteur pour gérer <code>OP_CLOSURE</code>, nous finissons éventuellement d&rsquo;itérer à travers le tableau d&rsquo;upvalue et initialisons chacune. Quand cela compléte, nous avons une nouvelle fermeture avec un tableau plein d&rsquo;upvalues pointant vers des variables.</p>
+<p>Avec cela en main, nous pouvons implémenter les instructions qui travaillent avec ces upvalues.</p>
 <div class="codehilite"><pre class="insert-before">      }
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>run</em>()</div>
@@ -1249,9 +916,7 @@ in <em>run</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>()</div>
 
-<p>The operand is the index into the current function&rsquo;s upvalue array. So we simply
-look up the corresponding upvalue and dereference its location pointer to read
-the value in that slot. Setting a variable is similar.</p>
+<p>L&rsquo;opérande est l&rsquo;index dans le tableau d&rsquo;upvalue de la fonction courante. Donc nous cherchons simplement l&rsquo;upvalue correspondante et déréférençons son pointeur de location pour lire la valeur dans cet emplacement. Régler une variable est similaire.</p>
 <div class="codehilite"><pre class="insert-before">      }
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>run</em>()</div>
@@ -1264,20 +929,11 @@ in <em>run</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>()</div>
 
-<p>We <span name="assign">take</span> the value on top of the stack and store it
-into the slot pointed to by the chosen upvalue. Just as with the instructions
-for local variables, it&rsquo;s important that these instructions are fast. User
-programs are constantly reading and writing variables, so if that&rsquo;s slow,
-everything is slow. And, as usual, the way we make them fast is by keeping them
-simple. These two new instructions are pretty good: no control flow, no complex
-arithmetic, just a couple of pointer indirections and a <code>push()</code>.</p>
+<p>Nous <span name="assign">prenons</span> la valeur au sommet de la pile et la stockons dans l&rsquo;emplacement pointé par l&rsquo;upvalue choisie. Juste comme avec les instructions pour les variables locales, il est important que ces instructions soient rapides. Les programmes utilisateur lisent et écrivent constamment des variables, donc si c&rsquo;est lent, tout est lent. Et, comme d&rsquo;habitude, la façon dont nous les rendons rapides est en les gardant simples. Ces deux nouvelles instructions sont assez bonnes : pas de flux de contrôle, pas d&rsquo;arithmétique complexe, juste une paire d&rsquo;indirections de pointeur et un <code>push()</code>.</p>
 <aside name="assign">
-<p>The set instruction doesn&rsquo;t <em>pop</em> the value from the stack because, remember,
-assignment is an expression in Lox. So the result of the assignment<span class="em">&mdash;</span>the
-assigned value<span class="em">&mdash;</span>needs to remain on the stack for the surrounding expression.</p>
+<p>L&rsquo;instruction set ne <em>dépile</em> pas la valeur de la pile parce que, rappelez-vous, l&rsquo;assignation est une expression dans Lox. Donc le résultat de l&rsquo;assignation<span class="em">&mdash;</span>la valeur assignée<span class="em">&mdash;</span>a besoin de rester sur la pile pour l&rsquo;expression environnante.</p>
 </aside>
-<p>This is a milestone. As long as all of the variables remain on the stack, we
-have working closures. Try this:</p>
+<p>C&rsquo;est un jalon. Tant que toutes les variables restent sur la pile, nous avons des fermetures fonctionnelles. Essayez ceci :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">outer</span>() {
   <span class="k">var</span> <span class="i">x</span> = <span class="s">&quot;outside&quot;</span>;
   <span class="k">fun</span> <span class="i">inner</span>() {
@@ -1287,11 +943,9 @@ have working closures. Try this:</p>
 }
 <span class="i">outer</span>();
 </pre></div>
-<p>Run this, and it correctly prints &ldquo;outside&rdquo;.</p>
-<h2><a href="#closed-upvalues" id="closed-upvalues"><small>25&#8202;.&#8202;4</small>Closed Upvalues</a></h2>
-<p>Of course, a key feature of closures is that they hold on to the variable as
-long as needed, even after the function that declares the variable has returned.
-Here&rsquo;s another example that <em>should</em> work:</p>
+<p>Exécutez ceci, et cela affiche correctement &ldquo;outside&rdquo;.</p>
+<h2><a href="#upvalues-fermées" id="upvalues-fermées"><small>25&#8202;.&#8202;4</small>Upvalues fermées</a></h2>
+<p>Bien sûr, une fonctionnalité clé des fermetures est qu&rsquo;elles tiennent la variable aussi longtemps que nécessaire, même après que la fonction qui déclare la variable a retourné. Voici un autre exemple qui <em>devrait</em> fonctionner :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">outer</span>() {
   <span class="k">var</span> <span class="i">x</span> = <span class="s">&quot;outside&quot;</span>;
   <span class="k">fun</span> <span class="i">inner</span>() {
@@ -1304,19 +958,11 @@ Here&rsquo;s another example that <em>should</em> work:</p>
 <span class="k">var</span> <span class="i">closure</span> = <span class="i">outer</span>();
 <span class="i">closure</span>();
 </pre></div>
-<p>But if you run it right now<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>who knows what it does? At runtime, it will end
-up reading from a stack slot that no longer contains the closed-over variable.
-Like I&rsquo;ve mentioned a few times, the crux of the issue is that variables in
-closures don&rsquo;t have stack semantics. That means we&rsquo;ve got to hoist them off the
-stack when the function where they were declared returns. This final section of
-the chapter does that.</p>
-<h3><a href="#values-and-variables" id="values-and-variables"><small>25&#8202;.&#8202;4&#8202;.&#8202;1</small>Values and variables</a></h3>
-<p>Before we get to writing code, I want to dig into an important semantic point.
-Does a closure close over a <em>value</em> or a <em>variable?</em> This isn&rsquo;t purely an <span
-name="academic">academic</span> question. I&rsquo;m not just splitting hairs.
-Consider:</p>
+<p>Mais si vous l&rsquo;exécutez juste maintenant<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>qui sait ce qu&rsquo;elle fait ? À l&rsquo;exécution, elle finira par lire depuis un emplacement de pile qui ne contient plus la variable fermée. Comme je l&rsquo;ai mentionné quelques fois, le crux du problème est que les variables dans les fermetures n&rsquo;ont pas de sémantique de pile. Cela signifie que nous devons les hisser hors de la pile quand la fonction où elles ont été déclarées retourne. Cette section finale du chapitre fait cela.</p>
+<h3><a href="#valeurs-et-variables" id="valeurs-et-variables"><small>25&#8202;.&#8202;4&#8202;.&#8202;1</small>Valeurs et variables</a></h3>
+<p>Avant que nous n&rsquo;arrivions à écrire du code, je veux creuser dans un point sémantique important. Est-ce qu&rsquo;une fermeture ferme sur une <em>valeur</em> ou une <em>variable ?</em> Ce n&rsquo;est pas purement une question <span name="academic">académique</span>. Je ne suis pas juste en train de couper les cheveux en quatre. Considérez :</p>
 <aside name="academic">
-<p>If Lox didn&rsquo;t allow assignment, it <em>would</em> be an academic question.</p>
+<p>Si Lox ne permettait pas l&rsquo;assignation, ce <em>serait</em> une question académique.</p>
 </aside>
 <div class="codehilite"><pre><span class="k">var</span> <span class="i">globalSet</span>;
 <span class="k">var</span> <span class="i">globalGet</span>;
@@ -1335,83 +981,35 @@ Consider:</p>
 <span class="i">globalSet</span>();
 <span class="i">globalGet</span>();
 </pre></div>
-<p>The outer <code>main()</code> function creates two closures and stores them in <span
-name="global">global</span> variables so that they outlive the execution of
-<code>main()</code> itself. Both of those closures capture the same variable. The first
-closure assigns a new value to it and the second closure reads the variable.</p>
+<p>La fonction extérieure <code>main()</code> crée deux fermetures et les stocke dans des variables <span name="global">globales</span> pour qu&rsquo;elles survivent à l&rsquo;exécution de <code>main()</code> elle-même. Ces deux fermetures capturent la même variable. La première fermeture lui assigne une nouvelle valeur et la seconde fermeture lit la variable.</p>
 <aside name="global">
-<p>The fact that I&rsquo;m using a couple of global variables isn&rsquo;t significant. I needed
-some way to return two values from a function, and without any kind of
-collection type in Lox, my options were limited.</p>
+<p>Le fait que j&rsquo;utilise une couple de variables globales n&rsquo;est pas significatif. J&rsquo;avais besoin de quelque moyen de retourner deux valeurs d&rsquo;une fonction, et sans aucune sorte de type collection dans Lox, mes options étaient limitées.</p>
 </aside>
-<p>What does the call to <code>globalGet()</code> print? If closures capture <em>values</em> then
-each closure gets its own copy of <code>a</code> with the value that <code>a</code> had at the point
-in time that the closure&rsquo;s function declaration executed. The call to
-<code>globalSet()</code> will modify <code>set()</code>&rsquo;s copy of <code>a</code>, but <code>get()</code>&rsquo;s copy will be
-unaffected. Thus, the call to <code>globalGet()</code> will print &ldquo;initial&rdquo;.</p>
-<p>If closures close over variables, then <code>get()</code> and <code>set()</code> will both capture<span class="em">&mdash;</span>reference<span class="em">&mdash;</span>the <em>same mutable variable</em>. When <code>set()</code> changes <code>a</code>, it changes
-the same <code>a</code> that <code>get()</code> reads from. There is only one <code>a</code>. That, in turn,
-implies the call to <code>globalGet()</code> will print &ldquo;updated&rdquo;.</p>
-<p>Which is it? The answer for Lox and most other languages I know with closures is
-the latter. Closures capture variables. You can think of them as capturing <em>the
-place the value lives</em>. This is important to keep in mind as we deal with
-closed-over variables that are no longer on the stack. When a variable moves to
-the heap, we need to ensure that all closures capturing that variable retain a
-reference to its <em>one</em> new location. That way, when the variable is mutated, all
-closures see the change.</p>
-<h3><a href="#closing-upvalues" id="closing-upvalues"><small>25&#8202;.&#8202;4&#8202;.&#8202;2</small>Closing upvalues</a></h3>
-<p>We know that local variables always start out on the stack. This is faster, and
-lets our single-pass compiler emit code before it discovers the variable has
-been captured. We also know that closed-over variables need to move to the heap
-if the closure outlives the function where the captured variable is declared.</p>
-<p>Following Lua, we&rsquo;ll use <strong>open upvalue</strong> to refer to an upvalue that points to
-a local variable still on the stack. When a variable moves to the heap, we are
-<em>closing</em> the upvalue and the result is, naturally, a <strong>closed upvalue</strong>. The
-two questions we need to answer are:</p>
+<p>Qu&rsquo;est-ce que l&rsquo;appel à <code>globalGet()</code> affiche ? Si les fermetures capturent des <em>valeurs</em> alors chaque fermeture obtient sa propre copie de <code>a</code> avec la valeur que <code>a</code> avait au point dans le temps que la déclaration de fonction de la fermeture a exécuté. L&rsquo;appel à <code>globalSet()</code> modifiera la copie de <code>set()</code> de <code>a</code>, mais la copie de <code>get()</code> sera inaffectée. Ainsi, l&rsquo;appel à <code>globalGet()</code> affichera &ldquo;initial&rdquo;.</p>
+<p>Si les fermetures ferment sur des variables, alors <code>get()</code> et <code>set()</code> captureront toutes deux<span class="em">&mdash;</span>référenceront<span class="em">&mdash;</span>la <em>même variable mutable</em>. Quand <code>set()</code> change <code>a</code>, elle change le même <code>a</code> que <code>get()</code> lit. Il n&rsquo;y a qu&rsquo;un seul <code>a</code>. Cela, à son tour, implique que l&rsquo;appel à <code>globalGet()</code> affichera &ldquo;updated&rdquo;.</p>
+<p>Lequel est-ce ? La réponse pour Lox et la plupart des autres langages que je connais avec des fermetures est la dernière. Les fermetures capturent des variables. Vous pouvez penser à elles comme capturant <em>l&rsquo;endroit où la valeur vit</em>. C&rsquo;est important à garder à l&rsquo;esprit alors que nous traitons avec les variables fermées qui ne sont plus sur la pile. Quand une variable bouge vers le tas, nous avons besoin de nous assurer que toutes les fermetures capturant cette variable retiennent une référence à son <em>seul</em> nouvel emplacement. De cette façon, quand la variable est mutée, toutes les fermetures voient le changement.</p>
+<h3><a href="#fermer-les-upvalues" id="fermer-les-upvalues"><small>25&#8202;.&#8202;4&#8202;.&#8202;2</small>Fermer les upvalues</a></h3>
+<p>Nous savons que les variables locales commencent toujours sur la pile. C&rsquo;est plus rapide, et laisse notre compilateur à une seule passe émettre du code avant qu&rsquo;il découvre que la variable a été capturée. Nous savons aussi que les variables fermées ont besoin de bouger vers le tas si la fermeture survit à la fonction où la variable capturée est déclarée.</p>
+<p>Suivant Lua, nous utiliserons <strong>upvalue ouverte</strong> pour nous référer à une upvalue qui pointe vers une variable locale encore sur la pile. Quand une variable bouge vers le tas, nous <em>fermons</em> l&rsquo;upvalue et le résultat est, naturellement, une <strong>upvalue fermée</strong>. Les deux questions auxquelles nous avons besoin de répondre sont :</p>
 <ol>
 <li>
-<p>Where on the heap does the closed-over variable go?</p>
+<p>Où sur le tas va la variable fermée ?</p>
 </li>
 <li>
-<p>When do we close the upvalue?</p>
+<p>Quand fermons-nous l&rsquo;upvalue ?</p>
 </li>
 </ol>
-<p>The answer to the first question is easy. We already have a convenient object on
-the heap that represents a reference to a variable<span class="em">&mdash;</span>ObjUpvalue itself. The
-closed-over variable will move into a new field right inside the ObjUpvalue
-struct. That way we don&rsquo;t need to do any additional heap allocation to close an
-upvalue.</p>
-<p>The second question is straightforward too. As long as the variable is on the
-stack, there may be code that refers to it there, and that code must work
-correctly. So the logical time to hoist the variable to the heap is as late as
-possible. If we move the local variable right when it goes out of scope, we are
-certain that no code after that point will try to access it from the stack.
-<span name="after">After</span> the variable is out of scope, the compiler will
-have reported an error if any code tried to use it.</p>
+<p>La réponse à la première question est facile. Nous avons déjà un objet pratique sur le tas qui représente une référence à une variable<span class="em">&mdash;</span>ObjUpvalue elle-même. La variable fermée bougera dans un nouveau champ juste à l&rsquo;intérieur de la structure ObjUpvalue. De cette façon nous n&rsquo;avons pas besoin de faire d&rsquo;allocation de tas supplémentaire pour fermer une upvalue.</p>
+<p>La seconde question est directe aussi. Tant que la variable est sur la pile, il peut y avoir du code qui s&rsquo;y réfère là, et ce code doit fonctionner correctement. Donc le moment logique pour hisser la variable vers le tas est aussi tard que possible. Si nous bougeons la variable locale juste quand elle sort de portée, nous sommes certains qu&rsquo;aucun code après ce point n&rsquo;essaiera d&rsquo;y accéder depuis la pile. <span name="after">Après</span> que la variable est hors de portée, le compilateur aura rapporté une erreur si n&rsquo;importe quel code essayait de l&rsquo;utiliser.</p>
 <aside name="after">
-<p>By &ldquo;after&rdquo; here, I mean in the lexical or textual sense<span class="em">&mdash;</span>code past the <code>}</code>
-for the block containing the declaration of the closed-over variable.</p>
+<p>Par &ldquo;après&rdquo; ici, je veux dire dans le sens lexical ou textuel<span class="em">&mdash;</span>code passé le <code>}</code> pour le bloc contenant la déclaration de la variable fermée.</p>
 </aside>
-<p>The compiler already emits an <code>OP_POP</code> instruction when a local variable goes
-out of scope. If a variable is captured by a closure, we will instead emit a
-different instruction to hoist that variable out of the stack and into its
-corresponding upvalue. To do that, the compiler needs to know which <span
-name="param">locals</span> are closed over.</p>
+<p>Le compilateur émet déjà une instruction <code>OP_POP</code> quand une variable locale sort de portée. Si une variable est capturée par une fermeture, nous émettrons à la place une instruction différente pour hisser cette variable hors de la pile et dans son upvalue correspondante. Pour faire cela, le compilateur a besoin de savoir quelles <span name="param">locales</span> sont fermées.</p>
 <aside name="param">
-<p>The compiler doesn&rsquo;t pop parameters and locals declared immediately inside the
-body of a function. We&rsquo;ll handle those too, in the runtime.</p>
+<p>Le compilateur ne dépile pas les paramètres et les locales déclarés immédiatement à l&rsquo;intérieur du corps d&rsquo;une fonction. Nous gérerons ceux-là aussi, dans le runtime.</p>
 </aside>
-<p>The compiler already maintains an array of Upvalue structs for each local
-variable in the function to track exactly that state. That array is good for
-answering &ldquo;Which variables does this closure use?&rdquo; But it&rsquo;s poorly suited for
-answering, &ldquo;Does <em>any</em> function capture this local variable?&rdquo; In particular,
-once the Compiler for some closure has finished, the Compiler for the enclosing
-function whose variable has been captured no longer has access to any of the
-upvalue state.</p>
-<p>In other words, the compiler maintains pointers from upvalues to the locals they
-capture, but not in the other direction. So we first need to add some extra
-tracking inside the existing Local struct so that we can tell if a given local
-is captured by a closure.</p>
+<p>Le compilateur maintient déjà un tableau de structures Upvalue pour chaque variable locale dans la fonction pour suivre exactement cet état. Ce tableau est bon pour répondre &ldquo;Quelles variables cette fermeture utilise-t-elle ?&rdquo; Mais il est pauvrement adapté pour répondre, &ldquo;Est-ce que <em>n&rsquo;importe quelle</em> fonction capture cette variable locale ?&rdquo; En particulier, une fois que le Compiler pour quelque fermeture a fini, le Compiler pour la fonction englobante dont la variable a été capturée n&rsquo;a plus accès à aucun des états d&rsquo;upvalue.</p>
+<p>En d&rsquo;autres termes, le compilateur maintient des pointeurs depuis les upvalues vers les locales qu&rsquo;elles capturent, mais pas dans l&rsquo;autre direction. Donc nous avons d&rsquo;abord besoin d&rsquo;ajouter un suivi supplémentaire à l&rsquo;intérieur de la structure Local existante pour que nous puissions dire si une locale donnée est capturée par une fermeture.</p>
 <div class="codehilite"><pre class="insert-before">  int depth;
 </pre><div class="source-file"><em>compiler.c</em><br>
 in struct <em>Local</em></div>
@@ -1420,8 +1018,7 @@ in struct <em>Local</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in struct <em>Local</em></div>
 
-<p>This field is <code>true</code> if the local is captured by any later nested function
-declaration. Initially, all locals are not captured.</p>
+<p>Ce champ est <code>true</code> si la locale est capturée par n&rsquo;importe quelle déclaration de fonction imbriquée ultérieure. Initialement, toutes les locales ne sont pas capturées.</p>
 <div class="codehilite"><pre class="insert-before">  local-&gt;depth = -1;
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>addLocal</em>()</div>
@@ -1430,11 +1027,9 @@ in <em>addLocal</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>addLocal</em>()</div>
 
-<p><span name="zero">Likewise</span>, the special &ldquo;slot zero local&rdquo; that the
-compiler implicitly declares is not captured.</p>
+<p><span name="zero">De même</span>, la &ldquo;locale d&rsquo;emplacement zéro&rdquo; spéciale que le compilateur déclare implicitement n&rsquo;est pas capturée.</p>
 <aside name="zero">
-<p>Later in the book, it <em>will</em> become possible for a user to capture this
-variable. Just building some anticipation here.</p>
+<p>Plus tard dans le livre, il deviendra possible pour un utilisateur de capturer cette variable. Juste construisant un peu d&rsquo;anticipation ici.</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">  local-&gt;depth = 0;
 </pre><div class="source-file"><em>compiler.c</em><br>
@@ -1444,8 +1039,7 @@ in <em>initCompiler</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>initCompiler</em>()</div>
 
-<p>When resolving an identifier, if we end up creating an upvalue for a local
-variable, we mark it as captured.</p>
+<p>Lors de la résolution d&rsquo;un identifiant, si nous finissons par créer une upvalue pour une variable locale, nous la marquons comme capturée.</p>
 <div class="codehilite"><pre class="insert-before">  if (local != -1) {
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>resolveUpvalue</em>()</div>
@@ -1454,9 +1048,7 @@ in <em>resolveUpvalue</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>resolveUpvalue</em>()</div>
 
-<p>Now, at the end of a block scope when the compiler emits code to free the stack
-slots for the locals, we can tell which ones need to get hoisted onto the heap.
-We&rsquo;ll use a new instruction for that.</p>
+<p>Maintenant, à la fin d&rsquo;une portée de bloc quand le compilateur émet du code pour libérer les emplacements de pile pour les locales, nous pouvons dire lesquelles ont besoin d&rsquo;être hissées sur le tas. Nous utiliserons une nouvelle instruction pour cela.</p>
 <div class="codehilite"><pre class="insert-before">  while (current-&gt;localCount &gt; 0 &amp;&amp;
          current-&gt;locals[current-&gt;localCount - 1].depth &gt;
             current-&gt;scopeDepth) {
@@ -1473,9 +1065,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>endScope</em>(), replace 1 line</div>
 
-<p>The instruction requires no operand. We know that the variable will always be
-right on top of the stack at the point that this instruction executes. We
-declare the instruction.</p>
+<p>L&rsquo;instruction ne requiert pas d&rsquo;opérande. Nous savons que la variable sera toujours juste au sommet de la pile au point que cette instruction s&rsquo;exécute. Nous déclarons l&rsquo;instruction.</p>
 <div class="codehilite"><pre class="insert-before">  OP_CLOSURE,
 </pre><div class="source-file"><em>chunk.h</em><br>
 in enum <em>OpCode</em></div>
@@ -1484,7 +1074,7 @@ in enum <em>OpCode</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>chunk.h</em>, in enum <em>OpCode</em></div>
 
-<p>And add trivial disassembler support for it:</p>
+<p>Et ajoutons le support trivial du désassembleur pour elle :</p>
 <div class="codehilite"><pre class="insert-before">    }
 </pre><div class="source-file"><em>debug.c</em><br>
 in <em>disassembleInstruction</em>()</div>
@@ -1494,56 +1084,20 @@ in <em>disassembleInstruction</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>debug.c</em>, in <em>disassembleInstruction</em>()</div>
 
-<p>Excellent. Now the generated bytecode tells the runtime exactly when each
-captured local variable must move to the heap. Better, it does so only for the
-locals that <em>are</em> used by a closure and need this special treatment. This aligns
-with our general performance goal that we want users to pay only for
-functionality that they use. Variables that aren&rsquo;t used by closures live and die
-entirely on the stack just as they did before.</p>
-<h3><a href="#tracking-open-upvalues" id="tracking-open-upvalues"><small>25&#8202;.&#8202;4&#8202;.&#8202;3</small>Tracking open upvalues</a></h3>
-<p>Let&rsquo;s move over to the runtime side. Before we can interpret <code>OP_CLOSE_UPVALUE</code>
-instructions, we have an issue to resolve. Earlier, when I talked about whether
-closures capture variables or values, I said it was important that if multiple
-closures access the same variable that they end up with a reference to the
-exact same storage location in memory. That way if one closure writes to the
-variable, the other closure sees the change.</p>
-<p>Right now, if two closures capture the same <span name="indirect">local</span>
-variable, the VM creates a separate Upvalue for each one. The necessary sharing
-is missing. When we move the variable off the stack, if we move it into only one
-of the upvalues, the other upvalue will have an orphaned value.</p>
+<p>Excellent. Maintenant le bytecode généré dit au runtime exactement quand chaque variable locale capturée doit bouger vers le tas. Mieux, il le fait seulement pour les locales qui <em>sont</em> utilisées par une fermeture et ont besoin de ce traitement spécial. Cela s&rsquo;aligne avec notre but de performance général que nous voulons que les utilisateurs paient seulement pour la fonctionnalité qu&rsquo;ils utilisent. Les variables qui ne sont pas utilisées par des fermetures vivent et meurent entièrement sur la pile juste comme elles le faisaient avant.</p>
+<h3><a href="#suivre-les-upvalues-ouvertes" id="suivre-les-upvalues-ouvertes"><small>25&#8202;.&#8202;4&#8202;.&#8202;3</small>Suivre les upvalues ouvertes</a></h3>
+<p>Bougeons de l&rsquo;autre côté vers le runtime. Avant que nous puissions interpréter les instructions <code>OP_CLOSE_UPVALUE</code>, nous avons un problème à résoudre. Plus tôt, quand j&rsquo;ai parlé de savoir si les fermetures capturent des variables ou des valeurs, j&rsquo;ai dit qu&rsquo;il était important que si de multiples fermetures accèdent à la même variable qu&rsquo;elles finissent avec une référence vers le même emplacement de stockage exact en mémoire. De cette façon si une fermeture écrit à la variable, l&rsquo;autre fermeture voit le changement.</p>
+<p>Juste maintenant, si deux fermetures capturent la même variable <span name="indirect">locale</span>, la VM crée une Upvalue séparée pour chacune. Le partage nécessaire est manquant. Quand nous bougeons la variable hors de la pile, si nous la bougeons dans seulement une des upvalues, l&rsquo;autre upvalue aura une valeur orpheline.</p>
 <aside name="indirect">
-<p>The VM <em>does</em> share upvalues if one closure captures an <em>upvalue</em> from a
-surrounding function. The nested case works correctly. But if two <em>sibling</em>
-closures capture the same local variable, they each create a separate
-ObjUpvalue.</p>
+<p>La VM partage <em>bien</em> les upvalues si une fermeture capture une <em>upvalue</em> depuis une fonction environnante. Le cas imbriqué fonctionne correctement. Mais si deux fermetures <em>soeurs</em> capturent la même variable locale, elles créent chacune une ObjUpvalue séparée.</p>
 </aside>
-<p>To fix that, whenever the VM needs an upvalue that captures a particular local
-variable slot, we will first search for an existing upvalue pointing to that
-slot. If found, we reuse that. The challenge is that all of the previously
-created upvalues are squirreled away inside the upvalue arrays of the various
-closures. Those closures could be anywhere in the VM&rsquo;s memory.</p>
-<p>The first step is to give the VM its own list of all open upvalues that point to
-variables still on the stack. Searching a list each time the VM needs an upvalue
-sounds like it might be slow, but in practice, it&rsquo;s not bad. The number of
-variables on the stack that actually get closed over tends to be small. And
-function declarations that <span name="create">create</span> closures are rarely
-on performance critical execution paths in the user&rsquo;s program.</p>
+<p>Pour corriger cela, chaque fois que la VM a besoin d&rsquo;une upvalue qui capture un emplacement de variable locale particulier, nous chercherons d&rsquo;abord une upvalue existante pointant vers cet emplacement. Si trouvée, nous réutilisons celle-là. Le défi est que toutes les upvalues précédemment créées sont écureuillées à l&rsquo;intérieur des tableaux d&rsquo;upvalue des diverses fermetures. Ces fermetures pourraient être n&rsquo;importe où dans la mémoire de la VM.</p>
+<p>La première étape est de donner à la VM sa propre liste de toutes les upvalues ouvertes qui pointent vers des variables encore sur la pile. Chercher une liste chaque fois que la VM a besoin d&rsquo;une upvalue semble que cela pourrait être lent, mais en pratique, ce n&rsquo;est pas mauvais. Le nombre de variables sur la pile qui sont réellement fermées tend à être petit. Et les déclarations de fonction qui <span name="create">créent</span> des fermetures sont rarement sur des chemins d&rsquo;exécution critiques pour la performance dans le programme de l&rsquo;utilisateur.</p>
 <aside name="create">
-<p>Closures are frequently <em>invoked</em> inside hot loops. Think about the closures
-passed to typical higher-order functions on collections like <a href="https://en.wikipedia.org/wiki/Map_(higher-order_function)"><code>map()</code></a> and
-<a href="https://en.wikipedia.org/wiki/Filter_(higher-order_function)"><code>filter()</code></a>. That should be fast. But the function declaration that
-<em>creates</em> the closure happens only once and is usually outside of the loop.</p>
+<p>Les fermetures sont fréquemment <em>invoquées</em> à l&rsquo;intérieur de boucles chaudes. Pensez aux fermetures passées aux fonctions d&rsquo;ordre supérieur typiques sur les collections comme <a href="https://en.wikipedia.org/wiki/Map_(higher-order_function)"><code>map()</code></a> et <a href="https://en.wikipedia.org/wiki/Filter_(higher-order_function)"><code>filter()</code></a>. Cela devrait être rapide. Mais la déclaration de fonction qui <em>crée</em> la fermeture arrive seulement une fois et est habituellement en dehors de la boucle.</p>
 </aside>
-<p>Even better, we can order the list of open upvalues by the stack slot index they
-point to. The common case is that a slot has <em>not</em> already been captured<span class="em">&mdash;</span>sharing variables between closures is uncommon<span class="em">&mdash;</span>and closures tend to capture
-locals near the top of the stack. If we store the open upvalue array in stack
-slot order, as soon as we step past the slot where the local we&rsquo;re capturing
-lives, we know it won&rsquo;t be found. When that local is near the top of the stack,
-we can exit the loop pretty early.</p>
-<p>Maintaining a sorted list requires inserting elements in the middle efficiently.
-That suggests using a linked list instead of a dynamic array. Since we defined
-the ObjUpvalue struct ourselves, the easiest implementation is an intrusive list
-that puts the next pointer right inside the ObjUpvalue struct itself.</p>
+<p>Encore mieux, nous pouvons ordonner la liste d&rsquo;upvalues ouvertes par l&rsquo;index d&rsquo;emplacement de pile vers lequel elles pointent. Le cas commun est qu&rsquo;un emplacement n&rsquo;a <em>pas</em> déjà été capturé<span class="em">&mdash;</span>partager des variables entre des fermetures est peu commun<span class="em">&mdash;</span>et les fermetures tendent à capturer des locales près du sommet de la pile. Si nous stockons le tableau d&rsquo;upvalues ouvertes dans l&rsquo;ordre des emplacements de pile, aussitôt que nous passons l&rsquo;emplacement où la locale que nous capturons vit, nous savons qu&rsquo;elle ne sera pas trouvée. Quand cette locale est près du sommet de la pile, nous pouvons sortir de la boucle assez tôt.</p>
+<p>Maintenir une liste triée requiert d&rsquo;insérer des éléments au milieu efficacement. Cela suggère utiliser une liste chaînée au lieu d&rsquo;un tableau dynamique. Puisque nous avons défini la structure ObjUpvalue nous-mêmes, l&rsquo;implémentation la plus facile est une liste intrusive qui met le pointeur suivant juste à l&rsquo;intérieur de la structure ObjUpvalue elle-même.</p>
 <div class="codehilite"><pre class="insert-before">  Value* location;
 </pre><div class="source-file"><em>object.h</em><br>
 in struct <em>ObjUpvalue</em></div>
@@ -1552,8 +1106,7 @@ in struct <em>ObjUpvalue</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, in struct <em>ObjUpvalue</em></div>
 
-<p>When we allocate an upvalue, it is not attached to any list yet so the link is
-<code>NULL</code>.</p>
+<p>Quand nous allouons une upvalue, elle n&rsquo;est pas attachée à aucune liste encore donc le lien est <code>NULL</code>.</p>
 <div class="codehilite"><pre class="insert-before">  upvalue-&gt;location = slot;
 </pre><div class="source-file"><em>object.c</em><br>
 in <em>newUpvalue</em>()</div>
@@ -1562,7 +1115,7 @@ in <em>newUpvalue</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, in <em>newUpvalue</em>()</div>
 
-<p>The VM owns the list, so the head pointer goes right inside the main VM struct.</p>
+<p>La VM possède la liste, donc le pointeur de tête va juste à l&rsquo;intérieur de la structure VM principale.</p>
 <div class="codehilite"><pre class="insert-before">  Table strings;
 </pre><div class="source-file"><em>vm.h</em><br>
 in struct <em>VM</em></div>
@@ -1571,7 +1124,7 @@ in struct <em>VM</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.h</em>, in struct <em>VM</em></div>
 
-<p>The list starts out empty.</p>
+<p>La liste commence vide.</p>
 <div class="codehilite"><pre class="insert-before">  vm.frameCount = 0;
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>resetStack</em>()</div>
@@ -1580,9 +1133,7 @@ in <em>resetStack</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>resetStack</em>()</div>
 
-<p>Starting with the first upvalue pointed to by the VM, each open upvalue points
-to the next open upvalue that references a local variable farther down the
-stack. This script, for example,</p>
+<p>Commençant avec la première upvalue pointée par la VM, chaque upvalue ouverte pointe vers la prochaine upvalue ouverte qui référence une variable locale plus bas sur la pile. Ce script, par exemple,</p>
 <div class="codehilite"><pre>{
   <span class="k">var</span> <span class="i">a</span> = <span class="n">1</span>;
   <span class="k">fun</span> <span class="i">f</span>() {
@@ -1598,9 +1149,8 @@ stack. This script, for example,</p>
   }
 }
 </pre></div>
-<p>should produce a series of linked upvalues like so:</p><img src="image/closures/linked-list.png" alt="Three upvalues in a linked list."/>
-<p>Whenever we close over a local variable, before creating a new upvalue, we look
-for an existing one in the list.</p>
+<p>devrait produire une série d&rsquo;upvalues liées comme ceci :</p><img src="image/closures/linked-list.png" alt="Trois upvalues dans une liste chaînée."/>
+<p>Chaque fois que nous fermons sur une variable locale, avant de créer une nouvelle upvalue, nous cherchons une existante dans la liste.</p>
 <div class="codehilite"><pre class="insert-before">static ObjUpvalue* captureUpvalue(Value* local) {
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>captureUpvalue</em>()</div>
@@ -1619,36 +1169,23 @@ in <em>captureUpvalue</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>captureUpvalue</em>()</div>
 
-<p>We start at the <span name="head">head</span> of the list, which is the upvalue
-closest to the top of the stack. We walk through the list, using a little
-pointer comparison to iterate past every upvalue pointing to slots above the one
-we&rsquo;re looking for. While we do that, we keep track of the preceding upvalue on
-the list. We&rsquo;ll need to update that node&rsquo;s <code>next</code> pointer if we end up inserting
-a node after it.</p>
+<p>Nous commençons à la <span name="head">tête</span> de la liste, qui est l&rsquo;upvalue la plus proche du sommet de la pile. Nous parcourons la liste, utilisant une petite comparaison de pointeur pour itérer passé chaque upvalue pointant vers des emplacements au-dessus de celui que nous cherchons. Pendant que nous faisons cela, nous gardons la trace de l&rsquo;upvalue précédente sur la liste. Nous aurons besoin de mettre à jour le pointeur <code>next</code> de ce nœud si nous finissons par insérer un nœud après lui.</p>
 <aside name="head">
-<p>It&rsquo;s a singly linked list. It&rsquo;s not like we have any other choice than to start
-at the head and go forward from there.</p>
+<p>C&rsquo;est une liste simplement chaînée. Ce n&rsquo;est pas comme si nous avions d&rsquo;autre choix que de commencer à la tête et aller vers l&rsquo;avant depuis là.</p>
 </aside>
-<p>There are three reasons we can exit the loop:</p>
+<p>Il y a trois raisons pour lesquelles nous pouvons sortir de la boucle :</p>
 <ol>
 <li>
-<p><strong>The local slot we stopped at <em>is</em> the slot we&rsquo;re looking for.</strong> We found
-an existing upvalue capturing the variable, so we reuse that upvalue.</p>
+<p><strong>L&rsquo;emplacement local auquel nous nous sommes arrêtés <em>est</em> l&rsquo;emplacement que nous cherchons.</strong> Nous avons trouvé une upvalue existante capturant la variable, donc nous réutilisons cette upvalue.</p>
 </li>
 <li>
-<p><strong>We ran out of upvalues to search.</strong> When <code>upvalue</code> is <code>NULL</code>, it means
-every open upvalue in the list points to locals above the slot we&rsquo;re looking
-for, or (more likely) the upvalue list is empty. Either way, we didn&rsquo;t find
-an upvalue for our slot.</p>
+<p><strong>Nous sommes tombés à court d&rsquo;upvalues à chercher.</strong> Quand <code>upvalue</code> est <code>NULL</code>, cela signifie que chaque upvalue ouverte dans la liste pointe vers des locales au-dessus de l&rsquo;emplacement que nous cherchons, ou (plus probablement) la liste d&rsquo;upvalues est vide. Dans les deux cas, nous n&rsquo;avons pas trouvé une upvalue pour notre emplacement.</p>
 </li>
 <li>
-<p><strong>We found an upvalue whose local slot is <em>below</em> the one we&rsquo;re looking
-for.</strong> Since the list is sorted, that means we&rsquo;ve gone past the slot we are
-closing over, and thus there must not be an existing upvalue for it.</p>
+<p><strong>Nous avons trouvé une upvalue dont l&rsquo;emplacement local est <em>en dessous</em> de celui que nous cherchons.</strong> Puisque la liste est triée, cela signifie que nous sommes passés au-delà de l&rsquo;emplacement sur lequel nous fermons, et donc il ne doit pas y avoir d&rsquo;upvalue existante pour lui.</p>
 </li>
 </ol>
-<p>In the first case, we&rsquo;re done and we&rsquo;ve returned. Otherwise, we create a new
-upvalue for our local slot and insert it into the list at the right location.</p>
+<p>Dans le premier cas, nous avons fini et nous avons retourné. Sinon, nous créons une nouvelle upvalue pour notre emplacement local et l&rsquo;insérons dans la liste au bon endroit.</p>
 <div class="codehilite"><pre class="insert-before">  ObjUpvalue* createdUpvalue = newUpvalue(local);
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>captureUpvalue</em>()</div>
@@ -1664,33 +1201,14 @@ in <em>captureUpvalue</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>captureUpvalue</em>()</div>
 
-<p>The current incarnation of this function already creates the upvalue, so we only
-need to add code to insert the upvalue into the list. We exited the list
-traversal by either going past the end of the list, or by stopping on the first
-upvalue whose stack slot is below the one we&rsquo;re looking for. In either case,
-that means we need to insert the new upvalue <em>before</em> the object pointed at by
-<code>upvalue</code> (which may be <code>NULL</code> if we hit the end of the list).</p>
-<p>As you may have learned in Data Structures 101, to insert a node into a linked
-list, you set the <code>next</code> pointer of the previous node to point to your new one.
-We have been conveniently keeping track of that preceding node as we walked the
-list. We also need to handle the <span name="double">special</span> case where
-we are inserting a new upvalue at the head of the list, in which case the &ldquo;next&rdquo;
-pointer is the VM&rsquo;s head pointer.</p>
+<p>L&rsquo;incarnation courante de cette fonction crée déjà l&rsquo;upvalue, donc nous avons seulement besoin d&rsquo;ajouter du code pour insérer l&rsquo;upvalue dans la liste. Nous sommes sortis de la traversée de liste soit en allant après la fin de la liste, soit en s&rsquo;arrêtant sur la première upvalue dont l&rsquo;emplacement de pile est en dessous de celui que nous cherchons. Dans les deux cas, cela signifie que nous devons insérer la nouvelle upvalue <em>avant</em> l&rsquo;objet pointé par <code>upvalue</code> (qui peut être <code>NULL</code> si nous avons frappé la fin de la liste).</p>
+<p>Comme vous pouvez l&rsquo;avoir appris dans Structures de Données 101, pour insérer un nœud dans une liste chaînée, vous réglez le pointeur <code>next</code> du nœud précédent pour pointer vers votre nouveau. Nous avons commodément gardé la trace de ce nœud précédent alors que nous marchions la liste. Nous avons aussi besoin de gérer le cas <span name="double">spécial</span> où nous insérons une nouvelle upvalue à la tête de la liste, auquel cas le pointeur &ldquo;next&rdquo; est le pointeur de tête de la VM.</p>
 <aside name="double">
-<p>There is a shorter implementation that handles updating either the head pointer
-or the previous upvalue&rsquo;s <code>next</code> pointer uniformly by using a pointer to a
-pointer, but that kind of code confuses almost everyone who hasn&rsquo;t reached some
-Zen master level of pointer expertise. I went with the basic <code>if</code> statement
-approach.</p>
+<p>Il y a une implémentation plus courte qui gère la mise à jour soit du pointeur de tête ou du pointeur <code>next</code> de l&rsquo;upvalue précédente uniformément en utilisant un pointeur vers un pointeur, mais ce genre de code déroute presque tout le monde qui n&rsquo;a pas atteint quelque niveau maître Zen d&rsquo;expertise pointeur. Je suis allé avec l&rsquo;approche basique instruction <code>if</code>.</p>
 </aside>
-<p>With this updated function, the VM now ensures that there is only ever a single
-ObjUpvalue for any given local slot. If two closures capture the same variable,
-they will get the same upvalue. We&rsquo;re ready to move those upvalues off the
-stack now.</p>
-<h3><a href="#closing-upvalues-at-runtime" id="closing-upvalues-at-runtime"><small>25&#8202;.&#8202;4&#8202;.&#8202;4</small>Closing upvalues at runtime</a></h3>
-<p>The compiler helpfully emits an <code>OP_CLOSE_UPVALUE</code> instruction to tell the VM
-exactly when a local variable should be hoisted onto the heap. Executing that
-instruction is the interpreter&rsquo;s responsibility.</p>
+<p>Avec cette fonction mise à jour, la VM assure maintenant qu&rsquo;il y a seulement toujours une seule ObjUpvalue pour n&rsquo;importe quel emplacement local donné. Si deux fermetures capturent la même variable, elles obtiendront la même upvalue. Nous sommes prêts à bouger ces upvalues hors de la pile maintenant.</p>
+<h3><a href="#fermer-les-upvalues-&agrave;-lexécution" id="fermer-les-upvalues-&agrave;-lexécution"><small>25&#8202;.&#8202;4&#8202;.&#8202;4</small>Fermer les upvalues &agrave; l&rsquo;exécution</a></h3>
+<p>Le compilateur émet utilement une instruction <code>OP_CLOSE_UPVALUE</code> pour dire à la VM exactement quand une variable locale devrait être hissée sur le tas. Exécuter cette instruction est la responsabilité de l&rsquo;interpréteur.</p>
 <div class="codehilite"><pre class="insert-before">      }
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>run</em>()</div>
@@ -1702,12 +1220,8 @@ in <em>run</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>()</div>
 
-<p>When we reach the instruction, the variable we are hoisting is right on top of
-the stack. We call a helper function, passing the address of that stack slot.
-That function is responsible for closing the upvalue and moving the local from
-the stack to the heap. After that, the VM is free to discard the stack slot,
-which it does by calling <code>pop()</code>.</p>
-<p>The fun stuff happens here:</p>
+<p>Quand nous atteignons l&rsquo;instruction, la variable que nous hissons est juste au sommet de la pile. Nous appelons une fonction aide, passant l&rsquo;adresse de cet emplacement de pile. Cette fonction est responsable de fermer l&rsquo;upvalue et bouger la locale de la pile vers le tas. Après cela, la VM est libre de jeter l&rsquo;emplacement de pile, ce qu&rsquo;elle fait en appelant <code>pop()</code>.</p>
+<p>Le truc amusant se passe ici :</p>
 <div class="codehilite"><div class="source-file"><em>vm.c</em><br>
 add after <em>captureUpvalue</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">closeUpvalues</span>(<span class="t">Value</span>* <span class="i">last</span>) {
@@ -1722,30 +1236,14 @@ add after <em>captureUpvalue</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, add after <em>captureUpvalue</em>()</div>
 
-<p>This function takes a pointer to a stack slot. It closes every open upvalue it
-can find that points to that slot or any slot above it on the stack. Right now,
-we pass a pointer only to the top slot on the stack, so the &ldquo;or above it&rdquo; part
-doesn&rsquo;t come into play, but it will soon.</p>
-<p>To do this, we walk the VM&rsquo;s list of open upvalues, again from top to bottom. If
-an upvalue&rsquo;s location points into the range of slots we&rsquo;re closing, we close the
-upvalue. Otherwise, once we reach an upvalue outside of the range, we know the
-rest will be too, so we stop iterating.</p>
-<p>The way an upvalue gets closed is pretty <span name="cool">cool</span>. First,
-we copy the variable&rsquo;s value into the <code>closed</code> field in the ObjUpvalue. That&rsquo;s
-where closed-over variables live on the heap. The <code>OP_GET_UPVALUE</code> and
-<code>OP_SET_UPVALUE</code> instructions need to look for the variable there after it&rsquo;s
-been moved. We could add some conditional logic in the interpreter code for
-those instructions to check some flag for whether the upvalue is open or closed.</p>
-<p>But there is already a level of indirection in play<span class="em">&mdash;</span>those instructions
-dereference the <code>location</code> pointer to get to the variable&rsquo;s value. When the
-variable moves from the stack to the <code>closed</code> field, we simply update that
-<code>location</code> to the address of the ObjUpvalue&rsquo;s <em>own</em> <code>closed</code> field.</p>
+<p>Cette fonction prend un pointeur vers un emplacement de pile. Elle ferme chaque upvalue ouverte qu&rsquo;elle peut trouver qui pointe vers cet emplacement ou n&rsquo;importe quel emplacement au-dessus de lui sur la pile. Juste maintenant, nous passons un pointeur seulement vers l&rsquo;emplacement du sommet sur la pile, donc la partie &ldquo;ou au-dessus&rdquo; n&rsquo;entre pas en jeu, mais elle le fera bientôt.</p>
+<p>Pour faire cela, nous marchons la liste des upvalues ouvertes de la VM, encore de haut en bas. Si l&rsquo;emplacement d&rsquo;une upvalue pointe dans la plage d&rsquo;emplacements que nous fermons, nous fermons l&rsquo;upvalue. Sinon, une fois que nous atteignons une upvalue en dehors de la plage, nous savons que le reste le sera aussi, donc nous arrêtons d&rsquo;itérer.</p>
+<p>La façon dont une upvalue devient fermée est assez <span name="cool">cool</span>. D&rsquo;abord, nous copions la valeur de la variable dans le champ <code>closed</code> dans l&rsquo;ObjUpvalue. C&rsquo;est où les variables fermées vivent sur le tas. Les instructions <code>OP_GET_UPVALUE</code> et <code>OP_SET_UPVALUE</code> ont besoin de chercher la variable là après qu&rsquo;elle a été bougée. Nous pourrions ajouter quelque logique conditionnelle dans le code de l&rsquo;interpréteur pour ces instructions pour vérifier quelque drapeau pour si l&rsquo;upvalue est ouverte ou fermée.</p>
+<p>Mais il y a déjà un niveau d&rsquo;indirection en jeu<span class="em">&mdash;</span>ces instructions déréférencent le pointeur <code>location</code> pour arriver à la valeur de la variable. Quand la variable bouge de la pile au champ <code>closed</code>, nous mettons simplement à jour cette <code>location</code> à l&rsquo;adresse du <em>propre</em> champ <code>closed</code> de l&rsquo;ObjUpvalue.</p>
 <aside name="cool">
-<p>I&rsquo;m not praising myself here. This is all the Lua dev team&rsquo;s innovation.</p>
-</aside><img src="image/closures/closing.png" alt="Moving a value from the stack to the upvalue's 'closed' field and then pointing the 'value' field to it."/>
-<p>We don&rsquo;t need to change how <code>OP_GET_UPVALUE</code> and <code>OP_SET_UPVALUE</code> are
-interpreted at all. That keeps them simple, which in turn keeps them fast. We do
-need to add the new field to ObjUpvalue, though.</p>
+<p>Je ne fais pas mon propre éloge ici. C&rsquo;est toute l&rsquo;innovation de l&rsquo;équipe de dev Lua.</p>
+</aside><img src="image/closures/closing.png" alt="Bouger une valeur de la pile au champ 'closed' de l'upvalue et ensuite pointer le champ 'location' vers lui."/>
+<p>Nous n&rsquo;avons pas besoin de changer comment <code>OP_GET_UPVALUE</code> et <code>OP_SET_UPVALUE</code> sont interprétées du tout. Cela les garde simples, ce qui à son tour les garde rapides. Nous avons besoin d&rsquo;ajouter le nouveau champ à ObjUpvalue, cependant.</p>
 <div class="codehilite"><pre class="insert-before">  Value* location;
 </pre><div class="source-file"><em>object.h</em><br>
 in struct <em>ObjUpvalue</em></div>
@@ -1754,8 +1252,7 @@ in struct <em>ObjUpvalue</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, in struct <em>ObjUpvalue</em></div>
 
-<p>And we should zero it out when we create an ObjUpvalue so there&rsquo;s no
-uninitialized memory floating around.</p>
+<p>Et nous devrions le mettre à zéro quand nous créons une ObjUpvalue pour qu&rsquo;il n&rsquo;y ait pas de mémoire non initialisée flottant autour.</p>
 <div class="codehilite"><pre class="insert-before">  ObjUpvalue* upvalue = ALLOCATE_OBJ(ObjUpvalue, OBJ_UPVALUE);
 </pre><div class="source-file"><em>object.c</em><br>
 in <em>newUpvalue</em>()</div>
@@ -1764,21 +1261,11 @@ in <em>newUpvalue</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, in <em>newUpvalue</em>()</div>
 
-<p>Whenever the compiler reaches the end of a block, it discards all local
-variables in that block and emits an <code>OP_CLOSE_UPVALUE</code> for each local variable
-that was closed over. The compiler <span name="close">does</span> <em>not</em> emit any
-instructions at the end of the outermost block scope that defines a function
-body. That scope contains the function&rsquo;s parameters and any locals declared
-immediately inside the function. Those need to get closed too.</p>
+<p>Chaque fois que le compilateur atteint la fin d&rsquo;un bloc, il se débarrasse de toutes les variables locales dans ce bloc et émet une <code>OP_CLOSE_UPVALUE</code> pour chaque variable locale qui a été fermée. Le compilateur <span name="close">n&rsquo;émet</span> <em>pas</em> d&rsquo;instructions à la fin de la portée de bloc la plus extérieure qui définit un corps de fonction. Cette portée contient les paramètres de la fonction et toutes locales déclarées immédiatement à l&rsquo;intérieur de la fonction. Celles-là ont besoin d&rsquo;être fermées aussi.</p>
 <aside name="close">
-<p>There&rsquo;s nothing <em>preventing</em> us from closing the outermost function scope in the
-compiler and emitting <code>OP_POP</code> and <code>OP_CLOSE_UPVALUE</code> instructions. Doing so is
-just unnecessary because the runtime discards all of the stack slots used by the
-function implicitly when it pops the call frame.</p>
+<p>Il n&rsquo;y a rien qui nous <em>empêche</em> de fermer la portée de fonction la plus extérieure dans le compilateur et d&rsquo;émettre des instructions <code>OP_POP</code> et <code>OP_CLOSE_UPVALUE</code>. Faire ainsi est juste inutile parce que le runtime jette tous les emplacements de pile utilisés par la fonction implicitement quand il dépile le cadre d&rsquo;appel.</p>
 </aside>
-<p>This is the reason <code>closeUpvalues()</code> accepts a pointer to a stack slot. When a
-function returns, we call that same helper and pass in the first stack slot
-owned by the function.</p>
+<p>C&rsquo;est la raison pour laquelle <code>closeUpvalues()</code> accepte un pointeur vers un emplacement de pile. Quand une fonction retourne, nous appelons cette même aide et passons le premier emplacement de pile possédé par la fonction.</p>
 <div class="codehilite"><pre class="insert-before">        Value result = pop();
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>run</em>()</div>
@@ -1787,83 +1274,41 @@ in <em>run</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>()</div>
 
-<p>By passing the first slot in the function&rsquo;s stack window, we close every
-remaining open upvalue owned by the returning function. And with that, we now
-have a fully functioning closure implementation. Closed-over variables live as
-long as they are needed by the functions that capture them.</p>
-<p>This was a lot of work! In jlox, closures fell out naturally from our
-environment representation. In clox, we had to add a lot of code<span class="em">&mdash;</span>new bytecode
-instructions, more data structures in the compiler, and new runtime objects. The
-VM very much treats variables in closures as different from other variables.</p>
-<p>There is a rationale for that. In terms of implementation complexity, jlox gave
-us closures &ldquo;for free&rdquo;. But in terms of <em>performance</em>, jlox&rsquo;s closures are
-anything but. By allocating <em>all</em> environments on the heap, jlox pays a
-significant performance price for <em>all</em> local variables, even the majority which
-are never captured by closures.</p>
-<p>With clox, we have a more complex system, but that allows us to tailor the
-implementation to fit the two use patterns we observe for local variables. For
-most variables which do have stack semantics, we allocate them entirely on the
-stack which is simple and fast. Then, for the few local variables where that
-doesn&rsquo;t work, we have a second slower path we can opt in to as needed.</p>
-<p>Fortunately, users don&rsquo;t perceive the complexity. From their perspective, local
-variables in Lox are simple and uniform. The <em>language itself</em> is as simple as
-jlox&rsquo;s implementation. But under the hood, clox is watching what the user does
-and optimizing for their specific uses. As your language implementations grow in
-sophistication, you&rsquo;ll find yourself doing this more. A large fraction of
-&ldquo;optimization&rdquo; is about adding special case code that detects certain uses and
-provides a custom-built, faster path for code that fits that pattern.</p>
-<p>We have lexical scoping fully working in clox now, which is a major milestone.
-And, now that we have functions and variables with complex lifetimes, we also
-have a <em>lot</em> of objects floating around in clox&rsquo;s heap, with a web of pointers
-stringing them together. The <a href="garbage-collection.html">next step</a> is figuring out how to manage that
-memory so that we can free some of those objects when they&rsquo;re no longer needed.</p>
+<p>En passant le premier emplacement dans la fenêtre de pile de la fonction, nous fermons chaque upvalue ouverte restante possédée par la fonction retournante. Et avec ça, nous avons maintenant une implémentation de fermeture pleinement fonctionnelle. Les variables fermées vivent aussi longtemps qu&rsquo;elles sont nécessaires par les fonctions qui les capturent.</p>
+<p>C&rsquo;était beaucoup de travail ! Dans jlox, les fermetures tombaient naturellement de notre représentation d&rsquo;environnement. Dans clox, nous avons dû ajouter beaucoup de code<span class="em">&mdash;</span>de nouvelles instructions bytecode, plus de structures de données dans le compilateur, et de nouveaux objets runtime. La VM traite vraiment les variables dans les fermetures différemment des autres variables.</p>
+<p>Il y a une rationalité pour cela. En termes de complexité d&rsquo;implémentation, jlox nous a donné les fermetures &ldquo;pour gratuit&rdquo;. Mais en termes de <em>performance</em>, les fermetures de jlox sont tout sauf. En allouant <em>tous</em> les environnements sur le tas, jlox paie un prix de performance significatif pour <em>toutes</em> les variables locales, même la majorité qui ne sont jamais capturées par des fermetures.</p>
+<p>Avec clox, nous avons un système plus complexe, mais qui nous permet d&rsquo;adapter l&rsquo;implémentation pour correspondre aux deux patrons d&rsquo;utilisation que nous observons pour les variables locales. Pour la plupart des variables qui ont bien une sémantique de pile, nous les allouons entièrement sur la pile ce qui est simple et rapide. Ensuite, pour les quelques variables locales où cela ne fonctionne pas, nous avons un second chemin plus lent auquel nous pouvons opter comme nécessaire.</p>
+<p>Heureusement, les utilisateurs ne perçoivent pas la complexité. De leur perspective, les variables locales dans Lox sont simples et uniformes. Le <em>langage lui-même</em> est aussi simple que l&rsquo;implémentation de jlox. Mais sous le capot, clox regarde ce que l&rsquo;utilisateur fait et optimise pour ses usages spécifiques. Comme vos implémentations de langage grandissent en sophistication, vous vous trouverez à faire cela plus. Une grande fraction de l&rsquo;&ldquo;optimisation&rdquo; est à propos d&rsquo;ajouter du code pour des cas spéciaux qui détecte certains usages et fournit un chemin sur mesure, plus rapide pour le code qui correspond à ce patron.</p>
+<p>Nous avons la portée lexicale pleinement fonctionnelle dans clox maintenant, ce qui est un jalon majeur. Et, maintenant que nous avons des fonctions et des variables avec des durées de vie complexes, nous avons aussi <em>beaucoup</em> d&rsquo;objets flottant dans le tas de clox, avec une toile de pointeurs les liant ensemble. L&rsquo;<a href="ramasse-miettes.html">étape suivante</a> est de comprendre comment gérer cette mémoire pour que nous puissions libérer certains de ces objets quand ils ne sont plus nécessaires.</p>
 <div class="challenges">
-<h2><a href="#challenges" id="challenges">Challenges</a></h2>
+<h2><a href="#défis" id="défis"><small>25&#8202;.&#8202;5</small>Défis</a></h2>
 <ol>
 <li>
-<p>Wrapping every ObjFunction in an ObjClosure introduces a level of
-indirection that has a performance cost. That cost isn&rsquo;t necessary for
-functions that do not close over any variables, but it does let the runtime
-treat all calls uniformly.</p>
-<p>Change clox to only wrap functions in ObjClosures that need upvalues. How
-does the code complexity and performance compare to always wrapping
-functions? Take care to benchmark programs that do and do not use closures.
-How should you weight the importance of each benchmark? If one gets slower
-and one faster, how do you decide what trade-off to make to choose an
-implementation strategy?</p>
+<p>Envelopper chaque ObjFunction dans une ObjClosure introduit un niveau d&rsquo;indirection qui a un coût de performance. Ce coût n&rsquo;est pas nécessaire pour les fonctions qui ne ferment sur aucune variable, mais il laisse le runtime traiter tous les appels uniformément.</p>
+<p>Changez clox pour envelopper seulement les fonctions dans des ObjClosures qui ont besoin d&rsquo;upvalues. Comment la complexité du code et la performance se comparent-elles à toujours envelopper les fonctions ? Prenez soin de benchmarker des programmes qui utilisent et n&rsquo;utilisent pas de fermetures. Comment devriez-vous pondérer l&rsquo;importance de chaque benchmark ? Si l&rsquo;un devient plus lent et l&rsquo;autre plus rapide, comment décidez-vous quel compromis faire pour choisir une stratégie d&rsquo;implémentation ?</p>
 </li>
 <li>
-<p>Read the design note below. I&rsquo;ll wait. Now, how do you think Lox <em>should</em>
-behave? Change the implementation to create a new variable for each loop
-iteration.</p>
+<p>Lisez la note de conception ci-dessous. J&rsquo;attendrai. Maintenant, comment pensez-vous que Lox <em>devrait</em> se comporter ? Changez l&rsquo;implémentation pour créer une nouvelle variable pour chaque itération de boucle.</p>
 </li>
 <li>
-<p>A <a href="http://wiki.c2.com/?ClosuresAndObjectsAreEquivalent">famous koan</a> teaches us that &ldquo;objects are a poor man&rsquo;s closure&rdquo;
-(and vice versa). Our VM doesn&rsquo;t support objects yet, but now that we have
-closures we can approximate them. Using closures, write a Lox program that
-models two-dimensional vector &ldquo;objects&rdquo;. It should:</p>
+<p>Un <a href="http://wiki.c2.com/?ClosuresAndObjectsAreEquivalent">koan célèbre</a> nous enseigne que &ldquo;les objets sont la fermeture du pauvre&rdquo; (et vice versa). Notre VM ne supporte pas les objets encore, mais maintenant que nous avons des fermetures nous pouvons les approximer. Utilisant des fermetures, écrivez un programme Lox qui modélise des &ldquo;objets&rdquo; vecteur à deux dimensions. Il devrait :</p>
 <ul>
 <li>
-<p>Define a &ldquo;constructor&rdquo; function to create a new vector with the given
-<em>x</em> and <em>y</em> coordinates.</p>
+<p>Définir une fonction &ldquo;constructeur&rdquo; pour créer un nouveau vecteur avec les coordonnées <em>x</em> et <em>y</em> données.</p>
 </li>
 <li>
-<p>Provide &ldquo;methods&rdquo; to access the <em>x</em> and <em>y</em> coordinates of values
-returned from that constructor.</p>
+<p>Fournir des &ldquo;méthodes&rdquo; pour accéder aux coordonnées <em>x</em> et <em>y</em> des valeurs renvoyées par ce constructeur.</p>
 </li>
 <li>
-<p>Define an addition &ldquo;method&rdquo; that adds two vectors and produces a third.</p>
+<p>Définir une &ldquo;méthode&rdquo; addition qui ajoute deux vecteurs et produit un troisième.</p>
 </li>
 </ul>
 </li>
 </ol>
 </div>
 <div class="design-note">
-<h2><a href="#design-note" id="design-note">Design Note: Closing Over the Loop Variable</a></h2>
-<p>Closures capture variables. When two closures capture the same variable, they
-share a reference to the same underlying storage location. This fact is visible
-when new values are assigned to the variable. Obviously, if two closures capture
-<em>different</em> variables, there is no sharing.</p>
+<h2><a href="#note-de-conception--fermer-sur-la-variable-de-boucle" id="note-de-conception--fermer-sur-la-variable-de-boucle"><small>25&#8202;.&#8202;6</small>Note de Conception : Fermer sur la Variable de Boucle</a></h2>
+<p>Les fermetures capturent des variables. Quand deux fermetures capturent la même variable, elles partagent une référence au même emplacement de stockage sous-jacent. Ce fait est visible quand de nouvelles valeurs sont assignées à la variable. Évidemment, si deux fermetures capturent des variables <em>différentes</em>, il n&rsquo;y a pas de partage.</p>
 <div class="codehilite"><pre><span class="k">var</span> <span class="i">globalOne</span>;
 <span class="k">var</span> <span class="i">globalTwo</span>;
 
@@ -1889,8 +1334,7 @@ when new values are assigned to the variable. Obviously, if two closures capture
 <span class="i">globalOne</span>();
 <span class="i">globalTwo</span>();
 </pre></div>
-<p>This prints &ldquo;one&rdquo; then &ldquo;two&rdquo;. In this example, it&rsquo;s pretty clear that the two
-<code>a</code> variables are different. But it&rsquo;s not always so obvious. Consider:</p>
+<p>Ceci affiche &ldquo;one&rdquo; puis &ldquo;two&rdquo;. Dans cet exemple, il est assez clair que les deux variables <code>a</code> sont différentes. Mais ce n&rsquo;est pas toujours si évident. Considérez :</p>
 <div class="codehilite"><pre><span class="k">var</span> <span class="i">globalOne</span>;
 <span class="k">var</span> <span class="i">globalTwo</span>;
 
@@ -1911,60 +1355,48 @@ when new values are assigned to the variable. Obviously, if two closures capture
 <span class="i">globalOne</span>();
 <span class="i">globalTwo</span>();
 </pre></div>
-<p>The code is convoluted because Lox has no collection types. The important part
-is that the <code>main()</code> function does two iterations of a <code>for</code> loop. Each time
-through the loop, it creates a closure that captures the loop variable. It
-stores the first closure in <code>globalOne</code> and the second in <code>globalTwo</code>.</p>
-<p>There are definitely two different closures. Do they close over two different
-variables? Is there only one <code>a</code> for the entire duration of the loop, or does
-each iteration get its own distinct <code>a</code> variable?</p>
-<p>The script here is strange and contrived, but this does show up in real code
-in languages that aren&rsquo;t as minimal as clox. Here&rsquo;s a JavaScript example:</p>
+<p>Le code est alambiqué parce que Lox n&rsquo;a pas de types collection. La partie importante est que la fonction <code>main()</code> fait deux itérations d&rsquo;une boucle <code>for</code>. Chaque fois à travers la boucle, elle crée une fermeture qui capture la variable de boucle. Elle stocke la première fermeture dans <code>globalOne</code> et la seconde dans <code>globalTwo</code>.</p>
+<p>Il y a définitivement deux fermetures différentes. Fermet-elles sur deux variables différentes ? Y a-t-il seulement un <code>a</code> pour la durée entière de la boucle, ou chaque itération obtient-elle sa propre variable <code>a</code> distincte ?</p>
+<p>Le script ici est étrange et artificiel, mais cela apparaît dans le vrai code dans des langages qui ne sont pas aussi minimaux que clox. Voici un exemple JavaScript :</p>
 <div class="codehilite"><pre><span class="k">var</span> <span class="i">closures</span> = [];
 <span class="k">for</span> (<span class="k">var</span> <span class="i">i</span> = <span class="n">1</span>; <span class="i">i</span> &lt;= <span class="n">2</span>; <span class="i">i</span>++) {
-  <span class="i">closures</span>.<span class="i">push</span>(<span class="k">function</span> () { <span class="i">console</span>.<span class="i">log</span>(<span class="i">i</span>); });
+    <span class="i">closures</span>.<span class="i">push</span>(<span class="k">function</span> () {
+        <span class="i">console</span>.<span class="i">log</span>(<span class="i">i</span>);
+    });
 }
 
 <span class="i">closures</span>[<span class="n">0</span>]();
 <span class="i">closures</span>[<span class="n">1</span>]();
 </pre></div>
-<p>Does this print &ldquo;1&rdquo; then &ldquo;2&rdquo;, or does it print <span name="three">&ldquo;3&rdquo;</span>
-twice? You may be surprised to hear that it prints &ldquo;3&rdquo; twice. In this JavaScript
-program, there is only a single <code>i</code> variable whose lifetime includes all
-iterations of the loop, including the final exit.</p>
+<p>Est-ce que cela affiche &ldquo;1&rdquo; puis &ldquo;2&rdquo;, ou est-ce que cela affiche <span name="three">&ldquo;3&rdquo;</span> deux fois ? Vous pouvez être surpris d&rsquo;entendre que cela affiche &ldquo;3&rdquo; deux fois. Dans ce programme JavaScript, il y a seulement une seule variable <code>i</code> dont la durée de vie inclut toutes les itérations de la boucle, incluant la sortie finale.</p>
 <aside name="three">
-<p>You&rsquo;re wondering how <em>three</em> enters the picture? After the second iteration,
-<code>i++</code> is executed, which increments <code>i</code> to three. That&rsquo;s what causes <code>i &lt;= 2</code> to
-evaluate to false and end the loop. If <code>i</code> never reached three, the loop would
-run forever.</p>
+<p>Vous vous demandez comment <em>trois</em> entre en scène ? Après la seconde itération, <code>i++</code> est exécuté, ce qui incrémente <code>i</code> à trois. C&rsquo;est ce qui cause <code>i &lt;= 2</code> à évaluer à faux et terminer la boucle. Si <code>i</code> n&rsquo;atteignait jamais trois, la boucle courrait pour toujours.</p>
 </aside>
-<p>If you&rsquo;re familiar with JavaScript, you probably know that variables declared
-using <code>var</code> are implicitly <em>hoisted</em> to the surrounding function or top-level
-scope. It&rsquo;s as if you really wrote this:</p>
+<p>Si vous êtes familier avec JavaScript, vous savez probablement que les variables déclarées utilisant <code>var</code> sont implicitement <em>hissées</em> à la fonction environnante ou portée de niveau supérieur. C&rsquo;est comme si vous aviez réellement écrit ceci :</p>
 <div class="codehilite"><pre><span class="k">var</span> <span class="i">closures</span> = [];
 <span class="k">var</span> <span class="i">i</span>;
 <span class="k">for</span> (<span class="i">i</span> = <span class="n">1</span>; <span class="i">i</span> &lt;= <span class="n">2</span>; <span class="i">i</span>++) {
-  <span class="i">closures</span>.<span class="i">push</span>(<span class="k">function</span> () { <span class="i">console</span>.<span class="i">log</span>(<span class="i">i</span>); });
+    <span class="i">closures</span>.<span class="i">push</span>(<span class="k">function</span> () {
+        <span class="i">console</span>.<span class="i">log</span>(<span class="i">i</span>);
+    });
 }
 
 <span class="i">closures</span>[<span class="n">0</span>]();
 <span class="i">closures</span>[<span class="n">1</span>]();
 </pre></div>
-<p>At that point, it&rsquo;s clearer that there is only a single <code>i</code>. Now consider if
-you change the program to use the newer <code>let</code> keyword:</p>
+<p>À ce point, il est plus clair qu&rsquo;il n&rsquo;y a qu&rsquo;un seul <code>i</code>. Maintenant considérez si vous changez le programme pour utiliser le mot-clé <code>let</code> plus récent :</p>
 <div class="codehilite"><pre><span class="k">var</span> <span class="i">closures</span> = [];
 <span class="k">for</span> (<span class="k">let</span> <span class="i">i</span> = <span class="n">1</span>; <span class="i">i</span> &lt;= <span class="n">2</span>; <span class="i">i</span>++) {
-  <span class="i">closures</span>.<span class="i">push</span>(<span class="k">function</span> () { <span class="i">console</span>.<span class="i">log</span>(<span class="i">i</span>); });
+    <span class="i">closures</span>.<span class="i">push</span>(<span class="k">function</span> () {
+        <span class="i">console</span>.<span class="i">log</span>(<span class="i">i</span>);
+    });
 }
 
 <span class="i">closures</span>[<span class="n">0</span>]();
 <span class="i">closures</span>[<span class="n">1</span>]();
 </pre></div>
-<p>Does this new program behave the same? Nope. In this case, it prints &ldquo;1&rdquo; then
-&ldquo;2&rdquo;. Each closure gets its own <code>i</code>. That&rsquo;s sort of strange when you think about
-it. The increment clause is <code>i++</code>. That looks very much like it is assigning to
-and mutating an existing variable, not creating a new one.</p>
-<p>Let&rsquo;s try some other languages. Here&rsquo;s Python:</p>
+<p>Est-ce que ce nouveau programme se comporte de même ? Non. Dans ce cas, il affiche &ldquo;1&rdquo; puis &ldquo;2&rdquo;. Chaque fermeture obtient sa propre <code>i</code>. C&rsquo;est sorte d&rsquo;étrange quand vous y pensez. Le clause d&rsquo;incrément est <code>i++</code>. Cela ressemble beaucoup comme si c&rsquo;était assigner à et muter une variable existante, pas en créer une nouvelle.</p>
+<p>Essayons quelques autres langages. Voici Python :</p>
 <div class="codehilite"><pre><span class="i">closures</span> = []
 <span class="k">for</span> <span class="i">i</span> <span class="k">in</span> <span class="k">range</span>(<span class="n">1</span>, <span class="n">3</span>):
   <span class="i">closures</span>.<span class="i">append</span>(<span class="k">lambda</span>: <span class="k">print</span>(<span class="i">i</span>))
@@ -1972,13 +1404,8 @@ and mutating an existing variable, not creating a new one.</p>
 <span class="i">closures</span>[<span class="n">0</span>]()
 <span class="i">closures</span>[<span class="n">1</span>]()
 </pre></div>
-<p>Python doesn&rsquo;t really have block scope. Variables are implicitly declared and
-are automatically scoped to the surrounding function. Kind of like hoisting in
-JS, now that I think about it. So both closures capture the same variable.
-Unlike C, though, we don&rsquo;t exit the loop by incrementing <code>i</code> <em>past</em> the last
-value, so this prints &ldquo;2&rdquo; twice.</p>
-<p>What about Ruby? Ruby has two typical ways to iterate numerically. Here&rsquo;s the
-classic imperative style:</p>
+<p>Python n&rsquo;a pas vraiment de portée de bloc. Les variables sont implicitement déclarées et sont automatiquement portées à la fonction environnante. Sorte de comme le hissage dans JS, maintenant que j&rsquo;y pense. Donc les deux fermetures capturent la même variable. Contrairement au C, cependant, nous ne sortons pas de la boucle en incrémentant <code>i</code> <em>passé</em> la dernière valeur, donc ceci affiche &ldquo;2&rdquo; deux fois.</p>
+<p>Qu&rsquo;en est-il de Ruby ? Ruby a deux façons typiques d&rsquo;itérer numériquement. Voici le style impératif classique :</p>
 <div class="codehilite"><pre><span class="i">closures</span> = []
 <span class="k">for</span> <span class="i">i</span> <span class="k">in</span> <span class="n">1</span>..<span class="n">2</span> <span class="k">do</span>
   <span class="i">closures</span> &lt;&lt; <span class="k">lambda</span> { <span class="i">puts</span> <span class="i">i</span> }
@@ -1987,8 +1414,7 @@ classic imperative style:</p>
 <span class="i">closures</span>[<span class="n">0</span>].<span class="i">call</span>
 <span class="i">closures</span>[<span class="n">1</span>].<span class="i">call</span>
 </pre></div>
-<p>This, like Python, prints &ldquo;2&rdquo; twice. But the more idiomatic Ruby style is using
-a higher-order <code>each()</code> method on range objects:</p>
+<p>Ceci, comme Python, affiche &ldquo;2&rdquo; deux fois. Mais le style Ruby plus idiomatique utilise une méthode d&rsquo;ordre supérieur <code>each()</code> sur des objets plage :</p>
 <div class="codehilite"><pre><span class="i">closures</span> = []
 (<span class="n">1</span>..<span class="n">2</span>).<span class="i">each</span> <span class="k">do</span> |<span class="i">i</span>|
   <span class="i">closures</span> &lt;&lt; <span class="k">lambda</span> { <span class="i">puts</span> <span class="i">i</span> }
@@ -1997,35 +1423,12 @@ a higher-order <code>each()</code> method on range objects:</p>
 <span class="i">closures</span>[<span class="n">0</span>].<span class="i">call</span>
 <span class="i">closures</span>[<span class="n">1</span>].<span class="i">call</span>
 </pre></div>
-<p>If you&rsquo;re not familiar with Ruby, the <code>do |i| ... end</code> part is basically a
-closure that gets created and passed to the <code>each()</code> method. The <code>|i|</code> is the
-parameter signature for the closure. The <code>each()</code> method invokes that closure
-twice, passing in 1 for <code>i</code> the first time and 2 the second time.</p>
-<p>In this case, the &ldquo;loop variable&rdquo; is really a function parameter. And, since
-each iteration of the loop is a separate invocation of the function, those are
-definitely separate variables for each call. So this prints &ldquo;1&rdquo; then &ldquo;2&rdquo;.</p>
-<p>If a language has a higher-level iterator-based looping structure like <code>foreach</code>
-in C#, Java&rsquo;s &ldquo;enhanced for&rdquo;, <code>for-of</code> in JavaScript, <code>for-in</code> in Dart, etc.,
-then I think it&rsquo;s natural to the reader to have each iteration create a new
-variable. The code <em>looks</em> like a new variable because the loop header looks
-like a variable declaration. And there&rsquo;s no increment expression that looks like
-it&rsquo;s mutating that variable to advance to the next step.</p>
-<p>If you dig around StackOverflow and other places, you find evidence that this is
-what users expect, because they are very surprised when they <em>don&rsquo;t</em> get it. In
-particular, C# originally did <em>not</em> create a new loop variable for each
-iteration of a <code>foreach</code> loop. This was such a frequent source of user confusion
-that they took the very rare step of shipping a breaking change to the language.
-In C# 5, each iteration creates a fresh variable.</p>
-<p>Old C-style <code>for</code> loops are harder. The increment clause really does look like
-mutation. That implies there is a single variable that&rsquo;s getting updated each
-step. But it&rsquo;s almost never <em>useful</em> for each iteration to share a loop
-variable. The only time you can even detect this is when closures capture it.
-And it&rsquo;s rarely helpful to have a closure that references a variable whose value
-is whatever value caused you to exit the loop.</p>
-<p>The pragmatically useful answer is probably to do what JavaScript does with
-<code>let</code> in <code>for</code> loops. Make it look like mutation but actually create a new
-variable each time, because that&rsquo;s what users want. It is kind of weird when you
-think about it, though.</p>
+<p>Si vous n&rsquo;êtes pas familier avec Ruby, la partie <code>do |i| ... end</code> est basiquement une fermeture qui est créée et passée à la méthode <code>each()</code>. Le <code>|i|</code> est la signature de paramètre pour la fermeture. La méthode <code>each()</code> invoque cette fermeture deux fois, passant 1 pour <code>i</code> la première fois et 2 la seconde fois.</p>
+<p>Dans ce cas, la &ldquo;variable de boucle&rdquo; est réellement un paramètre de fonction. Et, puisque chaque itération de la boucle est une invocation séparée de la fonction, ce sont définitivement des variables séparées pour chaque appel. Donc ceci affiche &ldquo;1&rdquo; puis &ldquo;2&rdquo;.</p>
+<p>Si un langage a une structure de boucle basée-itérateur de plus haut niveau comme <code>foreach</code> en C#, le &ldquo;enhanced for&rdquo; de Java, <code>for-of</code> en JavaScript, <code>for-in</code> en Dart, etc., alors je pense qu&rsquo;il est naturel pour le lecteur d&rsquo;avoir chaque itération créer une nouvelle variable. Le code <em>ressemble</em> à une nouvelle variable parce que l&rsquo;en-tête de boucle ressemble à une déclaration de variable. Et il n&rsquo;y a pas d&rsquo;expression d&rsquo;incrément qui ressemble à ce qu&rsquo;elle mute cette variable pour avancer à l&rsquo;étape suivante.</p>
+<p>Si vous creusez autour de StackOverflow et d&rsquo;autres endroits, vous trouvez des preuves que c&rsquo;est ce que les utilisateurs attendent, parce qu&rsquo;ils sont très surpris quand ils ne l&rsquo;obtiennent <em>pas</em>. En particulier, C# à l&rsquo;origine ne créait <em>pas</em> une nouvelle variable de boucle pour chaque itération d&rsquo;une boucle <code>foreach</code>. C&rsquo;était une source si fréquente de confusion utilisateur qu&rsquo;ils ont pris l&rsquo;étape très rare de livrer un changement cassant au langage. Dans C# 5, chaque itération crée une variable fraîche.</p>
+<p>Les vieilles boucles <code>for</code> style C sont plus dures. La clause d&rsquo;incrément ressemble vraiment bien à une mutation. Cela implique qu&rsquo;il y a une seule variable qui est mise à jour à chaque étape. Mais il est presque jamais <em>utile</em> pour chaque itération de partager une variable de boucle. Le seul moment où vous pouvez même détecter cela est quand des fermetures la capturent. Et c&rsquo;est rarement utile d&rsquo;avoir une fermeture qui référence une variable dont la valeur est n&rsquo;importe quelle valeur qui vous a causé de sortir de la boucle.</p>
+<p>La réponse pragmatiquement utile est probablement de faire ce que JavaScript fait avec <code>let</code> dans les boucles <code>for</code>. Faites-le ressembler à de la mutation mais créez réellement une nouvelle variable chaque fois, parce que c&rsquo;est ce que les utilisateurs veulent. C&rsquo;est un peu bizarre quand vous y pensez, cependant.</p>
 </div>
 
 <footer>
