@@ -37,37 +37,37 @@
 <h2><small>III</small>A Bytecode Virtual Machine</h2>
 
 <ul>
-    <li><a href="chunks-of-bytecode.html"><small>14</small>Chunks of Bytecode</a></li>
-    <li><a href="a-virtual-machine.html"><small>15</small>A Virtual Machine</a></li>
-    <li><a href="scanning-on-demand.html"><small>16</small>Scanning on Demand</a></li>
-    <li><a href="compiling-expressions.html"><small>17</small>Compiling Expressions</a></li>
-    <li><a href="types-of-values.html"><small>18</small>Types of Values</a></li>
-    <li><a href="strings.html"><small>19</small>Strings</a></li>
-    <li><a href="hash-tables.html"><small>20</small>Hash Tables</a></li>
-    <li><a href="global-variables.html"><small>21</small>Global Variables</a></li>
-    <li><a href="local-variables.html"><small>22</small>Local Variables</a></li>
-    <li><a href="jumping-back-and-forth.html"><small>23</small>Jumping Back and Forth</a></li>
-    <li><a href="calls-and-functions.html"><small>24</small>Calls and Functions</a></li>
-    <li><a href="closures.html"><small>25</small>Closures</a></li>
-    <li><a href="garbage-collection.html"><small>26</small>Garbage Collection</a></li>
-    <li><a href="classes-and-instances.html"><small>27</small>Classes and Instances</a></li>
-    <li><a href="methods-and-initializers.html"><small>28</small>Methods and Initializers</a></li>
+    <li><a href="morceaux-de-bytecode.html"><small>14</small>Morceaux de bytecode</a></li>
+    <li><a href="machine-virtuelle.html"><small>15</small>Machine virtuelle</a></li>
+    <li><a href="analyse-à-la-demande.html"><small>16</small>Analyse à la demande</a></li>
+    <li><a href="compilation-des-expressions.html"><small>17</small>Compilation des expressions</a></li>
+    <li><a href="types-de-valeurs.html"><small>18</small>Types de valeurs</a></li>
+    <li><a href="chaînes-de-caractères.html"><small>19</small>Chaînes de caractères</a></li>
+    <li><a href="tables-de-hachage.html"><small>20</small>Tables de hachage</a></li>
+    <li><a href="variables-globales.html"><small>21</small>Variables globales</a></li>
+    <li><a href="variables-locales.html"><small>22</small>Variables locales</a></li>
+    <li><a href="sauts-avant-et-arrière.html"><small>23</small>Sauts avant et arrière</a></li>
+    <li><a href="appels-et-fonctions.html"><small>24</small>Appels et fonctions</a></li>
+    <li><a href="fermetures.html"><small>25</small>Fermetures</a></li>
+    <li><a href="ramasse-miettes.html"><small>26</small>Ramasse-miettes</a></li>
+    <li><a href="classes-et-instances.html"><small>27</small>Classes et instances</a></li>
+    <li><a href="méthodes-et-initialisateurs.html"><small>28</small>Méthodes et initialisateurs</a></li>
     <li><a href="superclasses.html"><small>29</small>Superclasses</a></li>
-    <li><a href="optimization.html"><small>30</small>Optimization</a></li>
+    <li><a href="optimisation.html"><small>30</small>Optimisation</a></li>
 </ul>
 
 
 <div class="prev-next">
-    <a href="inheritance.html" title="Inheritance" class="left">&larr;&nbsp;Previous</a>
+    <a href="héritage.html" title="Héritage" class="left">&larr;&nbsp;Previous</a>
     <a href="contents.html" title="Table of Contents">&uarr;&nbsp;Up</a>
-    <a href="chunks-of-bytecode.html" title="Chunks of Bytecode" class="right">Next&nbsp;&rarr;</a>
+    <a href="morceaux-de-bytecode.html" title="Morceaux de bytecode" class="right">Next&nbsp;&rarr;</a>
 </div>  </div>
 </nav>
 
 <nav class="narrow">
 <a href="/"><img src="image/logotype.png" title="Crafting Interpreters"></a>
-<a href="inheritance.html" title="Inheritance" class="prev">←</a>
-<a href="chunks-of-bytecode.html" title="Chunks of Bytecode" class="next">→</a>
+<a href="héritage.html" title="Héritage" class="prev">←</a>
+<a href="morceaux-de-bytecode.html" title="Morceaux de bytecode" class="next">→</a>
 </nav>
 
 <div class="page">
@@ -78,30 +78,30 @@
 <h2><small>III</small>A Bytecode Virtual Machine</h2>
 
 <ul>
-    <li><a href="chunks-of-bytecode.html"><small>14</small>Chunks of Bytecode</a></li>
-    <li><a href="a-virtual-machine.html"><small>15</small>A Virtual Machine</a></li>
-    <li><a href="scanning-on-demand.html"><small>16</small>Scanning on Demand</a></li>
-    <li><a href="compiling-expressions.html"><small>17</small>Compiling Expressions</a></li>
-    <li><a href="types-of-values.html"><small>18</small>Types of Values</a></li>
-    <li><a href="strings.html"><small>19</small>Strings</a></li>
-    <li><a href="hash-tables.html"><small>20</small>Hash Tables</a></li>
-    <li><a href="global-variables.html"><small>21</small>Global Variables</a></li>
-    <li><a href="local-variables.html"><small>22</small>Local Variables</a></li>
-    <li><a href="jumping-back-and-forth.html"><small>23</small>Jumping Back and Forth</a></li>
-    <li><a href="calls-and-functions.html"><small>24</small>Calls and Functions</a></li>
-    <li><a href="closures.html"><small>25</small>Closures</a></li>
-    <li><a href="garbage-collection.html"><small>26</small>Garbage Collection</a></li>
-    <li><a href="classes-and-instances.html"><small>27</small>Classes and Instances</a></li>
-    <li><a href="methods-and-initializers.html"><small>28</small>Methods and Initializers</a></li>
+    <li><a href="morceaux-de-bytecode.html"><small>14</small>Morceaux de bytecode</a></li>
+    <li><a href="machine-virtuelle.html"><small>15</small>Machine virtuelle</a></li>
+    <li><a href="analyse-à-la-demande.html"><small>16</small>Analyse à la demande</a></li>
+    <li><a href="compilation-des-expressions.html"><small>17</small>Compilation des expressions</a></li>
+    <li><a href="types-de-valeurs.html"><small>18</small>Types de valeurs</a></li>
+    <li><a href="chaînes-de-caractères.html"><small>19</small>Chaînes de caractères</a></li>
+    <li><a href="tables-de-hachage.html"><small>20</small>Tables de hachage</a></li>
+    <li><a href="variables-globales.html"><small>21</small>Variables globales</a></li>
+    <li><a href="variables-locales.html"><small>22</small>Variables locales</a></li>
+    <li><a href="sauts-avant-et-arrière.html"><small>23</small>Sauts avant et arrière</a></li>
+    <li><a href="appels-et-fonctions.html"><small>24</small>Appels et fonctions</a></li>
+    <li><a href="fermetures.html"><small>25</small>Fermetures</a></li>
+    <li><a href="ramasse-miettes.html"><small>26</small>Ramasse-miettes</a></li>
+    <li><a href="classes-et-instances.html"><small>27</small>Classes et instances</a></li>
+    <li><a href="méthodes-et-initialisateurs.html"><small>28</small>Méthodes et initialisateurs</a></li>
     <li><a href="superclasses.html"><small>29</small>Superclasses</a></li>
-    <li><a href="optimization.html"><small>30</small>Optimization</a></li>
+    <li><a href="optimisation.html"><small>30</small>Optimisation</a></li>
 </ul>
 
 
 <div class="prev-next">
-    <a href="inheritance.html" title="Inheritance" class="left">&larr;&nbsp;Previous</a>
+    <a href="héritage.html" title="Héritage" class="left">&larr;&nbsp;Previous</a>
     <a href="contents.html" title="Table of Contents">&uarr;&nbsp;Up</a>
-    <a href="chunks-of-bytecode.html" title="Chunks of Bytecode" class="right">Next&nbsp;&rarr;</a>
+    <a href="morceaux-de-bytecode.html" title="Morceaux de bytecode" class="right">Next&nbsp;&rarr;</a>
 </div>  </div>
   <a id="expand-nav">≡</a>
 </nav>
@@ -128,8 +128,8 @@ those lower layers and build our own virtual machine from scratch using nothing
 more than the C standard library<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
 
 <footer>
-<a href="chunks-of-bytecode.html" class="next">
-  Next Chapter: &ldquo;Chunks of Bytecode&rdquo; &rarr;
+<a href="morceaux-de-bytecode.html" class="next">
+  Next Chapter: &ldquo;Morceaux de bytecode&rdquo; &rarr;
 </a>
 Handcrafted by Robert Nystrom&ensp;&mdash;&ensp;<a href="https://github.com/munificent/craftinginterpreters/blob/master/LICENSE" target="_blank">&copy; 2015&hairsp;&ndash;&hairsp;2021</a>
 </footer>
