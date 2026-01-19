@@ -1,562 +1,374 @@
-> Caring too much for objects can destroy you. Only -- if you care for a thing
-> enough, it takes on a life of its own, doesn't it? And isn’t the whole point
-> of things -- beautiful things -- that they connect you to some larger beauty?
+> S'inquiéter trop pour les objets peut vous détruire. Seulement -- si vous tenez assez à une chose, elle prend une vie propre, n'est-ce pas ? Et n'est-ce pas tout le point des choses -- des belles choses -- qu'elles vous connectent à une plus grande beauté ?
 >
-> <cite>Donna Tartt, <em>The Goldfinch</em></cite>
+> <cite>Donna Tartt, <em>Le Chardonneret</em></cite>
 
-The last area left to implement in clox is object-oriented programming. <span
-name="oop">OOP</span> is a bundle of intertwined features: classes, instances,
-fields, methods, initializers, and inheritance. Using relatively high-level
-Java, we packed all that into two chapters. Now that we're coding in C, which
-feels like building a model of the Eiffel tower out of toothpicks, we'll devote
-three chapters to covering the same territory. This makes for a leisurely stroll
-through the implementation. After strenuous chapters like [closures][] and the
-[garbage collector][], you have earned a rest. In fact, the book should be easy
-from here on out.
+La dernière zone laissée à implémenter dans clox est la programmation orientée objet. La <span name="oop">POO</span> est un paquet de fonctionnalités entrelacées : classes, instances, champs, méthodes, initialisateurs, et héritage. Utilisant du Java de relativement haut niveau, nous avons emballé tout cela dans deux chapitres. Maintenant que nous codons en C, qui ressemble à construire une maquette de la tour Eiffel avec des cure-dents, nous dévouerons trois chapitres à couvrir le même territoire. Cela fait une promenade tranquille à travers l'implémentation. Après des chapitres ardus comme [les fermetures][closures] et le [ramasse-miettes][garbage collector], vous avez mérité un repos. En fait, le livre devrait être facile à partir de maintenant.
 
 <aside name="oop">
 
-People who have strong opinions about object-oriented programming -- read
-"everyone" -- tend to assume OOP means some very specific list of language
-features, but really there's a whole space to explore, and each language has its
-own ingredients and recipes.
+Les gens qui ont des opinions fortes sur la programmation orientée objet -- lisez "tout le monde" -- tendent à supposer que la POO signifie une liste très spécifique de fonctionnalités de langage, mais vraiment il y a tout un espace à explorer, et chaque langage a ses propres ingrédients et recettes.
 
-Self has objects but no classes. CLOS has methods but doesn't attach them to
-specific classes. C++ initially had no runtime polymorphism -- no virtual
-methods. Python has multiple inheritance, but Java does not. Ruby attaches
-methods to classes, but you can also define methods on a single object.
+Self a des objets mais pas de classes. CLOS a des méthodes mais ne les attache à aucune classe spécifique. C++ initialement n'avait pas de polymorphisme d'exécution -- pas de méthodes virtuelles. Python a l'héritage multiple, mais Java ne l'a pas. Ruby attache les méthodes aux classes, mais vous pouvez aussi définir des méthodes sur un seul objet.
 
 </aside>
 
-In this chapter, we cover the first three features: classes, instances, and
-fields. This is the stateful side of object orientation. Then in the next two
-chapters, we will hang behavior and code reuse off of those objects.
+Dans ce chapitre, nous couvrons les trois premières fonctionnalités : classes, instances, et champs. C'est le côté avec état de l'orientation objet. Ensuite dans les deux prochains chapitres, nous accrocherons le comportement et la réutilisation de code à ces objets.
 
-[closures]: closures.html
-[garbage collector]: garbage-collection.html
+[closures]: fermetures.html
+[garbage collector]: ramasse-miettes.html
 
-## Class Objects
+## Objets Classe
 
-In a class-based object-oriented language, everything begins with classes. They
-define what sorts of objects exist in the program and are the factories used to
-produce new instances. Going bottom-up, we'll start with their runtime
-representation and then hook that into the language.
+Dans un langage orienté objet basé sur les classes, tout commence avec les classes. Elles définissent quelles sortes d'objets existent dans le programme et sont les usines utilisées pour produire de nouvelles instances. Allant de bas en haut, nous commencerons avec leur représentation à l'exécution et ensuite accrocherons cela dans le langage.
 
-By this point, we're well-acquainted with the process of adding a new object
-type to the VM. We start with a struct.
+À ce point, nous sommes bien accoutumés avec le processus d'ajouter un nouveau type d'objet à la VM. Nous commençons avec une struct.
 
 ^code obj-class (1 before, 2 after)
 
-After the Obj header, we store the class's name. This isn't strictly needed for
-the user's program, but it lets us show the name at runtime for things like
-stack traces.
+Après l'en-tête Obj, nous stockons le nom de la classe. Ce n'est pas strictement nécessaire pour le programme de l'utilisateur, mais cela nous laisse montrer le nom à l'exécution pour des choses comme les traces de pile.
 
-The new type needs a corresponding case in the ObjType enum.
+Le nouveau type nécessite un cas correspondant dans l'énumération ObjType.
 
 ^code obj-type-class (1 before, 1 after)
 
-And that type gets a corresponding pair of macros. First, for testing an
-object's type:
+Et ce type obtient une paire de macros correspondante. D'abord, pour tester le type d'un objet :
 
 ^code is-class (2 before, 1 after)
 
-And then for casting a Value to an ObjClass pointer:
+Et ensuite pour caster une Value en un pointeur ObjClass :
 
 ^code as-class (2 before, 1 after)
 
-The VM creates new class objects using this function:
+La VM crée de nouveaux objets classe utilisant cette fonction :
 
 ^code new-class-h (2 before, 1 after)
 
-The implementation lives over here:
+L'implémentation vit par ici :
 
 ^code new-class
 
-Pretty much all boilerplate. It takes in the class's name as a string and stores
-it. Every time the user declares a new class, the VM will create a new one of
-these ObjClass structs to represent it.
+Quasiment tout du code standard. Elle prend le nom de la classe comme une chaîne et le stocke. Chaque fois que l'utilisateur déclare une nouvelle classe, la VM créera une nouvelle de ces structs ObjClass pour la représenter.
 
 <aside name="klass">
 
-<img src="image/classes-and-instances/klass.png" alt="'Klass' in a zany kidz font."/>
+<img src="image/classes-and-instances/klass.png" alt="'Klass' dans une police farfelue pour enfants."/>
 
-I named the variable "klass" not just to give the VM a zany preschool "Kidz
-Korner" feel. It makes it easier to get clox compiling as C++ where "class" is
-a reserved word.
+J'ai nommé la variable "klass" pas juste pour donner à la VM une sensation farfelue de maternelle "Coin des Enfants". Cela rend plus facile de faire compiler clox comme du C++ où "class" est un mot réservé.
 
 </aside>
 
-When the VM no longer needs a class, it frees it like so:
+Quand la VM n'a plus besoin d'une classe, elle la libère comme ceci :
 
 ^code free-class (1 before, 1 after)
 
 <aside name="braces">
 
-The braces here are pointless now, but will be useful in the next chapter when
-we add some more code to the switch case.
+Les accolades ici sont inutiles maintenant, mais seront utiles dans le prochain chapitre quand nous ajouterons un peu plus de code au case du switch.
 
 </aside>
 
-We have a memory manager now, so we also need to support tracing through class
-objects.
+Nous avons un gestionnaire de mémoire maintenant, donc nous devons aussi supporter le traçage à travers les objets classe.
 
 ^code blacken-class (1 before, 1 after)
 
-When the GC reaches a class object, it marks the class's name to keep that
-string alive too.
+Quand le GC atteint un objet classe, il marque le nom de la classe pour garder cette chaîne vivante aussi.
 
-The last operation the VM can perform on a class is printing it.
+La dernière opération que la VM peut effectuer sur une classe est de l'afficher.
 
 ^code print-class (1 before, 1 after)
 
-A class simply says its own name.
+Une classe dit simplement son propre nom.
 
-## Class Declarations
+## Déclarations de Classe
 
-Runtime representation in hand, we are ready to add support for classes to the
-language. Next, we move into the parser.
+Représentation runtime en main, nous sommes prêts à ajouter le support pour les classes au langage. Ensuite, nous bougeons dans l'analyseur.
 
 ^code match-class (1 before, 1 after)
 
-Class declarations are statements, and the parser recognizes one by the leading
-`class` keyword. The rest of the compilation happens over here:
+Les déclarations de classe sont des instructions, et l'analyseur en reconnaît une par le mot-clé `class` en tête. Le reste de la compilation se passe par ici :
 
 ^code class-declaration
 
-Immediately after the `class` keyword is the class's name. We take that
-identifier and add it to the surrounding function's constant table as a string.
-As you just saw, printing a class shows its name, so the compiler needs to stuff
-the name string somewhere that the runtime can find. The constant table is the
-way to do that.
+Immédiatement après le mot-clé `class` est le nom de la classe. Nous prenons cet identifiant et l'ajoutons à la table de constantes de la fonction environnante comme une chaîne. Comme vous venez de le voir, afficher une classe montre son nom, donc le compilateur a besoin de fourrer la chaîne du nom quelque part que le runtime peut trouver. La table de constantes est la façon de faire cela.
 
-The class's <span name="variable">name</span> is also used to bind the class
-object to a variable of the same name. So we declare a variable with that
-identifier right after consuming its token.
+Le <span name="variable">nom</span> de la classe est aussi utilisé pour lier l'objet classe à une variable du même nom. Donc nous déclarons une variable avec cet identifiant juste après avoir consommé son jeton.
 
 <aside name="variable">
 
-We could have made class declarations be *expressions* instead of statements --
-they are essentially a literal that produces a value after all. Then users would
-have to explicitly bind the class to a variable themselves like:
+Nous aurions pu faire que les déclarations de classe soient des _expressions_ au lieu d'instructions -- elles sont essentiellement un littéral qui produit une valeur après tout. Alors les utilisateurs auraient à lier explicitement la classe à une variable eux-mêmes comme :
 
 ```lox
 var Pie = class {}
 ```
 
-Sort of like lambda functions but for classes. But since we generally want
-classes to be named anyway, it makes sense to treat them as declarations.
+Sorte de comme les fonctions lambda mais pour les classes. Mais puisque nous voulons généralement que les classes soient nommées de toute façon, cela a du sens de les traiter comme des déclarations.
 
 </aside>
 
-Next, we emit a new instruction to actually create the class object at runtime.
-That instruction takes the constant table index of the class's name as an
-operand.
+Ensuite, nous émettons une nouvelle instruction pour créer réellement l'objet classe à l'exécution. Cette instruction prend l'index de table de constantes du nom de la classe comme un opérande.
 
-After that, but before compiling the body of the class, we define the variable
-for the class's name. *Declaring* the variable adds it to the scope, but recall
-from [a previous chapter][scope] that we can't *use* the variable until it's
-*defined*. For classes, we define the variable before the body. That way, users
-can refer to the containing class inside the bodies of its own methods. That's
-useful for things like factory methods that produce new instances of the class.
+Après cela, mais avant de compiler le corps de la classe, nous définissons la variable pour le nom de la classe. _Déclarer_ la variable l'ajoute à la portée, mais rappelez-vous d'[un chapitre précédent][scope] que nous ne pouvons pas _utiliser_ la variable jusqu'à ce qu'elle soit _définie_. Pour les classes, nous définissons la variable avant le corps. De cette façon, les utilisateurs peuvent se référer à la classe contenante à l'intérieur des corps de ses propres méthodes. C'est utile pour des choses comme les méthodes usines qui produisent de nouvelles instances de la classe.
 
-[scope]: local-variables.html#another-scope-edge-case
+[scope]: variables-locales.html#un-autre-cas-limite-de-portée
 
-Finally, we compile the body. We don't have methods yet, so right now it's
-simply an empty pair of braces. Lox doesn't require fields to be declared in the
-class, so we're done with the body -- and the parser -- for now.
+Finalement, nous compilons le corps. Nous n'avons pas de méthodes encore, donc juste maintenant c'est simplement une paire d'accolades vide. Lox ne requiert pas que les champs soient déclarés dans la classe, donc nous en avons fini avec le corps -- et l'analyseur -- pour l'instant.
 
-The compiler is emitting a new instruction, so let's define that.
+Le compilateur émet une nouvelle instruction, donc définissons cela.
 
 ^code class-op (1 before, 1 after)
 
-And add it to the disassembler:
+Et ajoutons-la au désassembleur :
 
 ^code disassemble-class (2 before, 1 after)
 
-For such a large-seeming feature, the interpreter support is minimal.
+Pour une fonctionnalité d'apparence si large, le support de l'interpréteur est minimal.
 
 ^code interpret-class (2 before, 1 after)
 
-We load the string for the class's name from the constant table and pass that to
-`newClass()`. That creates a new class object with the given name. We push that
-onto the stack and we're good. If the class is bound to a global variable, then
-the compiler's call to `defineVariable()` will emit code to store that object
-from the stack into the global variable table. Otherwise, it's right where it
-needs to be on the stack for a new <span name="local">local</span> variable.
+Nous chargeons la chaîne pour le nom de la classe depuis la table de constantes et passons cela à `newClass()`. Cela crée un nouvel objet classe avec le nom donné. Nous empilons cela sur la pile et nous sommes bons. Si la classe est liée à une variable globale, alors l'appel du compilateur à `defineVariable()` émettra du code pour stocker cet objet de la pile dans la table des variables globales. Sinon, c'est juste où cela doit être sur la pile pour une nouvelle variable <span name="local">locale</span>.
 
 <aside name="local">
 
-"Local" classes -- classes declared inside the body of a function or block, are
-an unusual concept. Many languages don't allow them at all. But since Lox is a
-dynamically typed scripting language, it treats the top level of a program and
-the bodies of functions and blocks uniformly. Classes are just another kind of
-declaration, and since you can declare variables and functions inside blocks,
-you can declare classes in there too.
+Les classes "locales" -- classes déclarées à l'intérieur du corps d'une fonction ou d'un bloc, sont un concept inhabituel. Beaucoup de langages ne les permettent pas du tout. Mais puisque Lox est un langage de script typé dynamiquement, il traite le niveau supérieur d'un programme et les corps des fonctions et des blocs uniformément. Les classes sont juste une autre sorte de déclaration, et puisque vous pouvez déclarer des variables et des fonctions à l'intérieur des blocs, vous pouvez déclarer des classes là-dedans aussi.
 
 </aside>
 
-There you have it, our VM supports classes now. You can run this:
+Là vous l'avez, notre VM supporte les classes maintenant. Vous pouvez exécuter ceci :
 
 ```lox
 class Brioche {}
 print Brioche;
 ```
 
-Unfortunately, printing is about *all* you can do with classes, so next is
-making them more useful.
+Malheureusement, afficher est à propos de _tout_ ce que vous pouvez faire avec les classes, donc la suite est de les rendre plus utiles.
 
-## Instances of Classes
+## Instances de Classes
 
-Classes serve two main purposes in a language:
+Les classes servent deux buts principaux dans un langage :
 
-*   **They are how you create new instances.** Sometimes this involves a `new`
-    keyword, other times it's a method call on the class object, but you usually
-    mention the class by name *somehow* to get a new instance.
+- **Elles sont comment vous créez de nouvelles instances.** Parfois cela implique un mot-clé `new`, d'autres fois c'est un appel de méthode sur l'objet classe, mais vous mentionnez habituellement la classe par nom _d'une façon ou d'une autre_ pour obtenir une nouvelle instance.
 
-*   **They contain methods.** These define how all instances of the class
-    behave.
+- **Elles contiennent des méthodes.** Celles-ci définissent comment toutes les instances de la classe se comportent.
 
-We won't get to methods until the next chapter, so for now we will only worry
-about the first part. Before classes can create instances, we need a
-representation for them.
+Nous n'arriverons pas aux méthodes avant le prochain chapitre, donc pour l'instant nous nous inquiéterons seulement de la première partie. Avant que les classes puissent créer des instances, nous avons besoin d'une représentation pour elles.
 
 ^code obj-instance (1 before, 2 after)
 
-Instances know their class -- each instance has a pointer to the class that it
-is an instance of.  We won't use this much in this chapter, but it will become
-critical when we add methods.
+Les instances connaissent leur classe -- chaque instance a un pointeur vers la classe dont elle est une instance. Nous n'utiliserons pas beaucoup cela dans ce chapitre, mais cela deviendra critique quand nous ajouterons les méthodes.
 
-More important to this chapter is how instances store their state. Lox lets
-users freely add fields to an instance at runtime. This means we need a storage
-mechanism that can grow. We could use a dynamic array, but we also want to look
-up fields by name as quickly as possible. There's a data structure that's just
-perfect for quickly accessing a set of values by name and
--- even more conveniently -- we've already implemented it. Each instance stores
-its fields using a hash table.
+Plus important à ce chapitre est comment les instances stockent leur état. Lox laisse les utilisateurs ajouter librement des champs à une instance à l'exécution. Cela signifie que nous avons besoin d'un mécanisme de stockage qui peut grandir. Nous pourrions utiliser un tableau dynamique, mais nous voulons aussi chercher les champs par nom aussi vite que possible. Il y a une structure de données qui est juste parfaite pour accéder rapidement à un ensemble de valeurs par nom et -- encore plus commodément -- nous l'avons déjà implémentée. Chaque instance stocke ses champs utilisant une table de hachage.
 
 <aside name="fields">
 
-Being able to freely add fields to an object at runtime is a big practical
-difference between most dynamic and static languages. Statically typed languages
-usually require fields to be explicitly declared. This way, the compiler knows
-exactly what fields each instance has. It can use that to determine the precise
-amount of memory needed for each instance and the offsets in that memory where
-each field can be found.
+Être capable d'ajouter librement des champs à un objet à l'exécution est une grosse différence pratique entre la plupart des langages dynamiques et statiques. Les langages typés statiquement requièrent souvent que les champs soient explicitement déclarés. De cette façon, le compilateur sait exactement quels champs chaque instance a. Il peut utiliser cela pour déterminer la quantité précise de mémoire nécessaire pour chaque instance et les décalages dans cette mémoire où chaque champ peut être trouvé.
 
-In Lox and other dynamic languages, accessing a field is usually a hash table
-lookup. Constant time, but still pretty heavyweight. In a language like C++,
-accessing a field is as fast as offsetting a pointer by an integer constant.
+Dans Lox et d'autres langages dynamiques, accéder à un champ est habituellement une recherche dans une table de hachage. Temps constant, mais toujours assez lourd. Dans un langage comme C++, accéder à un champ est aussi rapide que décaler un pointeur par une constante entière.
 
 </aside>
 
-We only need to add an include, and we've got it.
+Nous avons seulement besoin d'ajouter une inclusion, et nous l'avons.
 
 ^code object-include-table (1 before, 1 after)
 
-This new struct gets a new object type.
+Cette nouvelle struct obtient un nouveau type d'objet.
 
 ^code obj-type-instance (1 before, 1 after)
 
-I want to slow down a bit here because the Lox *language's* notion of "type" and
-the VM *implementation's* notion of "type" brush against each other in ways that
-can be confusing. Inside the C code that makes clox, there are a number of
-different types of Obj -- ObjString, ObjClosure, etc. Each has its own internal
-representation and semantics.
+Je veux ralentir un peu ici parce que la notion de "type" du _langage_ Lox et la notion de "type" de l'_implémentation_ de la VM se frottent l'une contre l'autre de façons qui peuvent être déroutantes. À l'intérieur du code C qui fait clox, il y a un nombre de différents types d'Obj -- ObjString, ObjClosure, etc. Chacun a sa propre représentation interne et sémantique.
 
-In the Lox *language*, users can define their own classes -- say Cake and Pie --
-and then create instances of those classes. From the user's perspective, an
-instance of Cake is a different type of object than an instance of Pie. But,
-from the VM's perspective, every class the user defines is simply another value
-of type ObjClass. Likewise, each instance in the user's program, no matter what
-class it is an instance of, is an ObjInstance. That one VM object type covers
-instances of all classes. The two worlds map to each other something like this:
+Dans le _langage_ Lox, les utilisateurs peuvent définir leurs propres classes -- disons Gateau et Tarte -- et ensuite créer des instances de ces classes. De la perspective de l'utilisateur, une instance de Gateau est un type d'objet différent qu'une instance de Tarte. Mais, de la perspective de la VM, chaque classe que l'utilisateur définit est simplement une autre valeur de type ObjClass. De même, chaque instance dans le programme de l'utilisateur, peu importe de quelle classe elle est une instance, est une ObjInstance. Ce seul type d'objet VM couvre les instances de toutes les classes. Les deux mondes mappent l'un à l'autre quelque chose comme ceci :
 
-<img src="image/classes-and-instances/lox-clox.png" alt="A set of class declarations and instances, and the runtime representations each maps to."/>
+<img src="image/classes-and-instances/lox-clox.png" alt="Un ensemble de déclarations de classe et d'instances, et les représentations runtime auxquelles chacune mappe."/>
 
-Got it? OK, back to the implementation. We also get our usual macros.
+Compris ? OK, retour à l'implémentation. Nous obtenons aussi nos macros habituelles.
 
 ^code is-instance (1 before, 1 after)
 
-And:
+Et :
 
 ^code as-instance (1 before, 1 after)
 
-Since fields are added after the instance is created, the "constructor" function
-only needs to know the class.
+Puisque les champs sont ajoutés après que l'instance est créée, la fonction "constructeur" a seulement besoin de connaître la classe.
 
 ^code new-instance-h (1 before, 1 after)
 
-We implement that function here:
+Nous implémentons cette fonction ici :
 
 ^code new-instance
 
-We store a reference to the instance's class. Then we initialize the field
-table to an empty hash table. A new baby object is born!
-
-At the sadder end of the instance's lifespan, it gets freed.
+Nous stockons une référence vers la classe de l'instance. Ensuite nous initialisons la table des champs à une table de hachage vide. Un nouveau bébé objet est né !
+À la fin plus triste de la durée de vie de l'instance, elle est libérée.
 
 ^code free-instance (3 before, 1 after)
 
-The instance owns its field table so when freeing the instance, we also free the
-table. We don't explicitly free the entries *in* the table, because there may
-be other references to those objects. The garbage collector will take care of
-those for us. Here we free only the entry array of the table itself.
+L'instance possède sa table de champs donc lors de la libération de l'instance, nous libérons aussi la table. Nous ne libérons pas explicitement les entrées _dans_ la table, parce qu'il peut y avoir d'autres références à ces objets. Le ramasse-miettes prendra soin de ceux-là pour nous. Ici nous libérons seulement le tableau d'entrée de la table elle-même.
 
-Speaking of the garbage collector, it needs support for tracing through
-instances.
+Parlant du ramasse-miettes, il a besoin de support pour tracer à travers les instances.
 
 ^code blacken-instance (3 before, 1 after)
 
-If the instance is alive, we need to keep its class around. Also, we need to
-keep every object referenced by the instance's fields. Most live objects that
-are not roots are reachable because some instance refers to the object in a
-field. Fortunately, we already have a nice `markTable()` function to make
-tracing them easy.
+Si l'instance est vivante, nous avons besoin de garder sa classe autour. Aussi, nous avons besoin de garder chaque objet référencé par les champs de l'instance. La plupart des objets vivants qui ne sont pas des racines sont atteignables parce que quelque instance se réfère à l'objet dans un champ. Heureusement, nous avons déjà une belle fonction `markTable()` pour rendre leur traçage facile.
 
-Less critical but still important is printing.
+Moins critique mais toujours important est l'affichage.
 
 ^code print-instance (1 before, 1 after)
 
-<span name="print">An</span> instance prints its name followed by "instance".
-(The "instance" part is mainly so that classes and instances don't print the
-same.)
+<span name="print">Une</span> instance affiche son nom suivi par "instance". (La partie "instance" est principalement pour que les classes et les instances n'affichent pas la même chose.)
 
 <aside name="print">
 
-Most object-oriented languages let a class define some sort of `toString()`
-method that lets the class specify how its instances are converted to a string
-and printed. If Lox was less of a toy language, I would want to support that
-too.
+La plupart des langages orientés objet laissent une classe définir quelque sorte de méthode `toString()` qui laisse la classe spécifier comment ses instances sont converties en une chaîne et affichées. Si Lox était moins un langage jouet, je voudrais supporter cela aussi.
 
 </aside>
 
-The real fun happens over in the interpreter. Lox has no special `new` keyword.
-The way to create an instance of a class is to invoke the class itself as if it
-were a function. The runtime already supports function calls, and it checks the
-type of object being called to make sure the user doesn't try to invoke a number
-or other invalid type.
+Le vrai amusement se passe là-bas dans l'interpréteur. Lox n'a pas de mot-clé spécial `new`. La façon de créer une instance d'une classe est d'invoquer la classe elle-même comme si c'était une fonction. Le runtime supporte déjà les appels de fonction, et il vérifie le type de l'objet étant appelé pour s'assurer que l'utilisateur n'essaie pas d'invoquer un nombre ou un autre type invalide.
 
-We extend that runtime checking with a new case.
+Nous étendons cette vérification runtime avec un nouveau cas.
 
 ^code call-class (1 before, 1 after)
 
-If the value being called -- the object that results when evaluating the
-expression to the left of the opening parenthesis -- is a class, then we treat
-it as a constructor call. We <span name="args">create</span> a new instance of
-the called class and store the result on the stack.
+Si la valeur étant appelée -- l'objet qui résulte lors de l'évaluation de l'expression à la gauche de la parenthèse ouvrante -- est une classe, alors nous la traitons comme un appel de constructeur. Nous <span name="args">créons</span> une nouvelle instance de la classe appelée et stockons le résultat sur la pile.
 
 <aside name="args">
 
-We ignore any arguments passed to the call for now. We'll revisit this code in
-the [next chapter][next] when we add support for initializers.
+Nous ignorons tous arguments passés à l'appel pour l'instant. Nous revisiterons ce code dans le [prochain chapitre][next] quand nous ajouterons le support pour les initialisateurs.
 
-[next]: methods-and-initializers.html
+[next]: méthodes-et-initialisateurs.html
 
 </aside>
 
-We're one step farther. Now we can define classes and create instances of them.
+Nous sommes une étape plus loin. Maintenant nous pouvons définir des classes et créer des instances d'elles.
 
 ```lox
 class Brioche {}
 print Brioche();
 ```
 
-Note the parentheses after `Brioche` on the second line now. This prints
-"Brioche instance".
+Notez les parenthèses après `Brioche` sur la seconde ligne maintenant. Ceci affiche "Brioche instance".
 
-## Get and Set Expressions
+## Expressions Get et Set
 
-Our object representation for instances can already store state, so all that
-remains is exposing that functionality to the user. Fields are accessed and
-modified using get and set expressions. Not one to break with tradition, Lox
-uses the classic "dot" syntax:
+Notre représentation objet pour les instances peut déjà stocker l'état, donc tout ce qui reste est d'exposer cette fonctionnalité à l'utilisateur. Les champs sont accédés et modifiés utilisant des expressions get et set. Pas un pour rompre avec la tradition, Lox utilise la syntaxe "point" classique :
 
 ```lox
 eclair.filling = "pastry creme";
 print eclair.filling;
 ```
 
-The period -- full stop for my English friends -- works <span
-name="sort">sort</span> of like an infix operator. There is an expression to the
-left that is evaluated first and produces an instance. After that is the `.`
-followed by a field name. Since there is a preceding operand, we hook this into
-the parse table as an infix expression.
+Le point fonctionne <span name="sort">sorte</span> de comme un opérateur infixe. Il y a une expression à la gauche qui est évaluée d'abord et produit une instance. Après cela est le `.` suivi par un nom de champ. Puisqu'il y a un opérande précédent, nous accrochons ceci dans la table d'analyse comme une expression infixe.
 
 <aside name="sort">
 
-I say "sort of" because the right-hand side after the `.` is not an expression,
-but a single identifier whose semantics are handled by the get or set expression
-itself. It's really closer to a postfix expression.
+Je dis "sorte de" parce que le côté droit après le `.` n'est pas une expression, mais un seul identifiant dont la sémantique est gérée par l'expression get ou set elle-même. C'est vraiment plus proche d'une expression postfixe.
 
 </aside>
 
 ^code table-dot (1 before, 1 after)
 
-As in other languages, the `.` operator binds tightly, with precedence as high
-as the parentheses in a function call. After the parser consumes the dot token,
-it dispatches to a new parse function.
+Comme dans d'autres langages, l'opérateur `.` lie fortement, avec une précédence aussi haute que les parenthèses dans un appel de fonction. Après que l'analyseur consomme le jeton point, il dépêche vers une nouvelle fonction d'analyse.
 
 ^code compile-dot
 
-The parser expects to find a <span name="prop">property</span> name immediately
-after the dot. We load that token's lexeme into the constant table as a string
-so that the name is available at runtime.
+L'analyseur s'attend à trouver un nom de <span name="prop">propriété</span> immédiatement après le point. Nous chargeons le lexème de ce jeton dans la table de constantes comme une chaîne pour que le nom soit disponible à l'exécution.
 
 <aside name="prop">
 
-The compiler uses "property" instead of "field" here because, remember, Lox also
-lets you use dot syntax to access a method without calling it. "Property" is the
-general term we use to refer to any named entity you can access on an instance.
-Fields are the subset of properties that are backed by the instance's state.
+Le compilateur utilise "propriété" au lieu de "champ" ici parce que, rappelez-vous, Lox vous laisse aussi utiliser la syntaxe point pour accéder à une méthode sans l'appeler. "Propriété" est le terme général que nous utilisons pour nous référer à n'importe quelle entité nommée que vous pouvez accéder sur une instance. Les champs sont le sous-ensemble des propriétés qui sont soutenues par l'état de l'instance.
 
 </aside>
 
-We have two new expression forms -- getters and setters -- that this one
-function handles. If we see an equals sign after the field name, it must be a
-set expression that is assigning to a field. But we don't *always* allow an
-equals sign after the field to be compiled. Consider:
+Nous avons deux nouvelles formes d'expression -- getters et setters -- que cette seule fonction gère. Si nous voyons un signe égal après le nom de champ, cela doit être une expression set qui assigne à un champ. Mais nous ne permettons pas _toujours_ à un signe égal après le champ d'être compilé. Considérez :
 
 ```lox
 a + b.c = 3
 ```
 
-This is syntactically invalid according to Lox's grammar, which means our Lox
-implementation is obligated to detect and report the error. If `dot()` silently
-parsed the `= 3` part, we would incorrectly interpret the code as if the user
-had written:
+Ceci est syntaxiquement invalide selon la grammaire de Lox, ce qui signifie que notre implémentation Lox est obligée de détecter et rapporter l'erreur. Si `dot()` analysait silencieusement la partie `= 3`, nous interpréterions incorrectement le code comme si l'utilisateur avait écrit :
 
 ```lox
 a + (b.c = 3)
 ```
 
-The problem is that the `=` side of a set expression has much lower precedence
-than the `.` part. The parser may call `dot()` in a context that is too high
-precedence to permit a setter to appear. To avoid incorrectly allowing that, we
-parse and compile the equals part only when `canAssign` is true. If an equals
-token appears when `canAssign` is false, `dot()` leaves it alone and returns. In
-that case, the compiler will eventually unwind up to `parsePrecedence()`, which
-stops at the unexpected `=` still sitting as the next token and reports an
-error.
+Le problème est que le côté `=` d'une expression set a une précédence beaucoup plus basse que la partie `.`. L'analyseur peut appeler `dot()` dans un contexte qui est de trop haute précédence pour permettre à un setter d'apparaître. Pour éviter de permettre incorrectement cela, nous analysons et compilons la partie égale seulement quand `canAssign` est vrai. Si un jeton égal apparaît quand `canAssign` est faux, `dot()` le laisse tranquille et retourne. Dans ce cas, le compilateur finira par dérouler jusqu'à `parsePrecedence()`, qui s'arrête au `=` inattendu étant toujours assis comme le prochain jeton et rapporte une erreur.
 
-If we find an `=` in a context where it *is* allowed, then we compile the
-expression that follows. After that, we emit a new <span
-name="set">`OP_SET_PROPERTY`</span> instruction. That takes a single operand for
-the index of the property name in the constant table. If we didn't compile a set
-expression, we assume it's a getter and emit an `OP_GET_PROPERTY` instruction,
-which also takes an operand for the property name.
+Si nous trouvons un `=` dans un contexte où il _est_ permis, alors nous compilons l'expression qui suit. Après cela, nous émettons une nouvelle instruction <span name="set">`OP_SET_PROPERTY`</span>. Celle-là prend un seul opérande pour l'index du nom de la propriété dans la table de constantes. Si nous n'avons pas compilé une expression set, nous supposons que c'est un getter et émettons une instruction `OP_GET_PROPERTY`, qui prend aussi un opérande pour le nom de la propriété.
 
 <aside name="set">
 
-You can't *set* a non-field property, so I suppose that instruction could have
-been `OP_SET_FIELD`, but I thought it looked nicer to be consistent with the get
-instruction.
+Vous ne pouvez pas _régler_ une propriété non-champ, donc je suppose que cette instruction aurait pu être `OP_SET_FIELD`, mais j'ai pensé que cela semblait plus joli d'être cohérent avec l'instruction get.
 
 </aside>
 
-Now is a good time to define these two new instructions.
+Maintenant est un bon moment pour définir ces deux nouvelles instructions.
 
 ^code property-ops (1 before, 1 after)
 
-And add support for disassembling them:
+Et ajouter le support pour les désassembler :
 
 ^code disassemble-property-ops (1 before, 1 after)
 
-### Interpreting getter and setter expressions
+### Interpréter les expressions getter et setter
 
-Sliding over to the runtime, we'll start with get expressions since those are a
-little simpler.
+Glissant vers le runtime, nous commencerons avec les expressions get puisque celles-ci sont un peu plus simples.
 
 ^code interpret-get-property (1 before, 1 after)
 
-When the interpreter reaches this instruction, the expression to the left of the
-dot has already been executed and the resulting instance is on top of the stack.
-We read the field name from the constant pool and look it up in the instance's
-field table. If the hash table contains an entry with that name, we pop the
-instance and push the entry's value as the result.
+Quand l'interpréteur atteint cette instruction, l'expression à la gauche du point a déjà été exécutée et l'instance résultante est au sommet de la pile. Nous lisons le nom de champ depuis la table de constantes et le cherchons dans la table de champs de l'instance. Si la table de hachage contient une entrée avec ce nom, nous dépilons l'instance et empilons la valeur de l'entrée comme le résultat.
 
-Of course, the field might not exist. In Lox, we've defined that to be a runtime
-error. So we add a check for that and abort if it happens.
+Bien sûr, le champ pourrait ne pas exister. Dans Lox, nous avons défini cela comme étant une erreur d'exécution. Donc nous ajoutons une vérification pour cela et avortons si cela arrive.
 
 ^code get-undefined (3 before, 2 after)
 
-<span name="field">There</span> is another failure mode to handle which you've
-probably noticed. The above code assumes the expression to the left of the dot
-did evaluate to an ObjInstance. But there's nothing preventing a user from
-writing this:
+<span name="field">Il</span> y a un autre mode d'échec à gérer que vous avez probablement remarqué. Le code ci-dessus suppose que l'expression à la gauche du point a bien évalué à une ObjInstance. Mais il n'y a rien empêchant un utilisateur d'écrire ceci :
 
 ```lox
 var obj = "not an instance";
 print obj.field;
 ```
 
-The user's program is wrong, but the VM still has to handle it with some grace.
-Right now, it will misinterpret the bits of the ObjString as an ObjInstance and,
-I don't know, catch on fire or something definitely not graceful.
+Le programme de l'utilisateur est faux, mais la VM doit quand même gérer cela avec quelque grâce. Juste maintenant, elle mésinterprétera les bits de l'ObjString comme une ObjInstance et, je ne sais pas, prendra feu ou quelque chose définitivement pas gracieux.
 
-In Lox, only instances are allowed to have fields. You can't stuff a field onto
-a string or number. So we need to check that the value is an instance before
-accessing any fields on it.
+Dans Lox, seules les instances sont permises d'avoir des champs. Vous ne pouvez pas fourrer un champ sur une chaîne ou un nombre. Donc nous avons besoin de vérifier que la valeur est une instance avant d'accéder à tout champ dessus.
 
 <aside name="field">
 
-Lox *could* support adding fields to values of other types. It's our language
-and we can do what we want. But it's likely a bad idea. It significantly
-complicates the implementation in ways that hurt performance -- for example,
-string interning gets a lot harder.
+Lox _pourrait_ supporter l'ajout de champs aux valeurs d'autres types. C'est notre langage et nous pouvons faire ce que nous voulons. Mais c'est probablement une mauvaise idée. Cela complique significativement l'implémentation de façons qui blessent la performance -- par exemple, l'internement de chaîne devient beaucoup plus dur.
 
-Also, it raises gnarly semantic questions around the equality and identity of
-values. If I attach a field to the number `3`, does the result of `1 + 2` have
-that field as well? If so, how does the implementation track that? If not, are
-those two resulting "threes" still considered equal?
+Aussi, cela soulève des questions sémantiques noueuses autour de l'égalité et de l'identité des valeurs. Si j'attache un champ au nombre `3`, est-ce que le résultat de `1 + 2` a ce champ aussi ? Si oui, comment l'implémentation suit-elle cela ? Si non, est-ce que ces deux "trois" résultants sont toujours considérés égaux ?
 
 </aside>
 
 ^code get-not-instance (1 before, 1 after)
 
-If the value on the stack isn't an instance, we report a runtime error and
-safely exit.
+Si la valeur sur la pile n'est pas une instance, nous rapportons une erreur d'exécution et sortons sûrement.
 
-Of course, get expressions are not very useful when no instances have any
-fields. For that we need setters.
+Bien sûr, les expressions get ne sont pas très utiles quand aucune instance n'a de champs. Pour cela nous avons besoin des setters.
 
 ^code interpret-set-property (2 before, 1 after)
 
-This is a little more complex than `OP_GET_PROPERTY`. When this executes, the
-top of the stack has the instance whose field is being set and above that, the
-value to be stored. Like before, we read the instruction's operand and find the
-field name string. Using that, we store the value on top of the stack into the
-instance's field table.
+Ceci est un peu plus complexe que `OP_GET_PROPERTY`. Quand cela s'exécute, le sommet de la pile a l'instance dont le champ est en train d'être réglé et au-dessus de cela, la valeur à stocker. Comme avant, nous lisons l'opérande de l'instruction et trouvons la chaîne du nom de champ. Utilisant cela, nous stockons la valeur au sommet de la pile dans la table de champs de l'instance.
 
-After that is a little <span name="stack">stack</span> juggling. We pop the
-stored value off, then pop the instance, and finally push the value back on. In
-other words, we remove the *second* element from the stack while leaving the top
-alone. A setter is itself an expression whose result is the assigned value, so
-we need to leave that value on the stack. Here's what I mean:
+Après cela est un peu de jonglerie de <span name="stack">pile</span>. Nous dépilons la valeur stockée, puis dépilons l'instance, et finalement empilons la valeur de retour. En d'autres termes, nous enlevons le _second_ élément de la pile tout en laissant le sommet seul. Un setter est lui-même une expression dont le résultat est la valeur assignée, donc nous avons besoin de laisser cette valeur sur la pile. Voici ce que je veux dire :
 
 <aside name="stack">
 
-The stack operations go like this:
+Les opérations de pile vont comme ceci :
 
-<img src="image/classes-and-instances/stack.png" alt="Popping two values and then pushing the first value back on the stack."/>
+<img src="image/classes-and-instances/stack.png" alt="Dépilant deux valeurs et ensuite empilant la première valeur de retour sur la pile."/>
 
 </aside>
 
 ```lox
 class Toast {}
 var toast = Toast();
-print toast.jam = "grape"; // Prints "grape".
+print toast.jam = "grape"; // Affiche "grape".
 ```
 
-Unlike when reading a field, we don't need to worry about the hash table not
-containing the field. A setter implicitly creates the field if needed. We do
-need to handle the user incorrectly trying to store a field on a value that
-isn't an instance.
+Contrairement à lors de la lecture d'un champ, nous n'avons pas besoin de nous inquiéter que la table de hachage ne contienne pas le champ. Un setter crée implicitement le champ si nécessaire. Nous avons besoin de gérer l'utilisateur essayant incorrectement de stocker un champ sur une valeur qui n'est pas une instance.
 
 ^code set-not-instance (1 before, 1 after)
 
-Exactly like with get expressions, we check the value's type and report a
-runtime error if it's invalid. And, with that, the stateful side of Lox's
-support for object-oriented programming is in place. Give it a try:
+Exactement comme avec les expressions get, nous vérifions le type de la valeur et rapportons une erreur d'exécution si c'est invalide. Et, avec cela, le côté avec état du support de Lox pour la programmation orientée objet est en place. Donnez-lui un essai :
 
 ```lox
 class Pair {}
@@ -567,41 +379,22 @@ pair.second = 2;
 print pair.first + pair.second; // 3.
 ```
 
-This doesn't really feel very *object*-oriented. It's more like a strange,
-dynamically typed variant of C where objects are loose struct-like bags of data.
-Sort of a dynamic procedural language. But this is a big step in expressiveness.
-Our Lox implementation now lets users freely aggregate data into bigger units.
-In the next chapter, we will breathe life into those inert blobs.
+Ceci ne se sent pas vraiment très orienté _objet_. C'est plus comme une variante étrange, typée dynamiquement du C où les objets sont des sacs de données lâches semblables à des struct. Sorte d'un langage procédural dynamique. Mais c'est une grande étape en expressivité. Notre implémentation Lox laisse maintenant les utilisateurs agréger librement des données en de plus grandes unités. Dans le prochain chapitre, nous insufflerons la vie dans ces blobs inertes.
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  Trying to access a non-existent field on an object immediately aborts the
-    entire VM. The user has no way to recover from this runtime error, nor is
-    there any way to see if a field exists *before* trying to access it. It's up
-    to the user to ensure on their own that only valid fields are read.
+1.  Essayer d'accéder à un champ inexistant sur un objet avorte immédiatement la VM entière. L'utilisateur n'a aucun moyen de récupérer de cette erreur d'exécution, ni n'y a-t-il aucun moyen de voir si un champ existe _avant_ d'essayer d'y accéder. C'est à l'utilisateur d'assurer par lui-même que seuls des champs valides sont lus.
 
-    How do other dynamically typed languages handle missing fields? What do you
-    think Lox should do? Implement your solution.
+    Comment d'autres langages typés dynamiquement gèrent-ils les champs manquants ? Que pensez-vous que Lox devrait faire ? Implémentez votre solution.
 
-2.  Fields are accessed at runtime by their *string* name. But that name must
-    always appear directly in the source code as an *identifier token*. A user
-    program cannot imperatively build a string value and then use that as the
-    name of a field. Do you think they should be able to? Devise a language
-    feature that enables that and implement it.
+2.  Les champs sont accédés à l'exécution par leur nom de _chaîne_. Mais ce nom doit toujours apparaître directement dans le code source comme un _jeton identifiant_. Un programme utilisateur ne peut pas impérativement construire une valeur chaîne et ensuite utiliser cela comme le nom d'un champ. Pensez-vous qu'ils devraient être capables de le faire ? Concevez une fonctionnalité de langage qui permet cela et implémentez-la.
 
-3.  Conversely, Lox offers no way to *remove* a field from an instance. You can
-    set a field's value to `nil`, but the entry in the hash table is still
-    there. How do other languages handle this? Choose and implement a strategy
-    for Lox.
+3.  Inversement, Lox n'offre aucun moyen d'_enlever_ un champ d'une instance. Vous pouvez régler la valeur d'un champ à `nil`, mais l'entrée dans la table de hachage est toujours là. Comment d'autres langages gèrent-ils cela ? Choisissez et implémentez une stratégie pour Lox.
 
-4.  Because fields are accessed by name at runtime, working with instance state
-    is slow. It's technically a constant-time operation -- thanks, hash tables
-    -- but the constant factors are relatively large. This is a major component
-    of why dynamic languages are slower than statically typed ones.
+4.  Parce que les champs sont accédés par nom à l'exécution, travailler avec l'état d'instance est lent. C'est techniquement une opération en temps constant -- merci, tables de hachage -- mais les facteurs constants sont relativement grands. C'est un composant majeur de pourquoi les langages dynamiques sont plus lents que ceux typés statiquement.
 
-    How do sophisticated implementations of dynamically typed languages cope
-    with and optimize this?
+    Comment les implémentations sophistiquées de langages typés dynamiquement gèrent-elles et optimisent-elles cela ?
 
 </div>

@@ -4,72 +4,35 @@
 >
 > <cite>The Whip, &ldquo;Trash&rdquo;</cite>
 
-We say Lox is a "high-level" language because it frees programmers from worrying
-about details irrelevant to the problem they're solving. The user becomes an
-executive, giving the machine abstract goals and letting the lowly computer
-figure out how to get there.
+Nous disons que Lox est un langage de "haut niveau" parce qu'il libère les programmeurs de s'inquiéter des détails non pertinents au problème qu'ils résolvent. L'utilisateur devient un exécutif, donnant à la machine des buts abstraits et laissant l'humble ordinateur trouver comment y arriver.
 
-Dynamic memory allocation is a perfect candidate for automation. It's necessary
-for a working program, tedious to do by hand, and yet still error-prone. The
-inevitable mistakes can be catastrophic, leading to crashes, memory corruption,
-or security violations. It's the kind of risky-yet-boring work that machines
-excel at over humans.
+L'allocation dynamique de mémoire est un candidat parfait pour l'automatisation. C'est nécessaire pour un programme fonctionnel, fastidieux à faire à la main, et pourtant encore sujet aux erreurs. Les erreurs inévitables peuvent être catastrophiques, menant à des plantages, de la corruption de mémoire, ou des violations de sécurité. C'est le genre de travail risqué-mais-ennuyeux auquel les machines excellent par rapport aux humains.
 
-This is why Lox is a **managed language**, which means that the language
-implementation manages memory allocation and freeing on the user's behalf. When
-a user performs an operation that requires some dynamic memory, the VM
-automatically allocates it. The programmer never worries about deallocating
-anything. The machine ensures any memory the program is using sticks around as
-long as needed.
+C'est pourquoi Lox est un **langage géré**, ce qui signifie que l'implémentation du langage gère l'allocation mémoire et la libération au nom de l'utilisateur. Quand un utilisateur effectue une opération qui requiert un peu de mémoire dynamique, la VM l'alloue automatiquement. Le programmeur ne s'inquiète jamais de désallouer quoi que ce soit. La machine assure que toute mémoire que le programme utilise reste dans les parages aussi longtemps que nécessaire.
 
-Lox provides the illusion that the computer has an infinite amount of memory.
-Users can allocate and allocate and allocate and never once think about where
-all these bytes are coming from. Of course, computers do not yet *have* infinite
-memory. So the way managed languages maintain this illusion is by going behind
-the programmer's back and reclaiming memory that the program no longer needs.
-The component that does this is called a **garbage <span
-name="recycle">collector</span>**.
+Lox fournit l'illusion que l'ordinateur a une quantité infinie de mémoire. Les utilisateurs peuvent allouer et allouer et allouer et ne jamais une fois penser à d'où tous ces octets viennent. Bien sûr, les ordinateurs n'_ont_ pas encore de mémoire infinie. Donc la façon dont les langages gérés maintiennent cette illusion est en allant dans le dos du programmeur et en réclamant la mémoire dont le programme n'a plus besoin. Le composant qui fait cela est appelé un **ramasse-miettes** (garbage <span name="recycle">collector</span>).
 
 <aside name="recycle">
 
-Recycling would really be a better metaphor for this. The GC doesn't *throw
-away* the memory, it reclaims it to be reused for new data. But managed
-languages are older than Earth Day, so the inventors went with the analogy they
-knew.
+Recyclage serait vraiment une meilleure métaphore pour cela. Le GC ne _jette pas_ la mémoire, il la réclame pour être réutilisée pour de nouvelles données. Mais les langages gérés sont plus vieux que le Jour de la Terre, donc les inventeurs sont allés avec l'analogie qu'ils connaissaient.
 
-<img src="image/garbage-collection/recycle.png" class="above" alt="A recycle bin full of bits." />
+<img src="image/garbage-collection/recycle.png" class="above" alt="Une poubelle de recyclage pleine de bits." />
 
 </aside>
 
-## Reachability
+## Accessibilité
 
-This raises a surprisingly difficult question: how does a VM tell what memory is
-*not* needed? Memory is only needed if it is read in the future, but short of
-having a time machine, how can an implementation tell what code the program
-*will* execute and which data it *will* use? Spoiler alert: VMs cannot travel
-into the future. Instead, the language makes a <span
-name="conservative">conservative</span> approximation: it considers a piece of
-memory to still be in use if it *could possibly* be read in the future.
+Cela soulève une question étonnamment difficile : comment une VM dit-elle quelle mémoire n'est _pas_ nécessaire ? La mémoire est seulement nécessaire si elle est lue dans le futur, mais à moins d'avoir une machine à voyager dans le temps, comment une implémentation peut-elle dire quel code le programme _exécutera_ et quelles données il _utilisera_ ? Spoiler alert : les VMs ne peuvent pas voyager dans le futur. Au lieu de cela, le langage fait une approximation <span name="conservative">conservatrice</span> : il considère un morceau de mémoire comme étant encore utilisé s'il _pourrait possiblement_ être lu dans le futur.
 
 <aside name="conservative">
 
-I'm using "conservative" in the general sense. There is such a thing as a
-"conservative garbage collector" which means something more specific. All
-garbage collectors are "conservative" in that they keep memory alive if it
-*could* be accessed, instead of having a Magic 8-Ball that lets them more
-precisely know what data *will* be accessed.
+J'utilise "conservateur" dans le sens général. Il y a une chose telle qu'un "ramasse-miettes conservateur" ce qui signifie quelque chose de plus spécifique. Tous les ramasse-miettes sont "conservateurs" en ce qu'ils gardent la mémoire vivante si elle _pourrait_ être accédée, au lieu d'avoir une boule magique numéro 8 qui leur laisse savoir plus précisément quelles données _seront_ accédées.
 
-A **conservative GC** is a special kind of collector that considers any piece of
-memory to be a pointer if the value in there looks like it could be an address.
-This is in contrast to a **precise GC** -- which is what we'll implement -- that
-knows exactly which words in memory are pointers and which store other kinds of
-values like numbers or strings.
+Un **GC conservateur** est une sorte spéciale de collecteur qui considère n'importe quel morceau de mémoire comme un pointeur si la valeur dedans ressemble à ce qu'elle pourrait être une adresse. C'est en contraste avec un **GC précis** -- qui est ce que nous implémenterons -- qui sait exactement quels mots en mémoire sont des pointeurs et lesquels stockent d'autres sortes de valeurs comme des nombres ou des chaînes.
 
 </aside>
 
-That sounds *too* conservative. Couldn't *any* bit of memory potentially be
-read? Actually, no, at least not in a memory-safe language like Lox. Here's an
-example:
+Cela semble _trop_ conservateur. _N'importe quel_ bout de mémoire ne pourrait-il pas potentiellement être lu ? En fait, non, au moins pas dans un langage sûr en mémoire comme Lox. Voici un exemple :
 
 ```lox
 var a = "first value";
@@ -78,14 +41,9 @@ a = "updated";
 print a;
 ```
 
-Say we run the GC after the assignment has completed on the second line. The
-string "first value" is still sitting in memory, but there is no way for the
-user's program to ever get to it. Once `a` got reassigned, the program lost any
-reference to that string. We can safely free it. A value is **reachable** if
-there is some way for a user program to reference it. Otherwise, like the string
-"first value" here, it is **unreachable**.
+Disons que nous courons le GC après que l'assignation a complété sur la seconde ligne. La chaîne "first value" est encore assise en mémoire, mais il n'y a aucun moyen pour le programme de l'utilisateur d'arriver à elle. Une fois que `a` a été réassigné, le programme a perdu toute référence à cette chaîne. Nous pouvons la libérer sûrement. Une valeur est **accessible** (reachable) s'il y a quelque moyen pour un programme utilisateur de la référencer. Sinon, comme la chaîne "first value" ici, elle est **inaccessible** (unreachable).
 
-Many values can be directly accessed by the VM. Take a look at:
+Beaucoup de valeurs peuvent être directement accédées par la VM. Jetez un coup d'œil à :
 
 ```lox
 var global = "string";
@@ -95,29 +53,17 @@ var global = "string";
 }
 ```
 
-Pause the program right after the two strings have been concatenated but before
-the `print` statement has executed. The VM can reach `"string"` by looking
-through the global variable table and finding the entry for `global`. It can
-find `"another"` by walking the value stack and hitting the slot for the local
-variable `local`. It can even find the concatenated string `"stringanother"`
-since that temporary value is also sitting on the VM's stack at the point when
-we paused our program.
+Mettez le programme en pause juste après que les deux chaînes ont été concaténées mais avant que l'instruction `print` ait exécuté. La VM peut atteindre `"string"` en regardant à travers la table des variables globales et en trouvant l'entrée pour `global`. Elle peut trouver `"another"` en marchant la pile de valeurs et en frappant l'emplacement pour la variable locale `local`. Elle peut même trouver la chaîne concaténée `"stringanother"` puisque cette valeur temporaire est aussi assise sur la pile de la VM au point où nous avons pausé notre programme.
 
-All of these values are called **roots**. A root is any object that the VM can
-reach directly without going through a reference in some other object. Most
-roots are global variables or on the stack, but as we'll see, there are a couple
-of other places the VM stores references to objects that it can find.
+Toutes ces valeurs sont appelées des **racines**. Une racine est n'importe quel objet que la VM peut atteindre directement sans passer par une référence dans quelque autre objet. La plupart des racines sont des variables globales ou sur la pile, mais comme nous verrons, il y a une paire d'autres endroits où la VM stocke des références aux objets qu'elle peut trouver.
 
-Other values can be found by going through a reference inside another value.
-<span name="class">Fields</span> on instances of classes are the most obvious
-case, but we don't have those yet. Even without those, our VM still has indirect
-references. Consider:
+D'autres valeurs peuvent être trouvées en passant par une référence à l'intérieur d'une autre valeur. Les <span name="class">champs</span> sur les instances de classes sont le cas le plus évident, mais nous n'avons pas ceux-là encore. Même sans ceux-là, notre VM a encore des références indirectes. Considérez :
 
 <aside name="class">
 
-We'll get there [soon][classes], though!
+Nous y arriverons [bientôt][classes], cependant !
 
-[classes]: classes-and-instances.html
+[classes]: classes-et-instances.html
 
 </aside>
 
@@ -136,1158 +82,674 @@ fun makeClosure() {
 }
 ```
 
-Say we pause the program on the marked line and run the garbage collector. When
-the collector is done and the program resumes, it will call the closure, which
-will in turn print `"data"`. So the collector needs to *not* free that string.
-But here's what the stack looks like when we pause the program:
+Disons que nous mettons en pause le programme sur la ligne marquée et courons le ramasse-miettes. Quand le collecteur a fini et que le programme reprend, il appellera la fermeture, qui appellera à son tour l'affichage de `"data"`. Donc le collecteur a besoin de _ne pas_ libérer cette chaîne. Mais voici à quoi la pile ressemble quand nous mettons en pause le programme :
 
-<img src="image/garbage-collection/stack.png" alt="The stack, containing only the script and closure." />
+<img src="image/garbage-collection/stack.png" alt="La pile, contenant seulement le script et la fermeture." />
 
-The `"data"` string is nowhere on it. It has already been hoisted off the stack
-and moved into the closed upvalue that the closure uses. The closure itself is
-on the stack. But to get to the string, we need to trace through the closure and
-its upvalue array. Since it *is* possible for the user's program to do that, all
-of these indirectly accessible objects are also considered reachable.
+La chaîne `"data"` n'est nulle part dessus. Elle a déjà été hissée hors de la pile et déplacée dans l'upvalue fermée que la fermeture utilise. La fermeture elle-même est sur la pile. Mais pour arriver à la chaîne, nous avons besoin de tracer à travers la fermeture et son tableau d'upvalues. Puisqu'il _est_ possible pour le programme de l'utilisateur de faire cela, tous ces objets indirectement accessibles sont aussi considérés accessibles.
 
-<img src="image/garbage-collection/reachable.png" class="wide" alt="All of the referenced objects from the closure, and the path to the 'data' string from the stack." />
+<img src="image/garbage-collection/reachable.png" class="wide" alt="Tous les objets référencés depuis la fermeture, et le chemin vers la chaîne 'data' depuis la pile." />
 
-This gives us an inductive definition of reachability:
+Cela nous donne une définition inductive de l'accessibilité :
 
-*   All roots are reachable.
+- Toutes les racines sont accessibles.
 
-*   Any object referred to from a reachable object is itself reachable.
+- N'importe quel objet référé depuis un objet accessible est lui-même accessible.
 
-These are the values that are still "live" and need to stay in memory. Any value
-that *doesn't* meet this definition is fair game for the collector to reap.
-That recursive pair of rules hints at a recursive algorithm we can use to free
-up unneeded memory:
+Ce sont les valeurs qui sont encore "vivantes" et ont besoin de rester en mémoire. Toute valeur qui ne _rencontre pas_ cette définition est juste gibier pour le collecteur à moissonner. Cette paire récursive de règles laisse entendre un algorithme récursif que nous pouvons utiliser pour libérer la mémoire non nécessaire :
 
-1.  Starting with the roots, traverse through object references to find the
-    full set of reachable objects.
+1.  Commençant avec les racines, traverser à travers les références d'objet pour trouver l'ensemble complet des objets accessibles.
 
-2.  Free all objects *not* in that set.
+2.  Libérer tous les objets _pas_ dans cet ensemble.
 
-Many <span name="handbook">different</span> garbage collection algorithms are in
-use today, but they all roughly follow that same structure. Some may interleave
-the steps or mix them, but the two fundamental operations are there. They mostly
-differ in *how* they perform each step.
+Beaucoup d'algorithmes de ramasse-miettes <span name="handbook">différents</span> sont en usage aujourd'hui, mais ils suivent tous grossièrement cette même structure. Certains peuvent entremêler les étapes ou les mélanger, mais les deux opérations fondamentales sont là. Ils diffèrent surtout dans _comment_ ils effectuent chaque étape.
 
 <aside name="handbook">
 
-If you want to explore other GC algorithms,
-[*The Garbage Collection Handbook*][gc book] (Jones, et al.) is the canonical
-reference. For a large book on such a deep, narrow topic, it is quite enjoyable
-to read. Or perhaps I have a strange idea of fun.
+Si vous voulez explorer d'autres algorithmes de GC,
+[_The Garbage Collection Handbook_][gc book] (Jones, et al.) est la référence canonique. Pour un gros livre sur un tel sujet profond, étroit, il est assez agréable à lire. Ou peut-être j'ai une idée étrange du fun.
 
 [gc book]: http://gchandbook.org/
 
 </aside>
 
-## Mark-Sweep Garbage Collection
+## Ramasse-miettes Mark-Sweep
 
-The first managed language was Lisp, the second "high-level" language to be
-invented, right after Fortran. John McCarthy considered using manual memory
-management or reference counting, but <span
-name="procrastination">eventually</span> settled on (and coined) garbage
-collection -- once the program was out of memory, it would go back and find
-unused storage it could reclaim.
+Le premier langage géré fut Lisp, le second langage de "haut niveau" à être inventé, juste après Fortran. John McCarthy considéra utiliser la gestion manuelle de mémoire ou le comptage de références, mais s'installa <span name="procrastination">éventuellement</span> sur (et inventa le terme) ramasse-miettes -- une fois que le programme était à court de mémoire, il retournerait en arrière et trouverait le stockage inutilisé qu'il pourrait réclamer.
 
 <aside name="procrastination">
 
-In John McCarthy's "History of Lisp", he notes: "Once we decided on garbage
-collection, its actual implementation could be postponed, because only toy
-examples were being done." Our choice to procrastinate adding the GC to clox
-follows in the footsteps of giants.
+Dans "History of Lisp" de John McCarthy, il note : "Une fois que nous avons décidé sur le ramasse-miettes, son implémentation actuelle pouvait être reportée, parce que seulement des exemples jouets étaient faits." Notre choix de procrastiner l'ajout du GC à clox suit dans les pas des géants.
 
 </aside>
 
-He designed the very first, simplest garbage collection algorithm, called
-**mark-and-sweep** or just **mark-sweep**. Its description fits in three short
-paragraphs in the initial paper on Lisp. Despite its age and simplicity, the
-same fundamental algorithm underlies many modern memory managers. Some corners
-of CS seem to be timeless.
+Il a conçu le tout premier, plus simple algorithme de ramasse-miettes, appelé **mark-and-sweep** (marquer-et-balayer) ou juste **mark-sweep**. Sa description tient dans trois courts paragraphes dans le papier initial sur Lisp. Malgré son âge et sa simplicité, le même algorithme fondamental sous-tend beaucoup de gestionnaires de mémoire modernes. Certains coins de l'informatique semblent être intemporels.
 
-As the name implies, mark-sweep works in two phases:
+Comme le nom l'implique, le mark-sweep fonctionne en deux phases :
 
-*   **Marking:** We start with the roots and traverse or <span
-    name="trace">*trace*</span> through all of the objects those roots refer to.
-    This is a classic graph traversal of all of the reachable objects. Each time
-    we visit an object, we *mark* it in some way. (Implementations differ in how
-    they record the mark.)
+- **Marquage (Marking) :** Nous commençons avec les racines et traversons ou <span name="trace">_traçons_</span> à travers tous les objets auxquels ces racines se réfèrent. C'est une traversée de graphe classique de tous les objets accessibles. Chaque fois que nous visitons un objet, nous le _marquons_ de quelque manière. (Les implémentations diffèrent dans comment elles enregistrent la marque.)
 
-*   **Sweeping:** Once the mark phase completes, every reachable object
-    in the heap has been marked. That means any unmarked object is unreachable and
-    ripe for reclamation. We go through all the unmarked objects and free each
-    one.
+- **Balayage (Sweeping) :** Une fois que la phase de marquage complète, chaque objet accessible dans le tas a été marqué. Cela signifie que tout objet non marqué est inaccessible et mûr pour la réclamation. Nous passons à travers tous les objets non marqués et libérons chacun d'eux.
 
-It looks something like this:
+Cela ressemble à quelque chose comme ceci :
 
-<img src="image/garbage-collection/mark-sweep.png" class="wide" alt="Starting from a graph of objects, first the reachable ones are marked, the remaining are swept, and then only the reachable remain." />
+<img src="image/garbage-collection/mark-sweep.png" class="wide" alt="Commençant depuis un graphe d'objets, d'abord les accessibles sont marqués, les restants sont balayés, et ensuite seulement les accessibles restent." />
 
 <aside name="trace">
 
-A **tracing garbage collector** is any algorithm that traces through the graph
-of object references. This is in contrast with reference counting, which has a
-different strategy for tracking the reachable objects.
+Un **ramasse-miettes traceur** est n'importe quel algorithme qui trace à travers le graphe des références d'objet. C'est en contraste avec le comptage de références, qui a une stratégie différente pour suivre les objets accessibles.
 
 </aside>
 
-That's what we're gonna implement. Whenever we decide it's time to reclaim some
-bytes, we'll trace everything and mark all the reachable objects, free what
-didn't get marked, and then resume the user's program.
+C'est ce que nous allons implémenter. Chaque fois que nous décidons qu'il est temps de réclamer quelques octets, nous tracerons tout et marquerons tous les objets accessibles, libérerons ce qui n'a pas été marqué, et ensuite reprendrons le programme de l'utilisateur.
 
-### Collecting garbage
+### Collecter les miettes
 
-This entire chapter is about implementing this one <span
-name="one">function</span>:
+Ce chapitre entier est à propos d'implémenter cette <span name="one">fonction</span> unique :
 
 <aside name="one">
 
-Of course, we'll end up adding a bunch of helper functions too.
+Bien sûr, nous finirons par ajouter un tas de fonctions d'aide aussi.
 
 </aside>
 
 ^code collect-garbage-h (1 before, 1 after)
 
-We'll work our way up to a full implementation starting with this empty shell:
+Nous travaillerons notre chemin vers une implémentation complète commençant avec cette coque vide :
 
 ^code collect-garbage
 
-The first question you might ask is, When does this function get called? It
-turns out that's a subtle question that we'll spend some time on later in the
-chapter. For now we'll sidestep the issue and build ourselves a handy diagnostic
-tool in the process.
+La première question que vous pourriez demander est, Quand cette fonction est-elle appelée ? Il s'avère que c'est une question subtile sur laquelle nous passerons un peu de temps plus tard dans le chapitre. Pour le moment nous esquiverons le problème et nous construirons un outil de diagnostic pratique dans le processus.
 
 ^code define-stress-gc (1 before, 2 after)
 
-We'll add an optional "stress test" mode for the garbage collector. When this
-flag is defined, the GC runs as often as it possibly can. This is, obviously,
-horrendous for performance. But it's great for flushing out memory management
-bugs that occur only when a GC is triggered at just the right moment. If *every*
-moment triggers a GC, you're likely to find those bugs.
+Nous ajouterons un mode optionnel "stress test" pour le ramasse-miettes. Quand ce drapeau est défini, le GC court aussi souvent qu'il peut possiblement. C'est, évidemment, horrifique pour la performance. Mais c'est génial pour débusquer les bugs de gestion de mémoire qui se produisent seulement quand un GC est déclenché juste au bon moment. Si _chaque_ moment déclenche un GC, vous êtes susceptibles de trouver ces bugs.
 
 ^code call-collect (1 before, 1 after)
 
-Whenever we call `reallocate()` to acquire more memory, we force a collection to
-run. The if check is because `reallocate()` is also called to free or shrink an
-allocation. We don't want to trigger a GC for that -- in particular because the
-GC itself will call `reallocate()` to free memory.
+Chaque fois que nous appelons `reallocate()` pour acquérir plus de mémoire, nous forçons une collection à courir. La vérification if est parce que `reallocate()` est aussi appelé pour libérer ou rétrécir une allocation. Nous ne voulons pas déclencher un GC pour cela -- en particulier parce que le GC lui-même appellera `reallocate()` pour libérer de la mémoire.
 
-Collecting right before <span name="demand">allocation</span> is the classic way
-to wire a GC into a VM. You're already calling into the memory manager, so it's
-an easy place to hook in the code. Also, allocation is the only time when you
-really *need* some freed up memory so that you can reuse it. If you *don't* use
-allocation to trigger a GC, you have to make sure every possible place in code
-where you can loop and allocate memory also has a way to trigger the collector.
-Otherwise, the VM can get into a starved state where it needs more memory but
-never collects any.
+Collecter juste avant l'<span name="demand">allocation</span> est la façon classique de câbler un GC dans une VM. Vous appelez déjà dans le gestionnaire de mémoire, donc c'est un endroit facile pour accrocher le code. Aussi, l'allocation est le seul moment où vous avez vraiment _besoin_ de mémoire libérée pour que vous puissiez la réutiliser. Si vous n'utilisez _pas_ l'allocation pour déclencher un GC, vous devez vous assurer que chaque endroit possible dans le code où vous pouvez boucler et allouer de la mémoire a aussi un moyen de déclencher le collecteur. Sinon, la VM peut entrer dans un état affamé où elle a besoin de plus de mémoire mais n'en collecte jamais.
 
 <aside name="demand">
 
-More sophisticated collectors might run on a separate thread or be interleaved
-periodically during program execution -- often at function call boundaries or
-when a backward jump occurs.
+Des collecteurs plus sophistiqués pourraient courir sur un fil séparé ou être entrelacés périodiquement durant l'exécution du programme -- souvent aux frontières d'appel de fonction ou quand un saut en arrière se produit.
 
 </aside>
 
-### Debug logging
+### Journalisation de débogage
 
-While we're on the subject of diagnostics, let's put some more in. A real
-challenge I've found with garbage collectors is that they are opaque. We've been
-running lots of Lox programs just fine without any GC *at all* so far. Once we
-add one, how do we tell if it's doing anything useful? Can we tell only if we
-write programs that plow through acres of memory? How do we debug that?
+Pendant que nous sommes sur le sujet des diagnostics, mettons-en un peu plus. Un vrai défi que j'ai trouvé avec les ramasse-miettes est qu'ils sont opaques. Nous avons couru des tas de programmes Lox juste bien sans aucun GC _du tout_ jusqu'ici. Une fois que nous en ajoutons un, comment disons-nous s'il fait quoi que ce soit d'utile ? Pouvons-nous dire seulement si nous écrivons des programmes qui labourent à travers des acres de mémoire ? Comment déboguons-nous cela ?
 
-An easy way to shine a light into the GC's inner workings is with some logging.
+Un moyen facile de briller une lumière dans les fonctionnements internes du GC est avec un peu de journalisation.
 
 ^code define-log-gc (1 before, 2 after)
 
-When this is enabled, clox prints information to the console when it does
-something with dynamic memory.
+Quand c'est activé, clox affiche de l'information sur la console quand il fait quelque chose avec la mémoire dynamique.
 
-We need a couple of includes.
+Nous avons besoin d'une paire d'includes.
 
 ^code debug-log-includes (1 before, 2 after)
 
-We don't have a collector yet, but we can start putting in some of the logging
-now. We'll want to know when a collection run starts.
+Nous n'avons pas de collecteur encore, mais nous pouvons commencer à mettre dedans certaines des journalisations maintenant. Nous voudrons savoir quand une course de collection démarre.
 
 ^code log-before-collect (1 before, 1 after)
 
-Eventually we will log some other operations during the collection, so we'll
-also want to know when the show's over.
+Éventuellement nous journaliserons quelques autres opérations durant la collection, donc nous voudrons aussi savoir quand le spectacle est fini.
 
 ^code log-after-collect (2 before, 1 after)
 
-We don't have any code for the collector yet, but we do have functions for
-allocating and freeing, so we can instrument those now.
+Nous n'avons aucun code pour le collecteur encore, mais nous avons bien des fonctions pour allouer et libérer, donc nous pouvons instrumenter celles-là maintenant.
 
 ^code debug-log-allocate (1 before, 1 after)
 
-And at the end of an object's lifespan:
+Et à la fin de la durée de vie d'un objet :
 
 ^code log-free-object (1 before, 1 after)
 
-With these two flags, we should be able to see that we're making progress as we
-work through the rest of the chapter.
+Avec ces deux drapeaux, nous devrions être capables de voir que nous faisons des progrès comme nous travaillons à travers le reste du chapitre.
 
-## Marking the Roots
+## Marquer les Racines
 
-Objects are scattered across the heap like stars in the inky night sky. A
-reference from one object to another forms a connection, and these
-constellations are the graph that the mark phase traverses. Marking begins at
-the roots.
+Les objets sont dispersés à travers le tas comme des étoiles dans le ciel nocturne d'encre. Une référence d'un objet à un autre forme une connexion, et ces constellations sont le graphe que la phase de marquage traverse. Le marquage commence aux racines.
 
 ^code call-mark-roots (3 before, 2 after)
 
-Most roots are local variables or temporaries sitting right in the VM's stack,
-so we start by walking that.
+La plupart des racines sont des variables locales ou temporaires assises juste dans la pile de la VM, donc nous commençons par marcher celle-là.
 
 ^code mark-roots
 
-To mark a Lox value, we use this new function:
+Pour marquer une valeur Lox, nous utilisons cette nouvelle fonction :
 
 ^code mark-value-h (1 before, 1 after)
 
-Its implementation is here:
+Son implémentation est ici :
 
 ^code mark-value
 
-Some Lox values -- numbers, Booleans, and `nil` -- are stored directly inline in
-Value and require no heap allocation. The garbage collector doesn't need to
-worry about them at all, so the first thing we do is ensure that the value is an
-actual heap object. If so, the real work happens in this function:
+Certaines valeurs Lox -- nombres, Booléens, et `nil` -- sont stockées directement en ligne dans Value et ne requièrent aucune allocation tas. Le ramasse-miettes n'a pas besoin de s'inquiéter à propos d'elles du tout, donc la première chose que nous faisons est d'assurer que la valeur est un objet tas réel. Si oui, le vrai travail se passe dans cette fonction :
 
 ^code mark-object-h (1 before, 1 after)
 
-Which is defined here:
+Qui est définie ici :
 
 ^code mark-object
 
-The `NULL` check is unnecessary when called from `markValue()`. A Lox Value that
-is some kind of Obj type will always have a valid pointer. But later we will
-call this function directly from other code, and in some of those places, the
-object being pointed to is optional.
+La vérification `NULL` est inutile quand appelée depuis `markValue()`. Une Value Lox qui est quelque sorte de type Obj aura toujours un pointeur valide. Mais plus tard nous appellerons cette fonction directement depuis d'autres codes, et dans certains de ces endroits, l'objet étant pointé est optionnel.
 
-Assuming we do have a valid object, we mark it by setting a flag. That new field
-lives in the Obj header struct all objects share.
+Supposant que nous avons bien un objet valide, nous le marquons en mettant un drapeau. Ce nouveau champ vit dans la structure d'en-tête Obj que tous les objets partagent.
 
 ^code is-marked-field (1 before, 1 after)
 
-Every new object begins life unmarked because we haven't yet determined if it is
-reachable or not.
+Chaque nouvel objet commence sa vie non marqué parce que nous n'avons pas encore déterminé s'il est accessible ou non.
 
 ^code init-is-marked (1 before, 2 after)
 
-Before we go any farther, let's add some logging to `markObject()`.
+Avant que nous allions plus loin, ajoutons un peu de journalisation à `markObject()`.
 
 ^code log-mark-object (2 before, 1 after)
 
-This way we can see what the mark phase is doing. Marking the stack takes care
-of local variables and temporaries. The other main source of roots are the
-global variables.
+De cette façon nous pouvons voir ce que la phase de marquage fait. Marquer la pile s'occupe des variables locales et temporaires. L'autre source principale de racines sont les variables globales.
 
 ^code mark-globals (2 before, 1 after)
 
-Those live in a hash table owned by the VM, so we'll declare another helper
-function for marking all of the objects in a table.
+Celles-là vivent dans une table de hachage possédée par la VM, donc nous déclarerons une autre fonction d'aide pour marquer tous les objets dans une table.
 
 ^code mark-table-h (2 before, 2 after)
 
-We implement that in the "table" module here:
+Nous implémentons cela dans le module "table" ici :
 
 ^code mark-table
 
-Pretty straightforward. We walk the entry array. For each one, we mark its
-value. We also mark the key strings for each entry since the GC manages those
-strings too.
+Assez direct. Nous marchons le tableau d'entrées. Pour chacune, nous marquons sa valeur. Nous marquons aussi les chaînes clés pour chaque entrée puisque le GC gère ces chaînes aussi.
 
-### Less obvious roots
+### Racines moins évidentes
 
-Those cover the roots that we typically think of -- the values that are
-obviously reachable because they're stored in variables the user's program can
-see. But the VM has a few of its own hidey-holes where it squirrels away
-references to values that it directly accesses.
+Celles-là couvrent les racines auxquelles nous pensons typiquement -- les valeurs qui sont évidemment accessibles parce qu'elles sont stockées dans des variables que le programme de l'utilisateur peut voir. Mais la VM a quelques-uns de ses propres trous de cachette où elle écureuille des références à des valeurs qu'elle accède directement.
 
-Most function call state lives in the value stack, but the VM maintains a
-separate stack of CallFrames. Each CallFrame contains a pointer to the closure
-being called. The VM uses those pointers to access constants and upvalues, so
-those closures need to be kept around too.
+La plupart de l'état d'appel de fonction vit dans la pile de valeurs, mais la VM maintient une pile séparée de CallFrames. Chaque CallFrame contient un pointeur vers la fermeture étant appelée. La VM utilise ces pointeurs pour accéder aux constantes et upvalues, donc ces fermetures ont besoin d'être gardées autour aussi.
 
 ^code mark-closures (1 before, 2 after)
 
-Speaking of upvalues, the open upvalue list is another set of values that the
-VM can directly reach.
+Parlant d'upvalues, la liste d'upvalues ouvertes est un autre ensemble de valeurs que la VM peut atteindre directement.
 
 ^code mark-open-upvalues (3 before, 2 after)
 
-Remember also that a collection can begin during *any* allocation. Those
-allocations don't just happen while the user's program is running. The compiler
-itself periodically grabs memory from the heap for literals and the constant
-table. If the GC runs while we're in the middle of compiling, then any values
-the compiler directly accesses need to be treated as roots too.
+Rappelez-vous aussi qu'une collection peut commencer durant _n'importe quelle_ allocation. Ces allocations n'arrivent pas juste pendant que le programme de l'utilisateur court. Le compilateur lui-même attrape périodiquement de la mémoire depuis le tas pour les littéraux et la table des constantes. Si le GC court pendant que nous sommes au milieu de la compilation, alors toutes valeurs que le compilateur accède directement ont besoin d'être traitées comme des racines aussi.
 
-To keep the compiler module cleanly separated from the rest of the VM, we'll do
-that in a separate function.
+Pour garder le module compilateur proprement séparé du reste de la VM, nous ferons cela dans une fonction séparée.
 
 ^code call-mark-compiler-roots (1 before, 1 after)
 
-It's declared here:
+C'est déclaré ici :
 
 ^code mark-compiler-roots-h (1 before, 2 after)
 
-Which means the "memory" module needs an include.
+Ce qui signifie que le module "memory" a besoin d'un include.
 
 ^code memory-include-compiler (2 before, 1 after)
 
-And the definition is over in the "compiler" module.
+Et la définition est là-bas dans le module "compiler".
 
 ^code mark-compiler-roots
 
-Fortunately, the compiler doesn't have too many values that it hangs on to. The
-only object it uses is the ObjFunction it is compiling into. Since function
-declarations can nest, the compiler has a linked list of those and we walk the
-whole list.
+Heureusement, le compilateur n'a pas trop de valeurs auxquelles il s'accroche. Le seul objet qu'il utilise est l'ObjFunction dans lequel il compile. Puisque les déclarations de fonction peuvent s'imbriquer, le compilateur a une liste chaînée de celles-ci et nous marchons la liste entière.
 
-Since the "compiler" module is calling `markObject()`, it also needs an include.
+Puisque le module "compiler" appelle `markObject()`, il a aussi besoin d'un include.
 
 ^code compiler-include-memory (1 before, 1 after)
 
-Those are all the roots. After running this, every object that the VM -- runtime
-and compiler -- can get to *without* going through some other object has its
-mark bit set.
+Ce sont toutes les racines. Après avoir couru cela, chaque objet que la VM -- runtime et compilateur -- peut atteindre _sans_ passer par quelque autre objet a son bit de marque mis.
+## Tracer les Références d'Objet
 
-## Tracing Object References
-
-The next step in the marking process is tracing through the graph of references
-between objects to find the indirectly reachable values. We don't have instances
-with fields yet, so there aren't many objects that contain references, but we do
-have <span name="some">some</span>. In particular, ObjClosure has the list of
-ObjUpvalues it closes over as well as a reference to the raw ObjFunction that it
-wraps. ObjFunction, in turn, has a constant table containing references to all
-of the literals created in the function's body. This is enough to build a fairly
-complex web of objects for our collector to crawl through.
+L'étape suivante dans le processus de marquage est de tracer à travers le graphe des références entre les objets pour trouver les valeurs indirectement accessibles. Nous n'avons pas d'instances avec des champs encore, donc il n'y a pas beaucoup d'objets qui contiennent des références, mais nous en avons <span name="some">quelques-uns</span>. En particulier, ObjClosure a la liste des ObjUpvalues sur lesquels il ferme ainsi qu'une référence à l'ObjFunction brut qu'il enveloppe. ObjFunction, à son tour, a une table constante empaquetée pleine de références vers tous les littéraux créés dans le corps de la fonction. C'est assez pour construire une toile d'objets assez complexe pour le collecteur à travers laquelle ramper.
 
 <aside name="some">
 
-I slotted this chapter into the book right here specifically *because* we now
-have closures which give us interesting objects for the garbage collector to
-process.
+J'ai inséré ce chapitre dans le livre juste ici spécifiquement _parce que_ nous avons maintenant des fermetures qui nous donnent des objets intéressants pour le ramasse-miettes à traiter.
 
 </aside>
 
-Now it's time to implement that traversal. We can go breadth-first, depth-first,
-or in some other order. Since we just need to find the *set* of all reachable
-objects, the order we visit them <span name="dfs">mostly</span> doesn't matter.
+Maintenant il est temps d'implémenter cette traversée. Nous pouvons aller en largeur d'abord, en profondeur d'abord, ou dans quelque autre ordre. Puisque nous avons juste besoin de trouver l'_ensemble_ de tous les objets accessibles, l'ordre dans lequel nous les visitons <span name="dfs">surtout</span> n'importe pas.
 
 <aside name="dfs">
 
-I say "mostly" because some garbage collectors move objects in the order that
-they are visited, so traversal order determines which objects end up adjacent in
-memory. That impacts performance because the CPU uses locality to determine
-which memory to preload into the caches.
+Je dis "surtout" parce que certains ramasse-miettes déplacent les objets dans l'ordre où ils sont visités, donc l'ordre de traversée détermine quels objets finissent adjacents en mémoire. Cela impacte la performance parce que le CPU utilise la localité pour déterminer quelle mémoire précharger dans les caches.
 
-Even when traversal order does matter, it's not clear which order is *best*.
-It's very difficult to determine which order objects will be used in in the
-future, so it's hard for the GC to know which order will help performance.
+Même quand l'ordre de traversée importe, il n'est pas clair quel ordre est le _meilleur_. Il est très difficile de déterminer dans quel ordre les objets seront utilisés dans le futur, donc il est dur pour le GC de savoir quel ordre aidera la performance.
 
 </aside>
 
-### The tricolor abstraction
+### L'abstraction tricolore
 
-As the collector wanders through the graph of objects, we need to make sure it
-doesn't lose track of where it is or get stuck going in circles. This is
-particularly a concern for advanced implementations like incremental GCs that
-interleave marking with running pieces of the user's program. The collector
-needs to be able to pause and then pick up where it left off later.
+Comme le collecteur erre à travers le graphe d'objets, nous avons besoin de nous assurer qu'il ne perd pas la trace de où il est ou ne reste pas coincé à aller en cercles. C'est particulièrement une préoccupation pour les implémentations avancées comme les GCs incrémentaux qui entremêlent le marquage avec l'exécution de morceaux du programme de l'utilisateur. Le collecteur a besoin d'être capable de mettre en pause et ensuite reprendre où il s'est arrêté plus tard.
 
-To help us soft-brained humans reason about this complex process, VM hackers
-came up with a metaphor called the <span name="color"></span>**tricolor
-abstraction**. Each object has a conceptual "color" that tracks what state the
-object is in, and what work is left to do.
+Pour nous aider humains au cerveau mou à raisonner sur ce processus complexe, les hackers de VM sont venus avec une métaphore appelée l'<span name="color"></span>**abstraction tricolore** (tricolor abstraction). Chaque objet a une "couleur" conceptuelle qui suit dans quel état l'objet est, et quel travail est laissé à faire.
 
 <aside name="color">
 
-Advanced garbage collection algorithms often add other colors to the
-abstraction. I've seen multiple shades of gray, and even purple in some designs.
-My puce-chartreuse-fuchsia-malachite collector paper was, alas, not accepted for
-publication.
+Les algorithmes de ramasse-miettes avancés ajoutent souvent d'autres couleurs à l'abstraction. J'ai vu de multiples nuances de gris, et même pourpre dans certaines conceptions. Mon papier de collecteur puce-chartreuse-fuchsia-malachite n'a, hélas, pas été accepté pour publication.
 
 </aside>
 
-*   **<img src="image/garbage-collection/white.png" alt="A white circle."
-    class="dot" /> White:** At the beginning of a garbage collection, every
-    object is white. This color means we have not reached or processed the
-    object at all.
+- **<img src="image/garbage-collection/white.png" alt="Un cercle blanc." class="dot" /> Blanc :** Au début d'un ramasse-miettes, chaque objet est blanc. Cette couleur signifie que nous n'avons pas atteint ou traité l'objet du tout.
 
-*   **<img src="image/garbage-collection/gray.png" alt="A gray circle."
-    class="dot" /> Gray:** During marking, when we first reach an object, we
-    darken it gray. This color means we know the object itself is reachable and
-    should not be collected. But we have not yet traced *through* it to see what
-    *other* objects it references. In graph algorithm terms, this is the
-    *worklist* -- the set of objects we know about but haven't processed yet.
+- **<img src="image/garbage-collection/gray.png" alt="Un cercle gris." class="dot" /> Gris :** Durant le marquage, quand nous atteignons d'abord un objet, nous l'assombrissons en gris. Cette couleur signifie que nous savons que l'objet lui-même est accessible et ne devrait pas être collecté. Mais nous n'avons pas encore tracé _à travers_ lui pour voir quels _autres_ objets il référence. En termes d'algorithme de graphe, c'est la _worklist_ (liste de travail) -- l'ensemble des objets que nous connaissons mais n'avons pas traités encore.
 
-*   **<img src="image/garbage-collection/black.png" alt="A black circle."
-    class="dot" /> Black:** When
-    we take a gray object and mark all of the objects it references, we then
-    turn the gray object black. This color means the mark phase is done
-    processing that object.
+- **<img src="image/garbage-collection/black.png" alt="Un cercle noir." class="dot" /> Noir :** Quand nous prenons un objet gris et marquons tous les objets qu'il référence, nous tournons alors l'objet gris en noir. Cette couleur signifie que la phase de marquage a fini de traiter cet objet.
 
-In terms of that abstraction, the marking process now looks like this:
+En termes de cette abstraction, le processus de marquage ressemble maintenant à ceci :
 
-1.  Start off with all objects white.
+1.  Démarrer avec tous les objets blancs.
 
-2.  Find all the roots and mark them gray.
+2.  Trouver toutes les racines et les marquer grises.
 
-3.  Repeat as long as there are still gray objects:
+3.  Répéter tant qu'il y a encore des objets gris :
+    1.  Prendre un objet gris. Tourner tous objets blancs que l'objet mentionne en gris.
 
-    1.  Pick a gray object. Turn any white objects that the object mentions to
-        gray.
+    2.  Marquer l'objet gris original en noir.
 
-    2.  Mark the original gray object black.
+Je trouve que cela aide de visualiser ceci. Vous avez une toile d'objets avec des références entre eux. Initialement, ils sont tous de petits points blancs. Sur le côté sont quelques arêtes entrantes depuis la VM qui pointent vers les racines. Ces racines tournent gris. Ensuite les frères et sœurs de chaque objet gris tournent gris tandis que l'objet lui-même tourne noir. L'effet complet est un front d'onde gris qui passe à travers le graphe, laissant un champ d'objets noirs accessibles derrière lui. Les objets inaccessibles ne sont pas touchés par le front d'onde et restent blancs.
 
-I find it helps to visualize this. You have a web of objects with references
-between them. Initially, they are all little white dots. Off to the side are
-some incoming edges from the VM that point to the roots. Those roots turn gray.
-Then each gray object's siblings turn gray while the object itself turns black.
-The full effect is a gray wavefront that passes through the graph, leaving a
-field of reachable black objects behind it. Unreachable objects are not touched
-by the wavefront and stay white.
+<img src="image/garbage-collection/tricolor-trace.png" class="wide" alt="Un front d'onde gris travaillant à travers un graphe de nœuds." />
 
-<img src="image/garbage-collection/tricolor-trace.png" class="wide" alt="A gray wavefront working through a graph of nodes." />
-
-At the <span name="invariant">end</span>, you're left with a sea of reached,
-black objects sprinkled with islands of white objects that can be swept up and
-freed. Once the unreachable objects are freed, the remaining objects -- all
-black -- are reset to white for the next garbage collection cycle.
+À la <span name="invariant">fin</span>, vous êtes laissés avec une mer d'objets noirs, atteints saupoudrée avec des îles d'objets blancs qui peuvent être balayés et libérés. Une fois que les objets inaccessibles sont libérés, les objets restants -- tous noirs -- sont remis à zéro à blanc pour le prochain cycle de ramasse-miettes.
 
 <aside name="invariant">
 
-Note that at every step of this process no black node ever points to a white
-node. This property is called the **tricolor invariant**. The traversal process
-maintains this invariant to ensure that no reachable object is ever collected.
+Notez qu'à chaque étape de ce processus aucun nœud noir ne pointe jamais vers un nœud blanc. Cette propriété est appelée l'**invariant tricolore**. Le processus de traversée maintient cet invariant pour assurer qu'aucun objet accessible n'est jamais collecté.
 
 </aside>
 
-### A worklist for gray objects
+### Une liste de travail pour les objets gris
 
-In our implementation we have already marked the roots. They're all gray. The
-next step is to start picking them and traversing their references. But we don't
-have any easy way to find them. We set a field on the object, but that's it. We
-don't want to have to traverse the entire object list looking for objects with
-that field set.
+Dans notre implémentation nous avons déjà marqué les racines. Elles sont toutes grises. L'étape suivante est de commencer à les prendre et traverser leurs références. Mais nous n'avons aucun moyen facile de les trouver. Nous mettons un champ sur l'objet, mais c'est tout. Nous ne voulons pas avoir à traverser la liste d'objets entière cherchant des objets avec ce champ mis.
 
-Instead, we'll create a separate worklist to keep track of all of the gray
-objects. When an object turns gray, in addition to setting the mark field we'll
-also add it to the worklist.
+Au lieu de cela, nous créerons une liste de travail séparée pour garder trace de tous les objets gris. Quand un objet tourne gris, en plus de mettre le champ de marque nous l'ajouterons aussi à la liste de travail.
 
 ^code add-to-gray-stack (1 before, 1 after)
 
-We could use any kind of data structure that lets us put items in and take them
-out easily. I picked a stack because that's the simplest to implement with a
-dynamic array in C. It works mostly like other dynamic arrays we've built in
-Lox, *except*, note that it calls the *system* `realloc()` function and not our
-own `reallocate()` wrapper. The memory for the gray stack itself is *not*
-managed by the garbage collector. We don't want growing the gray stack during a
-GC to cause the GC to recursively start a new GC. That could tear a hole in the
-space-time continuum.
+Nous pourrions utiliser n'importe quelle sorte de structure de données qui nous laisse mettre des éléments dedans et les sortir facilement. J'ai pris une pile parce que c'est le plus simple à implémenter avec un tableau dynamique en C. Cela fonctionne surtout comme d'autres tableaux dynamiques que nous avons construits dans Lox, _sauf_, notez qu'il appelle la fonction `realloc()` du _système_ et pas notre propre enveloppe `reallocate()`. La mémoire pour la pile grise elle-même n'est _pas_ gérée par le ramasse-miettes. Nous ne voulons pas que faire grandir la pile grise durant un GC cause le GC à démarrer récursivement un nouveau GC. Cela pourrait déchirer un trou dans le continuum espace-temps.
 
-We'll manage its memory ourselves, explicitly. The VM owns the gray stack.
+Nous gérerons sa mémoire nous-mêmes, explicitement. La VM possède la pile grise.
 
 ^code vm-gray-stack (1 before, 1 after)
 
-It starts out empty.
+Elle commence vide.
 
 ^code init-gray-stack (1 before, 2 after)
 
-And we need to free it when the VM shuts down.
+Et nous avons besoin de la libérer quand la VM s'arrête.
 
 ^code free-gray-stack (2 before, 1 after)
 
-<span name="robust">We</span> take full responsibility for this array. That
-includes allocation failure. If we can't create or grow the gray stack, then we
-can't finish the garbage collection. This is bad news for the VM, but
-fortunately rare since the gray stack tends to be pretty small. It would be nice
-to do something more graceful, but to keep the code in this book simple, we just
-abort.
+<span name="robust">Nous</span> prenons pleine responsabilité pour ce tableau. Cela inclut l'échec d'allocation. Si nous ne pouvons pas créer ou faire grandir la pile grise, alors nous ne pouvons pas finir le ramasse-miettes. C'est de mauvaises nouvelles pour la VM, mais heureusement rare puisque la pile grise tend à être assez petite. Ce serait bien de faire quelque chose de plus gracieux, mais pour garder le code dans ce livre simple, nous avortons juste.
 
 <aside name="robust">
 
-To be more robust, we can allocate a "rainy day fund" block of memory when we
-start the VM. If the gray stack allocation fails, we free the rainy day block
-and try again. That may give us enough wiggle room on the heap to create the
-gray stack, finish the GC, and free up more memory.
+Pour être plus robuste, nous pouvons allouer un bloc de mémoire "fonds pour les mauvais jours" quand nous démarrons la VM. Si l'allocation de la pile grise échoue, nous libérons le bloc mauvais jours et essayons encore. Cela peut nous donner assez de marge de manœuvre sur le tas pour créer la pile grise, finir le GC, et libérer plus de mémoire.
 
 </aside>
 
 ^code exit-gray-stack (2 before, 1 after)
 
-### Processing gray objects
+### Traiter les objets gris
 
-OK, now when we're done marking the roots, we have both set a bunch of fields
-and filled our work list with objects to chew through. It's time for the next
-phase.
+OK, maintenant quand nous avons fini de marquer les racines, nous avons à la fois mis un tas de champs et rempli notre liste de travail avec des objets à mâcher. C'est le moment pour la phase suivante.
 
 ^code call-trace-references (1 before, 2 after)
 
-Here's the implementation:
+Voici l'implémentation :
 
 ^code trace-references
 
-It's as close to that textual algorithm as you can get. Until the stack empties,
-we keep pulling out gray objects, traversing their references, and then marking
-them black. Traversing an object's references may turn up new white objects that
-get marked gray and added to the stack. So this function swings back and forth
-between turning white objects gray and gray objects black, gradually advancing
-the entire wavefront forward.
+C'est aussi proche de cet algorithme textuel que vous pouvez obtenir. Jusqu'à ce que la pile se vide, nous continuons de tirer des objets gris, traversant leurs références, et ensuite les marquant noirs. Traverser les références d'un objet peut faire apparaître de nouveaux objets blancs qui deviennent marqués gris et ajoutés à la pile. Donc cette fonction oscille en avant et en arrière entre tourner les objets blancs gris et les objets gris noirs, avançant graduellement le front d'onde entier vers l'avant.
 
-Here's where we traverse a single object's references:
+C'est ici que nous traversons les références d'un objet unique :
 
 ^code blacken-object
 
-Each object <span name="leaf">kind</span> has different fields that might
-reference other objects, so we need a specific blob of code for each type. We
-start with the easy ones -- strings and native function objects contain no
-outgoing references so there is nothing to traverse.
+Chaque <span name="leaf">sorte</span> d'objet a différents champs qui pourraient référencer d'autres objets, donc nous avons besoin d'un bloc de code spécifique pour chaque type. Nous commençons avec les faciles -- chaînes et objets de fonction native ne contiennent aucune référence sortante donc il n'y a rien à traverser.
 
 <aside name="leaf">
 
-An easy optimization we could do in `markObject()` is to skip adding strings and
-native functions to the gray stack at all since we know they don't need to be
-processed. Instead, they could darken from white straight to black.
+Une optimisation facile que nous pourrions faire dans `markObject()` est de sauter l'ajout de chaînes et fonctions natives à la pile grise du tout puisque nous savons qu'elles n'ont pas besoin d'être traitées. Au lieu de cela, elles pourraient s'assombrir de blanc directement à noir.
 
 </aside>
 
-Note that we don't set any state in the traversed object itself. There is no
-direct encoding of "black" in the object's state. A black object is any object
-whose `isMarked` field is <span name="field">set</span> and that is no longer in
-the gray stack.
+Notez que nous ne mettons aucun état dans l'objet traversé lui-même. Il n'y a pas d'encodage direct de "noir" dans l'état de l'objet. Un objet noir est n'importe quel objet dont le champ `isMarked` est <span name="field">mis</span> et qui n'est plus dans la pile grise.
 
 <aside name="field">
 
-You may rightly wonder why we have the `isMarked` field at all. All in good
-time, friend.
+Vous pouvez justement vous demander pourquoi nous avons le champ `isMarked` du tout. Tout en bon temps, ami.
 
 </aside>
 
-Now let's start adding in the other object types. The simplest is upvalues.
+Maintenant commençons à ajouter dedans les autres types d'objet. Le plus simple est les upvalues.
 
 ^code blacken-upvalue (2 before, 1 after)
 
-When an upvalue is closed, it contains a reference to the closed-over value.
-Since the value is no longer on the stack, we need to make sure we trace the
-reference to it from the upvalue.
+Quand une upvalue est fermée, elle contient une référence à la valeur fermée. Puisque la valeur n'est plus sur la pile, nous avons besoin de nous assurer que nous traçons la référence à elle depuis l'upvalue.
 
-Next are functions.
+Ensuite sont les fonctions.
 
 ^code blacken-function (1 before, 1 after)
 
-Each function has a reference to an ObjString containing the function's name.
-More importantly, the function has a constant table packed full of references to
-other objects. We trace all of those using this helper:
+Chaque fonction a une référence à un ObjString contenant le nom de la fonction. Plus important, la fonction a une table constante empaquetée pleine de références à d'autres objets. Nous traçons tous ceux-là en utilisant cet assistant :
 
 ^code mark-array
 
-The last object type we have now -- we'll add more in later chapters -- is
-closures.
+Le dernier type d'objet que nous avons maintenant -- nous en ajouterons plus dans les chapitres suivants -- est les fermetures.
 
 ^code blacken-closure (1 before, 1 after)
 
-Each closure has a reference to the bare function it wraps, as well as an array
-of pointers to the upvalues it captures. We trace all of those.
+Chaque fermeture a une référence à la fonction nue qu'elle enveloppe, aussi bien qu'un tableau de pointeurs vers les upvalues qu'elle capture. Nous traçons tous ceux-là.
 
-That's the basic mechanism for processing a gray object, but there are two loose
-ends to tie up. First, some logging.
+C'est le mécanisme de base pour traiter un objet gris, mais il y a deux bouts lâches à attacher. D'abord, un peu de journalisation.
 
 ^code log-blacken-object (1 before, 1 after)
 
-This way, we can watch the tracing percolate through the object graph. Speaking
-of which, note that I said *graph*. References between objects are directed, but
-that doesn't mean they're *acyclic!* It's entirely possible to have cycles of
-objects. When that happens, we need to ensure our collector doesn't get stuck in
-an infinite loop as it continually re-adds the same series of objects to the
-gray stack.
+De cette façon, nous pouvons regarder le traçage percoler à travers le graphe d'objets. Parlant de quoi, notez que j'ai dit _graphe_. Les références entre objets sont dirigées, mais cela ne signifie pas qu'elles sont _acycliques !_ Il est entièrement possible d'avoir des cycles d'objets. Quand cela arrive, nous avons besoin d'assurer que notre collecteur ne reste pas coincé dans une boucle infinie comme il ré-ajoute continuellement la même série d'objets à la pile grise.
 
-The fix is easy.
+La correction est facile.
 
 ^code check-is-marked (1 before, 1 after)
 
-If the object is already marked, we don't mark it again and thus don't add it to
-the gray stack. This ensures that an already-gray object is not redundantly
-added and that a black object is not inadvertently turned back to gray. In other
-words, it keeps the wavefront moving forward through only the white objects.
+Si l'objet est déjà marqué, nous ne le marquons pas encore et ainsi ne l'ajoutons pas à la pile grise. Cela assure qu'un objet déjà gris n'est pas ajouté de façon redondante et qu'un objet noir n'est pas tourné par inadvertance de retour à gris. En d'autres termes, cela garde le front d'onde en mouvement vers l'avant à travers seulement les objets blancs.
 
-## Sweeping Unused Objects
+## Balayer les Objets Inutilisés
 
-When the loop in `traceReferences()` exits, we have processed all the objects we
-could get our hands on. The gray stack is empty, and every object in the heap is
-either black or white. The black objects are reachable, and we want to hang on to
-them. Anything still white never got touched by the trace and is thus garbage.
-All that's left is to reclaim them.
+Quand la boucle dans `traceReferences()` sort, nous avons traité tous les objets sur lesquels nous pouvions mettre nos mains. La pile grise est vide, et chaque objet dans le tas est soit noir soit blanc. Les objets noirs sont accessibles, et nous voulons nous accrocher à eux. Tout ce qui est encore blanc n'a jamais été touché par la trace et est ainsi déchet. Tout ce qui reste est de les réclamer.
 
 ^code call-sweep (1 before, 2 after)
 
-All of the logic lives in one function.
+Toute la logique vit dans une fonction.
 
 ^code sweep
 
-I know that's kind of a lot of code and pointer shenanigans, but there isn't
-much to it once you work through it. The outer `while` loop walks the linked
-list of every object in the heap, checking their mark bits. If an object is
-marked (black), we leave it alone and continue past it. If it is unmarked
-(white), we unlink it from the list and free it using the `freeObject()`
-function we already wrote.
+Je sais que c'est en quelque sorte beaucoup de code et de manigances de pointeur, mais il n'y a pas grand-chose dedans une fois que vous travaillez à travers. La boucle extérieure `while` marche la liste chaînée de chaque objet dans le tas, vérifiant leurs bits de marque. Si un objet est marqué (noir), nous le laissons seul et continuons passé lui. S'il est non marqué (blanc), nous le délions de la liste et le libérons en utilisant la fonction `freeObject()` que nous avons déjà écrite.
 
-<img src="image/garbage-collection/unlink.png" alt="A recycle bin full of bits." />
+<img src="image/garbage-collection/unlink.png" alt="Une poubelle de recyclage pleine de bits." />
 
-Most of the other code in here deals with the fact that removing a node from a
-singly linked list is cumbersome. We have to continuously remember the previous
-node so we can unlink its next pointer, and we have to handle the edge case
-where we are freeing the first node. But, otherwise, it's pretty simple --
-delete every node in a linked list that doesn't have a bit set in it.
+La plupart de l'autre code ici s'occupe du fait que retirer un nœud d'une liste unilatéralement chaînée est encombrant. Nous devons continuellement nous souvenir du nœud précédent pour que nous puissions délier son pointeur suivant, et nous devons gérer le cas limite où nous libérons le premier nœud. Mais, sinon, c'est assez simple -- supprimer chaque nœud dans une liste chaînée qui n'a pas un bit mis dedans.
 
-There's one little addition:
+Il y a un petit ajout :
 
 ^code unmark (1 before, 1 after)
 
-After `sweep()` completes, the only remaining objects are the live black ones
-with their mark bits set. That's correct, but when the *next* collection cycle
-starts, we need every object to be white. So whenever we reach a black object,
-we go ahead and clear the bit now in anticipation of the next run.
+Après que `sweep()` complète, les seuls objets restants sont les noirs vivants avec leurs bits de marque mis. C'est correct, mais quand le _prochain_ cycle de collection démarre, nous avons besoin que chaque objet soit blanc. Donc chaque fois que nous atteignons un objet noir, nous allons de l'avant et effaçons le bit maintenant en anticipation de la prochaine course.
 
-### Weak references and the string pool
+### Références faibles et la piscine de chaînes
 
-We are almost done collecting. There is one remaining corner of the VM that has
-some unusual requirements around memory. Recall that when we added strings to
-clox we made the VM intern them all. That means the VM has a hash table
-containing a pointer to every single string in the heap. The VM uses this to
-de-duplicate strings.
+Nous avons presque fini de collecter. Il reste un coin restant de la VM qui a quelques exigences inhabituelles autour de la mémoire. Rappelez-vous que quand nous avons ajouté les chaînes à clox nous avons fait que la VM les interne toutes. Cela signifie que la VM a une table de hachage contenant un pointeur vers chaque chaîne unique dans le tas. La VM utilise cela pour dé-dupliquer les chaînes.
 
-During the mark phase, we deliberately did *not* treat the VM's string table as
-a source of roots. If we had, no <span name="intern">string</span> would *ever*
-be collected. The string table would grow and grow and never yield a single byte
-of memory back to the operating system. That would be bad.
+Durant la phase de marquage, nous n'avons délibérément _pas_ traité la table de chaînes de la VM comme une source de racines. Si nous avions, aucune <span name="intern">chaîne</span> ne serait _jamais_ collectée. La table de chaînes grandirait et grandirait et ne céderait jamais un seul octet de mémoire de retour au système d'exploitation. Cela serait mauvais.
 
 <aside name="intern">
 
-This can be a real problem. Java does not intern *all* strings, but it does
-intern string *literals*. It also provides an API to add strings to the string
-table. For many years, the capacity of that table was fixed, and strings added
-to it could never be removed. If users weren't careful about their use of
-`String.intern()`, they could run out of memory and crash.
+Cela peut être un vrai problème. Java n'interne pas _toutes_ les chaînes, mais il interne bien les _littéraux_ chaîne. Il fournit aussi une API pour ajouter des chaînes à la table de chaînes. Pendant de nombreuses années, la capacité de cette table était fixe, et les chaînes ajoutées à elle ne pouvaient jamais être retirées. Si les utilisateurs n'étaient pas prudents sur leur utilisation de `String.intern()`, ils pouvaient tomber à court de mémoire et planter.
 
-Ruby had a similar problem for years where symbols -- interned string-like
-values -- were not garbage collected. Both eventually enabled the GC to collect
-these strings.
+Ruby a eu un problème similaire pendant des années où les symboles -- valeurs comme des chaînes internées -- n'étaient pas ramassés. Les deux ont éventuellement activé le GC pour collecter ces chaînes.
 
 </aside>
 
-At the same time, if we *do* let the GC free strings, then the VM's string table
-will be left with dangling pointers to freed memory. That would be even worse.
+En même temps, si nous laissons _bien_ le GC libérer les chaînes, alors la table de chaînes de la VM sera laissée avec des pointeurs ballants vers la mémoire libérée. Ce serait encore pire.
 
-The string table is special and we need special support for it. In particular,
-it needs a special kind of reference. The table should be able to refer to a
-string, but that link should not be considered a root when determining
-reachability. That implies that the referenced object can be freed. When that
-happens, the dangling reference must be fixed too, sort of like a magic,
-self-clearing pointer. This particular set of semantics comes up frequently
-enough that it has a name: a [**weak reference**][weak].
+La table de chaînes est spéciale et nous avons besoin de support spécial pour elle. En particulier, elle a besoin d'une sorte spéciale de référence. La table devrait être capable de référer à une chaîne, mais ce lien ne devrait pas être considéré comme une racine lors de la détermination de l'accessibilité. Cela implique que l'objet référencé peut être libéré. Quand cela arrive, la référence ballante doit être fixée aussi, sorte de comme un pointeur magique, auto-nettoyant. Cet ensemble particulier de sémantiques survient assez fréquemment pour qu'il ait un nom : une [**référence faible**][weak].
 
-[weak]: https://en.wikipedia.org/wiki/Weak_reference
+[weak]: https://fr.wikipedia.org/wiki/Référence_faible
 
-We have already implicitly implemented half of the string table's unique
-behavior by virtue of the fact that we *don't* traverse it during marking. That
-means it doesn't force strings to be reachable. The remaining piece is clearing
-out any dangling pointers for strings that are freed.
-
-To remove references to unreachable strings, we need to know which strings *are*
-unreachable. We don't know that until after the mark phase has completed. But we
-can't wait until after the sweep phase is done because by then the objects --
-and their mark bits -- are no longer around to check. So the right time is
-exactly between the marking and sweeping phases.
+Nous avons déjà implicitement implémenté la moitié du comportement unique de la table de chaînes par vertu du fait que nous ne la traversons _pas_ durant le marquage. Cela signifie qu'elle ne force pas les chaînes à être accessibles. La pièce restante est d'effacer tous pointeurs ballants pour les chaînes qui sont libérées.
+Pour retirer les références aux chaînes inaccessibles, nous avons besoin de savoir quelles chaînes _sont_ inaccessibles. Nous ne savons pas cela jusqu'à après que la phase de marquage a complété. Mais nous ne pouvons pas attendre jusqu'à après que la phase de balayage soit faite parce que d'ici là les objets -- et leurs bits de marque -- ne sont plus autour pour vérifier. Donc le bon moment est exactement entre les phases de marquage et de balayage.
 
 ^code sweep-strings (1 before, 1 after)
 
-The logic for removing the about-to-be-deleted strings exists in a new function
-in the "table" module.
+La logique pour retirer les chaînes sur-le-point-d'être-supprimées existe dans une nouvelle fonction dans le module "table".
 
 ^code table-remove-white-h (2 before, 2 after)
 
-The implementation is here:
+L'implémentation est ici :
 
 ^code table-remove-white
 
-We walk every entry in the table. The string intern table uses only the key of
-each entry -- it's basically a hash *set* not a hash *map*. If the key string
-object's mark bit is not set, then it is a white object that is moments from
-being swept away. We delete it from the hash table first and thus ensure we
-won't see any dangling pointers.
+Nous marchons chaque entrée dans la table. La table d'internement de chaînes utilise seulement la clé de chaque entrée -- c'est basiquement un hash _set_ pas une hash _map_. Si le bit de marque de l'objet chaîne clé n'est pas mis, alors c'est un objet blanc qui est à moments d'être balayé au loin. Nous le supprimons de la table de hachage d'abord et assurons ainsi que nous ne verrons aucun pointeur ballant.
 
-## When to Collect
+## Quand Collecter
 
-We have a fully functioning mark-sweep garbage collector now. When the stress
-testing flag is enabled, it gets called all the time, and with the logging
-enabled too, we can watch it do its thing and see that it is indeed reclaiming
-memory. But, when the stress testing flag is off, it never runs at all. It's
-time to decide when the collector should be invoked during normal program
-execution.
+Nous avons un ramasse-miettes mark-sweep pleinement fonctionnel maintenant. Quand le drapeau de test de stress est activé, il est appelé tout le temps, et avec la journalisation activée aussi, nous pouvons le regarder faire sa chose et voir qu'il réclame en effet de la mémoire. Mais, quand le drapeau de test de stress est éteint, il ne court jamais du tout. Il est temps de décider quand le collecteur devrait être invoqué durant l'exécution normale du programme.
 
-As far as I can tell, this question is poorly answered by the literature. When
-garbage collectors were first invented, computers had a tiny, fixed amount of
-memory. Many of the early GC papers assumed that you set aside a few thousand
-words of memory -- in other words, most of it -- and invoked the collector
-whenever you ran out. Simple.
+Autant que je peux dire, cette question est pauvrement répondue par la littérature. Quand les ramasse-miettes furent d'abord inventés, les ordinateurs avaient une quantité minuscule, fixe de mémoire. Beaucoup des premiers papiers de GC supposaient que vous mettiez de côté quelques milliers de mots de mémoire -- en d'autres termes, la plupart d'elle -- et invoquiez le collecteur chaque fois que vous étiez à court. Simple.
 
-Modern machines have gigs of physical RAM, hidden behind the operating system's
-even larger virtual memory abstraction, which is shared among a slew of other
-programs all fighting for their chunk of memory. The operating system will let
-your program request as much as it wants and then page in and out from the disc
-when physical memory gets full. You never really "run out" of memory, you just
-get slower and slower.
+Les machines modernes ont des gigas de RAM physique, cachés derrière l'abstraction de mémoire virtuelle encore plus large du système d'exploitation, qui est partagée parmi une flopée d'autres programmes tous se battant pour leur morceau de mémoire. Le système d'exploitation laissera votre programme demander autant qu'il veut et ensuite paginer dedans et dehors depuis le disque quand la mémoire physique devient pleine. Vous ne "tombez jamais vraiment à court" de mémoire, vous devenez juste plus lent et plus lent.
 
-### Latency and throughput
+### Latence et débit
 
-It no longer makes sense to wait until you "have to", to run the GC, so we need
-a more subtle timing strategy. To reason about this more precisely, it's time to
-introduce two fundamental numbers used when measuring a memory manager's
-performance: *throughput* and *latency*.
+Cela n'a plus de sens d'attendre jusqu'à ce que vous "deviez", pour courir le GC, donc nous avons besoin d'une stratégie de timing plus subtile. Pour raisonner à propos de ceci plus précisément, il est temps d'introduire deux nombres fondamentaux utilisés lors de la mesure de la performance d'un gestionnaire de mémoire : _débit_ (throughput) et _latence_ (latency).
 
-Every managed language pays a performance price compared to explicit,
-user-authored deallocation. The time spent actually freeing memory is the same,
-but the GC spends cycles figuring out *which* memory to free. That is time *not*
-spent running the user's code and doing useful work. In our implementation,
-that's the entirety of the mark phase. The goal of a sophisticated garbage
-collector is to minimize that overhead.
+Chaque langage géré paie un prix de performance comparé à la désallocation explicite, auteur-utilisateur. Le temps passé à libérer réellement la mémoire est le même, mais le GC passe des cycles à trouver _quelle_ mémoire libérer. C'est du temps _non_ passé à courir le code de l'utilisateur et faire du travail utile. Dans notre implémentation, c'est l'entièreté de la phase de marquage. Le but d'un ramasse-miettes sophistiqué est de minimiser ce surcoût.
 
-There are two key metrics we can use to understand that cost better:
+Il y a deux métriques clés que nous pouvons utiliser pour mieux comprendre ce coût :
 
-*   **Throughput** is the total fraction of time spent running user code versus
-    doing garbage collection work. Say you run a clox program for ten seconds
-    and it spends a second of that inside `collectGarbage()`. That means the
-    throughput is 90% -- it spent 90% of the time running the program and 10%
-    on GC overhead.
+- **Débit** est la fraction totale de temps passée à courir le code utilisateur versus faire du travail de ramasse-miettes. Disons que vous courez un programme clox pour dix secondes et il passe une seconde de cela à l'intérieur de `collectGarbage()`. Cela signifie que le débit est 90% -- il a passé 90% du temps à courir le programme et 10% sur le surcoût GC.
 
-    Throughput is the most fundamental measure because it tracks the total cost
-    of collection overhead. All else being equal, you want to maximize
-    throughput. Up until this chapter, clox had no GC at all and thus <span
-    name="hundred">100%</span> throughput. That's pretty hard to beat. Of
-    course, it came at the slight expense of potentially running out of memory
-    and crashing if the user's program ran long enough. You can look at the goal
-    of a GC as fixing that "glitch" while sacrificing as little throughput as
-    possible.
+    Le débit est la mesure la plus fondamentale parce qu'elle suit le coût total du surcoût de collection. Tout le reste étant égal, vous voulez maximiser le débit. Jusqu'à ce chapitre, clox n'avait aucun GC du tout et ainsi <span name="hundred">100%</span> de débit. C'est assez dur à battre. Bien sûr, cela venait à la légère dépense de tomber potentiellement à court de mémoire et planter si le programme de l'utilisateur courait assez longtemps. Vous pouvez regarder le but d'un GC comme fixer ce "glitch" tout en sacrifiant aussi peu de débit que possible.
 
 <aside name="hundred">
 
-Well, not *exactly* 100%. It did still put the allocated objects into a linked
-list, so there was some tiny overhead for setting those pointers.
+Bien, pas _exactement_ 100%. Il mettait encore bien les objets alloués dans une liste chaînée, donc il y avait un minuscule surcoût pour mettre ces pointeurs.
 
 </aside>
 
-*   **Latency** is the longest *continuous* chunk of time where the user's
-    program is completely paused while garbage collection happens. It's a
-    measure of how "chunky" the collector is. Latency is an entirely different
-    metric than throughput.
+- **Latence** est le plus long morceau _continu_ de temps où le programme de l'utilisateur est complètement mis en pause pendant que le ramasse-miettes arrive. C'est une mesure de comment "grossier" (chunky) le collecteur est. La latence est une métrique entièrement différente du débit.
 
-    Consider two runs of a clox program that both take ten seconds. In the first
-    run, the GC kicks in once and spends a solid second in `collectGarbage()` in
-    one massive collection. In the second run, the GC gets invoked five times,
-    each for a fifth of a second. The *total* amount of time spent collecting is
-    still a second, so the throughput is 90% in both cases. But in the second
-    run, the latency is only 1/5th of a second, five times less than in the
-    first.
+    Considérez deux courses d'un programme clox qui prennent toutes deux dix secondes. Dans la première course, le GC démarre une fois et passe une seconde solide dans `collectGarbage()` en une collection massive. Dans la seconde course, le GC est invoqué cinq fois, chacune pour un cinquième de seconde. La quantité _totale_ de temps passée à collecter est encore une seconde, donc le débit est 90% dans les deux cas. Mais dans la seconde course, la latence est seulement 1/5ème de seconde, cinq fois moins que dans la première.
 
 <span name="latency"></span>
 
-<img src="image/garbage-collection/latency-throughput.png" alt="A bar representing execution time with slices for running user code and running the GC. The largest GC slice is latency. The size of all of the user code slices is throughput." />
+<img src="image/garbage-collection/latency-throughput.png" alt="Une barre représentant le temps d'exécution avec des tranches pour courir le code utilisateur et courir le GC. La plus large tranche GC est la latence. La taille de toutes les tranches de code utilisateur est le débit." />
 
 <aside name="latency">
 
-The bar represents the execution of a program, divided into time spent running
-user code and time spent in the GC. The size of the largest single slice of time
-running the GC is the latency. The size of all of the user code slices added up
-is the throughput.
+La barre représente l'exécution d'un programme, divisée en temps passé à courir le code utilisateur et temps passé dans le GC. La taille de la plus grande tranche unique de temps courant le GC est la latence. La taille de toutes les tranches de code utilisateur additionnées est le débit.
 
 </aside>
 
-If you like analogies, imagine your program is a bakery selling fresh-baked
-bread to customers. Throughput is the total number of warm, crusty baguettes you
-can serve to customers in a single day. Latency is how long the unluckiest
-customer has to wait in line before they get served.
+Si vous aimez les analogies, imaginez que votre programme est une boulangerie vendant du pain frais aux clients. Le débit est le nombre total de baguettes chaudes, croustillantes que vous pouvez servir aux clients en un seul jour. La latence est combien de temps le client le plus malchanceux a à attendre en ligne avant qu'il soit servi.
 
-<span name="dishwasher">Running</span> the garbage collector is like shutting
-down the bakery temporarily to go through all of the dishes, sort out the dirty
-from the clean, and then wash the used ones. In our analogy, we don't have
-dedicated dishwashers, so while this is going on, no baking is happening. The
-baker is washing up.
+<span name="dishwasher">Courir</span> le ramasse-miettes est comme fermer la boulangerie temporairement pour passer à travers toute la vaisselle, trier la sale de la propre, et ensuite laver les utilisées. Dans notre analogie, nous n'avons pas de plongeurs dédiés, donc pendant que cela se passe, aucune cuisson n'arrive. Le boulanger est en train de laver.
 
 <aside name="dishwasher">
 
-If each person represents a thread, then an obvious optimization is to have
-separate threads running garbage collection, giving you a **concurrent garbage
-collector**. In other words, hire some dishwashers to clean while others bake.
-This is how very sophisticated GCs work because it does let the bakers
--- the worker threads -- keep running user code with little interruption.
+Si chaque personne représente un thread, alors une optimisation évidente est d'avoir des threads séparés courant le ramasse-miettes, vous donnant un **ramasse-miettes concurrent**. En d'autres termes, embauchez quelques plongeurs pour nettoyer pendant que d'autres cuisinent. C'est comment les GCs très sophistiqués fonctionnent parce qu'il laisse bien les boulangers -- les threads travailleurs -- continuer de courir le code utilisateur avec peu d'interruption.
 
-However, coordination is required. You don't want a dishwasher grabbing a bowl
-out of a baker's hands! This coordination adds overhead and a lot of complexity.
-Concurrent collectors are fast, but challenging to implement correctly.
+Cependant, la coordination est requise. Vous ne voulez pas qu'un plongeur attrape un bol hors des mains d'un boulanger ! Cette coordination ajoute du surcoût et beaucoup de complexité. Les collecteurs concurrents sont rapides, mais difficiles à implémenter correctement.
 
-<img src="image/garbage-collection/baguette.png" class="above" alt="Un baguette." />
+<img src="image/garbage-collection/baguette.png" class="above" alt="Une baguette." />
 
 </aside>
 
-Selling fewer loaves of bread a day is bad, and making any particular customer
-sit and wait while you clean all the dishes is too. The goal is to maximize
-throughput and minimize latency, but there is no free lunch, even inside a
-bakery. Garbage collectors make different trade-offs between how much throughput
-they sacrifice and latency they tolerate.
+Vendre moins de miches de pain par jour est mauvais, et faire s'asseoir et attendre n'importe quel client particulier pendant que vous nettoyez toute la vaisselle l'est aussi. Le but est de maximiser le débit et minimiser la latence, mais il n'y a pas de repas gratuit, même à l'intérieur d'une boulangerie. Les ramasse-miettes font différents compromis entre combien de débit ils sacrifient et de latence ils tolèrent.
 
-Being able to make these trade-offs is useful because different user programs
-have different needs. An overnight batch job that is generating a report from a
-terabyte of data just needs to get as much work done as fast as possible.
-Throughput is queen. Meanwhile, an app running on a user's smartphone needs to
-always respond immediately to user input so that dragging on the screen feels
-<span name="butter">buttery</span> smooth. The app can't freeze for a few
-seconds while the GC mucks around in the heap.
+Être capable de faire ces compromis est utile parce que différents programmes utilisateurs ont différents besoins. Un travail par lot de nuit qui génère un rapport depuis un téraoctet de données a juste besoin d'obtenir autant de travail fait aussi vite que possible. Le débit est reine. Pendant ce temps, une app courant sur le smartphone d'un utilisateur a besoin de toujours répondre immédiatement à l'entrée utilisateur pour que glisser sur l'écran se sente <span name="butter">beurré</span> doux. L'app ne peut pas geler pour quelques secondes pendant que le GC patauge dans le tas.
 
 <aside name="butter">
 
-Clearly the baking analogy is going to my head.
+Clairement l'analogie de boulangerie me monte à la tête.
 
 </aside>
 
-As a garbage collector author, you control some of the trade-off between
-throughput and latency by your choice of collection algorithm. But even within a
-single algorithm, we have a lot of control over *how frequently* the collector
-runs.
+Comme auteur de ramasse-miettes, vous contrôlez une partie du compromis entre débit et latence par votre choix d'algorithme de collection. Mais même au sein d'un algorithme unique, nous avons beaucoup de contrôle sur _combien fréquemment_ le collecteur court.
 
-Our collector is a <span name="incremental">**stop-the-world GC**</span> which
-means the user's program is paused until the entire garbage collection process
-has completed. If we wait a long time before we run the collector, then a large
-number of dead objects will accumulate. That leads to a very long pause while
-the collector runs, and thus high latency. So, clearly, we want to run the
-collector really frequently.
+Notre collecteur est un <span name="incremental">**GC stop-the-world**</span> ce qui signifie que le programme de l'utilisateur est mis en pause jusqu'à ce que le processus de ramasse-miettes entier ait complété. Si nous attendons un long moment avant que nous courions le collecteur, alors un grand nombre d'objets morts s'accumuleront. Cela mène à une pause très longue pendant que le collecteur court, et ainsi une latence élevée. Donc, clairement, nous voulons courir le collecteur vraiment fréquemment.
 
 <aside name="incremental">
 
-In contrast, an **incremental garbage collector** can do a little collection,
-then run some user code, then collect a little more, and so on.
+En contraste, un **ramasse-miettes incrémental** peut faire une petite collection, ensuite courir un peu de code utilisateur, ensuite collecter un peu plus, et ainsi de suite.
 
 </aside>
 
-But every time the collector runs, it spends some time visiting live objects.
-That doesn't really *do* anything useful (aside from ensuring that they don't
-incorrectly get deleted). Time visiting live objects is time not freeing memory
-and also time not running user code. If you run the GC *really* frequently, then
-the user's program doesn't have enough time to even generate new garbage for the
-VM to collect. The VM will spend all of its time obsessively revisiting the same
-set of live objects over and over, and throughput will suffer. So, clearly, we
-want to run the collector really *in*frequently.
+Mais chaque fois que le collecteur court, il passe un peu de temps à visiter les objets vivants. Cela ne _fait_ pas vraiment quelque chose d'utile (à part assurer qu'ils ne sont pas incorrectement supprimés). Le temps visitant les objets vivants est du temps ne libérant pas de mémoire et aussi du temps ne courant pas le code utilisateur. Si vous courez le GC _vraiment_ fréquemment, alors le programme de l'utilisateur n'a pas assez de temps pour même générer de nouveaux déchets pour que la VM collecte. La VM passera tout son temps à revisiter obsessivement le même ensemble d'objets vivants encore et encore, et le débit souffrira. Donc, clairement, nous voulons courir le collecteur vraiment *in*fréquemment.
 
-In fact, we want something in the middle, and the frequency of when the
-collector runs is one of our main knobs for tuning the trade-off between latency
-and throughput.
+En fait, nous voulons quelque chose au milieu, et la fréquence de quand le collecteur court est l'un de nos principaux boutons pour régler le compromis entre latence et débit.
 
-### Self-adjusting heap
+### Tas auto-ajustable
 
-We want our GC to run frequently enough to minimize latency but infrequently
-enough to maintain decent throughput. But how do we find the balance between
-these when we have no idea how much memory the user's program needs and how
-often it allocates? We could pawn the problem onto the user and force them to
-pick by exposing GC tuning parameters. Many VMs do this. But if we, the GC
-authors, don't know how to tune it well, odds are good most users won't either.
-They deserve a reasonable default behavior.
+Nous voulons que notre GC coure assez fréquemment pour minimiser la latence mais assez infréquemment pour maintenir un débit décent. Mais comment trouvons-nous l'équilibre entre ceux-ci quand nous n'avons aucune idée de combien de mémoire le programme de l'utilisateur a besoin et combien souvent il alloue ? Nous pourrions refiler le problème à l'utilisateur et le forcer à choisir en exposant des paramètres de réglage GC. Beaucoup de VMs font cela. Mais si nous, les auteurs de GC, ne savons pas comment bien le régler, les chances sont bonnes que la plupart des utilisateurs ne le sauront pas non plus. Ils méritent un comportement par défaut raisonnable.
 
-I'll be honest with you, this is not my area of expertise. I've talked to a
-number of professional GC hackers -- this is something you can build an entire
-career on -- and read a lot of the literature, and all of the answers I got
-were... vague. The strategy I ended up picking is common, pretty simple, and (I
-hope!) good enough for most uses.
+Je serai honnête avec vous, ce n'est pas mon aire d'expertise. J'ai parlé à un nombre de hackers de GC professionnels -- c'est quelque chose sur quoi vous pouvez construire une carrière entière -- et lu beaucoup de la littérature, et toutes les réponses que j'ai obtenues étaient... vagues. La stratégie que j'ai fini par choisir est commune, assez simple, et (j'espère !) assez bonne pour la plupart des usages.
 
-The idea is that the collector frequency automatically adjusts based on the live
-size of the heap. We track the total number of bytes of managed memory that the
-VM has allocated. When it goes above some threshold, we trigger a GC. After
-that, we note how many bytes of memory remain -- how many were *not* freed. Then
-we adjust the threshold to some value larger than that.
+L'idée est que la fréquence du collecteur s'ajuste automatiquement basé sur la taille vivante du tas. Nous suivons le nombre total d'octets de mémoire gérée que la VM a alloué. Quand cela va au-dessus de quelque seuil, nous déclenchons un GC. Après cela, nous notons combien d'octets de mémoire restent -- combien n'ont _pas_ été libérés. Ensuite nous ajustons le seuil à quelque valeur plus grande que cela.
 
-The result is that as the amount of live memory increases, we collect less
-frequently in order to avoid sacrificing throughput by re-traversing the growing
-pile of live objects. As the amount of live memory goes down, we collect more
-frequently so that we don't lose too much latency by waiting too long.
+Le résultat est que comme la quantité de mémoire vivante augmente, nous collectons moins fréquemment afin d'éviter de sacrifier le débit en re-traversant la pile grandissante d'objets vivants. Comme la quantité de mémoire vivante descend, nous collectons plus fréquemment pour que nous ne perdions pas trop de latence en attendant trop longtemps.
 
-The implementation requires two new bookkeeping fields in the VM.
+L'implémentation requiert deux nouveaux champs de comptabilité dans la VM.
 
 ^code vm-fields (1 before, 1 after)
 
-The first is a running total of the number of bytes of managed memory the VM has
-allocated. The second is the threshold that triggers the next collection. We
-initialize them when the VM starts up.
+Le premier est un total courant du nombre d'octets de mémoire gérée que la VM a alloué. Le second est le seuil qui déclenche la prochaine collection. Nous les initialisons quand la VM démarre.
 
 ^code init-gc-fields (1 before, 2 after)
 
-The starting threshold here is <span name="lab">arbitrary</span>. It's similar
-to the initial capacity we picked for our various dynamic arrays. The goal is to
-not trigger the first few GCs *too* quickly but also to not wait too long. If we
-had some real-world Lox programs, we could profile those to tune this. But since
-all we have are toy programs, I just picked a number.
+Le seuil de départ ici est <span name="lab">arbitraire</span>. C'est similaire à la capacité initiale que nous avons prise pour nos divers tableaux dynamiques. Le but est de ne pas déclencher les premiers quelques GCs _trop_ rapidement mais aussi de ne pas attendre trop longtemps. Si nous avions quelques programmes Lox du monde réel, nous pourrions profiler ceux-ci pour régler cela. Mais puisque tout ce que nous avons sont des programmes jouets, j'ai juste pris un nombre.
 
 <aside name="lab">
 
-A challenge with learning garbage collectors is that it's *very* hard to
-discover the best practices in an isolated lab environment. You don't see how a
-collector actually performs unless you run it on the kind of large, messy
-real-world programs it is actually intended for. It's like tuning a rally car
--- you need to take it out on the course.
+Un défi avec l'apprentissage des ramasse-miettes est qu'il est _très_ dur de découvrir les meilleures pratiques dans un environnement de laboratoire isolé. Vous ne voyez pas comment un collecteur performe réellement à moins que vous le courriez sur le genre de programmes du monde réel, larges, désordonnés pour lesquels il est réellement prévu. C'est comme régler une voiture de rallye -- vous devez la sortir sur la course.
 
 </aside>
 
-Every time we allocate or free some memory, we adjust the counter by that delta.
+Chaque fois que nous allouons ou libérons un peu de mémoire, nous ajustons le compteur par ce delta.
 
 ^code updated-bytes-allocated (1 before, 1 after)
 
-When the total crosses the limit, we run the collector.
+Quand le total traverse la limite, nous courons le collecteur.
 
 ^code collect-on-next (2 before, 1 after)
 
-Now, finally, our garbage collector actually does something when the user runs a
-program without our hidden diagnostic flag enabled. The sweep phase frees
-objects by calling `reallocate()`, which lowers the value of `bytesAllocated`,
-so after the collection completes, we know how many live bytes remain. We adjust
-the threshold of the next GC based on that.
+Maintenant, finalement, notre ramasse-miettes fait réellement quelque chose quand l'utilisateur court un programme sans notre drapeau de diagnostic caché activé. La phase de balayage libère les objets en appelant `reallocate()`, ce qui abaisse la valeur de `bytesAllocated`, donc après que la collection complète, nous savons combien d'octets vivants restent. Nous ajustons le seuil du prochain GC basé sur cela.
 
 ^code update-next-gc (1 before, 2 after)
 
-The threshold is a multiple of the heap size. This way, as the amount of memory
-the program uses grows, the threshold moves farther out to limit the total time
-spent re-traversing the larger live set. Like other numbers in this chapter, the
-scaling factor is basically arbitrary.
+Le seuil est un multiple de la taille du tas. De cette façon, comme la quantité de mémoire que le programme utilise grandit, le seuil bouge plus loin pour limiter le temps total passé à re-traverser l'ensemble vivant plus large. Comme d'autres nombres dans ce chapitre, le facteur d'échelle est basiquement arbitraire.
 
 ^code heap-grow-factor (1 before, 2 after)
 
-You'd want to tune this in your implementation once you had some real programs
-to benchmark it on. Right now, we can at least log some of the statistics that
-we have. We capture the heap size before the collection.
+Vous voudriez régler cela dans votre implémentation une fois que vous auriez quelques vrais programmes sur lesquels le benchmarker. Juste maintenant, nous pouvons au moins journaliser quelques-unes des statistiques que nous avons. Nous capturons la taille du tas avant la collection.
 
 ^code log-before-size (1 before, 1 after)
 
-And then print the results at the end.
+Et ensuite affichons les résultats à la fin.
 
 ^code log-collected-amount (1 before, 1 after)
 
-This way we can see how much the garbage collector accomplished while it ran.
+De cette façon nous pouvons voir combien le ramasse-miettes a accompli pendant qu'il courait.
 
-## Garbage Collection Bugs
+## Bugs de Ramasse-miettes
 
-In theory, we are all done now. We have a GC. It kicks in periodically, collects
-what it can, and leaves the rest. If this were a typical textbook, we would wipe
-the dust from our hands and bask in the soft glow of the flawless marble edifice
-we have created.
+En théorie, nous avons tout fini maintenant. Nous avons un GC. Il démarre périodiquement, collecte ce qu'il peut, et laisse le reste. Si c'était un manuel typique, nous essuierions la poussière de nos mains et nous prélasserions dans la lueur douce de l'édifice de marbre sans défaut que nous avons créé.
 
-But I aim to teach you not just the theory of programming languages but the
-sometimes painful reality. I am going to roll over a rotten log and show you the
-nasty bugs that live under it, and garbage collector bugs really are some of the
-grossest invertebrates out there.
+Mais je vise à vous enseigner non juste la théorie des langages de programmation mais la réalité parfois douloureuse. Je vais rouler une bûche pourrie et vous montrer les vilains bugs qui vivent dessous, et les bugs de ramasse-miettes sont vraiment certains des invertébrés les plus grossiers là-bas.
 
-The collector's job is to free dead objects and preserve live ones. Mistakes are
-easy to make in both directions. If the VM fails to free objects that aren't
-needed, it slowly leaks memory. If it frees an object that is in use, the user's
-program can access invalid memory. These failures often don't immediately cause
-a crash, which makes it hard for us to trace backward in time to find the bug.
+Le travail du collecteur est de libérer les objets morts et préserver les vivants. Les erreurs sont faciles à faire dans les deux directions. Si la VM échoue à libérer les objets qui ne sont pas nécessaires, elle fuit lentement de la mémoire. Si elle libère un objet qui est en usage, le programme de l'utilisateur peut accéder à de la mémoire invalide. Ces échecs ne causent souvent pas immédiatement un plantage, ce qui rend difficile pour nous de tracer en arrière dans le temps pour trouver le bug.
 
-This is made harder by the fact that we don't know when the collector will run.
-Any call that eventually allocates some memory is a place in the VM where a
-collection could happen. It's like musical chairs. At any point, the GC might
-stop the music. Every single heap-allocated object that we want to keep needs to
-find a chair quickly -- get marked as a root or stored as a reference in some
-other object -- before the sweep phase comes to kick it out of the game.
+Ceci est rendu plus dur par le fait que nous ne savons pas quand le collecteur courra. Tout appel qui alloue éventuellement un peu de mémoire est un endroit dans la VM où une collection pourrait arriver. C'est comme les chaises musicales. À n'importe quel point, le GC pourrait arrêter la musique. Chaque objet alloué sur le tas unique que nous voulons garder a besoin de trouver une chaise rapidement -- être marqué comme une racine ou stocké comme une référence dans quelque autre objet -- avant que la phase de balayage vienne pour l'éjecter du jeu.
 
-How is it possible for the VM to use an object later -- one that the GC itself
-doesn't see? How can the VM find it? The most common answer is through a pointer
-stored in some local variable on the C stack. The GC walks the *VM's* value and
-CallFrame stacks, but the C stack is <span name="c">hidden</span> to it.
+Comment est-il possible pour la VM d'utiliser un objet plus tard -- un que le GC lui-même ne voit pas ? Comment la VM peut-elle le trouver ? La réponse la plus commune est par un pointeur stocké dans quelque variable locale sur la pile C. Le GC marche les piles de valeurs et CallFrame de la _VM_, mais la pile C est <span name="c">cachée</span> à lui.
 
 <aside name="c">
 
-Our GC can't find addresses in the C stack, but many can. Conservative garbage
-collectors look all through memory, including the native stack. The most
-well-known of this variety is the [**Boehm–Demers–Weiser garbage
-collector**][boehm], usually just called the "Boehm collector". (The shortest
-path to fame in CS is a last name that's alphabetically early so that it shows
-up first in sorted lists of names.)
+Notre GC ne peut pas trouver les adresses dans la pile C, mais beaucoup le peuvent. Les ramasse-miettes conservateurs regardent tout à travers la mémoire, incluant la pile native. Le plus bien connu de cette variété est le [**ramasse-miettes Boehm–Demers–Weiser**][boehm], habituellement juste appelé le "collecteur Boehm". (Le chemin le plus court vers la célébrité en CS est un nom de famille qui est alphabétiquement tôt pour qu'il apparaisse premier dans les listes triées de noms.)
 
 [boehm]: https://en.wikipedia.org/wiki/Boehm_garbage_collector
 
-Many precise GCs walk the C stack too. Even those have to be careful about
-pointers to live objects that exist only in *CPU registers*.
+Beaucoup de GCs précis marchent la pile C aussi. Même ceux-là doivent être prudents à propos des pointeurs vers les objets vivants qui existent seulement dans les _registres CPU_.
 
 </aside>
 
-In previous chapters, we wrote seemingly pointless code that pushed an object
-onto the VM's value stack, did a little work, and then popped it right back off.
-Most times, I said this was for the GC's benefit. Now you see why. The code
-between pushing and popping potentially allocates memory and thus can trigger a
-GC. We had to make sure the object was on the value stack so that the
-collector's mark phase would find it and keep it alive.
+Dans les chapitres précédents, nous avons écrit du code apparemment sans but qui poussait un objet sur la pile de valeurs de la VM, faisait un petit travail, et ensuite le dépilait juste après. La plupart du temps, j'ai dit que c'était pour le bénéfice du GC. Maintenant vous voyez pourquoi. Le code entre pousser et dépiler alloue potentiellement de la mémoire et peut ainsi déclencher un GC. Nous devions nous assurer que l'objet était sur la pile de valeurs pour que la phase de marquage du collecteur le trouve et le garde vivant.
 
-I wrote the entire clox implementation before splitting it into chapters and
-writing the prose, so I had plenty of time to find all of these corners and
-flush out most of these bugs. The stress testing code we put in at the beginning
-of this chapter and a pretty good test suite were very helpful.
+J'ai écrit l'implémentation clox entière avant de la séparer en chapitres et d'écrire la prose, donc j'ai eu plein de temps pour trouver tous ces coins et débusquer la plupart de ces bugs. Le code de test de stress que nous avons mis au début de ce chapitre et une assez bonne suite de tests étaient très utiles.
 
-But I fixed only *most* of them. I left a couple in because I want to give you a
-hint of what it's like to encounter these bugs in the wild. If you enable the
-stress test flag and run some toy Lox programs, you can probably stumble onto a
-few. Give it a try and *see if you can fix any yourself*.
+Mais j'ai fixé seulement la _plupart_ d'entre eux. J'en ai laissé une paire dedans parce que je veux vous donner un indice de ce que c'est que de rencontrer ces bugs dans la nature. Si vous activez le drapeau de test de stress et courez quelques programmes Lox jouets, vous pouvez probablement trébucher sur quelques-uns. Donnez-lui un essai et _voyez si vous pouvez en fixer n'importe lesquels vous-mêmes_.
 
+### Ajouter à la table de constantes
 
-### Adding to the constant table
+Vous êtes très susceptibles de frapper le premier bug. La table de constantes que chaque morceau possède est un tableau dynamique. Quand le compilateur ajoute une nouvelle constante à la table de la fonction courante, ce tableau peut avoir besoin de grandir. La constante elle-même peut aussi être quelque objet alloué sur le tas comme une chaîne ou une fonction imbriquée.
 
-You are very likely to hit the first bug. The constant table each chunk owns is
-a dynamic array. When the compiler adds a new constant to the current function's
-table, that array may need to grow. The constant itself may also be some
-heap-allocated object like a string or a nested function.
+Le nouvel objet étant ajouté à la table de constantes est passé à `addConstant()`. À ce moment, l'objet peut être trouvé seulement dans le paramètre à cette fonction sur la pile C. Cette fonction ajoute l'objet à la table de constantes. Si la table n'a pas assez de capacité et a besoin de grandir, elle appelle `reallocate()`. Cela déclenche à son tour un GC, qui échoue à marquer le nouvel objet constant et ainsi le balaie juste avant que nous ayons une chance de l'ajouter à la table. Plantage.
 
-The new object being added to the constant table is passed to `addConstant()`.
-At that moment, the object can be found only in the parameter to that function
-on the C stack. That function appends the object to the constant table. If the
-table doesn't have enough capacity and needs to grow, it calls `reallocate()`.
-That in turn triggers a GC, which fails to mark the new constant object and
-thus sweeps it right before we have a chance to add it to the table. Crash.
-
-The fix, as you've seen in other places, is to push the constant onto the stack
-temporarily.
+La correction, comme vous avez vu dans d'autres endroits, est de pousser la constante sur la pile temporairement.
 
 ^code add-constant-push (1 before, 1 after)
 
-Once the constant table contains the object, we pop it off the stack.
+Une fois que la table de constantes contient l'objet, nous le dépilons de la pile.
 
 ^code add-constant-pop (1 before, 1 after)
 
-When the GC is marking roots, it walks the chain of compilers and marks each of
-their functions, so the new constant is reachable now. We do need an include
-to call into the VM from the "chunk" module.
+Quand le GC marque les racines, il marche la chaîne de compilateurs et marque chacune de leurs fonctions, donc la nouvelle constante est accessible maintenante. Nous avons besoin d'un include pour appeler dans la VM depuis le module "chunk".
 
 ^code chunk-include-vm (1 before, 2 after)
 
-### Interning strings
+### Interner les chaînes
 
-Here's another similar one. All strings are interned in clox, so whenever we
-create a new string, we also add it to the intern table. You can see where this
-is going. Since the string is brand new, it isn't reachable anywhere. And
-resizing the string pool can trigger a collection. Again, we go ahead and stash
-the string on the stack first.
+Voici en un autre similaire. Toutes les chaînes sont internées dans clox, donc chaque fois que nous créons une nouvelle chaîne, nous l'ajoutons aussi à la table d'internement. Vous pouvez voir où cela va. Puisque la chaîne est toute neuve, elle n'est accessible nulle part. Et redimensionner la piscine de chaînes peut déclencher une collection. Encore, nous allons de l'avant et planquons la chaîne sur la pile d'abord.
 
 ^code push-string (2 before, 1 after)
 
-And then pop it back off once it's safely nestled in the table.
+Et ensuite la dépilons une fois qu'elle est sûrement nichée dans la table.
 
 ^code pop-string (1 before, 2 after)
 
-This ensures the string is safe while the table is being resized. Once it
-survives that, `allocateString()` will return it to some caller which can then
-take responsibility for ensuring the string is still reachable before the next
-heap allocation occurs.
+Cela assure que la chaîne est sûre pendant que la table est redimensionnée. Une fois qu'elle survit à cela, `allocateString()` la retournera à quelque appelant qui peut alors prendre la responsabilité d'assurer que la chaîne est encore accessible avant que la prochaine allocation tas se produise.
 
-### Concatenating strings
+### Concaténer les chaînes
 
-One last example: Over in the interpreter, the `OP_ADD` instruction can be used
-to concatenate two strings. As it does with numbers, it pops the two operands
-from the stack, computes the result, and pushes that new value back onto the
-stack. For numbers that's perfectly safe.
+Un dernier exemple : Là-bas dans l'interpréteur, l'instruction `OP_ADD` peut être utilisée pour concaténer deux chaînes. Comme elle le fait avec les nombres, elle dépile les deux opérandes de la pile, calcule le résultat, et pousse cette nouvelle valeur de retour sur la pile. Pour les nombres c'est parfaitement sûr.
 
-But concatenating two strings requires allocating a new character array on the
-heap, which can in turn trigger a GC. Since we've already popped the operand
-strings by that point, they can potentially be missed by the mark phase and get
-swept away. Instead of popping them off the stack eagerly, we peek them.
+Mais concaténer deux chaînes requiert d'allouer un nouveau tableau de caractères sur le tas, ce qui peut à son tour déclencher un GC. Puisque nous avons déjà dépilé les chaînes opérandes à ce point, elles peuvent potentiellement être manquées par la phase de marquage et être balayées au loin. Au lieu de les dépiler de la pile avidement, nous les jetons un coup d'œil (peek).
 
 ^code concatenate-peek (1 before, 2 after)
 
-That way, they are still hanging out on the stack when we create the result
-string. Once that's done, we can safely pop them off and replace them with the
-result.
+De cette façon, elles traînent encore sur la pile quand nous créons la chaîne résultat. Une fois que c'est fait, nous pouvons sûrement les dépiler et les remplacer avec le résultat.
 
 ^code concatenate-pop (1 before, 1 after)
 
-Those were all pretty easy, especially because I *showed* you where the fix was.
-In practice, *finding* them is the hard part. All you see is an object that
-*should* be there but isn't. It's not like other bugs where you're looking for
-the code that *causes* some problem. You're looking for the *absence* of code
-which fails to *prevent* a problem, and that's a much harder search.
+Celles-là étaient toutes assez faciles, spécialement parce que je vous ai _montré_ où la correction était. En pratique, les _trouver_ est la partie dure. Tout ce que vous voyez est un objet qui _devrait_ être là mais n'est pas. Ce n'est pas comme d'autres bugs où vous cherchez le code qui _cause_ quelque problème. Vous cherchez l'_absence_ de code qui échoue à _prévenir_ un problème, et c'est une recherche beaucoup plus dure.
 
-But, for now at least, you can rest easy. As far as I know, we've found all of
-the collection bugs in clox, and now we have a working, robust, self-tuning,
-mark-sweep garbage collector.
+Mais, pour le moment au moins, vous pouvez vous reposer facile. Autant que je sache, nous avons trouvé tous les bugs de collection dans clox, et maintenant nous avons un ramasse-miettes mark-sweep fonctionnel, robuste, auto-réglable.
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  The Obj header struct at the top of each object now has three fields:
-    `type`, `isMarked`, and `next`. How much memory do those take up (on your
-    machine)? Can you come up with something more compact? Is there a runtime
-    cost to doing so?
+1.  La structure d'en-tête Obj au sommet de chaque objet a maintenant trois champs : `type`, `isMarked`, et `next`. Combien de mémoire ceux-là prennent-ils (sur votre machine) ? Pouvez-vous venir avec quelque chose de plus compact ? Y a-t-il un coût à l'exécution à faire ainsi ?
 
-1.  When the sweep phase traverses a live object, it clears the `isMarked`
-    field to prepare it for the next collection cycle. Can you come up with a
-    more efficient approach?
+2.  Quand la phase de balayage traverse un objet vivant, elle efface le champ `isMarked` pour le préparer pour le prochain cycle de collection. Pouvez-vous venir avec une approche plus efficace ?
 
-1.  Mark-sweep is only one of a variety of garbage collection algorithms out
-    there. Explore those by replacing or augmenting the current collector with
-    another one. Good candidates to consider are reference counting, Cheney's
-    algorithm, or the Lisp 2 mark-compact algorithm.
+3.  Mark-sweep est seulement un d'une variété d'algorithmes de ramasse-miettes là-bas. Explorez ceux-là en remplaçant ou augmentant le collecteur actuel avec un autre. De bons candidats à considérer sont le comptage de référence, l'algorithme de Cheney, ou l'algorithme mark-compact Lisp 2.
 
 </div>
 
 <div class="design-note">
 
-## Design Note: Generational Collectors
+## Note de Conception : Collecteurs Générationnels
 
-A collector loses throughput if it spends a long time re-visiting objects that
-are still alive. But it can increase latency if it avoids collecting and
-accumulates a large pile of garbage to wade through. If only there were some way
-to tell which objects were likely to be long-lived and which weren't. Then the
-GC could avoid revisiting the long-lived ones as often and clean up the
-ephemeral ones more frequently.
+Un collecteur perd du débit s'il passe un long moment à re-visiter des objets qui sont encore vivants. Mais il peut augmenter la latence s'il évite de collecter et accumule une large pile de déchets à travers laquelle patauger. Si seulement il y avait quelque moyen de dire quels objets étaient susceptibles d'être à longue vie et les quels ne l'étaient pas. Alors le GC pourrait éviter de revisiter ceux à longue vie aussi souvent et nettoyer les éphémères plus fréquemment.
 
-It turns out there kind of is. Many years ago, GC researchers gathered metrics
-on the lifetime of objects in real-world running programs. They tracked every
-object when it was allocated, and eventually when it was no longer needed, and
-then graphed out how long objects tended to live.
+Il s'avère qu'il y a en quelque sorte. Il y a beaucoup d'années, les chercheurs en GC ont rassemblé des métriques sur la durée de vie des objets dans des programmes courant dans le monde réel. Ils ont suivi chaque objet quand il était alloué, et éventuellement quand il n'était plus nécessaire, et ensuite graphé combien de temps les objets tendaient à vivre.
 
-They discovered something they called the **generational hypothesis**, or the
-much less tactful term **infant mortality**. Their observation was that most
-objects are very short-lived but once they survive beyond a certain age, they
-tend to stick around quite a long time. The longer an object *has* lived, the
-longer it likely will *continue* to live. This observation is powerful because
-it gave them a handle on how to partition objects into groups that benefit from
-frequent collections and those that don't.
+Ils ont découvert quelque chose qu'ils ont appelé l'**hypothèse générationnelle**, ou le terme beaucoup moins plein de tact **mortalité infantile**. Leur observation était que la plupart des objets sont à très courte vie mais une fois qu'ils survivent au-delà d'un certain âge, ils tendent à rester dans les parages tout à fait un long moment. Plus long un objet _a_ vécu, plus longtemps il vivra probablement _continuer_. Cette observation est puissante parce qu'elle leur a donné une poignée sur comment partitionner les objets dans des groupes qui bénéficient de collections fréquentes et ceux qui ne le font pas.
 
-They designed a technique called **generational garbage collection**. It works
-like this: Every time a new object is allocated, it goes into a special,
-relatively small region of the heap called the "nursery". Since objects tend to
-die young, the garbage collector is invoked <span
-name="nursery">frequently</span> over the objects just in this region.
+Ils ont conçu une technique appelée **ramasse-miettes générationnel**. Cela fonctionne comme ceci : Chaque fois qu'un nouvel objet est alloué, il va dans une région spéciale, relativement petite du tas appelée la "pouponnière" (nursery). Puisque les objets tendent à mourir jeunes, le ramasse-miettes est invoqué <span name="nursery">fréquemment</span> sur les objets juste dans cette région.
 
 <aside name="nursery">
 
-Nurseries are also usually managed using a copying collector which is faster at
-allocating and freeing objects than a mark-sweep collector.
+Les pouponnières sont aussi habituellement gérées utilisant un collecteur copieur qui est plus rapide à allouer et libérer les objets qu'un collecteur mark-sweep.
 
 </aside>
 
-Each time the GC runs over the nursery is called a "generation". Any objects
-that are no longer needed get freed. Those that survive are now considered one
-generation older, and the GC tracks this for each object. If an object survives
-a certain number of generations -- often just a single collection -- it gets
-*tenured*. At this point, it is copied out of the nursery into a much larger
-heap region for long-lived objects. The garbage collector runs over that region
-too, but much less frequently since odds are good that most of those objects
-will still be alive.
+Chaque fois que le GC court sur la pouponnière est appelé une "génération". Tous objets qui ne sont plus nécessaires sont libérés. Ceux qui survivent sont maintenant considérés une génération plus vieux, et le GC suit cela pour chaque objet. Si un objet survit un certain nombre de générations -- souvent juste une collection unique -- il devient _titularisé_. À ce point, il est copié hors de la pouponnière dans une région de tas beaucoup plus large pour les objets à longue vie. Le ramasse-miettes court sur cette région aussi, mais beaucoup moins fréquemment puisque les chances sont bonnes que la plupart de ces objets seront encore vivants.
 
-Generational collectors are a beautiful marriage of empirical data -- the
-observation that object lifetimes are *not* evenly distributed -- and clever
-algorithm design that takes advantage of that fact. They're also conceptually
-quite simple. You can think of one as just two separately tuned GCs and a pretty
-simple policy for moving objects from one to the other.
+Les collecteurs générationnels sont un beau mariage de données empiriques -- l'observation que les durées de vie d'objet ne sont _pas_ distribuées également -- et de conception d'algorithme intelligente qui prend avantage de ce fait. Ils sont aussi conceptuellement assez simples. Vous pouvez penser à l'un comme juste deux GCs réglés séparément et une politique assez simple pour déplacer les objets de l'un à l'autre.
 
 </div>

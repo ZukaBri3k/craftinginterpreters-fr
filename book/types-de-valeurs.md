@@ -1,694 +1,436 @@
-> When you are a Bear of Very Little Brain, and you Think of Things, you find
-> sometimes that a Thing which seemed very Thingish inside you is quite
-> different when it gets out into the open and has other people looking at it.
+> Quand tu es un Ours de Très Peu de Cerveau, et que tu Penses à des Choses, tu trouves parfois qu'une Chose qui semblait très Chosifiée à l'intérieur de toi est tout à fait différente quand elle sort à l'air libre et que d'autres personnes la regardent.
 >
-> <cite>A. A. Milne, <em>Winnie-the-Pooh</em></cite>
+> <cite>A. A. Milne, <em>Winnie l'Ourson</em></cite>
 
-The past few chapters were huge, packed full of complex techniques and pages of
-code. In this chapter, there's only one new concept to learn and a scattering of
-straightforward code. You've earned a respite.
+Les quelques chapitres passés étaient énormes, remplis de techniques complexes et de pages de code. Dans ce chapitre, il n'y a qu'un seul nouveau concept à apprendre et un éparpillement de code simple. Vous avez mérité un répit.
 
-Lox is <span name="unityped">dynamically</span> typed. A single variable can
-hold a Boolean, number, or string at different points in time. At least, that's
-the idea. Right now, in clox, all values are numbers. By the end of the chapter,
-it will also support Booleans and `nil`. While those aren't super interesting,
-they force us to figure out how our value representation can dynamically handle
-different types.
+Lox est <span name="unityped">dynamiquement</span> typé. Une variable unique peut contenir un Booléen, un nombre, ou une chaîne de caractères à différents points dans le temps. Au moins, c'est l'idée. En ce moment, dans clox, toutes les valeurs sont des nombres. À la fin du chapitre, il supportera aussi les Booléens et `nil`. Bien que ceux-ci ne soient pas super intéressants, ils nous forcent à comprendre comment notre représentation de valeur peut gérer dynamiquement différents types.
 
 <aside name="unityped">
 
-There is a third category next to statically typed and dynamically typed:
-**unityped**. In that paradigm, all variables have a single type, usually a
-machine register integer. Unityped languages aren't common today, but some
-Forths and BCPL, the language that inspired C, worked like this.
+Il y a une troisième catégorie à côté de typé statiquement et typé dynamiquement : **unitypé**. Dans ce paradigme, toutes les variables ont un type unique, généralement un entier de registre machine. Les langages unitypés ne sont pas communs aujourd'hui, mais certains Forths et BCPL, le langage qui a inspiré C, fonctionnaient comme ceci.
 
-As of this moment, clox is unityped.
+À ce moment précis, clox est unitypé.
 
 </aside>
 
-## Tagged Unions
+## Unions Étiquetées
 
-The nice thing about working in C is that we can build our data structures from
-the raw bits up. The bad thing is that we *have* to do that. C doesn't give you
-much for free at compile time and even less at runtime. As far as C is
-concerned, the universe is an undifferentiated array of bytes. It's up to us to
-decide how many of those bytes to use and what they mean.
+La chose sympa à propos de travailler en C est que nous pouvons construire nos structures de données depuis les bits bruts. La mauvaise chose est que nous _devons_ faire cela. C ne vous donne pas grand-chose gratuitement à la compilation et encore moins à l'exécution. Pour autant que C soit concerné, l'univers est un tableau indifférencié d'octets. C'est à nous de décider combien de ces octets utiliser et ce qu'ils signifient.
 
-In order to choose a value representation, we need to answer two key questions:
+Afin de choisir une représentation de valeur, nous avons besoin de répondre à deux questions clés :
 
-1.  **How do we represent the type of a value?** If you try to, say, multiply a
-    number by `true`, we need to detect that error at runtime and report it. In
-    order to do that, we need to be able to tell what a value's type is.
+1.  **Comment représentons-nous le type d'une valeur ?** Si vous essayez de, disons, multiplier un nombre par `true`, nous avons besoin de détecter cette erreur à l'exécution et de la rapporter. Afin de faire cela, nous avons besoin d'être capables de dire quel est le type d'une valeur.
 
-2.  **How do we store the value itself?** We need to not only be able to tell
-    that three is a number, but that it's different from the number four. I
-    know, seems obvious, right? But we're operating at a level where it's good
-    to spell these things out.
+2.  **Comment stockons-nous la valeur elle-même ?** Nous avons besoin non seulement d'être capables de dire que trois est un nombre, mais qu'il est différent du nombre quatre. Je sais, ça semble évident, pas vrai ? Mais nous opérons à un niveau où il est bon d'épeler ces choses.
 
-Since we're not just designing this language but building it ourselves, when
-answering these two questions we also have to keep in mind the implementer's
-eternal quest: to do it *efficiently*.
+Puisque nous ne faisons pas juste concevoir ce langage mais le construisons nous-mêmes, en répondant à ces deux questions nous devons aussi garder en tête la quête éternelle de l'implémenteur : le faire _efficacement_.
 
-Language hackers over the years have come up with a variety of clever ways to
-pack the above information into as few bits as possible. For now, we'll start
-with the simplest, classic solution: a **tagged union**. A value contains two
-parts: a type "tag", and a payload for the actual value. To store the value's
-type, we define an enum for each kind of value the VM supports.
+Les hackers de langage au fil des années ont trouvé une variété de façons intelligentes d'empaqueter les informations ci-dessus dans aussi peu de bits que possible. Pour l'instant, nous commencerons avec la solution la plus simple et classique : une **union étiquetée**. Une valeur contient deux parties : une étiquette de type (ou "tag"), et une charge utile pour la valeur réelle. Pour stocker le type de la valeur, nous définissons un enum pour chaque sorte de valeur que la VM supporte.
 
 ^code value-type (2 before, 1 after)
 
 <aside name="user-types">
 
-The cases here cover each kind of value that has *built-in support in the VM*.
-When we get to adding classes to the language, each class the user defines
-doesn't need its own entry in this enum. As far as the VM is concerned, every
-instance of a class is the same type: "instance".
+Les cas ici couvrent chaque sorte de valeur qui a un _support intégré dans la VM_. Quand nous en arriverons à ajouter des classes au langage, chaque classe que l'utilisateur définit n'a pas besoin de sa propre entrée dans cet enum. Pour autant que la VM soit concernée, chaque instance d'une classe est du même type : "instance".
 
-In other words, this is the VM's notion of "type", not the user's.
+En d'autres termes, c'est la notion de "type" de la VM, pas celle de l'utilisateur.
 
 </aside>
 
-For now, we have only a couple of cases, but this will grow as we add strings,
-functions, and classes to clox. In addition to the type, we also need to store
-the data for the value -- the `double` for a number, `true` or `false` for a
-Boolean. We could define a struct with fields for each possible type.
+Pour l'instant, nous avons seulement une couple de cas, mais cela grandira alors que nous ajouterons les chaînes, fonctions, et classes à clox. En plus du type, nous avons aussi besoin de stocker les données pour la valeur -- le `double` pour un nombre, `true` ou `false` pour un Booléen. Nous pourrions définir une struct avec des champs pour chaque type possible.
 
-<img src="image/types-of-values/struct.png" alt="A struct with two fields laid next to each other in memory." />
+<img src="image/types-of-values/struct.png" alt="Une struct avec deux champs posés l'un à côté de l'autre en mémoire." />
 
-But this is a waste of memory. A value can't simultaneously be both a number and
-a Boolean. So at any point in time, only one of those fields will be used. C
-lets you optimize this by defining a <span name="sum">union</span>. A union
-looks like a struct except that all of its fields overlap in memory.
+Mais c'est un gaspillage de mémoire. Une valeur ne peut pas être simultanément à la fois un nombre et un Booléen. Donc à n'importe quel point dans le temps, seulement un de ces champs sera utilisé. C vous laisse optimiser cela en définissant une <span name="sum">union</span>. Une union ressemble à une struct sauf que tous ses champs se chevauchent en mémoire.
 
 <aside name="sum">
 
-If you're familiar with a language in the ML family, structs and unions in C
-roughly mirror the difference between product and sum types, between tuples
-and algebraic data types.
+Si vous êtes familier avec un langage dans la famille ML, les structs et unions en C reflètent grossièrement la différence entre types produits et types sommes, entre tuples et types de données algébriques.
 
 </aside>
 
-<img src="image/types-of-values/union.png" alt="A union with two fields overlapping in memory." />
+<img src="image/types-of-values/union.png" alt="Une union avec deux champs se chevauchant en mémoire." />
 
-The size of a union is the size of its largest field. Since the fields all reuse
-the same bits, you have to be very careful when working with them. If you store
-data using one field and then access it using <span
-name="reinterpret">another</span>, you will reinterpret what the underlying bits
-mean.
+La taille d'une union est la taille de son plus grand champ. Puisque les champs réutilisent tous les mêmes bits, vous devez être très prudent quand vous travaillez avec eux. Si vous stockez des données en utilisant un champ et qu'ensuite vous y accédez en utilisant un <span name="reinterpret">autre</span>, vous réinterpréterez ce que les bits sous-jacents signifient.
 
 <aside name="reinterpret">
 
-Using a union to interpret bits as different types is the quintessence of C. It
-opens up a number of clever optimizations and lets you slice and dice each byte
-of memory in ways that memory-safe languages disallow. But it is also wildly
-unsafe and will happily saw your fingers off if you don't watch out.
+Utiliser une union pour interpréter des bits comme différents types est la quintessence du C. Cela ouvre un nombre d'optimisations intelligentes et vous laisse couper et désosser chaque octet de mémoire de façons que les langages à mémoire sûre interdisent. Mais c'est aussi sauvagement peu sûr et sciera joyeusement vos doigts si vous ne faites pas attention.
 
 </aside>
 
-As the name "tagged union" implies, our new value representation combines these
-two parts into a single struct.
+Comme le nom "union étiquetée" l'implique, notre nouvelle représentation de valeur combine ces deux parties en une struct unique.
 
 ^code value (2 before, 2 after)
 
-There's a field for the type tag, and then a second field containing the union
-of all of the underlying values. On a 64-bit machine with a typical C compiler,
-the layout looks like this:
+Il y a un champ pour l'étiquette de type, et ensuite un second champ contenant l'union de toutes les valeurs sous-jacentes. Sur une machine 64-bit avec un compilateur C typique, la disposition ressemble à ceci :
 
 <aside name="as">
 
-A smart language hacker gave me the idea to use "as" for the name of the union
-field because it reads nicely, almost like a cast, when you pull the various
-values out.
+Un hacker de langage intelligent m'a donné l'idée d'utiliser "as" pour le nom du champ union parce que cela se lit joliment, presque comme un cast, quand vous tirez les diverses valeurs hors de là.
 
 </aside>
 
-<img src="image/types-of-values/value.png" alt="The full value struct, with the type and as fields next to each other in memory." />
+<img src="image/types-of-values/value.png" alt="La struct value complète, avec les champs type et as l'un à côté de l'autre en mémoire." />
 
-The four-byte type tag comes first, then the union. Most architectures prefer
-values be aligned to their size. Since the union field contains an eight-byte
-double, the compiler adds four bytes of <span name="pad">padding</span> after
-the type field to keep that double on the nearest eight-byte boundary. That
-means we're effectively spending eight bytes on the type tag, which only needs
-to represent a number between zero and three. We could stuff the enum in a
-smaller size, but all that would do is increase the padding.
+L'étiquette de type de quatre octets vient en premier, ensuite l'union. La plupart des architectures préfèrent que les valeurs soient alignées à leur taille. Puisque le champ union contient un double de huit octets, le compilateur ajoute quatre octets de <span name="pad">remplissage</span> (padding) après le champ type pour garder ce double sur la frontière de huit octets la plus proche. Cela signifie que nous dépensons effectivement huit octets sur l'étiquette de type, qui a seulement besoin de représenter un nombre entre zéro et trois. Nous pourrions bourrer l'enum dans une taille plus petite, mais tout ce que ça ferait serait d'augmenter le remplissage.
 
 <aside name="pad">
 
-We could move the tag field *after* the union, but that doesn't help much
-either. Whenever we create an array of Values -- which is where most of our
-memory usage for Values will be -- the C compiler will insert that same padding
-*between* each Value to keep the doubles aligned.
+Nous pourrions déplacer le champ d'étiquette _après_ l'union, mais cela n'aide pas beaucoup non plus. Chaque fois que nous créons un tableau de Values -- ce qui est où la plupart de notre utilisation mémoire pour les Values sera -- le compilateur C insérera ce même remplissage _entre_ chaque Value pour garder les doubles alignés.
 
 </aside>
 
-So our Values are 16 bytes, which seems a little large. We'll improve it
-[later][optimization]. In the meantime, they're still small enough to store on
-the C stack and pass around by value. Lox's semantics allow that because the
-only types we support so far are **immutable**. If we pass a copy of a Value
-containing the number three to some function, we don't need to worry about the
-caller seeing modifications to the value. You can't "modify" three. It's three
-forever.
+Donc nos Values font 16 octets, ce qui semble un peu grand. Nous améliorerons cela [plus tard][optimization]. En attendant, elles sont toujours assez petites pour stocker sur la pile C et passer par valeur. La sémantique de Lox permet cela parce que les seuls types que nous supportons jusqu'ici sont **immuables**. Si nous passons une copie d'une Value contenant le nombre trois à quelque fonction, nous n'avons pas besoin de nous inquiéter que l'appelant voie des modifications à la valeur. Vous ne pouvez pas "modifier" trois. C'est trois pour toujours.
 
-[optimization]: optimization.html
+[optimization]: optimisation.html
 
-## Lox Values and C Values
+## Valeurs Lox et Valeurs C
 
-That's our new value representation, but we aren't done. Right now, the rest of
-clox assumes Value is an alias for `double`. We have code that does a straight C
-cast from one to the other. That code is all broken now. So sad.
+C'est notre nouvelle représentation de valeur, mais nous n'avons pas fini. Pour l'instant, le reste de clox suppose que Value est un alias pour `double`. Nous avons du code qui fait un cast C direct de l'un à l'autre. Ce code est tout cassé maintenant. Si triste.
 
-With our new representation, a Value can *contain* a double, but it's not
-*equivalent* to it. There is a mandatory conversion step to get from one to the
-other. We need to go through the code and insert those conversions to get clox
-working again.
+Avec notre nouvelle représentation, une Value peut _contenir_ un double, mais elle n'est pas _équivalente_ à lui. Il y a une étape de conversion obligatoire pour aller de l'un à l'autre. Nous devons passer à travers le code et insérer ces conversions pour faire marcher clox de nouveau.
 
-We'll implement these conversions as a handful of macros, one for each type and
-operation. First, to promote a native C value to a clox Value:
+Nous implémenterons ces conversions comme une poignée de macros, une pour chaque type et opération. D'abord, pour promouvoir une valeur C native en une Value clox :
 
 ^code value-macros (1 before, 2 after)
 
-Each one of these takes a C value of the appropriate type and produces a Value
-that has the correct type tag and contains the underlying value. This hoists
-statically typed values up into clox's dynamically typed universe. In order to
-*do* anything with a Value, though, we need to unpack it and get the C value
-back out.
+Chacune de celles-ci prend une valeur C du type approprié et produit une Value qui a la bonne étiquette de type et contient la valeur sous-jacente. Ceci hisse les valeurs typées statiquement vers l'univers typé dynamiquement de clox. Afin de _faire_ quoi que ce soit avec une Value, cependant, nous avons besoin de la dépaqueter et d'obtenir la valeur C en retour.
 
 ^code as-macros (1 before, 2 after)
 
 <aside name="as-null">
 
-There's no `AS_NIL` macro because there is only one `nil` value, so a Value with
-type `VAL_NIL` doesn't carry any extra data.
+Il n'y a pas de macro `AS_NIL` parce qu'il n'y a qu'une seule valeur `nil`, donc une Value avec le type `VAL_NIL` ne porte aucune donnée supplémentaire.
 
 </aside>
 
-<span name="as-null">These</span> macros go in the opposite direction. Given a
-Value of the right type, they unwrap it and return the corresponding raw C
-value. The "right type" part is important! These macros directly access the
-union fields. If we were to do something like:
+<span name="as-null">Ces</span> macros vont dans la direction opposée. Étant donné une Value du bon type, elles la déballent et renvoient la valeur C brute correspondante. La partie "bon type" est importante ! Ces macros accèdent directement aux champs de l'union. Si nous devions faire quelque chose comme :
 
 ```c
 Value value = BOOL_VAL(true);
 double number = AS_NUMBER(value);
 ```
 
-Then we may open a smoldering portal to the Shadow Realm. It's not safe to use
-any of the `AS_` macros unless we know the Value contains the appropriate type.
-To that end, we define a last few macros to check a Value's type.
+Alors nous pourrions ouvrir un portail fumant vers le Royaume des Ombres. Ce n'est pas sûr d'utiliser n'importe laquelle des macros `AS_` à moins que nous sachions que la Value contient le type approprié. À cette fin, nous définissons quelques dernières macros pour vérifier le type d'une Value.
 
 ^code is-macros (1 before, 2 after)
 
-<span name="universe">These</span> macros return `true` if the Value has that
-type. Any time we call one of the `AS_` macros, we need to guard it behind a
-call to one of these first. With these eight macros, we can now safely shuttle
-data between Lox's dynamic world and C's static one.
+<span name="universe">Ces</span> macros renvoient `true` si la Value a ce type. Chaque fois que nous appelons une des macros `AS_`, nous avons besoin de la garder derrière un appel à une de celles-ci d'abord. Avec ces huit macros, nous pouvons maintenant navetter les données en toute sécurité entre le monde dynamique de Lox et celui statique de C.
 
 <aside name="universe">
 
-<img src="image/types-of-values/universe.png" alt="The earthly C firmament with the Lox heavens above." />
+<img src="image/types-of-values/universe.png" alt="Le firmament C terrestre avec les cieux Lox au-dessus." />
 
-The `_VAL` macros lift a C value into the heavens. The `AS_` macros bring it
-back down.
+Les macros `_VAL` lèvent une valeur C dans les cieux. Les macros `AS_` la ramènent en bas.
 
 </aside>
 
-## Dynamically Typed Numbers
+## Nombres Typés Dynamiquement
 
-We've got our value representation and the tools to convert to and from it. All
-that's left to get clox running again is to grind through the code and fix every
-place where data moves across that boundary. This is one of those sections of
-the book that isn't exactly mind-blowing, but I promised I'd show you every
-single line of code, so here we are.
+Nous avons notre représentation de valeur et les outils pour convertir vers et depuis elle. Tout ce qui reste pour faire tourner clox de nouveau est de piocher à travers le code et de fixer chaque endroit où les données bougent à travers cette frontière. C'est une de ces sections du livre qui n'est pas exactement époustouflante, mais j'ai promis que je vous montrerais chaque ligne de code unique, donc nous y voici.
 
-The first values we create are the constants generated when we compile number
-literals. After we convert the lexeme to a C double, we simply wrap it in a
-Value before storing it in the constant table.
+Les premières valeurs que nous créons sont les constantes générées quand nous compilons les littéraux nombre. Après avoir converti le lexème en un double C, nous l'enveloppons simplement dans une Value avant de le stocker dans la table de constantes.
 
 ^code const-number-val (1 before, 1 after)
 
-Over in the runtime, we have a function to print values.
+Là-bas dans le runtime, nous avons une fonction pour imprimer les valeurs.
 
 ^code print-number-value (1 before, 1 after)
 
-Right before we send the Value to `printf()`, we unwrap it and extract the
-double value. We'll revisit this function shortly to add the other types, but
-let's get our existing code working first.
+Juste avant que nous envoyions la Value à `printf()`, nous la déballons et extrayons la valeur double. Nous revisiterons cette fonction sous peu pour ajouter les autres types, mais faisons marcher notre code existant d'abord.
 
-### Unary negation and runtime errors
+### Négation unaire et erreurs d'exécution
 
-The next simplest operation is unary negation. It pops a value off the stack,
-negates it, and pushes the result. Now that we have other types of values, we
-can't assume the operand is a number anymore. The user could just as well do:
+La prochaine opération la plus simple est la négation unaire. Elle dépile une valeur, la nie, et pousse le résultat. Maintenant que nous avons d'autres types de valeurs (ou que nous en aurons bientôt), nous ne pouvons plus supposer que l'opérande est un nombre. L'utilisateur pourrait tout aussi bien faire :
 
 ```lox
-print -false; // Uh...
+print -false; // Euh...
 ```
 
-We need to handle that gracefully, which means it's time for *runtime errors*.
-Before performing an operation that requires a certain type, we need to make
-sure the Value *is* that type.
+Nous avons besoin de gérer cela avec grâce, ce qui signifie qu'il est temps pour les _erreurs d'exécution_. Avant d'effectuer une opération qui exige un certain type, nous avons besoin de nous assurer que la Value _est_ de ce type.
 
-For unary negation, the check looks like this:
+Pour la négation unaire, la vérification ressemble à ceci :
 
 ^code op-negate (1 before, 1 after)
 
-First, we check to see if the Value on top of the stack is a number. If it's
-not, we report the runtime error and <span name="halt">stop</span> the
-interpreter. Otherwise, we keep going. Only after this validation do we unwrap
-the operand, negate it, wrap the result and push it.
+D'abord, nous vérifions pour voir si la Value au sommet de la pile est un nombre. Si ce n'est pas le cas, nous rapportons l'erreur d'exécution et <span name="halt">arrêtons</span> l'interpréteur. Sinon, nous continuons. Seulement après cette validation nous déballons l'opérande, le nions, emballons le résultat et le poussons.
 
 <aside name="halt">
 
-Lox's approach to error-handling is rather... *spare*. All errors are fatal and
-immediately halt the interpreter. There's no way for user code to recover from
-an error. If Lox were a real language, this is one of the first things I would
-remedy.
+L'approche de Lox pour la gestion d'erreur est plutôt... _austère_. Toutes les erreurs sont fatales et arrêtent immédiatement l'interpréteur. Il n'y a aucun moyen pour le code utilisateur de récupérer d'une erreur. Si Lox était un vrai langage, ce serait une des premières choses que je remédierais.
 
 </aside>
 
-To access the Value, we use a new little function.
+Pour accéder à la Value, nous utilisons une nouvelle petite fonction.
 
 ^code peek
 
-It returns a Value from the stack but doesn't <span name="peek">pop</span> it.
-The `distance` argument is how far down from the top of the stack to look: zero
-is the top, one is one slot down, etc.
+Elle renvoie une Value depuis la pile mais ne la <span name="peek">dépile</span> pas. L'argument `distance` est à quelle distance du sommet de la pile regarder : zéro est le sommet, un est un emplacement en dessous, etc.
 
 <aside name="peek">
 
-Why not just pop the operand and then validate it? We could do that. In later
-chapters, it will be important to leave operands on the stack to ensure the
-garbage collector can find them if a collection is triggered in the middle of
-the operation. I do the same thing here mostly out of habit.
+Pourquoi ne pas juste dépiler l'opérande et ensuite le valider ? Nous pourrions faire ça. Dans les chapitres ultérieurs, il sera important de laisser les opérandes sur la pile pour assurer que le ramasse-miettes peut les trouver si une collection est déclenchée au milieu de l'opération. Je fais la même chose ici surtout par habitude.
 
 </aside>
 
-We report the runtime error using a new function that we'll get a lot of mileage
-out of over the remainder of the book.
+Nous rapportons l'erreur d'exécution en utilisant une nouvelle fonction dont nous tirerons beaucoup de profit sur le reste du livre.
 
 ^code runtime-error
 
-You've certainly *called* variadic functions -- ones that take a varying number
-of arguments -- in C before: `printf()` is one. But you may not have *defined*
-your own. This book isn't a C <span name="tutorial">tutorial</span>, so I'll
-skim over it here, but basically the `...` and `va_list` stuff let us pass an
-arbitrary number of arguments to `runtimeError()`. It forwards those on to
-`vfprintf()`, which is the flavor of `printf()` that takes an explicit
-`va_list`.
+Vous avez certainement _appelé_ des fonctions variadiques -- celles qui prennent un nombre variable d'arguments -- en C avant : `printf()` en est une. Mais vous pourriez ne pas avoir _défini_ la vôtre. Ce livre n'est pas un <span name="tutorial">tutoriel</span> C, donc je vais survoler ça ici, mais basiquement le trucs `...` et `va_list` nous laisse passer un nombre arbitraire d'arguments à `runtimeError()`. Elle transfère ceux-là à `vfprintf()`, qui est la saveur de `printf()` qui prend une `va_list` explicite.
 
 <aside name="tutorial">
 
-If you are looking for a C tutorial, I love *[The C Programming Language][kr]*,
-usually called "K&R" in honor of its authors. It's not entirely up to date, but
-the quality of the writing more than makes up for it.
+Si vous cherchez un tutoriel C, j'adore _[Le Langage de Programmation C][kr]_, habituellement appelé "K&R" en l'honneur de ses auteurs. Il n'est pas entièrement à jour, mais la qualité de l'écriture fait plus que compenser cela.
 
 [kr]: https://www.cs.princeton.edu/~bwk/cbook.html
 
 </aside>
 
-Callers can pass a format string to `runtimeError()` followed by a number of
-arguments, just like they can when calling `printf()` directly. `runtimeError()`
-then formats and prints those arguments. We won't take advantage of that in this
-chapter, but later chapters will produce formatted runtime error messages that
-contain other data.
+Les appelants peuvent passer une chaîne de format à `runtimeError()` suivie par un nombre d'arguments, juste comme ils peuvent quand ils appellent `printf()` directement. `runtimeError()` formate et imprime ensuite ces arguments. Nous ne prendrons pas avantage de cela dans ce chapitre, mais les chapitres plus tardifs produiront des messages d'erreur d'exécution formatés qui contiennent d'autres données.
 
-After we show the hopefully helpful error message, we tell the user which <span
-name="stack">line</span> of their code was being executed when the error
-occurred. Since we left the tokens behind in the compiler, we look up the line
-in the debug information compiled into the chunk. If our compiler did its job
-right, that corresponds to the line of source code that the bytecode was
-compiled from.
+Après avoir montré le message d'erreur espérons-le utile, nous disons à l'utilisateur quelle <span name="stack">ligne</span> de leur code était exécutée quand l'erreur s'est produite. Puisque nous avons laissé les tokens derrière dans le compilateur, nous cherchons la ligne dans l'information de débogage compilée dans le morceau. Si notre compilateur a fait son travail correctement, cela correspond à la ligne de code source à partir de laquelle le bytecode a été compilé.
 
-We look into the chunk's debug line array using the current bytecode instruction
-index *minus one*. That's because the interpreter advances past each instruction
-before executing it. So, at the point that we call `runtimeError()`, the failed
-instruction is the previous one.
+Nous regardons dans le tableau de lignes de débogage du morceau en utilisant l'index d'instruction bytecode courant _moins un_. C'est parce que l'interpréteur avance au-delà de chaque instruction avant de l'exécuter. Donc, au point où nous appelons `runtimeError()`, l'instruction échouée est la précédente.
 
 <aside name="stack">
 
-Just showing the immediate line where the error occurred doesn't provide much
-context. Better would be a full stack trace. But we don't even have functions to
-call yet, so there is no call stack to trace.
+Juste montrer la ligne immédiate où l'erreur s'est produite ne fournit pas beaucoup de contexte. Mieux serait une trace de pile complète. Mais nous n'avons même pas de fonction à appeler encore, donc il n'y a pas de pile d'appels à tracer.
 
 </aside>
 
-In order to use `va_list` and the macros for working with it, we need to bring
-in a standard header.
+Afin d'utiliser `va_list` et les macros pour travailler avec elle, nous avons besoin d'apporter un en-tête standard.
 
 ^code include-stdarg (1 after)
 
-With this, our VM can not only do the right thing when we negate numbers (like
-it used to before we broke it), but it also gracefully handles erroneous
-attempts to negate other types (which we don't have yet, but still).
+Avec ceci, notre VM peut non seulement faire la bonne chose quand nous nions des nombres (comme elle le faisait avant que nous la cassions), mais elle gère aussi avec grâce les tentatives erronées de nier d'autres types (que nous n'avons pas encore, mais quand même).
 
-### Binary arithmetic operators
+### Opérateurs arithmétiques binaires
 
-We have our runtime error machinery in place now, so fixing the binary operators
-is easier even though they're more complex. We support four binary operators
-today: `+`, `-`, `*`, and `/`. The only difference between them is which
-underlying C operator they use. To minimize redundant code between the four
-operators, we wrapped up the commonality in a big preprocessor macro that takes
-the operator token as a parameter.
+Nous avons notre machinerie d'erreur d'exécution en place maintenant, donc réparer les opérateurs binaires est plus facile même s'ils sont plus complexes. Nous supportons quatre opérateurs binaires aujourd'hui : `+`, `-`, `*`, et `/`. La seule différence entre eux est quel opérateur C sous-jacent ils utilisent. Pour minimiser le code redondant entre les quatre opérateurs, nous avons emballé la communalité dans une grosse macro préprocesseur qui prend le token opérateur comme paramètre.
 
-That macro seemed like overkill a [few chapters ago][], but we get the benefit
-from it today. It lets us add the necessary type checking and conversions in one
-place.
+Cette macro semblait un peu excessive il y a [quelques chapitres][few chapters ago], mais nous tirons profit d'elle aujourd'hui. Elle nous laisse ajouter la vérification de type et les conversions nécessaires en un seul endroit.
 
-[few chapters ago]: a-virtual-machine.html#binary-operators
+[few chapters ago]: machine-virtuelle.html#opérateurs-binaires
 
 ^code binary-op (1 before, 2 after)
 
-Yeah, I realize that's a monster of a macro. It's not what I'd normally consider
-good C practice, but let's roll with it. The changes are similar to what we did
-for unary negate. First, we check that the two operands are both numbers. If
-either isn't, we report a runtime error and yank the ejection seat lever.
+Ouais, je réalise que c'est un monstre de macro. Ce n'est pas ce que je considérerais normalement comme une bonne pratique C, mais roulons avec. Les changements sont similaires à ce que nous avons fait pour la négation unaire. D'abord, nous vérifions que les deux opérandes sont tous deux des nombres. Si l'un ou l'autre ne l'est pas, nous rapportons une erreur d'exécution et tirons le levier du siège éjectable.
 
-If the operands are fine, we pop them both and unwrap them. Then we apply the
-given operator, wrap the result, and push it back on the stack. Note that we
-don't wrap the result by directly using `NUMBER_VAL()`. Instead, the wrapper to
-use is passed in as a macro <span name="macro">parameter</span>. For our
-existing arithmetic operators, the result is a number, so we pass in the
-`NUMBER_VAL` macro.
+Si les opérandes sont bons, nous les dépilons tous les deux et les déballons. Ensuite nous appliquons l'opérateur donné, emballons le résultat, et le repoussons sur la pile. Notez que nous n'emballons pas le résultat en utilisant directement `NUMBER_VAL()`. Au lieu de cela, l'emballeur à utiliser est passé comme un <span name="macro">paramètre</span> macro. Pour nos opérateurs arithmétiques existants, le résultat est un nombre, donc nous passons la macro `NUMBER_VAL`.
 
 <aside name="macro">
 
-Did you know you can pass macros as parameters to macros? Now you do!
+Saviez-vous que vous pouvez passer des macros comme paramètres à des macros ? Maintenant vous savez !
 
 </aside>
 
 ^code op-arithmetic (1 before, 1 after)
 
-Soon, I'll show you why we made the wrapping macro an argument.
+Bientôt, je vous montrerai pourquoi nous avons fait de la macro d'emballage un argument.
 
-## Two New Types
+## Deux Nouveaux Types
 
-All of our existing clox code is back in working order. Finally, it's time to
-add some new types. We've got a running numeric calculator that now does a
-number of pointless paranoid runtime type checks. We can represent other types
-internally, but there's no way for a user's program to ever create a Value of
-one of those types.
+Tout notre code clox existant est de retour en état de marche. Finalement, il est temps d'ajouter de nouveaux types. Nous avons une calculatrice numérique tournante qui fait maintenant un certain nombre de vérifications de type à l'exécution paranoïaques et sans objet. Nous pouvons représenter d'autres types en interne, mais il n'y a aucun moyen pour un programme utilisateur de jamais créer une Value d'un de ces types.
 
-Not until now, that is. We'll start by adding compiler support for the three new
-literals: `true`, `false`, and `nil`. They're all pretty simple, so we'll do all
-three in a single batch.
+Pas jusqu'à maintenant, c'est-à-dire. Nous commencerons par ajouter le support du compilateur pour les trois nouveaux littéraux : `true`, `false`, et `nil`. Ils sont tous assez simples, donc nous ferons tous les trois dans un seul lot.
 
-With number literals, we had to deal with the fact that there are billions of
-possible numeric values. We attended to that by storing the literal's value in
-the chunk's constant table and emitting a bytecode instruction that simply
-loaded that constant. We could do the same thing for the new types. We'd store,
-say, `true`, in the constant table, and use an `OP_CONSTANT` to read it out.
+Avec les littéraux nombre, nous avons dû gérer le fait qu'il y a des milliards de valeurs numériques possibles. Nous nous sommes occupés de cela en stockant la valeur du littéral dans la table de constantes du morceau et en émettant une instruction bytecode qui chargeait simplement cette constante. Nous pourrions faire la même chose pour les nouveaux types. Nous stockerions, disons, `true`, dans la table de constantes, et utiliserions un `OP_CONSTANT` pour le lire.
 
-But given that there are literally (heh) only three possible values we need to
-worry about with these new types, it's gratuitous -- and <span
-name="small">slow!</span> -- to waste a two-byte instruction and a constant
-table entry on them. Instead, we'll define three dedicated instructions to push
-each of these literals on the stack.
+Mais étant donné qu'il y a littéralement (hé) seulement trois valeurs possibles dont nous avons besoin de nous inquiéter avec ces nouveaux types, c'est gratuit -- et <span name="small">lent !</span> -- de gaspiller une instruction de deux octets et une entrée de table de constantes pour eux. Au lieu de cela, nous définirons trois instructions dédiées pour pousser chacun de ces littéraux sur la pile.
 
 <aside name="small" class="bottom">
 
-I'm not kidding about dedicated operations for certain constant values being
-faster. A bytecode VM spends much of its execution time reading and decoding
-instructions. The fewer, simpler instructions you need for a given piece of
-behavior, the faster it goes. Short instructions dedicated to common operations
-are a classic optimization.
+Je ne plaisante pas à propos des opérations dédiées pour certaines valeurs constantes qui sont plus rapides. Une VM à bytecode passe beaucoup de son temps d'exécution à lire et décoder des instructions. Moins vous avez besoin d'instructions, et plus elles sont simples pour un comportement donné, plus ça va vite. Les instructions courtes dédiées aux opérations communes sont une optimisation classique.
 
-For example, the Java bytecode instruction set has dedicated instructions for
-loading 0.0, 1.0, 2.0, and the integer values from -1 through 5. (This ends up
-being a vestigial optimization given that most mature JVMs now JIT-compile the
-bytecode to machine code before execution anyway.)
+Par exemple, le jeu d'instructions bytecode Java a des instructions dédiées pour charger 0.0, 1.0, 2.0, et les valeurs entières de -1 à 5. (Cela finit par être une optimisation vestigiale étant donné que la plupart des JVMs matures compilent maintenant à la volée (JIT) le bytecode en code machine avant l'exécution de toute façon.)
 
 </aside>
 
 ^code literal-ops (1 before, 1 after)
 
-Our scanner already treats `true`, `false`, and `nil` as keywords, so we can
-skip right to the parser. With our table-based Pratt parser, we just need to
-slot parser functions into the rows associated with those keyword token types.
-We'll use the same function in all three slots. Here:
+Notre scanner traite déjà `true`, `false`, et `nil` comme des mots-clés, donc nous pouvons sauter directement au parseur. Avec notre parseur Pratt basé sur table, nous avons juste besoin d'insérer des fonctions de parseur dans les lignes associées avec ces types de token mot-clé. Nous utiliserons la même fonction dans les trois emplacements. Ici :
 
 ^code table-false (1 before, 1 after)
 
-Here:
+Ici :
 
 ^code table-true (1 before, 1 after)
 
-And here:
+Et ici :
 
 ^code table-nil (1 before, 1 after)
 
-When the parser encounters `false`, `nil`, or `true`, in prefix position, it
-calls this new parser function:
+Quand le parseur rencontre `false`, `nil`, ou `true`, en position préfixe, il appelle cette nouvelle fonction de parseur :
 
 ^code parse-literal
 
-Since `parsePrecedence()` has already consumed the keyword token, all we need to
-do is output the proper instruction. We <span name="switch">figure</span> that
-out based on the type of token we parsed. Our front end can now compile Boolean
-and nil literals to bytecode. Moving down the execution pipeline, we reach the
-interpreter.
+Puisque `parsePrecedence()` a déjà consommé le token mot-clé, tout ce que nous avons besoin de faire est de sortir l'instruction appropriée. Nous <span name="switch">déterminons</span> celle-ci basé sur le type de token que nous avons parsé. Notre front end peut maintenant compiler les littéraux Booléens et nil en bytecode. En descendant le pipeline d'exécution, nous atteignons l'interpréteur.
 
 <aside name="switch">
 
-We could have used separate parser functions for each literal and saved
-ourselves a switch but that felt needlessly verbose to me. I think it's mostly a
-matter of taste.
+Nous aurions pu utiliser des fonctions de parseur séparées pour chaque littéral et nous épargner un switch mais cela me semblait inutilement verbeux. Je pense que c'est surtout une question de goût.
 
 </aside>
 
 ^code interpret-literals (5 before, 1 after)
 
-This is pretty self-explanatory. Each instruction summons the appropriate value
-and pushes it onto the stack. We shouldn't forget our disassembler either.
+C'est assez auto-explicatif. Chaque instruction invoque la valeur appropriée et la pousse sur la pile. Nous ne devrions pas oublier notre désassembleur non plus.
 
 ^code disassemble-literals (2 before, 1 after)
 
-With this in place, we can run this Earth-shattering program:
+Avec ceci en place, nous pouvons lancer ce programme bouleversant :
 
 ```lox
 true
 ```
 
-Except that when the interpreter tries to print the result, it blows up. We need
-to extend `printValue()` to handle the new types too:
+Sauf que quand l'interpréteur essaie d'imprimer le résultat, il explose. Nous avons besoin d'étendre `printValue()` pour gérer aussi les nouveaux types :
 
 ^code print-value (1 before, 1 after)
 
-There we go! Now we have some new types. They just aren't very useful yet. Aside
-from the literals, you can't really *do* anything with them. It will be a while
-before `nil` comes into play, but we can start putting Booleans to work in the
-logical operators.
+Et voilà ! Maintenant nous avons de nouveaux types. Ils ne sont juste pas encore très utiles. À part les littéraux, vous ne pouvez pas vraiment _faire_ quoi que ce soit avec eux. Il se passera un moment avant que `nil` entre en jeu, mais nous pouvons commencer à mettre les Booléens au travail dans les opérateurs logiques.
 
-### Logical not and falsiness
+### Non logique et fausseté
 
-The simplest logical operator is our old exclamatory friend unary not.
+L'opérateur logique le plus simple est notre vieil ami exclamatif non unaire.
 
 ```lox
 print !true; // "false"
 ```
 
-This new operation gets a new instruction.
+Cette nouvelle opération obtient une nouvelle instruction.
 
 ^code not-op (1 before, 1 after)
 
-We can reuse the `unary()` parser function we wrote for unary negation to
-compile a not expression. We just need to slot it into the parsing table.
+Nous pouvons réutiliser la fonction de parseur `unary()` que nous avons écrite pour la négation unaire pour compiler une expression non. Nous avons juste besoin de l'insérer dans la table de parsing.
 
 ^code table-not (1 before, 1 after)
 
-Because I knew we were going to do this, the `unary()` function already has a
-switch on the token type to figure out which bytecode instruction to output. We
-merely add another case.
+Parce que je savais que nous allions faire ceci, la fonction `unary()` a déjà un switch sur le type de token pour déterminer quelle instruction bytecode sortir. Nous ajoutons simplement un autre cas.
 
 ^code compile-not (1 before, 3 after)
 
-That's it for the front end. Let's head over to the VM and conjure this
-instruction into life.
+C'est tout pour le front end. Allons vers la VM et conjurons cette instruction à la vie.
 
 ^code op-not (1 before, 1 after)
 
-Like our previous unary operator, it pops the one operand, performs the
-operation, and pushes the result. And, as we did there, we have to worry about
-dynamic typing. Taking the logical not of `true` is easy, but there's nothing
-preventing an unruly programmer from writing something like this:
+Comme notre opérateur unaire précédent, il dépile l'unique opérande, effectue l'opération, et pousse le résultat. Et, comme nous l'avons fait là, nous devons nous inquiéter du typage dynamique. Prendre le non logique de `true` est facile, mais il n'y a rien empêchant un programmeur indiscipliné d'écrire quelque chose comme ceci :
 
 ```lox
 print !nil;
 ```
 
-For unary minus, we made it an error to negate anything that isn't a <span
-name="negate">number</span>. But Lox, like most scripting languages, is more
-permissive when it comes to `!` and other contexts where a Boolean is expected.
-The rule for how other types are handled is called "falsiness", and we implement
-it here:
+Pour le moins unaire, nous avons fait une erreur de nier tout ce qui n'est pas un <span name="negate">nombre</span>. Mais Lox, comme la plupart des langages de script, est plus permissif quand il s'agit de `!` et d'autres contextes où un Booléen est attendu. La règle pour comment les autres types sont gérés est appelée "fausseté" (falsiness), et nous l'implémentons ici :
 
 <aside name="negate">
 
-Now I can't help but try to figure out what it would mean to negate other types
-of values. `nil` is probably its own negation, sort of like a weird pseudo-zero.
-Negating a string could, uh, reverse it?
+Maintenant je ne peux m'empêcher d'essayer de comprendre ce que cela signifierait de nier d'autres types de valeurs. `nil` est probablement sa propre négation, une sorte de pseudo-zéro bizarre. Nier une chaîne pourrait, euh, la renverser ?
 
 </aside>
 
 ^code is-falsey
 
-Lox follows Ruby in that `nil` and `false` are falsey and every other value
-behaves like `true`. We've got a new instruction we can generate, so we also
-need to be able to *un*generate it in the disassembler.
+Lox suit Ruby en ce que `nil` et `false` sont faux ("falsey") et toute autre valeur se comporte comme `true`. Nous avons une nouvelle instruction que nous pouvons générer, donc nous avons aussi besoin d'être capable de la *dé*générer dans le désassembleur.
 
 ^code disassemble-not (2 before, 1 after)
 
-### Equality and comparison operators
+### Égalité et opérateurs de comparaison
 
-That wasn't too bad. Let's keep the momentum going and knock out the equality
-and comparison operators too: `==`, `!=`, `<`, `>`, `<=`, and `>=`. That covers
-all of the operators that return Boolean results except the logical operators
-`and` and `or`. Since those need to short-circuit (basically do a little
-control flow) we aren't ready for them yet.
+Ce n'était pas trop mal. Gardons le momentum et assommons l'égalité et les opérateurs de comparaison aussi : `==`, `!=`, `<`, `>`, `<=`, et `>=`. Cela couvre tous les opérateurs qui renvoient des résultats Booléens excepté les opérateurs logiques `and` et `or`. Puisque ceux-là ont besoin de court-circuiter (basiquement faire un peu de contrôle de flux) nous ne sommes pas prêts pour eux encore.
 
-Here are the new instructions for those operators:
+Voici les nouvelles instructions pour ce opérateurs :
 
 ^code comparison-ops (1 before, 1 after)
 
-Wait, only three? What about `!=`, `<=`, and `>=`? We could create instructions
-for those too. Honestly, the VM would execute faster if we did, so we *should*
-do that if the goal is performance.
+Attendez, seulement trois ? Quoi à propos de `!=`, `<=`, et `>=` ? Nous pourrions créer des instructions pour ceux-là aussi. Honnêtement, la VM s'exécuterait plus vite si nous le faisions, donc nous _devrions_ faire ça si le but est la performance.
 
-But my main goal is to teach you about bytecode compilers. I want you to start
-internalizing the idea that the bytecode instructions don't need to closely
-follow the user's source code. The VM has total freedom to use whatever
-instruction set and code sequences it wants as long as they have the right
-user-visible behavior.
+Mais mon but principal est de vous enseigner à propos des compilateurs bytecode. Je veux que vous commenciez à internaliser l'idée que les instructions bytecode n'ont pas besoin de suivre de près le code source de l'utilisateur. La VM a une liberté totale d'utiliser n'importe quel jeu d'instructions et séquences de code qu'elle veut tant qu'ils ont le bon comportement visible par l'utilisateur.
 
-The expression `a != b` has the same semantics as `!(a == b)`, so the compiler
-is free to compile the former as if it were the latter. Instead of a dedicated
-`OP_NOT_EQUAL` instruction, it can output an `OP_EQUAL` followed by an `OP_NOT`.
-Likewise, `a <= b` is the <span name="same">same</span> as `!(a > b)` and `a >=
-b` is `!(a < b)`. Thus, we only need three new instructions.
+L'expression `a != b` a la même sémantique que `!(a == b)`, donc le compilateur est libre de compiler la première comme si c'était la seconde. Au lieu d'une instruction `OP_NOT_EQUAL` dédiée, il peut sortir un `OP_EQUAL` suivi par un `OP_NOT`. De même, `a <= b` est la <span name="same">même</span> chose que `!(a > b)` et `a >= b` est `!(a < b)`. Ainsi, nous avons seulement besoin de trois nouvelles instructions.
 
 <aside name="same" class="bottom">
 
-*Is* `a <= b` always the same as `!(a > b)`? According to [IEEE 754][], all
-comparison operators return false when an operand is NaN. That means `NaN <= 1`
-is false and `NaN > 1` is also false. But our desugaring assumes the latter is
-always the negation of the former.
+_Est-ce que_ `a <= b` est toujours la même chose que `!(a > b)` ? Selon [IEEE 754][], tous les opérateurs de comparaison renvoient faux quand un opérande est NaN. Cela signifie que `NaN <= 1` est faux et `NaN > 1` est aussi faux. Mais notre désucrage suppose que ce dernier est toujours la négation du premier.
 
-For the book, we won't get hung up on this, but these kinds of details will
-matter in your real language implementations.
+Pour le livre, nous ne nous bloquerons pas là-dessus, mais ces genres de détails compteront dans vos implémentations de langage réelles.
 
 [ieee 754]: https://en.wikipedia.org/wiki/IEEE_754
 
 </aside>
 
-Over in the parser, though, we do have six new operators to slot into the parse
-table. We use the same `binary()` parser function from before. Here's the row
-for `!=`:
+Là-bas dans le parseur, cependant, nous avons six nouveaux opérateurs à insérer dans la table de parsing. Nous utilisons la même fonction de parseur `binary()` d'avant. Voici la ligne pour `!=` :
 
 ^code table-equal (1 before, 1 after)
 
-The remaining five operators are a little farther down in the table.
+Les cinq opérateurs restants sont un peu plus bas dans la table.
 
 ^code table-comparisons (1 before, 1 after)
 
-Inside `binary()` we already have a switch to generate the right bytecode for
-each token type. We add cases for the six new operators.
+À l'intérieur de `binary()` nous avons déjà un switch pour générer le bon bytecode pour chaque type de token. Nous ajoutons des cas pour les six nouveaux opérateurs.
 
 ^code comparison-operators (1 before, 1 after)
 
-The `==`, `<`, and `>` operators output a single instruction. The others output
-a pair of instructions, one to evalute the inverse operation, and then an
-`OP_NOT` to flip the result. Six operators for the price of three instructions!
+Les opérateurs `==`, `<`, et `>` sortent une instruction unique. Les autres sortent une paire d'instructions, une pour évaluer l'opération inverse, et ensuite un `OP_NOT` pour inverser le résultat. Six opérateurs pour le prix de trois instructions !
 
-That means over in the VM, our job is simpler. Equality is the most general
-operation.
+Cela signifie que là-bas dans la VM, notre travail est plus simple. L'égalité est l'opération la plus générale.
 
 ^code interpret-equal (1 before, 1 after)
 
-You can evaluate `==` on any pair of objects, even objects of different types.
-There's enough complexity that it makes sense to shunt that logic over to a
-separate function. That function always returns a C `bool`, so we can safely
-wrap the result in a `BOOL_VAL`. The function relates to Values, so it lives
-over in the "value" module.
+Vous pouvez évaluer `==` sur n'importe quelle paire d'objets, même des objets de types différents. Il y a assez de complexité pour que cela ait du sens de déporter cette logique vers une fonction séparée. Cette fonction renvoie toujours un `bool` C, donc nous pouvons emballer en toute sécurité le résultat dans une `BOOL_VAL`. La fonction se rapporte aux Values, donc elle vit là-bas dans le module "value".
 
 ^code values-equal-h (2 before, 1 after)
 
-And here's the implementation:
+Et voici l'implémentation :
 
 ^code values-equal
 
-First, we check the types. If the Values have <span
-name="equal">different</span> types, they are definitely not equal. Otherwise,
-we unwrap the two Values and compare them directly.
+D'abord, nous vérifions les types. Si les Values ont des types <span name="equal">différents</span>, elles ne sont définitivement pas égales. Sinon, nous déballons les deux Values et les comparons directement.
 
 <aside name="equal">
 
-Some languages have "implicit conversions" where values of different types may
-be considered equal if one can be converted to the other's type. For example,
-the number 0 is equivalent to the string "0" in JavaScript. This looseness was a
-large enough source of pain that JS added a separate "strict equality" operator,
-`===`.
+Certains langages ont des "conversions implicites" où des valeurs de types différents peuvent être considérées égales si l'une peut être convertie vers le type de l'autre. Par exemple, le nombre 0 est équivalent à la chaîne "0" en JavaScript. Ce relâchement était une source de douleur assez grande pour que JS ajoute un opérateur d'"égalité stricte" séparé, `===`.
 
-PHP considers the strings "1" and "01" to be equivalent because both can be
-converted to equivalent numbers, though the ultimate reason is because PHP was
-designed by a Lovecraftian eldritch god to destroy the mind.
+PHP considère les chaînes "1" et "01" comme étant équivalentes parce que les deux peuvent être converties en nombres équivalents, bien que la raison ultime soit parce que PHP a été conçu par un dieu ancien lovecraftien pour détruire l'esprit.
 
-Most dynamically typed languages that have separate integer and floating-point
-number types consider values of different number types equal if the numeric
-values are the same (so, say, 1.0 is equal to 1), though even that seemingly
-innocuous convenience can bite the unwary.
+La plupart des langages typés dynamiquement qui ont des types nombre entier et à virgule flottante séparés considèrent les valeurs de types de nombre différents égales si les valeurs numériques sont les mêmes (donc, disons, 1.0 est égal à 1), bien que même cette commodité apparemment inoffensive puisse mordre les imprudents.
 
 </aside>
 
-For each value type, we have a separate case that handles comparing the value
-itself. Given how similar the cases are, you might wonder why we can't simply
-`memcmp()` the two Value structs and be done with it. The problem is that
-because of padding and different-sized union fields, a Value contains unused
-bits. C gives no guarantee about what is in those, so it's possible that two
-equal Values actually differ in memory that isn't used.
+Pour chaque type de valeur, nous avons un cas séparé qui gère la comparaison de la valeur elle-même. Étant donné combien les cas sont similaires, vous pourriez vous demander pourquoi nous ne pouvons pas simplement `memcmp()` les deux structs Value et en avoir fini avec ça. Le problème est qu'à cause du remplissage et des champs d'union de tailles différentes, une Value contient des bits inutilisés. C ne donne aucune garantie sur ce qui est dans ceux-ci, donc il est possible que deux Values égales diffèrent en fait dans la mémoire qui n'est pas utilisée.
 
-<img src="image/types-of-values/memcmp.png" alt="The memory respresentations of two equal values that differ in unused bytes." />
+<img src="image/types-of-values/memcmp.png" alt="Les représentations mémoire de deux valeurs égales qui diffèrent dans les octets inutilisés." />
 
-(You wouldn't believe how much pain I went through before learning this fact.)
+(Vous ne croiriez pas combien de douleur j'ai traversée avant d'apprendre ce fait.)
 
-Anyway, as we add more types to clox, this function will grow new cases. For
-now, these three are sufficient. The other comparison operators are easier since
-they work only on numbers.
+Quoi qu'il en soit, alors que nous ajoutons plus de types à clox, cette fonction grandira de nouveaux cas. Pour l'instant, ces trois sont suffisants. Les autres opérateurs de comparaison sont plus faciles puisqu'ils fonctionnent seulement sur les nombres.
 
 ^code interpret-comparison (3 before, 1 after)
 
-We already extended the `BINARY_OP` macro to handle operators that return
-non-numeric types. Now we get to use that. We pass in `BOOL_VAL` since the
-result value type is Boolean. Otherwise, it's no different from plus or minus.
+Nous avons déjà étendu la macro `BINARY_OP` pour gérer les opérateurs qui renvoient des types non-numériques. Maintenant nous pouvons utiliser cela. Nous passons `BOOL_VAL` puisque le type de valeur résultat est Booléen. Sinon, ce n'est pas différent de plus ou moins.
 
-As always, the coda to today's aria is disassembling the new instructions.
+Comme toujours, la coda de l'aria d'aujourd'hui est de désassembler les nouvelles instructions.
 
 ^code disassemble-comparison (2 before, 1 after)
 
-With that, our numeric calculator has become something closer to a general
-expression evaluator. Fire up clox and type in:
+Avec cela, notre calculatrice numérique est devenue quelque chose de plus proche d'un évaluateur d'expressions général. Démarrez clox et tapez :
 
 ```lox
 !(5 - 4 > 3 * 2 == !nil)
 ```
 
-OK, I'll admit that's maybe not the most *useful* expression, but we're making
-progress. We have one missing built-in type with its own literal form: strings.
-Those are much more complex because strings can vary in size. That tiny
-difference turns out to have implications so large that we give strings [their
-very own chapter][strings].
+OK, j'admettrai que ce n'est peut-être pas l'expression la plus _utile_, mais nous faisons des progrès. Nous avons un type intégré manquant avec sa propre forme littérale : les chaînes. Celles-ci sont bien plus complexes parce que les chaînes peuvent varier en taille. Cette minuscule différence s'avère avoir des implications si grandes que nous donnons aux chaînes [leur propre chapitre][strings].
 
-[strings]: strings.html
+[strings]: chaînes-de-caractères.html
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1. We could reduce our binary operators even further than we did here. Which
-   other instructions can you eliminate, and how would the compiler cope with
-   their absence?
+1. Nous pourrions réduire nos opérateurs binaires encore plus loin que nous l'avons fait ici. Quelles autres instructions pouvez-vous éliminer, et comment le compilateur se débrouillerait-il avec leur absence ?
 
-2. Conversely, we can improve the speed of our bytecode VM by adding more
-   specific instructions that correspond to higher-level operations. What
-   instructions would you define to speed up the kind of user code we added
-   support for in this chapter?
+2. Inversement, nous pouvons améliorer la vitesse de notre VM bytecode en ajoutant plus d'instructions spécifiques qui correspondent à des opérations de plus haut niveau. Quelles instructions définiriez-vous pour accélérer le genre de code utilisateur pour lequel nous avons ajouté le support dans ce chapitre ?
 
 </div>

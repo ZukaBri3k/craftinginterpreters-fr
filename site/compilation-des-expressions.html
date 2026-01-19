@@ -37,22 +37,21 @@
 <h3><a href="#top">Compilation des expressions<small>17</small></a></h3>
 
 <ul>
-    <li><a href="#single-pass-compilation"><small>17.1</small> Single-Pass Compilation</a></li>
-    <li><a href="#parsing-tokens"><small>17.2</small> Parsing Tokens</a></li>
-    <li><a href="#emitting-bytecode"><small>17.3</small> Emitting Bytecode</a></li>
-    <li><a href="#parsing-prefix-expressions"><small>17.4</small> Parsing Prefix Expressions</a></li>
-    <li><a href="#parsing-infix-expressions"><small>17.5</small> Parsing Infix Expressions</a></li>
-    <li><a href="#a-pratt-parser"><small>17.6</small> A Pratt Parser</a></li>
-    <li><a href="#dumping-chunks"><small>17.7</small> Dumping Chunks</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
-    <li class="end-part"><a href="#design-note"><small>note</small>It&#x27;s Just Parsing</a></li>
+    <li><a href="#compilation-&amp;agrave;-une-passe"><small>17.1</small> Compilation &amp;agrave; Une Passe</a></li>
+    <li><a href="#parser-les-tokens"><small>17.2</small> Parser les Tokens</a></li>
+    <li><a href="#émettre-du-bytecode"><small>17.3</small> Émettre du Bytecode</a></li>
+    <li><a href="#parser-les-expressions-préfixes"><small>17.4</small> Parser les Expressions Préfixes</a></li>
+    <li><a href="#parser-les-expressions-infixes"><small>17.5</small> Parser les Expressions Infixes</a></li>
+    <li><a href="#un-parseur-pratt"><small>17.6</small> Un Parseur Pratt</a></li>
+    <li><a href="#dumper-les-morceaux"><small>17.7</small> Dumper les Morceaux</a></li>
+    <li><a href="#défis"><small>17.8</small> Défis</a></li>
+    <li><a href="#note-de-conception--cest-juste-du-parsing"><small>17.9</small> Note de Conception : C&#x27;est Juste du Parsing</a></li>
 </ul>
 
 
 <div class="prev-next">
     <a href="analyse-à-la-demande.html" title="Analyse à la demande" class="left">&larr;&nbsp;Previous</a>
-    <a href="a-bytecode-virtual-machine.html" title="A Bytecode Virtual Machine">&uarr;&nbsp;Up</a>
+    <a href="une-machine-virtuelle-à-bytecode.html" title="Une machine virtuelle à bytecode">&uarr;&nbsp;Up</a>
     <a href="types-de-valeurs.html" title="Types de valeurs" class="right">Next&nbsp;&rarr;</a>
 </div>  </div>
 </nav>
@@ -71,22 +70,21 @@
 <h3><a href="#top">Compilation des expressions<small>17</small></a></h3>
 
 <ul>
-    <li><a href="#single-pass-compilation"><small>17.1</small> Single-Pass Compilation</a></li>
-    <li><a href="#parsing-tokens"><small>17.2</small> Parsing Tokens</a></li>
-    <li><a href="#emitting-bytecode"><small>17.3</small> Emitting Bytecode</a></li>
-    <li><a href="#parsing-prefix-expressions"><small>17.4</small> Parsing Prefix Expressions</a></li>
-    <li><a href="#parsing-infix-expressions"><small>17.5</small> Parsing Infix Expressions</a></li>
-    <li><a href="#a-pratt-parser"><small>17.6</small> A Pratt Parser</a></li>
-    <li><a href="#dumping-chunks"><small>17.7</small> Dumping Chunks</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
-    <li class="end-part"><a href="#design-note"><small>note</small>It&#x27;s Just Parsing</a></li>
+    <li><a href="#compilation-&amp;agrave;-une-passe"><small>17.1</small> Compilation &amp;agrave; Une Passe</a></li>
+    <li><a href="#parser-les-tokens"><small>17.2</small> Parser les Tokens</a></li>
+    <li><a href="#émettre-du-bytecode"><small>17.3</small> Émettre du Bytecode</a></li>
+    <li><a href="#parser-les-expressions-préfixes"><small>17.4</small> Parser les Expressions Préfixes</a></li>
+    <li><a href="#parser-les-expressions-infixes"><small>17.5</small> Parser les Expressions Infixes</a></li>
+    <li><a href="#un-parseur-pratt"><small>17.6</small> Un Parseur Pratt</a></li>
+    <li><a href="#dumper-les-morceaux"><small>17.7</small> Dumper les Morceaux</a></li>
+    <li><a href="#défis"><small>17.8</small> Défis</a></li>
+    <li><a href="#note-de-conception--cest-juste-du-parsing"><small>17.9</small> Note de Conception : C&#x27;est Juste du Parsing</a></li>
 </ul>
 
 
 <div class="prev-next">
     <a href="analyse-à-la-demande.html" title="Analyse à la demande" class="left">&larr;&nbsp;Previous</a>
-    <a href="a-bytecode-virtual-machine.html" title="A Bytecode Virtual Machine">&uarr;&nbsp;Up</a>
+    <a href="une-machine-virtuelle-à-bytecode.html" title="Une machine virtuelle à bytecode">&uarr;&nbsp;Up</a>
     <a href="types-de-valeurs.html" title="Types de valeurs" class="right">Next&nbsp;&rarr;</a>
 </div>  </div>
   <a id="expand-nav">≡</a>
@@ -99,40 +97,20 @@
   <h1>Compilation des expressions</h1>
 
 <blockquote>
-<p>In the middle of the journey of our life I found myself within a dark woods
-where the straight way was lost.</p>
-<p><cite>Dante Alighieri, <em>Inferno</em></cite></p>
+<p>Au milieu du chemin de notre vie je me retrouvai par une forêt obscure où la voie droite était perdue.</p>
+<p><cite>Dante Alighieri, <em>Enfer</em></cite></p>
 </blockquote>
-<p>This chapter is exciting for not one, not two, but <em>three</em> reasons. First, it
-provides the final segment of our VM&rsquo;s execution pipeline. Once in place, we can
-plumb the user&rsquo;s source code from scanning all the way through to executing it.</p><img src="image/compiling-expressions/pipeline.png" alt="Lowering the 'compiler' section of pipe between 'scanner' and 'VM'." />
-<p>Second, we get to write an actual, honest-to-God <em>compiler</em>. It parses source
-code and outputs a low-level series of binary instructions. Sure, it&rsquo;s <span
-name="wirth">bytecode</span> and not some chip&rsquo;s native instruction set, but
-it&rsquo;s way closer to the metal than jlox was. We&rsquo;re about to be real language
-hackers.</p>
+<p>Ce chapitre est excitant pour non pas une, non pas deux, mais <em>trois</em> raisons. Premièrement, il fournit le segment final du pipeline d&rsquo;exécution de notre VM. Une fois en place, nous pouvons tuyauter le code source de l&rsquo;utilisateur depuis le scan tout le long jusqu&rsquo;à son exécution.</p><img src="image/compiling-expressions/pipeline.png" alt="Abaisser la section 'compilateur' du tuyau entre 'scanner' et 'VM'." />
+<p>Deuxièmement, nous pouvons écrire un <em>compilateur</em> réel, authentique. Il parse le code source et sort une série d&rsquo;instructions binaires de bas niveau. Bien sûr, c&rsquo;est du <span name="wirth">bytecode</span> et pas le jeu d&rsquo;instructions natif d&rsquo;une puce, mais c&rsquo;est bien plus proche du métal que ne l&rsquo;était jlox. Nous sommes sur le point d&rsquo;être de vrais hackers de langage.</p>
 <aside name="wirth">
-<p>Bytecode was good enough for Niklaus Wirth, and no one questions his street
-cred.</p>
+<p>Le bytecode était assez bon pour Niklaus Wirth, et personne ne remet en question sa crédibilité de rue.</p>
 </aside>
-<p><span name="pratt">Third</span> and finally, I get to show you one of my
-absolute favorite algorithms: Vaughan Pratt&rsquo;s &ldquo;top-down operator precedence
-parsing&rdquo;. It&rsquo;s the most elegant way I know to parse expressions. It gracefully
-handles prefix operators, postfix, infix, <em>mixfix</em>, any kind of <em>-fix</em> you got.
-It deals with precedence and associativity without breaking a sweat. I love it.</p>
+<p><span name="pratt">Troisièmement</span> et finalement, je peux vous montrer l&rsquo;un de mes algorithmes favoris absolus : l&rsquo;&ldquo;analyse syntaxique à précédence d&rsquo;opérateur descendante&rdquo; de Vaughan Pratt. C&rsquo;est la façon la plus élégante que je connaisse de parser des expressions. Elle gère avec grâce les opérateurs préfixes, postfixes, infixes, <em>mixfixes</em>, n&rsquo;importe quel genre de <em>-fixe</em> que vous avez. Elle traite la précédence et l&rsquo;associativité sans transpirer. J&rsquo;adore ça.</p>
 <aside name="pratt">
-<p>Pratt parsers are a sort of oral tradition in industry. No compiler or language
-book I&rsquo;ve read teaches them. Academia is very focused on generated parsers, and
-Pratt&rsquo;s technique is for handwritten ones, so it gets overlooked.</p>
-<p>But in production compilers, where hand-rolled parsers are common, you&rsquo;d be
-surprised how many people know it. Ask where they learned it, and it&rsquo;s always,
-&ldquo;Oh, I worked on this compiler years ago and my coworker said they took it from
-this old front end<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>&rdquo;</p>
+<p>Les parseurs Pratt sont une sorte de tradition orale dans l&rsquo;industrie. Aucun livre de compilateur ou de langage que j&rsquo;ai lu ne les enseigne. Le monde académique est très focalisé sur les parseurs générés, et la technique de Pratt est pour ceux écrits à la main, donc elle est négligée.</p>
+<p>Mais dans les compilateurs en production, où les parseurs roulés à la main sont communs, vous seriez surpris de combien de gens la connaissent. Demandez où ils l&rsquo;ont apprise, et c&rsquo;est toujours, &ldquo;Oh, j&rsquo;ai travaillé sur ce compilateur il y a des années et mon collègue a dit qu&rsquo;ils l&rsquo;avaient prise de ce vieux front end<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>&rdquo;</p>
 </aside>
-<p>As usual, before we get to the fun stuff, we&rsquo;ve got some preliminaries to work
-through. You have to eat your vegetables before you get dessert. First, let&rsquo;s
-ditch that temporary scaffolding we wrote for testing the scanner and replace it
-with something more useful.</p>
+<p>Comme d&rsquo;habitude, avant que nous arrivions aux trucs amusants, nous avons quelques préliminaires à travailler. Vous devez manger vos légumes avant d&rsquo;avoir le dessert. D&rsquo;abord, abandonnons cet échafaudage temporaire que nous avons écrit pour tester le scanner et remplaçons-le par quelque chose de plus utile.</p>
 <div class="codehilite"><pre class="insert-before">InterpretResult interpret(const char* source) {
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>interpret</em>()<br>
@@ -156,14 +134,8 @@ replace 2 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>interpret</em>(), replace 2 lines</div>
 
-<p>We create a new empty chunk and pass it over to the compiler. The compiler will
-take the user&rsquo;s program and fill up the chunk with bytecode. At least, that&rsquo;s
-what it will do if the program doesn&rsquo;t have any compile errors. If it does
-encounter an error, <code>compile()</code> returns <code>false</code> and we discard the unusable
-chunk.</p>
-<p>Otherwise, we send the completed chunk over to the VM to be executed. When the
-VM finishes, we free the chunk and we&rsquo;re done. As you can see, the signature to
-<code>compile()</code> is different now.</p>
+<p>Nous créons un nouveau morceau vide et le passons au compilateur. Le compilateur prendra le programme de l&rsquo;utilisateur et remplira le morceau avec du bytecode. Au moins, c&rsquo;est ce qu&rsquo;il fera si le programme n&rsquo;a aucune erreur de compilation. S&rsquo;il rencontre une erreur, <code>compile()</code> renvoie <code>false</code> et nous jetons le morceau inutilisable.</p>
+<p>Sinon, nous envoyons le morceau complété à la VM pour être exécuté. Quand la VM finit, nous libérons le morceau et nous avons fini. Comme vous pouvez le voir, la signature de <code>compile()</code> est différente maintenant.</p>
 <div class="codehilite"><pre class="insert-before">#define clox_compiler_h
 
 </pre><div class="source-file"><em>compiler.h</em><br>
@@ -177,9 +149,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.h</em>, replace 1 line</div>
 
-<p>We pass in the chunk where the compiler will write the code, and then
-<code>compile()</code> returns whether or not compilation succeeded. We make the same
-change to the signature in the implementation.</p>
+<p>Nous passons le morceau où le compilateur écrira le code, et ensuite <code>compile()</code> renvoie si la compilation a réussi ou non. Nous faisons le même changement à la signature dans l&rsquo;implémentation.</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;scanner.h&quot;
 
 </pre><div class="source-file"><em>compiler.c</em><br>
@@ -190,9 +160,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, function <em>compile</em>(), replace 1 line</div>
 
-<p>That call to <code>initScanner()</code> is the only line that survives this chapter. Rip
-out the temporary code we wrote to test the scanner and replace it with these
-three lines:</p>
+<p>Cet appel à <code>initScanner()</code> est la seule ligne qui survit à ce chapitre. Arrachez le code temporaire que nous avons écrit pour tester le scanner et remplacez-le par ces trois lignes :</p>
 <div class="codehilite"><pre class="insert-before">  initScanner(source);
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>compile</em>()<br>
@@ -204,69 +172,27 @@ replace 13 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>compile</em>(), replace 13 lines</div>
 
-<p>The call to <code>advance()</code> &ldquo;primes the pump&rdquo; on the scanner. We&rsquo;ll see what it does
-soon. Then we parse a single expression. We aren&rsquo;t going to do statements yet,
-so that&rsquo;s the only subset of the grammar we support. We&rsquo;ll revisit this when we
-<a href="global-variables.html">add statements in a few chapters</a>. After we compile the expression, we
-should be at the end of the source code, so we check for the sentinel EOF token.</p>
-<p>We&rsquo;re going to spend the rest of the chapter making this function work,
-especially that little <code>expression()</code> call. Normally, we&rsquo;d dive right into that
-function definition and work our way through the implementation from top to
-bottom.</p>
-<p>This chapter is <span name="blog">different</span>. Pratt&rsquo;s parsing technique is
-remarkably simple once you have it all loaded in your head, but it&rsquo;s a little
-tricky to break into bite-sized pieces. It&rsquo;s recursive, of course, which is part
-of the problem. But it also relies on a big table of data. As we build up the
-algorithm, that table grows additional columns.</p>
+<p>L&rsquo;appel à <code>advance()</code> &ldquo;amorce la pompe&rdquo; sur le scanner. Nous verrons ce qu&rsquo;il fait bientôt. Ensuit nous parsons une unique expression. Nous n&rsquo;allons pas faire les instructions (statements) encore, donc c&rsquo;est le seul sous-ensemble de la grammaire que nous supportons. Nous revisiterons cela quand nous <a href="variables-globales.html">ajouterons les instructions dans quelques chapitres</a>. Après que nous ayons compilé l&rsquo;expression, nous devrions être à la fin du code source, donc nous vérifions le token sentinelle EOF.</p>
+<p>Nous allons passer le reste du chapitre à faire marcher cette fonction, spécialement ce petit appel <code>expression()</code>. Normalement, nous plongerions directement dans cette définition de fonction et travaillerions notre chemin à travers l&rsquo;implémentation de haut en bas.</p>
+<p>Ce chapitre est <span name="blog">différent</span>. La technique de parsing de Pratt est remarquablement simple une fois que vous l&rsquo;avez toute chargée dans votre tête, mais c&rsquo;est un peu délicat de la casser en morceaux de taille bouchée. Elle est récursive, bien sûr, ce qui est une partie du problème. Mais elle repose aussi sur une grosse table de données. Alors que nous construisons l&rsquo;algorithme, cette table grandit de colonnes additionnelles.</p>
 <aside name="blog">
-<p>If this chapter isn&rsquo;t clicking with you and you&rsquo;d like another take on the
-concepts, I wrote an article that teaches the same algorithm but using Java and
-an object-oriented style: <a href="http://journal.stuffwithstuff.com/2011/03/19/pratt-parsers-expression-parsing-made-easy/">&ldquo;Pratt Parsing: Expression Parsing Made Easy&rdquo;</a>.</p>
+<p>Si ce chapitre ne clique pas avec vous et que vous aimeriez une autre prise sur les concepts, j&rsquo;ai écrit un article qui enseigne le même algorithme mais en utilisant Java et un style orienté objet : <a href="http://journal.stuffwithstuff.com/2011/03/19/pratt-parsers-expression-parsing-made-easy/">&ldquo;Pratt Parsing: Expression Parsing Made Easy&rdquo;</a>.</p>
 </aside>
-<p>I don&rsquo;t want to revisit 40-something lines of code each time we extend the
-table. So we&rsquo;re going to work our way into the core of the parser from the
-outside and cover all of the surrounding bits before we get to the juicy center.
-This will require a little more patience and mental scratch space than most
-chapters, but it&rsquo;s the best I could do.</p>
-<h2><a href="#single-pass-compilation" id="single-pass-compilation"><small>17&#8202;.&#8202;1</small>Single-Pass Compilation</a></h2>
-<p>A compiler has roughly two jobs. It parses the user&rsquo;s source code to understand
-what it means. Then it takes that knowledge and outputs low-level instructions
-that produce the same semantics. Many languages split those two roles into two
-separate <span name="passes">passes</span> in the implementation. A parser
-produces an AST<span class="em">&mdash;</span>just like jlox does<span class="em">&mdash;</span>and then a code generator traverses
-the AST and outputs target code.</p>
+<p>Je ne veux pas revisiter 40 et quelques lignes de code chaque fois que nous étendons la table. Donc nous allons travailler notre chemin vers le cœur du parseur depuis l&rsquo;extérieur et couvrir tous les bouts environnants avant que nous arrivions au centre juteux. Cela exigera un peu plus de patience et d&rsquo;espace de brouillon mental que la plupart des chapitres, mais c&rsquo;est le mieux que je pouvais faire.</p>
+<h2><a href="#compilation-&agrave;-une-passe" id="compilation-&agrave;-une-passe"><small>17&#8202;.&#8202;1</small>Compilation &agrave; Une Passe</a></h2>
+<p>Un compilateur a grossièrement deux travaux. Il parse le code source de l&rsquo;utilisateur pour comprendre ce qu&rsquo;il signifie. Ensuite il prend cette connaissance et sort des instructions de bas niveau qui produisent la même sémantique. Beaucoup de langages séparent ces deux rôles en deux <span name="passes">passes</span> séparées dans l&rsquo;implémentation. Un parseur produit un AST<span class="em">&mdash;</span>juste comme jlox le fait<span class="em">&mdash;</span>et ensuite un générateur de code traverse l&rsquo;AST et sort le code cible.</p>
 <aside name="passes">
-<p>In fact, most sophisticated optimizing compilers have a heck of a lot more than
-two passes. Determining not just <em>what</em> optimization passes to have, but how to
-order them to squeeze the most performance out of the compiler<span class="em">&mdash;</span>since the
-optimizations often interact in complex ways<span class="em">&mdash;</span>is somewhere between an &ldquo;open
-area of research&rdquo; and a &ldquo;dark art&rdquo;.</p>
+<p>En fait, la plupart des compilateurs optimisants sophistiqués ont un sacré paquet de plus que deux passes. Déterminer non seulement <em>quelles</em> passes d&rsquo;optimisation avoir, mais comment les ordonner pour presser le plus de performance hors du compilateur<span class="em">&mdash;</span>puisque les optimisations interagissent souvent de manières complexes<span class="em">&mdash;</span>est quelque part entre une &ldquo;zone ouverte de recherche&rdquo; et un &ldquo;art noir&rdquo;.</p>
 </aside>
-<p>In clox, we&rsquo;re taking an old-school approach and merging these two passes into
-one. Back in the day, language hackers did this because computers literally
-didn&rsquo;t have enough memory to store an entire source file&rsquo;s AST. We&rsquo;re doing it
-because it keeps our compiler simpler, which is a real asset when programming in
-C.</p>
-<p>Single-pass compilers like we&rsquo;re going to build don&rsquo;t work well for all
-languages. Since the compiler has only a peephole view into the user&rsquo;s program
-while generating code, the language must be designed such that you don&rsquo;t need
-much surrounding context to understand a piece of syntax. Fortunately, tiny,
-dynamically typed Lox is <span name="lox">well-suited</span> to that.</p>
+<p>Dans clox, nous prenons une approche vieille méthode et fusionnons ces deux passes en une. À l&rsquo;époque, les hackers de langage faisaient cela parce que les ordinateurs n&rsquo;avaient littéralement pas assez de mémoire pour stocker l&rsquo;AST d&rsquo;un fichier source entier. Nous le faisons parce que cela garde notre compilateur plus simple, ce qui est un vrai atout quand on programme en C.</p>
+<p>Les compilateurs à une passe comme nous allons construire ne fonctionnent pas bien pour tous les langages. Puisque le compilateur a seulement une vue par le trou de la serrure dans le programme de l&rsquo;utilisateur tout en générant du code, le langage doit être conçu de telle sorte que vous n&rsquo;avez pas besoin de beaucoup de contexte environnant pour comprendre un morceau de syntaxe. Heureusement, le minuscule Lox typé dynamiquement est <span name="lox">bien adapté</span> à cela.</p>
 <aside name="lox">
-<p>Not that this should come as much of a surprise. I did design the language
-specifically for this book after all.</p><img src="image/compiling-expressions/keyhole.png" alt="Peering through a keyhole at 'var x;'" />
+<p>Pas que cela devrait venir comme une grosse surprise. J&rsquo;ai conçu le langage spécifiquement pour ce livre après tout.</p><img src="image/compiling-expressions/keyhole.png" alt="Regardant à travers un trou de serrure à 'var x;'" />
 </aside>
-<p>What this means in practical terms is that our &ldquo;compiler&rdquo; C module has
-functionality you&rsquo;ll recognize from jlox for parsing<span class="em">&mdash;</span>consuming tokens,
-matching expected token types, etc. And it also has functions for code gen<span class="em">&mdash;</span>emitting bytecode and adding constants to the destination chunk. (And it means
-I&rsquo;ll use &ldquo;parsing&rdquo; and &ldquo;compiling&rdquo; interchangeably throughout this and later
-chapters.)</p>
-<p>We&rsquo;ll build the parsing and code generation halves first. Then we&rsquo;ll stitch them
-together with the code in the middle that uses Pratt&rsquo;s technique to parse Lox&rsquo;s
-particular grammar and output the right bytecode.</p>
-<h2><a href="#parsing-tokens" id="parsing-tokens"><small>17&#8202;.&#8202;2</small>Parsing Tokens</a></h2>
-<p>First up, the front half of the compiler. This function&rsquo;s name should sound
-familiar.</p>
+<p>Ce que cela signifie en termes pratiques est que notre module C &ldquo;compilateur&rdquo; a une fonctionnalité que vous reconnaîtrez de jlox pour parser<span class="em">&mdash;</span>consommer des tokens, correspondre des types de token attendus, etc. Et il a aussi des fonctions pour la génération de code<span class="em">&mdash;</span>émettre du bytecode et ajouter des constantes au morceau de destination. (Et cela signifie que j&rsquo;utiliserai &ldquo;parser&rdquo; et &ldquo;compiler&rdquo; de manière interchangeable à travers ce chapitre et les suivants.)</p>
+<p>Nous construirons les moitiés de parsing et de génération de code d&rsquo;abord. Ensuite nous les coudrons ensemble avec le code au milieu qui utilise la technique de Pratt pour parser la grammaire particulière de Lox et sortir le bon bytecode.</p>
+<h2><a href="#parser-les-tokens" id="parser-les-tokens"><small>17&#8202;.&#8202;2</small>Parser les Tokens</a></h2>
+<p>En premier, la moitié avant du compilateur. Le nom de cette fonction devrait sembler familier.</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;scanner.h&quot;
 </pre><div class="source-file"><em>compiler.c</em></div>
 <pre class="insert">
@@ -284,16 +210,9 @@ familiar.</p>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em></div>
 
-<p>Just like in jlox, it steps forward through the token stream. It asks the
-scanner for the next token and stores it for later use. Before doing that, it
-takes the old <code>current</code> token and stashes that in a <code>previous</code> field. That will
-come in handy later so that we can get at the lexeme after we match a token.</p>
-<p>The code to read the next token is wrapped in a loop. Remember, clox&rsquo;s scanner
-doesn&rsquo;t report lexical errors. Instead, it creates special <em>error tokens</em> and
-leaves it up to the parser to report them. We do that here.</p>
-<p>We keep looping, reading tokens and reporting the errors, until we hit a
-non-error one or reach the end. That way, the rest of the parser sees only valid
-tokens. The current and previous token are stored in this struct:</p>
+<p>Juste comme dans jlox, elle avance d&rsquo;un pas à travers le flux de tokens. Elle demande au scanner le prochain token et le stocke pour une utilisation ultérieure. Avant de faire cela, elle prend le vieux token <code>current</code> et planque ça dans un champ <code>previous</code>. Cela deviendra utile plus tard pour que nous puissions accéder au lexème après que nous ayons correspondu un token.</p>
+<p>Le code pour lire le prochain token est enveloppé dans une boucle. Rappelez-vous, le scanner de clox ne rapporte pas les erreurs lexicales. Au lieu de cela, il crée des <em>tokens d&rsquo;erreur</em> spéciaux et laisse au parseur le soin de les rapporter. Nous faisons cela ici.</p>
+<p>Nous continuons de boucler, lisant des tokens et rapportant les erreurs, jusqu&rsquo;à ce nous touchions un non-erreur ou atteignions la fin. De cette façon, le reste du parseur voit seulement des tokens valides. Le token courant et le précédent sont stockés dans cette struct :</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;scanner.h&quot;
 </pre><div class="source-file"><em>compiler.c</em></div>
 <pre class="insert">
@@ -310,12 +229,9 @@ static void advance() {
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em></div>
 
-<p>Like we did in other modules, we have a single global variable of this struct
-type so we don&rsquo;t need to pass the state around from function to function in the
-compiler.</p>
-<h3><a href="#handling-syntax-errors" id="handling-syntax-errors"><small>17&#8202;.&#8202;2&#8202;.&#8202;1</small>Handling syntax errors</a></h3>
-<p>If the scanner hands us an error token, we need to actually tell the user. That
-happens using this:</p>
+<p>Comme nous l&rsquo;avons fait dans d&rsquo;autres modules, nous avons une variable globale unique de ce type struct pour que nous n&rsquo;ayons pas besoin de passer l&rsquo;état de fonction en fonction dans le compilateur.</p>
+<h3><a href="#gestion-des-erreurs-de-syntaxe" id="gestion-des-erreurs-de-syntaxe"><small>17&#8202;.&#8202;2&#8202;.&#8202;1</small>Gestion des erreurs de syntaxe</a></h3>
+<p>Si le scanner nous passe un token d&rsquo;erreur, nous devons dire réellement à l&rsquo;utilisateur. Cela arrive en utilisant ceci :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after variable <em>parser</em></div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">errorAtCurrent</span>(<span class="k">const</span> <span class="t">char</span>* <span class="i">message</span>) {
@@ -324,10 +240,7 @@ add after variable <em>parser</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after variable <em>parser</em></div>
 
-<p>We pull the location out of the current token in order to tell the user where
-the error occurred and forward it to <code>errorAt()</code>. More often, we&rsquo;ll report an
-error at the location of the token we just consumed, so we give the shorter name
-to this other function:</p>
+<p>Nous tirons l&rsquo;emplacement hors du token courant afin de dire à l&rsquo;utilisateur où l&rsquo;erreur s&rsquo;est produite et de transférer à <code>errorAt()</code>. Plus souvent, nous rapporterons une erreur à l&rsquo;emplacement du token que nous venons de consommer, donc nous donnons le nom plus court à cette autre fonction :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after variable <em>parser</em></div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">error</span>(<span class="k">const</span> <span class="t">char</span>* <span class="i">message</span>) {
@@ -336,7 +249,7 @@ add after variable <em>parser</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after variable <em>parser</em></div>
 
-<p>The actual work happens here:</p>
+<p>Le travail réel se passe ici :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after variable <em>parser</em></div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">errorAt</span>(<span class="t">Token</span>* <span class="i">token</span>, <span class="k">const</span> <span class="t">char</span>* <span class="i">message</span>) {
@@ -356,10 +269,7 @@ add after variable <em>parser</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after variable <em>parser</em></div>
 
-<p>First, we print where the error occurred. We try to show the lexeme if it&rsquo;s
-human-readable. Then we print the error message itself. After that, we set this
-<code>hadError</code> flag. That records whether any errors occurred during compilation.
-This field also lives in the parser struct.</p>
+<p>D&rsquo;abord, nous imprimons où l&rsquo;erreur s&rsquo;est produite. Nous essayons de montrer le lexème s&rsquo;il est lisible par un humain. Ensuite nous imprimons le message d&rsquo;erreur lui-même. Après cela, nous définissons ce drapeau <code>hadError</code>. Cela enregistre si des erreurs se sont produites durant la compilation. Ce champ vit aussi dans la struct parser.</p>
 <div class="codehilite"><pre class="insert-before">  Token previous;
 </pre><div class="source-file"><em>compiler.c</em><br>
 in struct <em>Parser</em></div>
@@ -368,8 +278,7 @@ in struct <em>Parser</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in struct <em>Parser</em></div>
 
-<p>Earlier I said that <code>compile()</code> should return <code>false</code> if an error occurred. Now
-we can make it do that.</p>
+<p>Plus tôt j&rsquo;ai dit que <code>compile()</code> devrait renvoyer <code>false</code> si une erreur s&rsquo;est produite. Maintenant nous pouvons faire en sorte qu&rsquo;il fasse cela.</p>
 <div class="codehilite"><pre class="insert-before">  consume(TOKEN_EOF, &quot;Expect end of expression.&quot;);
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>compile</em>()</div>
@@ -378,19 +287,10 @@ in <em>compile</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>compile</em>()</div>
 
-<p>I&rsquo;ve got another flag to introduce for error handling. We want to avoid error
-cascades. If the user has a mistake in their code and the parser gets confused
-about where it is in the grammar, we don&rsquo;t want it to spew out a whole pile of
-meaningless knock-on errors after the first one.</p>
-<p>We fixed that in jlox using panic mode error recovery. In the Java interpreter,
-we threw an exception to unwind out of all of the parser code to a point where
-we could skip tokens and resynchronize. We don&rsquo;t have <span
-name="setjmp">exceptions</span> in C. Instead, we&rsquo;ll do a little smoke and
-mirrors. We add a flag to track whether we&rsquo;re currently in panic mode.</p>
+<p>J&rsquo;ai un autre drapeau à introduire pour la gestion d&rsquo;erreur. Nous voulons éviter les cascades d&rsquo;erreurs. Si l&rsquo;utilisateur a une erreur dans son code et que le parseur devient confus sur où il est dans la grammaire, nous ne voulons pas qu&rsquo;il vomisse tout un tas d&rsquo;erreurs consécutives sans signification après la première.</p>
+<p>Nous avons corrigé ça dans jlox en utilisant la récupération d&rsquo;erreur en mode panique. Dans l&rsquo;interpréteur Java, nous levions une exception pour dérouler hors de tout le code du parseur à un point où nous pouvions sauter des tokens et resynchroniser. Nous n&rsquo;avons pas d&rsquo;<span name="setjmp">exceptions</span> en C. Au lieu de cela, nous ferons un peu de fumée et de miroirs. Nous ajoutons un drapeau pour suivre si nous sommes actuellement en mode panique.</p>
 <aside name="setjmp">
-<p>There is <code>setjmp()</code> and <code>longjmp()</code>, but I&rsquo;d rather not go there. Those make it
-too easy to leak memory, forget to maintain invariants, or otherwise have a Very
-Bad Day.</p>
+<p>Il y a <code>setjmp()</code> et <code>longjmp()</code>, mais je préférerais ne pas aller par là. Ceux-là rendent trop facile de fuiter de la mémoire, d&rsquo;oublier de maintenir des invariants, ou autrement d&rsquo;avoir une Très Mauvaise Journée.</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">  bool hadError;
 </pre><div class="source-file"><em>compiler.c</em><br>
@@ -400,7 +300,7 @@ in struct <em>Parser</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in struct <em>Parser</em></div>
 
-<p>When an error occurs, we set it.</p>
+<p>Quand une erreur se produit, nous le définissons.</p>
 <div class="codehilite"><pre class="insert-before">static void errorAt(Token* token, const char* message) {
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>errorAt</em>()</div>
@@ -409,10 +309,7 @@ in <em>errorAt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>errorAt</em>()</div>
 
-<p>After that, we go ahead and keep compiling as normal as if the error never
-occurred. The bytecode will never get executed, so it&rsquo;s harmless to keep on
-trucking. The trick is that while the panic mode flag is set, we simply suppress
-any other errors that get detected.</p>
+<p>Après cela, nous allons de l&rsquo;avant et continuons de compiler comme normal comme si l&rsquo;erreur ne s&rsquo;était jamais produite. Le bytecode ne sera jamais exécuté, donc c&rsquo;est inoffensif de continuer à avancer. Le truc est que tant que le drapeau de mode panique est défini, nous supprimons simplement toute autre erreur qui est détectée.</p>
 <div class="codehilite"><pre class="insert-before">static void errorAt(Token* token, const char* message) {
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>errorAt</em>()</div>
@@ -421,11 +318,8 @@ in <em>errorAt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>errorAt</em>()</div>
 
-<p>There&rsquo;s a good chance the parser will go off in the weeds, but the user won&rsquo;t
-know because the errors all get swallowed. Panic mode ends when the parser
-reaches a synchronization point. For Lox, we chose statement boundaries, so when
-we later add those to our compiler, we&rsquo;ll clear the flag there.</p>
-<p>These new fields need to be initialized.</p>
+<p>Il y a une bonne chance que le parseur aille dans les mauvaises herbes, mais l&rsquo;utilisateur ne le saura pas parce que les erreurs sont toutes avalées. Le mode panique finit quand le parseur atteint un point de synchronisation. Pour Lox, nous avons choisi les frontières d&rsquo;instruction (statement), donc quand nous ajouterons plus tard celles-ci à notre compilateur, nous effacerons le drapeau là.</p>
+<p>Ces nouveaux champs ont besoin d&rsquo;être initialisés.</p>
 <div class="codehilite"><pre class="insert-before">  initScanner(source);
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>compile</em>()</div>
@@ -438,7 +332,7 @@ in <em>compile</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>compile</em>()</div>
 
-<p>And to display the errors, we need a standard header.</p>
+<p>Et pour afficher les erreurs, nous avons besoin d&rsquo;un en-tête standard.</p>
 <div class="codehilite"><pre class="insert-before">#include &lt;stdio.h&gt;
 </pre><div class="source-file"><em>compiler.c</em></div>
 <pre class="insert"><span class="a">#include &lt;stdlib.h&gt;</span>
@@ -448,7 +342,7 @@ in <em>compile</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em></div>
 
-<p>There&rsquo;s one last parsing function, another old friend from jlox.</p>
+<p>Il y a une dernière fonction de parsing, une autre vieille amie de jlox.</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>advance</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">consume</span>(<span class="t">TokenType</span> <span class="i">type</span>, <span class="k">const</span> <span class="t">char</span>* <span class="i">message</span>) {
@@ -462,14 +356,10 @@ add after <em>advance</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>advance</em>()</div>
 
-<p>It&rsquo;s similar to <code>advance()</code> in that it reads the next token. But it also
-validates that the token has an expected type. If not, it reports an error. This
-function is the foundation of most syntax errors in the compiler.</p>
-<p>OK, that&rsquo;s enough on the front end for now.</p>
-<h2><a href="#emitting-bytecode" id="emitting-bytecode"><small>17&#8202;.&#8202;3</small>Emitting Bytecode</a></h2>
-<p>After we parse and understand a piece of the user&rsquo;s program, the next step is to
-translate that to a series of bytecode instructions. It starts with the easiest
-possible step: appending a single byte to the chunk.</p>
+<p>Elle est similaire à <code>advance()</code> en ce qu&rsquo;elle lit le prochain token. Mais elle valide aussi que le token a un type attendu. Si non, elle rapporte une erreur. Cette fonction est la fondation de la plupart des erreurs de syntaxe dans le compilateur.</p>
+<p>OK, c&rsquo;est assez sur le front end pour l&rsquo;instant.</p>
+<h2><a href="#émettre-du-bytecode" id="émettre-du-bytecode"><small>17&#8202;.&#8202;3</small>Émettre du Bytecode</a></h2>
+<p>Après que nous ayons parsé et compris un morceau du programme de l&rsquo;utilisateur, la prochaine étape est de traduire cela vers une série d&rsquo;instructions bytecode. Cela commence avec l&rsquo;étape la plus facile possible : ajouter un seul octet au morceau.</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>consume</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">emitByte</span>(<span class="t">uint8_t</span> <span class="i">byte</span>) {
@@ -478,12 +368,8 @@ add after <em>consume</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>consume</em>()</div>
 
-<p>It&rsquo;s hard to believe great things will flow through such a simple function. It
-writes the given byte, which may be an opcode or an operand to an instruction.
-It sends in the previous token&rsquo;s line information so that runtime errors are
-associated with that line.</p>
-<p>The chunk that we&rsquo;re writing gets passed into <code>compile()</code>, but it needs to make
-its way to <code>emitByte()</code>. To do that, we rely on this intermediary function:</p>
+<p>C&rsquo;est dur de croire que de grandes choses découleront d&rsquo;une fonction si simple. Elle écrit l&rsquo;octet donné, qui peut être un opcode ou un opérande à une instruction. Elle envoie l&rsquo;information de ligne du token précédent de sorte que les erreurs d&rsquo;exécution soient associées à cette ligne.</p>
+<p>Le morceau que nous écrivons est passé dans <code>compile()</code>, mais il a besoin de faire son chemin vers <code>emitByte()</code>. Pour faire ça, nous comptons sur cette fonction intermédiaire :</p>
 <div class="codehilite"><pre class="insert-before">Parser parser;
 </pre><div class="source-file"><em>compiler.c</em><br>
 add after variable <em>parser</em></div>
@@ -497,11 +383,8 @@ add after variable <em>parser</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after variable <em>parser</em></div>
 
-<p>Right now, the chunk pointer is stored in a module-level variable like we store
-other global state. Later, when we start compiling user-defined functions, the
-notion of &ldquo;current chunk&rdquo; gets more complicated. To avoid having to go back and
-change a lot of code, I encapsulate that logic in the <code>currentChunk()</code> function.</p>
-<p>We initialize this new module variable before we write any bytecode:</p>
+<p>En ce moment, le pointeur de morceau est stocké dans une variable au niveau du module comme nous stockons d&rsquo;autre état global. Plus tard, quand nous commencerons à compiler des fonctions définies par l&rsquo;utilisateur, la notion de &ldquo;morceau courant&rdquo; deviendra plus compliquée. Pour éviter d&rsquo;avoir à revenir et changer beaucoup de code, j&rsquo;encapsule cette logique dans la fonction <code>currentChunk()</code>.</p>
+<p>Nous initialisons cette nouvelle variable de module avant que nous écrivions tout bytecode :</p>
 <div class="codehilite"><pre class="insert-before">bool compile(const char* source, Chunk* chunk) {
   initScanner(source);
 </pre><div class="source-file"><em>compiler.c</em><br>
@@ -513,7 +396,7 @@ in <em>compile</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>compile</em>()</div>
 
-<p>Then, at the very end, when we&rsquo;re done compiling the chunk, we wrap things up.</p>
+<p>Ensuite, à la toute fin, quand nous avons fini de compiler le morceau, nous emballons les choses.</p>
 <div class="codehilite"><pre class="insert-before">  consume(TOKEN_EOF, &quot;Expect end of expression.&quot;);
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>compile</em>()</div>
@@ -522,7 +405,7 @@ in <em>compile</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>compile</em>()</div>
 
-<p>That calls this:</p>
+<p>Cela appelle ceci :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>emitByte</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">endCompiler</span>() {
@@ -531,10 +414,7 @@ add after <em>emitByte</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>emitByte</em>()</div>
 
-<p>In this chapter, our VM deals only with expressions. When you run clox, it will
-parse, compile, and execute a single expression, then print the result. To print
-that value, we are temporarily using the <code>OP_RETURN</code> instruction. So we have the
-compiler add one of those to the end of the chunk.</p>
+<p>Dans ce chapitre, notre VM traite seulement avec des expressions. Quand vous lancez clox, il parsera, compilera, et exécutera une unique expression, puis imprimera le résultat. Pour imprimer cette valeur, nous utilisons temporairement l&rsquo;instruction <code>OP_RETURN</code>. Donc nous faisons en sorte que le compilateur ajoute une de celles-ci à la fin du morceau.</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>emitByte</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">emitReturn</span>() {
@@ -543,7 +423,7 @@ add after <em>emitByte</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>emitByte</em>()</div>
 
-<p>While we&rsquo;re here in the back end we may as well make our lives easier.</p>
+<p>Tant que nous sommes ici dans le back end nous pourrions aussi bien nous rendre la vie plus facile.</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>emitByte</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">emitBytes</span>(<span class="t">uint8_t</span> <span class="i">byte1</span>, <span class="t">uint8_t</span> <span class="i">byte2</span>) {
@@ -553,12 +433,10 @@ add after <em>emitByte</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>emitByte</em>()</div>
 
-<p>Over time, we&rsquo;ll have enough cases where we need to write an opcode followed by
-a one-byte operand that it&rsquo;s worth defining this convenience function.</p>
-<h2><a href="#parsing-prefix-expressions" id="parsing-prefix-expressions"><small>17&#8202;.&#8202;4</small>Parsing Prefix Expressions</a></h2>
-<p>We&rsquo;ve assembled our parsing and code generation utility functions. The missing
-piece is the code in the middle that connects those together.</p><img src="image/compiling-expressions/mystery.png" alt="Parsing functions on the left, bytecode emitting functions on the right. What goes in the middle?" />
-<p>The only step in <code>compile()</code> that we have left to implement is this function:</p>
+<p>Avec le temps, nous aurons assez de cas où nous avons besoin d&rsquo;écrire un opcode suivi par un opérande d&rsquo;un octet pour qu&rsquo;il vaille la peine de définir cette fonction de commodité.</p>
+<h2><a href="#parser-les-expressions-préfixes" id="parser-les-expressions-préfixes"><small>17&#8202;.&#8202;4</small>Parser les Expressions Préfixes</a></h2>
+<p>Nous avons assemblé nos fonctions utilitaires de parsing et de génération de code. La pièce manquante est le code au milieu qui connecte celles-ci ensemble.</p><img src="image/compiling-expressions/mystery.png" alt="Fonctions de parsing à gauche, fonctions d'émission de bytecode à droite. Qu'est-ce qui va au milieu ?" />
+<p>La seule étape dans <code>compile()</code> qu&rsquo;il nous reste à implémenter est cette fonction :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>endCompiler</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">expression</span>() {
@@ -567,28 +445,18 @@ add after <em>endCompiler</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>endCompiler</em>()</div>
 
-<p>We aren&rsquo;t ready to implement every kind of expression in Lox yet. Heck, we don&rsquo;t
-even have Booleans. For this chapter, we&rsquo;re only going to worry about four:</p>
+<p>Nous ne sommes pas prêts à implémenter chaque sorte d&rsquo;expression en Lox encore. Zut, nous n&rsquo;avons même pas les Booléens. Pour ce chapitre, nous allons seulement nous inquiéter de quatre :</p>
 <ul>
-<li>Number literals: <code>123</code></li>
-<li>Parentheses for grouping: <code>(123)</code></li>
-<li>Unary negation: <code>-123</code></li>
-<li>The Four Horsemen of the Arithmetic: <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code></li>
+<li>Littéraux nombre : <code>123</code></li>
+<li>Parenthèses pour le groupement : <code>(123)</code></li>
+<li>Négation unaire : <code>-123</code></li>
+<li>Les Quatre Cavaliers de l&rsquo;Arithmétique : <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code></li>
 </ul>
-<p>As we work through the functions to compile each of those kinds of expressions,
-we&rsquo;ll also assemble the requirements for the table-driven parser that calls
-them.</p>
-<h3><a href="#parsers-for-tokens" id="parsers-for-tokens"><small>17&#8202;.&#8202;4&#8202;.&#8202;1</small>Parsers for tokens</a></h3>
-<p>For now, let&rsquo;s focus on the Lox expressions that are each only a single token.
-In this chapter, that&rsquo;s just number literals, but there will be more later. Here&rsquo;s
-how we can compile them:</p>
-<p>We map each token type to a different kind of expression. We define a function
-for each expression that outputs the appropriate bytecode. Then we build an
-array of function pointers. The indexes in the array correspond to the
-<code>TokenType</code> enum values, and the function at each index is the code to compile
-an expression of that token type.</p>
-<p>To compile number literals, we store a pointer to the following function at the
-<code>TOKEN_NUMBER</code> index in the array.</p>
+<p>Alors que nous travaillons à travers les fonctions pour compiler chacun de ces genres d&rsquo;expressions, nous assemblerons aussi les exigences pour le parseur piloté par table qui les appelle.</p>
+<h3><a href="#parseurs-pour-tokens" id="parseurs-pour-tokens"><small>17&#8202;.&#8202;4&#8202;.&#8202;1</small>Parseurs pour tokens</a></h3>
+<p>Pour l&rsquo;instant, concentrons-nous sur les expressions Lox qui sont chacune seulement un token unique. Dans ce chapitre, c&rsquo;est juste les littéraux nombre, mais il y en aura plus tard. Voici comment nous pouvons les compiler :</p>
+<p>Nous mappons chaque type de token vers un genre différent d&rsquo;expression. Nous définissons une fonction pour chaque expression qui sort le bytecode approprié. Ensuite nous construisons un tableau de pointeurs de fonction. Les index dans le tableau correspondent aux valeurs de l&rsquo;enum <code>TokenType</code>, et la fonction à chaque index est le code pour compiler une expression de ce type de token.</p>
+<p>Pour compiler les littéraux nombre, nous stockons un pointeur vers la fonction suivante à l&rsquo;index <code>TOKEN_NUMBER</code> dans le tableau.</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>endCompiler</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">number</span>() {
@@ -598,10 +466,7 @@ add after <em>endCompiler</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>endCompiler</em>()</div>
 
-<p>We assume the token for the number literal has already been consumed and is
-stored in <code>previous</code>. We take that lexeme and use the C standard library to
-convert it to a double value. Then we generate the code to load that value using
-this function:</p>
+<p>Nous supposons que le token pour le littéral nombre a déjà été consommé et est stocké dans <code>previous</code>. Nous prenons ce lexème et utilisons la bibliothèque standard C pour le convertir en une valeur double. Ensuite nous générons le code pour charger cette valeur en utilisant cette fonction :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>emitReturn</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">emitConstant</span>(<span class="t">Value</span> <span class="i">value</span>) {
@@ -610,9 +475,7 @@ add after <em>emitReturn</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>emitReturn</em>()</div>
 
-<p>First, we add the value to the constant table, then we emit an <code>OP_CONSTANT</code>
-instruction that pushes it onto the stack at runtime. To insert an entry in the
-constant table, we rely on:</p>
+<p>D&rsquo;abord, nous ajoutons la valeur à la table de constantes, ensuite nous émettons une instruction <code>OP_CONSTANT</code> qui la pousse sur la pile à l&rsquo;exécution. Pour insérer une entrée dans la table de constantes, nous comptons sur :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>emitReturn</em>()</div>
 <pre><span class="k">static</span> <span class="t">uint8_t</span> <span class="i">makeConstant</span>(<span class="t">Value</span> <span class="i">value</span>) {
@@ -627,32 +490,15 @@ add after <em>emitReturn</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>emitReturn</em>()</div>
 
-<p>Most of the work happens in <code>addConstant()</code>, which we defined back in an
-<a href="chunks-of-bytecode.html">earlier chapter</a>. That adds the given value to the end of the chunk&rsquo;s
-constant table and returns its index. The new function&rsquo;s job is mostly to make
-sure we don&rsquo;t have too many constants. Since the <code>OP_CONSTANT</code> instruction uses
-a single byte for the index operand, we can store and load only up to <span
-name="256">256</span> constants in a chunk.</p>
+<p>La plupart du travail se passe dans <code>addConstant()</code>, que nous avons définie de retour dans un <a href="morceaux-de-bytecode.html">chapitre précédent</a>. Cela ajoute la valeur donnée à la fin de la table de constantes du morceau et renvoie son index. Le travail de la nouvelle fonction est surtout de s&rsquo;assurer que nous n&rsquo;avons pas trop de constantes. Puisque l&rsquo;instruction <code>OP_CONSTANT</code> utilise un unique octet pour l&rsquo;opérande d&rsquo;index, nous pouvons stocker et charger seulement jusqu&rsquo;à <span name="256">256</span> constantes dans un morceau.</p>
 <aside name="256">
-<p>Yes, that limit is pretty low. If this were a full-sized language
-implementation, we&rsquo;d want to add another instruction like <code>OP_CONSTANT_16</code> that
-stores the index as a two-byte operand so we could handle more constants when
-needed.</p>
-<p>The code to support that isn&rsquo;t particularly illuminating, so I omitted it from
-clox, but you&rsquo;ll want your VMs to scale to larger programs.</p>
+<p>Oui, cette limite est assez basse. Si c&rsquo;était une implémentation de langage de pleine taille, nous voudrions ajouter une autre instruction comme <code>OP_CONSTANT_16</code> qui stocke l&rsquo;index comme un opérande de deux octets pour que nous puissions gérer plus de constantes quand nécessaire.</p>
+<p>Le code pour supporter cela n&rsquo;est pas particulièrement illuminant, donc je l&rsquo;ai omis de clox, mais vous voudrez que vos VMs passent à l&rsquo;échelle pour de plus gros programmes.</p>
 </aside>
-<p>That&rsquo;s basically all it takes. Provided there is some suitable code that
-consumes a <code>TOKEN_NUMBER</code> token, looks up <code>number()</code> in the function pointer
-array, and then calls it, we can now compile number literals to bytecode.</p>
-<h3><a href="#parentheses-for-grouping" id="parentheses-for-grouping"><small>17&#8202;.&#8202;4&#8202;.&#8202;2</small>Parentheses for grouping</a></h3>
-<p>Our as-yet-imaginary array of parsing function pointers would be great if every
-expression was only a single token long. Alas, most are longer. However, many
-expressions <em>start</em> with a particular token. We call these <em>prefix</em> expressions.
-For example, when we&rsquo;re parsing an expression and the current token is <code>(</code>, we
-know we must be looking at a parenthesized grouping expression.</p>
-<p>It turns out our function pointer array handles those too. The parsing function
-for an expression type can consume any additional tokens that it wants to, just
-like in a regular recursive descent parser. Here&rsquo;s how parentheses work:</p>
+<p>C&rsquo;est basiquement tout ce qu&rsquo;il faut. Pourvu qu&rsquo;il y ait quelque code convenable qui consomme un token <code>TOKEN_NUMBER</code>, cherche <code>number()</code> dans le tableau de pointeurs de fonction, et ensuite l&rsquo;appelle, nous pouvons maintenant compiler les littéraux nombre vers du bytecode.</p>
+<h3><a href="#parenthèses-pour-le-groupement" id="parenthèses-pour-le-groupement"><small>17&#8202;.&#8202;4&#8202;.&#8202;2</small>Parenthèses pour le groupement</a></h3>
+<p>Notre tableau de pointeurs de fonction de parsing pour l&rsquo;instant imaginaire serait génial si chaque expression était longue de seulement un token unique. Hélas, la plupart sont plus longues. Cependant, beaucoup d&rsquo;expressions <em>commencent</em> avec un token particulier. Nous appelons celles-ci des expressions <em>préfixes</em>. Par exemple, quand nous parsons une expression et que le token courant est <code>(</code>, nous savons que nous devons regarder une expression de groupement parenthésée.</p>
+<p>Il s&rsquo;avère que notre tableau de pointeurs de fonction gère celles-ci aussi. La fonction de parsing pour un type d&rsquo;expression peut consommer tous les tokens additionnels qu&rsquo;elle veut, juste comme dans un parseur à descente récursive régulier. Voici comment les parenthèses fonctionnent :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>endCompiler</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">grouping</span>() {
@@ -662,21 +508,13 @@ add after <em>endCompiler</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>endCompiler</em>()</div>
 
-<p>Again, we assume the initial <code>(</code> has already been consumed. We <span
-name="recursive">recursively</span> call back into <code>expression()</code> to compile the
-expression between the parentheses, then parse the closing <code>)</code> at the end.</p>
+<p>Encore une fois, nous supposons que la parenthèse <code>(</code> initiale a déjà été consommée. Nous appelons <span name="recursive">récursivement</span> de retour dans <code>expression()</code> pour compiler l&rsquo;expression entre les parenthèses, puis parsons la parenthèse fermante <code>)</code> à la fin.</p>
 <aside name="recursive">
-<p>A Pratt parser isn&rsquo;t a recursive <em>descent</em> parser, but it&rsquo;s still recursive.
-That&rsquo;s to be expected since the grammar itself is recursive.</p>
+<p>Un parseur Pratt n&rsquo;est pas un parseur à <em>descente</em> récursive, mais il est toujours récursif. C&rsquo;est attendu puisque la grammaire elle-même est récursive.</p>
 </aside>
-<p>As far as the back end is concerned, there&rsquo;s literally nothing to a grouping
-expression. Its sole function is syntactic<span class="em">&mdash;</span>it lets you insert a
-lower-precedence expression where a higher precedence is expected. Thus, it has
-no runtime semantics on its own and therefore doesn&rsquo;t emit any bytecode. The
-inner call to <code>expression()</code> takes care of generating bytecode for the
-expression inside the parentheses.</p>
-<h3><a href="#unary-negation" id="unary-negation"><small>17&#8202;.&#8202;4&#8202;.&#8202;3</small>Unary negation</a></h3>
-<p>Unary minus is also a prefix expression, so it works with our model too.</p>
+<p>Pour autant que le back end soit concerné, il n&rsquo;y a littéralement rien à une expression de groupement. Sa seule fonction est syntaxique<span class="em">&mdash;</span>elle vous laisse insérer une expression de priorité plus basse là où une priorité plus haute est attendue. Ainsi, elle n&rsquo;a aucune sémantique d&rsquo;exécution par elle-même et par conséquent n&rsquo;émet aucun bytecode. L&rsquo;appel intérieur à <code>expression()</code> prend soin de générer le bytecode pour l&rsquo;expression à l&rsquo;intérieur des parenthèses.</p>
+<h3><a href="#négation-unaire" id="négation-unaire"><small>17&#8202;.&#8202;4&#8202;.&#8202;3</small>Négation unaire</a></h3>
+<p>Le moins unaire est aussi une expression préfixe, donc cela fonctionne avec notre modèle aussi.</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>number</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">unary</span>() {
@@ -694,60 +532,31 @@ add after <em>number</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>number</em>()</div>
 
-<p>The leading <code>-</code> token has been consumed and is sitting in <code>parser.previous</code>. We
-grab the token type from that to note which unary operator we&rsquo;re dealing with.
-It&rsquo;s unnecessary right now, but this will make more sense when we use this same
-function to compile the <code>!</code> operator in <a href="types-of-values.html">the next chapter</a>.</p>
-<p>As in <code>grouping()</code>, we recursively call <code>expression()</code> to compile the operand.
-After that, we emit the bytecode to perform the negation. It might seem a little
-weird to write the negate instruction <em>after</em> its operand&rsquo;s bytecode since the
-<code>-</code> appears on the left, but think about it in terms of order of execution:</p>
+<p>Le token <code>-</code> de tête a été consommé et est assis dans <code>parser.previous</code>. Nous attrapons le type de token de là pour noter à quel opérateur unaire nous avons affaire. C&rsquo;est inutile pour l&rsquo;instant, mais cela aura plus de sens quand nous utiliserons cette même fonction pour compiler l&rsquo;opérateur <code>!</code> dans <a href="types-de-valeurs.html">le prochain chapitre</a>.</p>
+<p>Comme dans <code>grouping()</code>, nous appelons récursivement <code>expression()</code> pour compiler l&rsquo;opérande. Après cela, nous émettons le bytecode pour effectuer la négation. Cela pourrait sembler un peu bizarre d&rsquo;écrire l&rsquo;instruction negate <em>après</em> le bytecode de son opérande puisque le <code>-</code> apparaît sur la gauche, mais pensez-y en termes d&rsquo;ordre d&rsquo;exécution :</p>
 <ol>
 <li>
-<p>We evaluate the operand first which leaves its value on the stack.</p>
+<p>Nous évaluons l&rsquo;opérande d&rsquo;abord ce qui laisse sa valeur sur la pile.</p>
 </li>
 <li>
-<p>Then we pop that value, negate it, and push the result.</p>
+<p>Ensuite nous dépilons cette valeur, la nions, et poussons le résultat.</p>
 </li>
 </ol>
-<p>So the <code>OP_NEGATE</code> instruction should be emitted <span name="line">last</span>.
-This is part of the compiler&rsquo;s job<span class="em">&mdash;</span>parsing the program in the order it
-appears in the source code and rearranging it into the order that execution
-happens.</p>
+<p>Donc l&rsquo;instruction <code>OP_NEGATE</code> devrait être émise en <span name="line">dernier</span>. C&rsquo;est une partie du travail du compilateur<span class="em">&mdash;</span>parser le programme dans l&rsquo;ordre où il apparaît dans le code source et le réarranger dans l&rsquo;ordre où l&rsquo;exécution se produit.</p>
 <aside name="line">
-<p>Emitting the <code>OP_NEGATE</code> instruction after the operands does mean that the
-current token when the bytecode is written is <em>not</em> the <code>-</code> token. That mostly
-doesn&rsquo;t matter, except that we use that token for the line number to associate
-with that instruction.</p>
-<p>This means if you have a multi-line negation expression, like:</p>
+<p>Émettre l&rsquo;instruction <code>OP_NEGATE</code> après les opérandes signifie que le token courant quand le bytecode est écrit n&rsquo;est <em>pas</em> le token <code>-</code>. Cela n&rsquo;a surtout pas d&rsquo;importance, excepté que nous utilisons ce token pour le numéro de ligne à associer avec cette instruction.</p>
+<p>Cela signifie que si vous avez une expression de négation multi-lignes, comme :</p>
 <div class="codehilite"><pre><span class="k">print</span> -
   <span class="k">true</span>;
 </pre></div>
-<p>Then the runtime error will be reported on the wrong line. Here, it would show
-the error on line 2, even though the <code>-</code> is on line 1. A more robust approach
-would be to store the token&rsquo;s line before compiling the operand and then pass
-that into <code>emitByte()</code>, but I wanted to keep things simple for the book.</p>
+<p>Alors l&rsquo;erreur d&rsquo;exécution sera rapportée sur la mauvaise ligne. Ici, elle montrerait l&rsquo;erreur à la ligne 2, même si le <code>-</code> est à la ligne 1. Une approche plus robuste serait de stocker la ligne du token avant de compiler l&rsquo;opérande et ensuite de passer cela dans <code>emitByte()</code>, mais je voulais garder les choses simples pour le livre.</p>
 </aside>
-<p>There is one problem with this code, though. The <code>expression()</code> function it
-calls will parse any expression for the operand, regardless of precedence. Once
-we add binary operators and other syntax, that will do the wrong thing.
-Consider:</p>
+<p>Il y a un problème avec ce code, cependant. La fonction <code>expression()</code> qu&rsquo;il appelle parsera n&rsquo;importe quelle expression pour l&rsquo;opérande, indépendamment de la précédence. Une fois que nous ajouterons les opérateurs binaires et autre syntaxe, cela fera la mauvaise chose. Considérez :</p>
 <div class="codehilite"><pre>-<span class="i">a</span>.<span class="i">b</span> + <span class="i">c</span>;
 </pre></div>
-<p>Here, the operand to <code>-</code> should be just the <code>a.b</code> expression, not the entire
-<code>a.b + c</code>. But if <code>unary()</code> calls <code>expression()</code>, the latter will happily chew
-through all of the remaining code including the <code>+</code>. It will erroneously treat
-the <code>-</code> as lower precedence than the <code>+</code>.</p>
-<p>When parsing the operand to unary <code>-</code>, we need to compile only expressions at a
-certain precedence level or higher. In jlox&rsquo;s recursive descent parser we
-accomplished that by calling into the parsing method for the lowest-precedence
-expression we wanted to allow (in this case, <code>call()</code>). Each method for parsing
-a specific expression also parsed any expressions of higher precedence too, so
-that included the rest of the precedence table.</p>
-<p>The parsing functions like <code>number()</code> and <code>unary()</code> here in clox are different.
-Each only parses exactly one type of expression. They don&rsquo;t cascade to include
-higher-precedence expression types too. We need a different solution, and it
-looks like this:</p>
+<p>Ici, l&rsquo;opérande de <code>-</code> devrait être juste l&rsquo;expression <code>a.b</code>, pas le <code>a.b + c</code> entier. Mais si <code>unary()</code> appelle <code>expression()</code>, cette dernière mâchera joyeusement à travers tout le code restant incluant le <code>+</code>. Elle traitera faussement le <code>-</code> comme de précédence plus basse que le <code>+</code>.</p>
+<p>Quand nous parsons l&rsquo;opérande de <code>-</code> unaire, nous avons besoin de compiler seulement les expressions à un certain niveau de précédence ou plus haut. Dans le parseur à descente récursive de jlox nous accomplissions cela en appelant dans la méthode de parsing pour l&rsquo;expression de plus basse priorité que nous voulions autoriser (dans ce cas, <code>call()</code>). Chaque méthode pour parser une expression spécifique parsait aussi n&rsquo;importe quelles expressions de priorité plus haute aussi, donc cela incluait le reste de la table de précédence.</p>
+<p>Les fonctions de parsing comme <code>number()</code> et <code>unary()</code> ici dans clox sont différentes. Chacune parse seulement exactement un type d&rsquo;expression. Elles ne cascadent pas pour inclure les types d&rsquo;expression de priorité plus haute aussi. Nous avons besoin d&rsquo;une solution différente, et elle ressemble à ceci :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>unary</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">parsePrecedence</span>(<span class="t">Precedence</span> <span class="i">precedence</span>) {
@@ -756,12 +565,7 @@ add after <em>unary</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>unary</em>()</div>
 
-<p>This function<span class="em">&mdash;</span>once we implement it<span class="em">&mdash;</span>starts at the current token and parses
-any expression at the given precedence level or higher. We have some other setup
-to get through before we can write the body of this function, but you can
-probably guess that it will use that table of parsing function pointers I&rsquo;ve
-been talking about. For now, don&rsquo;t worry too much about how it works. In order
-to take the &ldquo;precedence&rdquo; as a parameter, we define it numerically.</p>
+<p>Cette fonction<span class="em">&mdash;</span>une fois que nous l&rsquo;implémenterons<span class="em">&mdash;</span>commence au token courant et parse n&rsquo;importe quelle expression au niveau de précédence donné ou plus haut. Nous avons quelque autre installation à traverser avant que nous puissions écrire le corps de cette fonction, mais vous pouvez probablement deviner qu&rsquo;elle utilisera cette table de pointeurs de fonction de parsing dont j&rsquo;ai parlé. Pour l&rsquo;instant, ne vous inquiétez pas trop de comment elle fonctionne. Afin de prendre la &ldquo;précédence&rdquo; comme un paramètre, nous la définissons numériquement.</p>
 <div class="codehilite"><pre class="insert-before">} Parser;
 </pre><div class="source-file"><em>compiler.c</em><br>
 add after struct <em>Parser</em></div>
@@ -786,19 +590,11 @@ Parser parser;
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after struct <em>Parser</em></div>
 
-<p>These are all of Lox&rsquo;s precedence levels in order from lowest to highest. Since
-C implicitly gives successively larger numbers for enums, this means that
-<code>PREC_CALL</code> is numerically larger than <code>PREC_UNARY</code>. For example, say the
-compiler is sitting on a chunk of code like:</p>
+<p>Ce sont tous les niveaux de précédence de Lox dans l&rsquo;ordre du plus bas au plus haut. Puisque C donne implicitement des nombres successivement plus grands pour les enums, cela signifie que <code>PREC_CALL</code> est numériquement plus grand que <code>PREC_UNARY</code>. Par exemple, disons que le compilateur est assis sur un morceau de code comme :</p>
 <div class="codehilite"><pre>-<span class="i">a</span>.<span class="i">b</span> + <span class="i">c</span>
 </pre></div>
-<p>If we call <code>parsePrecedence(PREC_ASSIGNMENT)</code>, then it will parse the entire
-expression because <code>+</code> has higher precedence than assignment. If instead we
-call <code>parsePrecedence(PREC_UNARY)</code>, it will compile the <code>-a.b</code> and stop there.
-It doesn&rsquo;t keep going through the <code>+</code> because the addition has lower precedence
-than unary operators.</p>
-<p>With this function in hand, it&rsquo;s a snap to fill in the missing body for
-<code>expression()</code>.</p>
+<p>Si nous appelons <code>parsePrecedence(PREC_ASSIGNMENT)</code>, alors il parsera l&rsquo;expression entière parce que <code>+</code> a une priorité plus haute que l&rsquo;assignation. Si au lieu de cela nous appelons <code>parsePrecedence(PREC_UNARY)</code>, il compilera le <code>-a.b</code> et arrêtera là. Il ne continue pas à travers le <code>+</code> parce que l&rsquo;addition a une priorité plus basse que les opérateurs unaires.</p>
+<p>Avec cette fonction en main, c&rsquo;est un jeu d&rsquo;enfant de remplir le corps manquant pour <code>expression()</code>.</p>
 <div class="codehilite"><pre class="insert-before">static void expression() {
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>expression</em>()<br>
@@ -808,9 +604,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>expression</em>(), replace 1 line</div>
 
-<p>We simply parse the lowest precedence level, which subsumes all of the
-higher-precedence expressions too. Now, to compile the operand for a unary
-expression, we call this new function and limit it to the appropriate level:</p>
+<p>Nous parsons simplement le niveau de précédence le plus bas, qui subsume toutes les expressions de priorité plus haute aussi. Maintenant, pour compiler l&rsquo;opérande pour une expression unaire, nous appelons cette nouvelle fonction et la limitons au niveau approprié :</p>
 <div class="codehilite"><pre class="insert-before">  // Compile the operand.
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>unary</em>()<br>
@@ -822,51 +616,31 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>unary</em>(), replace 1 line</div>
 
-<p>We use the unary operator&rsquo;s own <code>PREC_UNARY</code> precedence to permit <span
-name="useful">nested</span> unary expressions like <code>!!doubleNegative</code>. Since
-unary operators have pretty high precedence, that correctly excludes things like
-binary operators. Speaking of which<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
+<p>Nous utilisons la propre précédence <code>PREC_UNARY</code> de l&rsquo;opérateur unaire pour permettre des expressions unaires <span name="useful">imbriquées</span> comme <code>!!doubleNegative</code>. Puisque les opérateurs unaires ont une priorité assez haute, cela exclut correctement des choses comme les opérateurs binaires. En parlant desquels<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
 <aside name="useful">
-<p>Not that nesting unary expressions is particularly useful in Lox. But other
-languages let you do it, so we do too.</p>
+<p>Pas que l&rsquo;imbrication d&rsquo;expressions unaires soit particulièrement utile en Lox. Mais d&rsquo;autres langages vous laissent le faire, donc nous aussi.</p>
 </aside>
-<h2><a href="#parsing-infix-expressions" id="parsing-infix-expressions"><small>17&#8202;.&#8202;5</small>Parsing Infix Expressions</a></h2>
-<p>Binary operators are different from the previous expressions because they are
-<em>infix</em>. With the other expressions, we know what we are parsing from the very
-first token. With infix expressions, we don&rsquo;t know we&rsquo;re in the middle of a
-binary operator until <em>after</em> we&rsquo;ve parsed its left operand and then stumbled
-onto the operator token in the middle.</p>
-<p>Here&rsquo;s an example:</p>
+<h2><a href="#parser-les-expressions-infixes" id="parser-les-expressions-infixes"><small>17&#8202;.&#8202;5</small>Parser les Expressions Infixes</a></h2>
+<p>Les opérateurs binaires sont différents des expressions précédentes parce qu&rsquo;ils sont <em>infixes</em>. Avec les autres expressions, nous savons ce que nous parsons dès le tout premier token. Avec les expressions infixes, nous ne savons pas que nous sommes au milieu d&rsquo;un opérateur binaire jusqu&rsquo;à <em>après</em> que nous ayons parsé son opérande gauche et ensuite trébuché sur le token opérateur au milieu.</p>
+<p>Voici un exemple :</p>
 <div class="codehilite"><pre><span class="n">1</span> + <span class="n">2</span>
 </pre></div>
-<p>Let&rsquo;s walk through trying to compile it with what we know so far:</p>
+<p>Marchons à travers l&rsquo;essai de compilation de ceci avec ce que nous savons jusqu&rsquo;ici :</p>
 <ol>
 <li>
-<p>We call <code>expression()</code>. That in turn calls
+<p>Nous appelons <code>expression()</code>. Cela appelle à son tour
 <code>parsePrecedence(PREC_ASSIGNMENT)</code>.</p>
 </li>
 <li>
-<p>That function (once we implement it) sees the leading number token and
-recognizes it is parsing a number literal. It hands off control to
-<code>number()</code>.</p>
+<p>Cette fonction (une fois que nous l&rsquo;implémentons) voit le token nombre de tête et reconnaît qu&rsquo;elle parse un littéral nombre. Elle passe la main à <code>number()</code>.</p>
 </li>
 <li>
-<p><code>number()</code> creates a constant, emits an <code>OP_CONSTANT</code>, and returns back to
-<code>parsePrecedence()</code>.</p>
+<p><code>number()</code> crée une constante, émet un <code>OP_CONSTANT</code>, et renvoie vers <code>parsePrecedence()</code>.</p>
 </li>
 </ol>
-<p>Now what? The call to <code>parsePrecedence()</code> should consume the entire addition
-expression, so it needs to keep going somehow. Fortunately, the parser is right
-where we need it to be. Now that we&rsquo;ve compiled the leading number expression,
-the next token is <code>+</code>. That&rsquo;s the exact token that <code>parsePrecedence()</code> needs to
-detect that we&rsquo;re in the middle of an infix expression and to realize that the
-expression we already compiled is actually an operand to that.</p>
-<p>So this hypothetical array of function pointers doesn&rsquo;t just list functions to
-parse expressions that start with a given token. Instead, it&rsquo;s a <em>table</em> of
-function pointers. One column associates prefix parser functions with token
-types. The second column associates infix parser functions with token types.</p>
-<p>The function we will use as the infix parser for <code>TOKEN_PLUS</code>, <code>TOKEN_MINUS</code>,
-<code>TOKEN_STAR</code>, and <code>TOKEN_SLASH</code> is this:</p>
+<p>Maintenant quoi ? L&rsquo;appel à <code>parsePrecedence()</code> devrait consommer l&rsquo;expression d&rsquo;addition entière, donc il a besoin de continuer d&rsquo;une manière ou d&rsquo;une autre. Heureusement, le parseur est juste là où nous avons besoin qu&rsquo;il soit. Maintenant que nous avons compilé l&rsquo;expression de nombre de tête, le prochain token est <code>+</code>. C&rsquo;est le token exact dont <code>parsePrecedence()</code> a besoin pour détecter que nous sommes au milieu d&rsquo;une expression infixe et pour réaliser que l&rsquo;expression que nous avons déjà compilée est en fait un opérande à cela.</p>
+<p>Donc ce tableau hypothétique de pointeurs de fonction ne liste pas juste des fonctions pour parser des expressions qui commencent avec un token donné. Au lieu de cela, c&rsquo;est une <em>table</em> de pointeurs de fonction. Une colonne associe les fonctions de parsing préfixes avec les types de token. La seconde colonne associe les fonctions de parsing infixes avec les types de token.</p>
+<p>La fonction que nous utiliserons comme le parseur infixe pour <code>TOKEN_PLUS</code>, <code>TOKEN_MINUS</code>, <code>TOKEN_STAR</code>, et <code>TOKEN_SLASH</code> est celle-ci :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>endCompiler</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">binary</span>() {
@@ -885,80 +659,48 @@ add after <em>endCompiler</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>endCompiler</em>()</div>
 
-<p>When a prefix parser function is called, the leading token has already been
-consumed. An infix parser function is even more <em>in medias res</em><span class="em">&mdash;</span>the entire
-left-hand operand expression has already been compiled and the subsequent infix
-operator consumed.</p>
-<p>The fact that the left operand gets compiled first works out fine. It means at
-runtime, that code gets executed first. When it runs, the value it produces will
-end up on the stack. That&rsquo;s right where the infix operator is going to need it.</p>
-<p>Then we come here to <code>binary()</code> to handle the rest of the arithmetic operators.
-This function compiles the right operand, much like how <code>unary()</code> compiles its
-own trailing operand. Finally, it emits the bytecode instruction that performs
-the binary operation.</p>
-<p>When run, the VM will execute the left and right operand code, in that order,
-leaving their values on the stack. Then it executes the instruction for the
-operator. That pops the two values, computes the operation, and pushes the
-result.</p>
-<p>The code that probably caught your eye here is that <code>getRule()</code> line. When we
-parse the right-hand operand, we again need to worry about precedence. Take an
-expression like:</p>
+<p>Quand une fonction de parsing préfixe est appelée, le token de tête a déjà été consommé. Une fonction de parsing infixe est encore plus <em>in medias res</em><span class="em">&mdash;</span>l&rsquo;expression de l&rsquo;opérande gauche entier a déjà été compilée et l&rsquo;opérateur infixe subséquent consommé.</p>
+<p>Le fait que l&rsquo;opérande gauche soit compilé en premier s&rsquo;arrange bien. Cela signifie qu&rsquo;à l&rsquo;exécution, ce code est exécuté en premier. Quand il tourne, la valeur qu&rsquo;il produit finira sur la pile. C&rsquo;est juste là où l&rsquo;opérateur infixe va en avoir besoin.</p>
+<p>Ensuite nous venons ici à <code>binary()</code> pour gérer le reste des opérateurs arithmétiques. Cette fonction compile l&rsquo;opérande droit, un peu comme comment <code>unary()</code> compile son propre opérande de traîne. Finalement, elle émet l&rsquo;instruction bytecode qui effectue l&rsquo;opération binaire.</p>
+<p>Quand tourné, la VM exécutera le code de l&rsquo;opérande gauche et droit, dans cet ordre, laissant leurs valeurs sur la pile. Ensuite elle exécute l&rsquo;instruction pour l&rsquo;opérateur. Cela dépile les deux valeurs, calcule l&rsquo;opération, et pousse le résultat.</p>
+<p>Le code qui a probablement attiré votre œil ici est cette ligne <code>getRule()</code>. Quand nous parsons l&rsquo;opérande de droite, nous avons de nouveau besoin de nous inquiéter de la précédence. Prenez une expression comme :</p>
 <div class="codehilite"><pre><span class="n">2</span> * <span class="n">3</span> + <span class="n">4</span>
 </pre></div>
-<p>When we parse the right operand of the <code>*</code> expression, we need to just capture
-<code>3</code>, and not <code>3 + 4</code>, because <code>+</code> is lower precedence than <code>*</code>. We could define
-a separate function for each binary operator. Each would call
-<code>parsePrecedence()</code> and pass in the correct precedence level for its operand.</p>
-<p>But that&rsquo;s kind of tedious. Each binary operator&rsquo;s right-hand operand precedence
-is one level <span name="higher">higher</span> than its own. We can look that up
-dynamically with this <code>getRule()</code> thing we&rsquo;ll get to soon. Using that, we call
-<code>parsePrecedence()</code> with one level higher than this operator&rsquo;s level.</p>
+<p>Quand nous parsons l&rsquo;opérande droit de l&rsquo;expression <code>*</code>, nous avons besoin de juste capturer <code>3</code>, et non <code>3 + 4</code>, parce que <code>+</code> est de précédence plus basse que <code>*</code>. Nous pourrions définir une fonction séparée pour chaque opérateur binaire. Chacune appellerait <code>parsePrecedence()</code> et passerait le niveau de précédence correct pour son opérande.</p>
+<p>Mais c&rsquo;est un peu fastidieux. La précédence de l&rsquo;opérande de droite de chaque opérateur binaire est un niveau plus <span name="higher">haut</span> que la sienne. Nous pouvons chercher cela dynamiquement avec ce truc <code>getRule()</code> auquel nous arriverons bientôt. Utilisant cela, nous appelons <code>parsePrecedence()</code> avec un niveau plus haut que le niveau de cet opérateur.</p>
 <aside name="higher">
-<p>We use one <em>higher</em> level of precedence for the right operand because the binary
-operators are left-associative. Given a series of the <em>same</em> operator, like:</p>
+<p>Nous utilisons un niveau de précédence plus <em>haut</em> pour l&rsquo;opérande droit parce que les opérateurs binaires sont associatifs à gauche. Étant donné une série du <em>même</em> opérateur, comme :</p>
 <div class="codehilite"><pre><span class="n">1</span> + <span class="n">2</span> + <span class="n">3</span> + <span class="n">4</span>
 </pre></div>
-<p>We want to parse it like:</p>
+<p>Nous voulons le parser comme :</p>
 <div class="codehilite"><pre>((<span class="n">1</span> + <span class="n">2</span>) + <span class="n">3</span>) + <span class="n">4</span>
 </pre></div>
-<p>Thus, when parsing the right-hand operand to the first <code>+</code>, we want to consume
-the <code>2</code>, but not the rest, so we use one level above <code>+</code>&rsquo;s precedence. But if
-our operator was <em>right</em>-associative, this would be wrong. Given:</p>
+<p>Ainsi, quand nous parsons l&rsquo;opérande de droite pour le premier <code>+</code>, nous voulons consommer le <code>2</code>, mais pas le reste, donc nous utilisons un niveau au-dessus de la précédence de <code>+</code>. Mais si notre opérateur était associatif à <em>droite</em>, ce serait faux. Étant donné :</p>
 <div class="codehilite"><pre><span class="i">a</span> = <span class="i">b</span> = <span class="i">c</span> = <span class="i">d</span>
 </pre></div>
-<p>Since assignment is right-associative, we want to parse it as:</p>
+<p>Puisque l&rsquo;assignation est associative à droite, nous voulons le parser comme :</p>
 <div class="codehilite"><pre><span class="i">a</span> = (<span class="i">b</span> = (<span class="i">c</span> = <span class="i">d</span>))
 </pre></div>
-<p>To enable that, we would call <code>parsePrecedence()</code> with the <em>same</em> precedence as
-the current operator.</p>
+<p>Pour permettre cela, nous appellerions <code>parsePrecedence()</code> avec la <em>même</em> précédence que l&rsquo;opérateur courant.</p>
 </aside>
-<p>This way, we can use a single <code>binary()</code> function for all binary operators even
-though they have different precedences.</p>
-<h2><a href="#a-pratt-parser" id="a-pratt-parser"><small>17&#8202;.&#8202;6</small>A Pratt Parser</a></h2>
-<p>We now have all of the pieces and parts of the compiler laid out. We have a
-function for each grammar production: <code>number()</code>, <code>grouping()</code>, <code>unary()</code>, and
-<code>binary()</code>. We still need to implement <code>parsePrecedence()</code>, and <code>getRule()</code>. We
-also know we need a table that, given a token type, lets us find</p>
+<p>De cette façon, nous pouvons utiliser une fonction <code>binary()</code> unique pour tous les opérateurs binaires même s&rsquo;ils ont des précédences différentes.</p>
+<h2><a href="#un-parseur-pratt" id="un-parseur-pratt"><small>17&#8202;.&#8202;6</small>Un Parseur Pratt</a></h2>
+<p>Nous avons maintenant toutes les pièces et parties du compilateur disposées. Nous avons une fonction pour chaque production de grammaire : <code>number()</code>, <code>grouping()</code>, <code>unary()</code>, et <code>binary()</code>. Nous avons encore besoin d&rsquo;implémenter <code>parsePrecedence()</code>, et <code>getRule()</code>. Nous savons aussi que nous avons besoin d&rsquo;une table qui, étant donné un type de token, nous laisse trouver :</p>
 <ul>
 <li>
-<p>the function to compile a prefix expression starting with a token of that
-type,</p>
+<p>la fonction pour compiler une expression préfixe commençant avec un token de ce type,</p>
 </li>
 <li>
-<p>the function to compile an infix expression whose left operand is followed
-by a token of that type, and</p>
+<p>la fonction pour compiler une expression infixe dont l&rsquo;opérande gauche est suivi par un token de ce type, et</p>
 </li>
 <li>
-<p>the precedence of an <span name="prefix">infix</span> expression that uses
-that token as an operator.</p>
+<p>la précédence d&rsquo;une expression <span name="prefix">infixe</span> qui utilise ce token comme un opérateur.</p>
 </li>
 </ul>
 <aside name="prefix">
-<p>We don&rsquo;t need to track the precedence of the <em>prefix</em> expression starting with a
-given token because all prefix operators in Lox have the same precedence.</p>
+<p>Nous n&rsquo;avons pas besoin de suivre la précédence de l&rsquo;expression <em>préfixe</em> commençant avec un token donné parce que tous les opérateurs préfixes en Lox ont la même précédence.</p>
 </aside>
-<p>We wrap these three properties in a little struct which represents a single row
-in the parser table.</p>
+<p>Nous enveloppons ces trois propriétés dans une petite struct qui représente une ligne unique dans la table du parseur.</p>
 <div class="codehilite"><pre class="insert-before">} Precedence;
 </pre><div class="source-file"><em>compiler.c</em><br>
 add after enum <em>Precedence</em></div>
@@ -975,12 +717,9 @@ Parser parser;
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after enum <em>Precedence</em></div>
 
-<p>That ParseFn type is a simple <span name="typedef">typedef</span> for a function
-type that takes no arguments and returns nothing.</p>
+<p>Ce type ParseFn est un simple <span name="typedef">typedef</span> pour un type de fonction qui ne prend aucun argument et ne renvoie rien.</p>
 <aside name="typedef" class="bottom">
-<p>C&rsquo;s syntax for function pointer types is so bad that I always hide it behind a
-typedef. I understand the intent behind the syntax<span class="em">&mdash;</span>the whole &ldquo;declaration
-reflects use&rdquo; thing<span class="em">&mdash;</span>but I think it was a failed syntactic experiment.</p>
+<p>La syntaxe de C pour les types de pointeur de fonction est si mauvaise que je la cache toujours derrière un typedef. Je comprends l&rsquo;intention derrière la syntaxe<span class="em">&mdash;</span>le truc entier &ldquo;la déclaration reflète l&rsquo;utilisation&rdquo;<span class="em">&mdash;</span>mais je pense que c&rsquo;était une expérience syntaxique ratée.</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">} Precedence;
 </pre><div class="source-file"><em>compiler.c</em><br>
@@ -994,8 +733,7 @@ typedef struct {
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after enum <em>Precedence</em></div>
 
-<p>The table that drives our whole parser is an array of ParseRules. We&rsquo;ve been
-talking about it forever, and finally you get to see it.</p>
+<p>La table qui pilote notre parseur entier est un tableau de ParseRules. Nous en avons parlé depuis toujours, et finalement vous pouvez la voir.</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>unary</em>()</div>
 <pre><span class="t">ParseRule</span> <span class="i">rules</span>[] = {
@@ -1044,27 +782,13 @@ add after <em>unary</em>()</div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>unary</em>()</div>
 
 <aside name="big">
-<p>See what I mean about not wanting to revisit the table each time we needed a new
-column? It&rsquo;s a beast.</p>
-<p>If you haven&rsquo;t seen the <code>[TOKEN_DOT] =</code> syntax in a C array literal, that is
-C99&rsquo;s designated initializer syntax. It&rsquo;s clearer than having to count array
-indexes by hand.</p>
+<p>Voyez ce que je veux dire à propos de ne pas vouloir revisiter la table chaque fois que nous avions besoin d&rsquo;une nouvelle colonne ? C&rsquo;est une bête.</p>
+<p>Si vous n&rsquo;avez pas vu la syntaxe <code>[TOKEN_DOT] =</code> dans un littéral de tableau C, c&rsquo;est la syntaxe d&rsquo;initialiseur désigné de C99. C&rsquo;est plus clair que d&rsquo;avoir à compter les index de tableau à la main.</p>
 </aside>
-<p>You can see how <code>grouping</code> and <code>unary</code> are slotted into the prefix parser column
-for their respective token types. In the next column, <code>binary</code> is wired up to
-the four arithmetic infix operators. Those infix operators also have their
-precedences set in the last column.</p>
-<p>Aside from those, the rest of the table is full of <code>NULL</code> and <code>PREC_NONE</code>. Most
-of those empty cells are because there is no expression associated with those
-tokens. You can&rsquo;t start an expression with, say, <code>else</code>, and <code>}</code> would make for
-a pretty confusing infix operator.</p>
-<p>But, also, we haven&rsquo;t filled in the entire grammar yet. In later chapters, as we
-add new expression types, some of these slots will get functions in them. One of
-the things I like about this approach to parsing is that it makes it very easy
-to see which tokens are in use by the grammar and which are available.</p>
-<p>Now that we have the table, we are finally ready to write the code that uses it.
-This is where our Pratt parser comes to life. The easiest function to define is
-<code>getRule()</code>.</p>
+<p>Vous pouvez voir comment <code>grouping</code> et <code>unary</code> sont insérés dans la colonne de parseur préfixe pour leurs types de token respectifs. Dans la colonne suivante, <code>binary</code> est câblé aux quatre opérateurs infixes arithmétiques. Ces opérateurs infixes ont aussi leurs précédences définies dans la dernière colonne.</p>
+<p>À part ceux-là, le reste de la table est plein de <code>NULL</code> et <code>PREC_NONE</code>. La plupart de ces cellules vides sont parce qu&rsquo;il n&rsquo;y a pas d&rsquo;expression associée avec ces tokens. Vous ne pouvez pas commencer une expression avec, disons, <code>else</code>, et <code>}</code> ferait un opérateur infixe assez confus.</p>
+<p>Mais, aussi, nous n&rsquo;avons pas encore rempli la grammaire entière. Dans les chapitres ultérieurs, alors que nous ajoutons de nouveaux types d&rsquo;expression, certains de ces créneaux obtiendront des fonctions dedans. Une des choses que j&rsquo;aime à propos de cette approche du parsing est qu&rsquo;elle rend très facile de voir quels tokens sont utilisés par la grammaire et lesquels sont disponibles.</p>
+<p>Maintenant que nous avons la table, nous sommes enfin prêts à écrire le code qui l&rsquo;utilise. C&rsquo;est là que notre parseur Pratt prend vie. La fonction la plus facile à définir est <code>getRule()</code>.</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>parsePrecedence</em>()</div>
 <pre><span class="k">static</span> <span class="t">ParseRule</span>* <span class="i">getRule</span>(<span class="t">TokenType</span> <span class="i">type</span>) {
@@ -1073,19 +797,10 @@ add after <em>parsePrecedence</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>parsePrecedence</em>()</div>
 
-<p>It simply returns the rule at the given index. It&rsquo;s called by <code>binary()</code> to look
-up the precedence of the current operator. This function exists solely to handle
-a declaration cycle in the C code. <code>binary()</code> is defined <em>before</em> the rules
-table so that the table can store a pointer to it. That means the body of
-<code>binary()</code> cannot access the table directly.</p>
-<p>Instead, we wrap the lookup in a function. That lets us forward declare
-<code>getRule()</code> before the definition of <code>binary()</code>, and <span
-name="forward">then</span> <em>define</em> <code>getRule()</code> after the table. We&rsquo;ll need a
-couple of other forward declarations to handle the fact that our grammar is
-recursive, so let&rsquo;s get them all out of the way.</p>
+<p>Elle renvoie simplement la règle à l&rsquo;index donné. Elle est appelée par <code>binary()</code> pour chercher la précédence de l&rsquo;opérateur courant. Cette fonction existe seulement pour gérer un cycle de déclaration dans le code C. <code>binary()</code> est définie <em>avant</em> la table de règles de sorte que la table peut stocker un pointeur vers elle. Cela signifie que le corps de <code>binary()</code> ne peut pas accéder à la table directement.</p>
+<p>Au lieu de cela, nous enveloppons la recherche dans une fonction. Cela nous laisse déclarer de manière anticipée <code>getRule()</code> avant la définition de <code>binary()</code>, et <span name="forward">ensuite</span> <em>définir</em> <code>getRule()</code> après la table. Nous aurons besoin d&rsquo;une couple d&rsquo;autres déclarations anticipées pour gérer le fait que notre grammaire est récursive, donc sortons-les toutes du chemin.</p>
 <aside name="forward">
-<p>This is what happens when you write your VM in a language that was designed to
-be compiled on a PDP-11.</p>
+<p>C&rsquo;est ce qui arrive quand vous écrivez votre VM dans un langage qui a été conçu pour être compilé sur un PDP-11.</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">  emitReturn();
 }
@@ -1101,13 +816,9 @@ add after <em>endCompiler</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>endCompiler</em>()</div>
 
-<p>If you&rsquo;re following along and implementing clox yourself, pay close attention to
-the little annotations that tell you where to put these code snippets. Don&rsquo;t
-worry, though, if you get it wrong, the C compiler will be happy to tell you.</p>
-<h3><a href="#parsing-with-precedence" id="parsing-with-precedence"><small>17&#8202;.&#8202;6&#8202;.&#8202;1</small>Parsing with precedence</a></h3>
-<p>Now we&rsquo;re getting to the fun stuff. The maestro that orchestrates all of the
-parsing functions we&rsquo;ve defined is <code>parsePrecedence()</code>. Let&rsquo;s start with parsing
-prefix expressions.</p>
+<p>Si vous suivez et implémentez clox vous-même, faites très attention aux petites annotations qui vous disent où mettre ces bouts de code. Ne vous inquiétez pas, cependant, si vous vous trompez, le compilateur C sera heureux de vous le dire.</p>
+<h3><a href="#parser-avec-précédence" id="parser-avec-précédence"><small>17&#8202;.&#8202;6&#8202;.&#8202;1</small>Parser avec précédence</a></h3>
+<p>Maintenant nous arrivons aux trucs amusants. Le maestro qui orchestre toutes les fonctions de parsing que nous avons définies est <code>parsePrecedence()</code>. Commençons avec le parsing des expressions préfixes.</p>
 <div class="codehilite"><pre class="insert-before">static void parsePrecedence(Precedence precedence) {
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>parsePrecedence</em>()<br>
@@ -1124,14 +835,8 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>parsePrecedence</em>(), replace 1 line</div>
 
-<p>We read the next token and look up the corresponding ParseRule. If there is no
-prefix parser, then the token must be a syntax error. We report that and return
-to the caller.</p>
-<p>Otherwise, we call that prefix parse function and let it do its thing. That
-prefix parser compiles the rest of the prefix expression, consuming any other
-tokens it needs, and returns back here. Infix expressions are where it gets
-interesting since precedence comes into play. The implementation is remarkably
-simple.</p>
+<p>Nous lisons le prochain token et cherchons la ParseRule correspondante. S&rsquo;il n&rsquo;y a pas de parseur préfixe, alors le token doit être une erreur de syntaxe. Nous rapportons cela et revenons à l&rsquo;appelant.</p>
+<p>Sinon, nous appelons cette fonction de parsing préfixe et la laissons faire son truc. Ce parseur préfixe compile le reste de l&rsquo;expression préfixe, consommant tous les autres tokens dont il a besoin, et revient ici. Les expressions infixes sont là où ça devient intéressant puisque la précédence entre en jeu. L&rsquo;implémentation est remarquablement simple.</p>
 <div class="codehilite"><pre class="insert-before">  prefixRule();
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>parsePrecedence</em>()</div>
@@ -1146,51 +851,18 @@ in <em>parsePrecedence</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>parsePrecedence</em>()</div>
 
-<p>That&rsquo;s the whole thing. Really. Here&rsquo;s how the entire function works: At the
-beginning of <code>parsePrecedence()</code>, we look up a prefix parser for the current
-token. The first token is <em>always</em> going to belong to some kind of prefix
-expression, by definition. It may turn out to be nested as an operand inside one
-or more infix expressions, but as you read the code from left to right, the
-first token you hit always belongs to a prefix expression.</p>
-<p>After parsing that, which may consume more tokens, the prefix expression is
-done. Now we look for an infix parser for the next token. If we find one, it
-means the prefix expression we already compiled might be an operand for it. But
-only if the call to <code>parsePrecedence()</code> has a <code>precedence</code> that is low enough to
-permit that infix operator.</p>
-<p>If the next token is too low precedence, or isn&rsquo;t an infix operator at all,
-we&rsquo;re done. We&rsquo;ve parsed as much expression as we can. Otherwise, we consume the
-operator and hand off control to the infix parser we found. It consumes whatever
-other tokens it needs (usually the right operand) and returns back to
-<code>parsePrecedence()</code>. Then we loop back around and see if the <em>next</em> token is
-also a valid infix operator that can take the entire preceding expression as its
-operand. We keep looping like that, crunching through infix operators and their
-operands until we hit a token that isn&rsquo;t an infix operator or is too low
-precedence and stop.</p>
-<p>That&rsquo;s a lot of prose, but if you really want to mind meld with Vaughan Pratt
-and fully understand the algorithm, step through the parser in your debugger as
-it works through some expressions. Maybe a picture will help. There&rsquo;s only a
-handful of functions, but they are marvelously intertwined:</p>
-<p><span name="connections"></span></p>
-<p><img src="image/compiling-expressions/connections.png" alt="The various parsing
-functions and how they call each other." /></p>
+<p>C&rsquo;est la chose entière. Vraiment. Voici comment la fonction entière fonctionne : Au début de <code>parsePrecedence()</code>, nous cherchons un parseur préfixe pour le token courant. Le premier token va <em>toujours</em> appartenir à quelque sorte d&rsquo;expression préfixe, par définition. Il peut s&rsquo;avérer être imbriqué comme un opérande à l&rsquo;intérieur d&rsquo;une ou plusieurs expressions infixes, mais alors que vous lisez le code de gauche à droite, le premier token que vous touchez appartient toujours à une expression préfixe.</p>
+<p>Après avoir parsé cela, ce qui peut consommer plus de tokens, l&rsquo;expression préfixe est faite. Maintenant nous cherchons un parseur infixe pour le prochain token. Si nous en trouvons un, cela signifie que l&rsquo;expression préfixe que nous avons déjà compilée pourrait être un opérande pour lui. Mais seulement si l&rsquo;appel à <code>parsePrecedence()</code> a une <code>precedence</code> qui est assez basse pour permettre cet opérateur infixe.</p>
+<p>Si le prochain token est de trop basse priorité, ou n&rsquo;est pas un opérateur infixe du tout, nous avons fini. Nous avons parsé autant d&rsquo;expression que nous pouvons. Sinon, nous consommons l&rsquo;opérateur et passons la main au parseur infixe que nous avons trouvé. Il consomme quels que soient les autres tokens dont il a besoin (habituellement l&rsquo;opérande de droite) et revient à <code>parsePrecedence()</code>. Ensuite nous bouclons en arrière et voyons si le <em>prochain</em> token est aussi un opérateur infixe valide qui peut prendre l&rsquo;expression précédente entière comme son opérande. Nous continuons de boucler comme ça, craquant à travers les opérateurs infixes et leurs opérandes jusqu&rsquo;à ce nous touchions un token qui n&rsquo;est pas un opérateur infixe ou est de trop basse priorité et nous arrêtons.</p>
+<p>C&rsquo;est beaucoup de prose, mais si vous voulez vraiment fusionner votre esprit avec Vaughan Pratt et comprendre pleinement l&rsquo;algorithme, passez à travers le parseur dans votre débogueur alors qu&rsquo;il travaille à travers quelques expressions. Peut-être qu&rsquo;une image aidera. Il n&rsquo;y a qu&rsquo;une poignée de fonctions, mais elles sont merveilleusement entrelacées :</p>
+<p><span name="connections"></span></p><img src="image/compiling-expressions/connections.png" alt="Les diverses fonctions de parsing et comment elles s'appellent les unes les autres." />
 <aside name="connections">
-<p>The <img src="image/compiling-expressions/calls.png" alt="A solid arrow."
-class="arrow" /> arrow connects a function to another function it directly
-calls. The <img src="image/compiling-expressions/points-to.png" alt="An open
-arrow." class="arrow" /> arrow shows the table&rsquo;s pointers to the parsing
-functions.</p>
+<p>La flèche <img src="image/compiling-expressions/calls.png" alt="Une flèche pleine." class="arrow" /> connecte une fonction à une autre fonction qu&rsquo;elle appelle directement. La flèche <img src="image/compiling-expressions/points-to.png" alt="Une flèche ouverte." class="arrow" /> montre les pointeurs de la table vers les fonctions de parsing.</p>
 </aside>
-<p>Later, we&rsquo;ll need to tweak the code in this chapter to handle assignment. But,
-otherwise, what we wrote covers all of our expression compiling needs for the
-rest of the book. We&rsquo;ll plug additional parsing functions into the table when we
-add new kinds of expressions, but <code>parsePrecedence()</code> is complete.</p>
-<h2><a href="#dumping-chunks" id="dumping-chunks"><small>17&#8202;.&#8202;7</small>Dumping Chunks</a></h2>
-<p>While we&rsquo;re here in the core of our compiler, we should put in some
-instrumentation. To help debug the generated bytecode, we&rsquo;ll add support for
-dumping the chunk once the compiler finishes. We had some temporary logging
-earlier when we hand-authored the chunk. Now we&rsquo;ll put in some real code so that
-we can enable it whenever we want.</p>
-<p>Since this isn&rsquo;t for end users, we hide it behind a flag.</p>
+<p>Plus tard, nous aurons besoin d&rsquo;ajuster le code dans ce chapitre pour gérer l&rsquo;assignation. Mais, autrement, ce que nous avons écrit couvre tous nos besoins de compilation d&rsquo;expression pour le reste du livre. Nous brancherons des fonctions de parsing supplémentaires dans la table quand nous ajouterons de nouveaux genres d&rsquo;expressions, mais <code>parsePrecedence()</code> est complète.</p>
+<h2><a href="#dumper-les-morceaux" id="dumper-les-morceaux"><small>17&#8202;.&#8202;7</small>Dumper les Morceaux</a></h2>
+<p>Pendant que nous sommes ici dans le cœur de notre compilateur, nous devrions mettre un peu d&rsquo;instrumentation. Pour aider à déboguer le bytecode généré, nous ajouterons le support pour dumper le morceau une fois que le compilateur finit. Nous avons eu un peu de journalisation temporaire plus tôt quand nous écrivions le morceau à la main. Maintenant nous mettrons du vrai code pour que nous puissions l&rsquo;activer chaque fois que nous voulons.</p>
+<p>Puisque ce n&rsquo;est pas pour les utilisateurs finaux, nous le cachons derrière un drapeau.</p>
 <div class="codehilite"><pre class="insert-before">#include &lt;stdint.h&gt;
 
 </pre><div class="source-file"><em>common.h</em></div>
@@ -1199,8 +871,7 @@ we can enable it whenever we want.</p>
 </pre></div>
 <div class="source-file-narrow"><em>common.h</em></div>
 
-<p>When that flag is defined, we use our existing &ldquo;debug&rdquo; module to print out the
-chunk&rsquo;s bytecode.</p>
+<p>Quand ce drapeau est défini, nous utilisons notre module &ldquo;debug&rdquo; existant pour imprimer le bytecode du morceau.</p>
 <div class="codehilite"><pre class="insert-before">  emitReturn();
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>endCompiler</em>()</div>
@@ -1213,11 +884,8 @@ in <em>endCompiler</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>endCompiler</em>()</div>
 
-<p>We do this only if the code was free of errors. After a syntax error, the
-compiler keeps on going but it&rsquo;s in kind of a weird state and might produce
-broken code. That&rsquo;s harmless because it won&rsquo;t get executed, but we&rsquo;ll just
-confuse ourselves if we try to read it.</p>
-<p>Finally, to access <code>disassembleChunk()</code>, we need to include its header.</p>
+<p>Nous faisons cela seulement si le code était libre d&rsquo;erreurs. Après une erreur de syntaxe, le compilateur continue d&rsquo;avancer mais il est dans une sorte d&rsquo;état bizarre et pourrait produire du code cassé. C&rsquo;est inoffensif parce qu&rsquo;il ne sera pas exécuté, mais nous nous embrouillerons juste nous-mêmes si nous essayons de le lire.</p>
+<p>Finalement, pour accéder à <code>disassembleChunk()</code>, nous avons besoin d&rsquo;inclure son en-tête.</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;scanner.h&quot;
 </pre><div class="source-file"><em>compiler.c</em></div>
 <pre class="insert">
@@ -1231,90 +899,42 @@ typedef struct {
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em></div>
 
-<p>We made it! This was the last major section to install in our VM&rsquo;s compilation
-and execution pipeline. Our interpreter doesn&rsquo;t <em>look</em> like much, but inside it
-is scanning, parsing, compiling to bytecode, and executing.</p>
-<p>Fire up the VM and type in an expression. If we did everything right, it should
-calculate and print the result. We now have a very over-engineered arithmetic
-calculator. We have a lot of language features to add in the coming chapters,
-but the foundation is in place.</p>
+<p>Nous l&rsquo;avons fait ! C&rsquo;était la dernière section majeure à installer dans le pipeline de compilation et d&rsquo;exécution de notre VM. Notre interpréteur ne <em>ressemble</em> pas à grand-chose, mais à l&rsquo;intérieur il scanne, parse, compile vers du bytecode, et exécute.</p>
+<p>Démarrez la VM et tapez une expression. Si nous avons tout fait juste, il devrait calculer et imprimer le résultat. Nous avons maintenant une calculatrice arithmétique très sur-ingénierée. Nous avons beaucoup de fonctionnalités de langage à ajouter dans les chapitres à venir, mais la fondation est en place.</p>
 <div class="challenges">
-<h2><a href="#challenges" id="challenges">Challenges</a></h2>
+<h2><a href="#défis" id="défis"><small>17&#8202;.&#8202;8</small>Défis</a></h2>
 <ol>
 <li>
-<p>To really understand the parser, you need to see how execution threads
-through the interesting parsing functions<span class="em">&mdash;</span><code>parsePrecedence()</code> and the
-parser functions stored in the table. Take this (strange) expression:</p>
+<p>Pour comprendre vraiment le parseur, vous avez besoin de voir comment l&rsquo;exécution file à travers les fonctions de parsing intéressantes<span class="em">&mdash;</span><code>parsePrecedence()</code> et les fonctions de parseur stockées dans la table. Prenez cette (étrange) expression :</p>
 <div class="codehilite"><pre>(-<span class="n">1</span> + <span class="n">2</span>) * <span class="n">3</span> - -<span class="n">4</span>
 </pre></div>
-<p>Write a trace of how those functions are called. Show the order they are
-called, which calls which, and the arguments passed to them.</p>
+<p>Écrivez une trace de comment ces fonctions sont appelées. Montrez l&rsquo;ordre dans lequel elles sont appelées, qui appelle qui, et les arguments passés à elles.</p>
 </li>
 <li>
-<p>The ParseRule row for <code>TOKEN_MINUS</code> has both prefix and infix function
-pointers. That&rsquo;s because <code>-</code> is both a prefix operator (unary negation) and
-an infix one (subtraction).</p>
-<p>In the full Lox language, what other tokens can be used in both prefix and
-infix positions? What about in C or in another language of your choice?</p>
+<p>La ligne ParseRule pour <code>TOKEN_MINUS</code> a les deux pointeurs de fonction préfixe et infixe. C&rsquo;est parce que <code>-</code> est à la fois un opérateur préfixe (négation unaire) et un infixe (soustraction).</p>
+<p>Dans le langage Lox complet, quels autres tokens peuvent être utilisés dans les deux positions préfixe et infixe ? Quoi à propos de C ou dans un autre langage de votre choix ?</p>
 </li>
 <li>
-<p>You might be wondering about complex &ldquo;mixfix&rdquo; expressions that have more
-than two operands separated by tokens. C&rsquo;s conditional or &ldquo;ternary&rdquo;
-operator, <code>?:</code>, is a widely known one.</p>
-<p>Add support for that operator to the compiler. You don&rsquo;t have to generate
-any bytecode, just show how you would hook it up to the parser and handle
-the operands.</p>
+<p>Vous pourriez vous interroger sur les expressions complexes &ldquo;mixfixes&rdquo; qui ont plus que deux opérandes séparés par des tokens. L&rsquo;opérateur conditionnel ou &ldquo;ternaire&rdquo; de C, <code>?:</code>, est un largement connu.</p>
+<p>Ajoutez le support pour cet opérateur au compilateur. Vous n&rsquo;avez pas à générer de bytecode, montrez juste comment vous le connecteriez au parseur et géreriez les opérandes.</p>
 </li>
 </ol>
 </div>
 <div class="design-note">
-<h2><a href="#design-note" id="design-note">Design Note: It&rsquo;s Just Parsing</a></h2>
-<p>I&rsquo;m going to make a claim here that will be unpopular with some compiler and
-language people. It&rsquo;s OK if you don&rsquo;t agree. Personally, I learn more from
-strongly stated opinions that I disagree with than I do from several pages of
-qualifiers and equivocation. My claim is that <em>parsing doesn&rsquo;t matter</em>.</p>
-<p>Over the years, many programming language people, especially in academia, have
-gotten <em>really</em> into parsers and taken them very seriously. Initially, it was
-the compiler folks who got into <span name="yacc">compiler-compilers</span>,
-LALR, and other stuff like that. The first half of the dragon book is a long
-love letter to the wonders of parser generators.</p>
+<h2><a href="#note-de-conception--cest-juste-du-parsing" id="note-de-conception--cest-juste-du-parsing"><small>17&#8202;.&#8202;9</small>Note de Conception : C&rsquo;est Juste du Parsing</a></h2>
+<p>Je vais faire une déclaration ici qui sera impopulaire avec certains gens de compilateur et de langage. C&rsquo;est OK si vous n&rsquo;êtes pas d&rsquo;accord. Personnellement, j&rsquo;apprends plus d&rsquo;opinions fortement énoncées avec lesquelles je suis en désaccord que je ne le fais de plusieurs pages de qualificatifs et d&rsquo;équivoque. Ma réclamation est que <em>le parsing n&rsquo;a pas d&rsquo;importance</em>.</p>
+<p>Au fil des années, beaucoup de gens de langage de programmation, spécialement dans le monde académique, se sont mis <em>vraiment</em> dans les parseurs et les ont pris très sérieusement. Initialement, c&rsquo;étaient les gens de compilateur qui se sont mis dans les <span name="yacc">compilateurs de compilateurs</span>, LALR, et d&rsquo;autres trucs comme ça. La première moitié du livre du dragon est une longue lettre d&rsquo;amour aux merveilles des générateurs de parseurs.</p>
 <aside name="yacc">
-<p>All of us suffer from the vice of &ldquo;when all you have is a hammer, everything
-looks like a nail&rdquo;, but perhaps none so visibly as compiler people. You wouldn&rsquo;t
-believe the breadth of software problems that miraculously seem to require a new
-little language in their solution as soon as you ask a compiler hacker for help.</p>
-<p>Yacc and other compiler-compilers are the most delightfully recursive example.
-&ldquo;Wow, writing compilers is a chore. I know, let&rsquo;s write a compiler to write our
-compiler for us.&rdquo;</p>
-<p>For the record, I don&rsquo;t claim immunity to this affliction.</p>
+<p>Nous souffrons tous du vice de &ldquo;quand tout ce que vous avez est un marteau, tout ressemble à un clou&rdquo;, mais peut-être aucun si visiblement que les gens de compilateur. Vous ne croiriez pas l&rsquo;ampleur des problèmes logiciels qui semblent miraculeusement exiger un nouveau petit langage dans leur solution dès que vous demandez de l&rsquo;aide à un hacker de compilateur.</p>
+<p>Yacc et d&rsquo;autres compilateurs de compilateurs sont l&rsquo;exemple le plus délicieusement récursif. &ldquo;Wouah, écrire des compilateurs est une corvée. Je sais, écrivons un compilateur pour écrire notre compilateur pour nous.&rdquo;</p>
+<p>Pour l&rsquo;enregistrement, je ne réclame pas l&rsquo;immunité à cette affliction.</p>
 </aside>
-<p>Later, the functional programming folks got into parser combinators, packrat
-parsers, and other sorts of things. Because, obviously, if you give a functional
-programmer a problem, the first thing they&rsquo;ll do is whip out a pocketful of
-higher-order functions.</p>
-<p>Over in math and algorithm analysis land, there is a long legacy of research
-into proving time and memory usage for various parsing techniques, transforming
-parsing problems into other problems and back, and assigning complexity classes
-to different grammars.</p>
-<p>At one level, this stuff is important. If you&rsquo;re implementing a language, you
-want some assurance that your parser won&rsquo;t go exponential and take 7,000 years
-to parse a weird edge case in the grammar. Parser theory gives you that bound.
-As an intellectual exercise, learning about parsing techniques is also fun and
-rewarding.</p>
-<p>But if your goal is just to implement a language and get it in front of users,
-almost all of that stuff doesn&rsquo;t matter. It&rsquo;s really easy to get worked up by
-the enthusiasm of the people who <em>are</em> into it and think that your front end
-<em>needs</em> some whiz-bang generated combinator-parser-factory thing. I&rsquo;ve seen
-people burn tons of time writing and rewriting their parser using whatever
-today&rsquo;s hot library or technique is.</p>
-<p>That&rsquo;s time that doesn&rsquo;t add any value to your user&rsquo;s life. If you&rsquo;re just
-trying to get your parser done, pick one of the bog-standard techniques, use it,
-and move on. Recursive descent, Pratt parsing, and the popular parser generators
-like ANTLR or Bison are all fine.</p>
-<p>Take the extra time you saved not rewriting your parsing code and spend it
-improving the compile error messages your compiler shows users. Good error
-handling and reporting is more valuable to users than almost anything else you
-can put time into in the front end.</p>
+<p>Plus tard, les gens de programmation fonctionnelle se sont mis dans les combinateurs de parseurs, les parseurs packrat, et d&rsquo;autres sortes de choses. Parce que, évidemment, si vous donnez un problème à un programmeur fonctionnel, la première chose qu&rsquo;ils feront est de sortir une poche pleine de fonctions d&rsquo;ordre supérieur.</p>
+<p>Là-bas dans le pays de l&rsquo;analyse d&rsquo;algorithme et de maths, il y a un long héritage de recherche dans la preuve de temps et d&rsquo;utilisation mémoire pour diverses techniques de parsing, transformant des problèmes de parsing en d&rsquo;autres problèmes et vice versa, et assignant des classes de complexité à différentes grammaires.
+À un niveau, ce truc est important. Si vous implémentez un langage, vous voulez une certaine assurance que votre parseur ne deviendra pas exponentiel et prendra 7 000 ans pour parser un cas limite bizarre dans la grammaire. La théorie des parseurs vous donne cette borne. Comme exercice intellectuel, apprendre les techniques de parsing est aussi amusant et gratifiant.</p>
+<p>Mais si votre but est juste d&rsquo;implémenter un langage et de le mettre devant des utilisateurs, presque tout ce truc n&rsquo;a pas d&rsquo;importance. Il est vraiment facile de se laisser emporter par l&rsquo;enthousiasme des gens qui <em>sont</em> dedans et pensent que votre front end a <em>besoin</em> de quelque chose de génial type usine-de-parseur-combinateur-généré. J&rsquo;ai vu des gens brûler des tonnes de temps à écrire et réécrire leur parseur en utilisant quelle que soit la bibliothèque ou technique chaude d&rsquo;aujourd&rsquo;hui.</p>
+<p>C&rsquo;est du temps qui n&rsquo;ajoute aucune valeur à la vie de votre utilisateur. Si vous essayez juste de finir votre parseur, choisissez une des techniques standard, utilisez-la, et passez à autre chose. La descente récursive, le parsing Pratt, et les générateurs de parseurs populaires comme ANTLR ou Bison sont tous bien.</p>
+<p>Prenez le temps supplémentaire que vous avez économisé à ne pas réécrire votre code de parsing et dépensez-le à améliorer les messages d&rsquo;erreur de compilation que votre compilateur montre aux utilisateurs. Une bonne gestion et rapport d&rsquo;erreur est plus précieuse aux utilisateurs que presque n&rsquo;importe quoi d&rsquo;autre dans lequel vous pouvez mettre du temps dans le front end.</p>
 </div>
 
 <footer>

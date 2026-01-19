@@ -1,308 +1,199 @@
-> Magicians protect their secrets not because the secrets are large and
-> important, but because they are so small and trivial. The wonderful effects
-> created on stage are often the result of a secret so absurd that the magician
-> would be embarrassed to admit that that was how it was done.
+> Les magiciens protègent leurs secrets non pas parce que les secrets sont grands et
+> importants, mais parce qu'ils sont si petits et triviaux. Les merveilleux effets
+> créés sur scène sont souvent le résultat d'un secret si absurde que le magicien
+> serait embarrassé d'admettre que c'était comme ça que c'était fait.
 >
-> <cite>Christopher Priest, <em>The Prestige</em></cite>
+> <cite>Christopher Priest, <em>Le Prestige</em></cite>
 
-We've spent a lot of time talking about how to represent a program as a sequence
-of bytecode instructions, but it feels like learning biology using only stuffed,
-dead animals. We know what instructions are in theory, but we've never seen them
-in action, so it's hard to really understand what they *do*. It would be hard to
-write a compiler that outputs bytecode when we don't have a good understanding
-of how that bytecode behaves.
+Nous avons passé beaucoup de temps à parler de comment représenter un programme comme une séquence d'instructions bytecode, mais cela ressemble à apprendre la biologie en n'utilisant que des animaux empaillés et morts. Nous savons ce que sont les instructions en théorie, mais nous ne les avons jamais vues en action, donc il est difficile de vraiment comprendre ce qu'elles _font_. Il serait difficile d'écrire un compilateur qui sort du bytecode quand nous n'avons pas une bonne compréhension de comment ce bytecode se comporte.
 
-So, before we go and build the front end of our new interpreter, we will begin
-with the back end -- the virtual machine that executes instructions. It breathes
-life into the bytecode. Watching the instructions prance around gives us a
-clearer picture of how a compiler might translate the user's source code into a
-series of them.
+Donc, avant d'aller construire le front end de notre nouvel interpréteur, nous commencerons avec le back end -- la machine virtuelle qui exécute les instructions. Elle insuffle la vie dans le bytecode. Regarder les instructions se pavaner nous donne une image plus claire de comment un compilateur pourrait traduire le code source de l'utilisateur en une série d'entre elles.
 
-## An Instruction Execution Machine
+## Une Machine d'Exécution d'Instructions
 
-The virtual machine is one part of our interpreter's internal architecture. You
-hand it a chunk of code -- literally a Chunk -- and it runs it. The code and
-data structures for the VM reside in a new module.
+La machine virtuelle est une partie de l'architecture interne de notre interpréteur. Vous lui donnez un morceau de code -- littéralement un Chunk -- et elle l'exécute. Le code et les structures de données pour la VM résident dans un nouveau module.
 
 ^code vm-h
 
-As usual, we start simple. The VM will gradually acquire a whole pile of state
-it needs to keep track of, so we define a struct now to stuff that all in.
-Currently, all we store is the chunk that it executes.
+Comme d'habitude, nous commençons simple. La VM acquerra graduellement tout un tas d'état dont elle a besoin de garder la trace, donc nous définissons une struct maintenant pour bourrer tout ça dedans. Actuellement, tout ce que nous stockons est le morceau qu'elle exécute.
 
-Like we do with most of the data structures we create, we also define functions
-to create and tear down a VM. Here's the implementation:
+Comme nous le faisons avec la plupart des structures de données que nous créons, nous définissons aussi des fonctions pour créer et détruire une VM. Voici l'implémentation :
 
 ^code vm-c
 
-OK, calling those functions "implementations" is a stretch. We don't have any
-interesting state to initialize or free yet, so the functions are empty. Trust
-me, we'll get there.
+OK, appeler ces fonctions des "implémentations" est un peu fort. Nous n'avons aucun état intéressant à initialiser ou libérer encore, donc les fonctions sont vides. Croyez-moi, nous y arriverons.
 
-The slightly more interesting line here is that declaration of `vm`. This module
-is eventually going to have a slew of functions and it would be a chore to pass
-around a pointer to the VM to all of them. Instead, we declare a single global
-VM object. We need only one anyway, and this keeps the code in the book a little
-lighter on the page.
+La ligne légèrement plus intéressante ici est cette déclaration de `vm`. Ce module va éventuellement avoir une flopée de fonctions et ce serait une corvée de passer un pointeur vers la VM à toutes celles-ci. Au lieu de ça, nous déclarons un unique objet VM global. Nous en avons besoin d'un seul de toute façon, et cela garde le code dans le livre un peu plus léger sur la page.
 
 <aside name="one">
 
-The choice to have a static VM instance is a concession for the book, but not
-necessarily a sound engineering choice for a real language implementation. If
-you're building a VM that's designed to be embedded in other host applications,
-it gives the host more flexibility if you *do* explicitly take a VM pointer
-and pass it around.
+Le choix d'avoir une instance statique de VM est une concession pour le livre, mais pas nécessairement un choix d'ingénierie sain pour une implémentation de langage réelle. Si vous construisez une VM qui est conçue pour être embarquée dans d'autres applications hôtes, cela donne à l'hôte plus de flexibilité si vous prenez explicitement un pointeur de VM et le passez autour.
 
-That way, the host app can control when and where memory for the VM is
-allocated, run multiple VMs in parallel, etc.
+De cette façon, l'app hôte peut contrôler quand et où la mémoire pour la VM est allouée, lancer de multiples VMs en parallèle, etc.
 
-What I'm doing here is a global variable, and [everything bad you've heard about
-global variables][global] is still true when programming in the large. But when
-keeping things small for a book...
+Ce que je fais ici est une variable globale, et [tout ce que vous avez entendu de mauvais à propos des variables globales][global] est encore vrai quand on programme en grand. Mais quand on garde les choses petites pour un livre...
 
 [global]: http://gameprogrammingpatterns.com/singleton.html
 
 </aside>
 
-Before we start pumping fun code into our VM, let's go ahead and wire it up to
-the interpreter's main entrypoint.
+Avant que nous commencions à pomper du code amusant dans notre VM, allons-y et câblons-la au point d'entrée principal de l'interpréteur.
 
 ^code main-init-vm (1 before, 1 after)
 
-We spin up the VM when the interpreter first starts. Then when we're about to
-exit, we wind it down.
+Nous démarrons la VM quand l'interpréteur commence. Puis quand nous sommes sur le point de sortir, nous l'arrêtons.
 
 ^code main-free-vm (1 before, 1 after)
 
-One last ceremonial obligation:
+Une dernière obligation cérémonielle :
 
 ^code main-include-vm (1 before, 2 after)
 
-Now when you run clox, it starts up the VM before it creates that hand-authored
-chunk from the [last chapter][]. The VM is ready and waiting, so let's teach it
-to do something.
+Maintenant quand vous lancez clox, il démarre la VM avant qu'il ne crée ce morceau écrit à la main du [dernier chapitre][]. La VM est prête et attend, donc apprenons-lui à faire quelque chose.
 
-[last chapter]: chunks-of-bytecode.html#disassembling-chunks
+[dernier chapitre]: morceaux-de-bytecode.html#désassembler-des-morceaux
 
-### Executing instructions
+### Exécuter des instructions
 
-The VM springs into action when we command it to interpret a chunk of bytecode.
+La VM saute en action quand nous lui commandons d'interpréter un morceau de bytecode.
 
 ^code main-interpret (1 before, 1 after)
 
-This function is the main entrypoint into the VM. It's declared like so:
+Cette fonction est le point d'entrée principal dans la VM. Elle est déclarée comme ceci :
 
 ^code interpret-h (1 before, 2 after)
 
-The VM runs the chunk and then responds with a value from this enum:
+La VM exécute le morceau et ensuite répond avec une valeur de cet enum :
 
 ^code interpret-result (2 before, 2 after)
 
-We aren't using the result yet, but when we have a compiler that reports static
-errors and a VM that detects runtime errors, the interpreter will use this to
-know how to set the exit code of the process.
+Nous n'utilisons pas le résultat encore, mais quand nous aurons un compilateur qui rapporte des erreurs statiques et une VM qui détecte des erreurs d'exécution, l'interpréteur utilisera cela pour savoir comment définir le code de sortie du processus.
 
-We're inching towards some actual implementation.
+Nous avançons pouce par pouce vers une implémentation réelle.
 
 ^code interpret
 
-First, we store the chunk being executed in the VM. Then we call `run()`, an
-internal helper function that actually runs the bytecode instructions. Between
-those two parts is an intriguing line. What is this `ip` business?
+D'abord, nous stockons le morceau étant exécuté dans la VM. Ensuite nous appelons `run()`, une fonction utilitaire interne qui exécute réellement les instructions bytecode. Entre ces deux parties est une ligne intrigante. C'est quoi cette affaire de `ip` ?
 
-As the VM works its way through the bytecode, it keeps track of where it is --
-the location of the instruction currently being executed. We don't use a <span
-name="local">local</span> variable inside `run()` for this because eventually
-other functions will need to access it. Instead, we store it as a field in VM.
+Alors que la VM travaille son chemin à travers le bytecode, elle garde la trace de où elle est -- l'emplacement de l'instruction actuellement exécutée. Nous n'utilisons pas une variable <span name="local">locale</span> à l'intérieur de `run()` pour cela parce qu'éventuellement d'autres fonctions auront besoin d'y accéder. Au lieu de cela, nous la stockons comme un champ dans VM.
 
 <aside name="local">
 
-If we were trying to squeeze every ounce of speed out of our bytecode
-interpreter, we would store `ip` in a local variable. It gets modified so often
-during execution that we want the C compiler to keep it in a register.
+Si nous essayions de presser chaque once de vitesse hors de notre interpréteur bytecode, nous stockerions `ip` dans une variable locale. Il est modifié si souvent durant l'exécution que nous voulons que le compilateur C le garde dans un registre.
 
 </aside>
 
 ^code ip (2 before, 1 after)
 
-Its type is a byte pointer. We use an actual real C pointer pointing right into
-the middle of the bytecode array instead of something like an integer index
-because it's faster to dereference a pointer than look up an element in an array
-by index.
+Son type est un pointeur d'octet. Nous utilisons un pointeur C réel pointant droit au milieu du tableau de bytecode au lieu de quelque chose comme un index entier parce qu'il est plus rapide de déréférencer un pointeur que de chercher un élément dans un tableau par index.
 
-The name "IP" is traditional, and -- unlike many traditional names in CS --
-actually makes sense: it's an **[instruction pointer][ip]**. Almost every
-instruction set in the <span name="ip">world</span>, real and virtual, has a
-register or variable like this.
+Le nom "IP" est traditionnel, et -- contrairement à beaucoup de noms traditionnels en informatique -- a réellement du sens : c'est un **[pointeur d'instruction][ip]**. Presque chaque jeu d'instructions dans le <span name="ip">monde</span>, réel ou virtuel, a un registre ou une variable comme celle-ci.
 
 [ip]: https://en.wikipedia.org/wiki/Program_counter
 
 <aside name="ip">
 
-x86, x64, and the CLR call it "IP". 68k, PowerPC, ARM, p-code, and the JVM call
-it "PC", for **program counter**.
+x86, x64, et le CLR l'appellent "IP". 68k, PowerPC, ARM, p-code, et la JVM l'appellent "PC", pour **compteur de programme** (Program Counter).
 
 </aside>
 
-We initialize `ip` by pointing it at the first byte of code in the chunk. We
-haven't executed that instruction yet, so `ip` points to the instruction *about
-to be executed*. This will be true during the entire time the VM is running: the
-IP always points to the next instruction, not the one currently being handled.
+Nous initialisons `ip` en le pointant au premier octet de code dans le morceau. Nous n'avons pas exécuté cette instruction encore, donc `ip` pointe vers l'instruction _sur le point d'être exécutée_. Ce sera vrai durant tout le temps où la VM tourne : l'IP pointe toujours vers la prochaine instruction, pas celle actuellement gérée.
 
-The real fun happens in `run`().
+Le vrai fun se passe dans `run()`.
 
 ^code run
 
-This is the single most <span name="important">important</span> function in all
-of clox, by far. When the interpreter executes a user's program, it will spend
-something like 90% of its time inside `run()`. It is the beating heart of the
-VM.
+C'est l'unique fonction la plus <span name="important">importante</span> dans tout clox, de loin. Quand l'interpréteur exécute un programme utilisateur, il passera quelque chose comme 90% de son temps à l'intérieur de `run()`. C'est le cœur battant de la VM.
 
 <aside name="important">
 
-Or, at least, it *will* be in a few chapters when it has enough content to be
-useful. Right now, it's not exactly a wonder of software wizardry.
+Ou, au moins, il le _sera_ dans quelques chapitres quand il aura assez de contenu pour être utile. Pour l'instant, ce n'est pas exactement une merveille de sorcellerie logicielle.
 
 </aside>
 
-Despite that dramatic intro, it's conceptually pretty simple. We have an outer
-loop that goes and goes. Each turn through that loop, we read and execute a
-single bytecode instruction.
+Malgré cette intro dramatique, c'est conceptuellement assez simple. Nous avons une boucle extérieure qui va et va. Chaque tour à travers cette boucle, nous lisons et exécutons une seule instruction bytecode.
 
-To process an instruction, we first figure out what kind of instruction we're
-dealing with. The `READ_BYTE` macro reads the byte currently pointed at by `ip`
-and then <span name="next">advances</span> the instruction pointer. The first
-byte of any instruction is the opcode. Given a numeric opcode, we need to get to
-the right C code that implements that instruction's semantics. This process is
-called **decoding** or **dispatching** the instruction.
+Pour traiter une instruction, nous trouvons d'abord à quel genre d'instruction nous avons affaire. La macro `READ_BYTE` lit l'octet actuellement pointé par `ip` et ensuite <span name="next">avance</span> le pointeur d'instruction. Le premier octet de n'importe quelle instruction est l'opcode. Étant donné un opcode numérique, nous devons aller au bon code C qui implémente la sémantique de cette instruction. Ce processus est appelé **décoder** ou **dispatcher** l'instruction.
 
 <aside name="next">
 
-Note that `ip` advances as soon as we read the opcode, before we've actually
-started executing the instruction. So, again, `ip` points to the *next*
-byte of code to be used.
+Notez que `ip` avance dès que nous lisons l'opcode, avant que nous ayons réellement commencé à exécuter l'instruction. Donc, encore une fois, `ip` pointe vers le _prochain_ octet de code à être utilisé.
 
 </aside>
 
-We do that process for every single instruction, every single time one is
-executed, so this is the most performance critical part of the entire virtual
-machine. Programming language lore is filled with <span
-name="dispatch">clever</span> techniques to do bytecode dispatch efficiently,
-going all the way back to the early days of computers.
+Nous faisons ce processus pour chaque instruction unique, chaque fois qu'une est exécutée, donc c'est la partie la plus critique en performance de la machine virtuelle entière. Le folklore des langages de programmation est rempli de techniques <span name="dispatch">intelligentes</span> pour faire le dispatch de bytecode efficacement, remontant tout le chemin jusqu'aux premiers jours des ordinateurs.
 
 <aside name="dispatch">
 
-If you want to learn some of these techniques, look up "direct threaded code",
-"jump table", and "computed goto".
+Si vous voulez apprendre certaines de ces techniques, cherchez "direct threaded code", "jump table", et "computed goto".
 
 </aside>
 
-Alas, the fastest solutions require either non-standard extensions to C, or
-handwritten assembly code. For clox, we'll keep it simple. Just like our
-disassembler, we have a single giant `switch` statement with a case for each
-opcode. The body of each case implements that opcode's behavior.
+Hélas, les solutions les plus rapides exigent soit des extensions non-standard à C, ou du code assembleur écrit à la main. Pour clox, nous garderons ça simple. Juste comme notre désassembleur, nous avons une unique instruction `switch` géante avec un case pour chaque opcode. Le corps de chaque case implémente le comportement de cet opcode.
 
-So far, we handle only a single instruction, `OP_RETURN`, and the only thing it
-does is exit the loop entirely. Eventually, that instruction will be used to
-return from the current Lox function, but we don't have functions yet, so we'll
-repurpose it temporarily to end the execution.
+Jusqu'à présent, nous gérons seulement une unique instruction, `OP_RETURN`, et la seule chose qu'elle fait est de sortir de la boucle entièrement. Éventuellement, cette instruction sera utilisée pour revenir de la fonction Lox courante, mais nous n'avons pas de fonctions encore, donc nous la réutiliserons temporairement pour finir l'exécution.
 
-Let's go ahead and support our one other instruction.
+Allons-y et supportons notre seule autre instruction.
 
 ^code op-constant (1 before, 1 after)
 
-We don't have enough machinery in place yet to do anything useful with a
-constant. For now, we'll just print it out so we interpreter hackers can see
-what's going on inside our VM. That call to `printf()` necessitates an include.
+Nous n'avons pas assez de machinerie en place pour faire quoi que ce soit d'utile avec une constante. Pour l'instant, nous l'imprimerons juste pour que nous les hackers d'interpréteur puissions voir ce qui se passe à l'intérieur de notre VM. Cet appel à `printf()` nécessite un include.
 
 ^code vm-include-stdio (1 after)
 
-We also have a new macro to define.
+Nous avons aussi une nouvelle macro à définir.
 
 ^code read-constant (1 before, 2 after)
 
-`READ_CONSTANT()` reads the next byte from the bytecode, treats the resulting
-number as an index, and looks up the corresponding Value in the chunk's constant
-table. In later chapters, we'll add a few more instructions with operands that
-refer to constants, so we're setting up this helper macro now.
+`READ_CONSTANT()` lit le prochain octet depuis le bytecode, traite le nombre résultant comme un index, et cherche la Value correspondante dans la table de constantes du morceau. Dans les chapitres ultérieurs, nous ajouterons quelques instructions de plus avec des opérandes qui font référence à des constantes, donc nous mettons en place cette macro utilitaire maintenant.
 
-Like the previous `READ_BYTE` macro, `READ_CONSTANT` is only used inside
-`run()`. To make that scoping more explicit, the macro definitions themselves
-are confined to that function. We <span name="macro">define</span> them at the
-beginning and -- because we care -- undefine them at the end.
+Comme la macro `READ_BYTE` précédente, `READ_CONSTANT` est seulement utilisée à l'intérieur de `run()`. Pour rendre cette portée plus explicite, les définitions de macro elles-mêmes sont confinées à cette fonction. Nous les <span name="macro">définissons</span> au début et -- parce que nous nous soucions -- les indéfinissons à la fin.
 
 ^code undef-read-constant (1 before, 1 after)
 
 <aside name="macro">
 
-Undefining these macros explicitly might seem needlessly fastidious, but C tends
-to punish sloppy users, and the C preprocessor doubly so.
+Indéfinir ces macros explicitement peut sembler inutilement méticuleux, mais C tend à punir les utilisateurs négligents, et le préprocesseur C doublement.
 
 </aside>
 
-### Execution tracing
+### Traçage d'exécution
 
-If you run clox now, it executes the chunk we hand-authored in the last chapter
-and spits out `1.2` to your terminal. We can see that it's working, but that's
-only because our implementation of `OP_CONSTANT` has temporary code to log the
-value. Once that instruction is doing what it's supposed to do and plumbing that
-constant along to other operations that want to consume it, the VM will become a
-black box. That makes our lives as VM implementers harder.
+Si vous lancez clox maintenant, il exécute le morceau que nous avons écrit à la main dans le dernier chapitre et crache `1.2` sur votre terminal. Nous pouvons voir que ça marche, mais c'est seulement parce que notre implémentation de `OP_CONSTANT` a du code temporaire pour loguer la valeur. Une fois que cette instruction fera ce qu'elle est supposée faire et tuyautera cette constante vers d'autres opérations qui veulent la consommer, la VM deviendra une boîte noire. Cela rend nos vies en tant qu'implémenteurs de VM plus dures.
 
-To help ourselves out, now is a good time to add some diagnostic logging to the
-VM like we did with chunks themselves. In fact, we'll even reuse the same code.
-We don't want this logging enabled all the time -- it's just for us VM hackers,
-not Lox users -- so first we create a flag to hide it behind.
+Pour nous aider, maintenant est un bon moment pour ajouter un peu de journalisation de diagnostic à la VM comme nous l'avons fait avec les morceaux eux-mêmes. En fait, nous réutiliserons même le même code. Nous ne voulons pas cette journalisation activée tout le temps -- c'est juste pour nous les hackers de VM, pas les utilisateurs Lox -- donc d'abord nous créons un drapeau derrière lequel la cacher.
 
 ^code define-debug-trace (1 before, 2 after)
 
-When this flag is defined, the VM disassembles and prints each instruction right
-before executing it. Where our previous disassembler walked an entire chunk
-once, statically, this disassembles instructions dynamically, on the fly.
+Quand ce drapeau est défini, la VM désassemble et imprime chaque instruction juste avant de l'exécuter. Là où notre précédent désassembleur parcourait un morceau entier une fois, statiquement, ceci désassemble les instructions dynamiquement, à la volée.
 
 ^code trace-execution (1 before, 1 after)
 
-Since `disassembleInstruction()` takes an integer byte *offset* and we store the
-current instruction reference as a direct pointer, we first do a little pointer
-math to convert `ip` back to a relative offset from the beginning of the
-bytecode. Then we disassemble the instruction that begins at that byte.
+Puisque `disassembleInstruction()` prend un _offset_ d'octet entier et que nous stockons la référence d'instruction courante comme un pointeur direct, nous faisons d'abord un peu de maths de pointeur pour convertir `ip` en retour vers un offset relatif depuis le début du bytecode. Ensuite nous désassemblons l'instruction qui commence à cet octet.
 
-As ever, we need to bring in the declaration of the function before we can call
-it.
+Comme toujours, nous avons besoin d'amener la déclaration de la fonction avant que nous puissions l'appeler.
 
 ^code vm-include-debug (1 before, 1 after)
 
-I know this code isn't super impressive so far -- it's literally a switch
-statement wrapped in a `for` loop but, believe it or not, this is one of the two
-major components of our VM. With this, we can imperatively execute instructions.
-Its simplicity is a virtue -- the less work it does, the faster it can do it.
-Contrast this with all of the complexity and overhead we had in jlox with the
-Visitor pattern for walking the AST.
+Je sais que ce code n'est pas super impressionnant pour l'instant -- c'est littéralement une instruction switch enveloppée dans une boucle `for` mais, croyez-le ou non, c'est l'un des deux composants majeurs de notre VM. Avec cela, nous pouvons exécuter impérativement des instructions. Sa simplicité est une vertu -- moins elle fait de travail, plus vite elle peut le faire. Contrastez cela avec toute la complexité et la surcharge que nous avions dans jlox avec le pattern Visiteur pour parcourir l'AST.
 
-## A Value Stack Manipulator
+## Un Manipulateur de Pile de Valeurs
 
-In addition to imperative side effects, Lox has expressions that produce,
-modify, and consume values. Thus, our compiled bytecode needs a way to shuttle
-values around between the different instructions that need them. For example:
+En plus des effets de bord impératifs, Lox a des expressions qui produisent, modifient, et consomment des valeurs. Ainsi, notre bytecode compilé a besoin d'un moyen de navetter des valeurs entre les différentes instructions qui en ont besoin. Par exemple :
 
 ```lox
 print 3 - 2;
 ```
 
-We obviously need instructions for the constants 3 and 2, the `print` statement,
-and the subtraction. But how does the subtraction instruction know that 3 is
-the <span name="word">minuend</span> and 2 is the subtrahend? How does the print
-instruction know to print the result of that?
+Nous avons évidemment besoin d'instructions pour les constantes 3 et 2, l'instruction `print`, et la soustraction. Mais comment l'instruction de soustraction sait-elle que 3 est le <span name="word">diminuende</span> et 2 est le diminuteur ? Comment l'instruction print sait-elle d'imprimer le résultat de cela ?
 
 <aside name="word">
 
-Yes, I did have to look up "subtrahend" and "minuend" in a dictionary. But
-aren't they delightful words? "Minuend" sounds like a kind of Elizabethan dance
-and "subtrahend" might be some sort of underground Paleolithic monument.
+Oui, j'ai dû chercher "diminuteur" et "diminuende" dans un dictionnaire. Mais ne sont-ils pas des mots délicieux ? "Diminuende" sonne comme une sorte de danse élisabéthaine et "diminuteur" pourrait être une sorte de monument Paléolithique souterrain.
 
 </aside>
 
-To put a finer point on it, look at this thing right here:
+Pour mettre un point plus fin là-dessus, regardez cette chose juste ici :
 
 ```lox
 fun echo(n) {
@@ -313,411 +204,268 @@ fun echo(n) {
 print echo(echo(1) + echo(2)) + echo(echo(4) + echo(5));
 ```
 
-I wrapped each subexpression in a call to `echo()` that prints and returns its
-argument. That side effect means we can see the exact order of operations.
+J'ai enveloppé chaque sous-expression dans un appel à `echo()` qui imprime et renvoie son argument. Cet effet de bord signifie que nous pouvons voir l'ordre exact des opérations.
 
-Don't worry about the VM for a minute. Think about just the semantics of Lox
-itself. The operands to an arithmetic operator obviously need to be evaluated
-before we can perform the operation itself. (It's pretty hard to add `a + b` if
-you don't know what `a` and `b` are.) Also, when we implemented expressions in
-jlox, we <span name="undefined">decided</span> that the left operand must be
-evaluated before the right.
+Ne vous inquiétez pas de la VM pour une minute. Pensez juste à la sémantique de Lox lui-même. Les opérandes pour un opérateur arithmétique ont évidemment besoin d'être évalués avant que nous puissions effectuer l'opération elle-même. (C'est assez dur d'ajouter `a + b` si vous ne savez pas ce que sont `a` et `b`.) Aussi, quand nous avons implémenté les expressions dans jlox, nous avons <span name="undefined">décidé</span> que l'opérande gauche doit être évalué avant le droit.
 
 <aside name="undefined">
 
-We could have left evaluation order unspecified and let each implementation
-decide. That leaves the door open for optimizing compilers to reorder arithmetic
-expressions for efficiency, even in cases where the operands have visible side
-effects. C and Scheme leave evaluation order unspecified. Java specifies
-left-to-right evaluation like we do for Lox.
+Nous aurions pu laisser l'ordre d'évaluation non spécifié et laisser chaque implémentation décider. Cela laisse la porte ouverte pour des compilateurs optimisants pour réordonner les expressions arithmétiques pour l'efficacité, même dans des cas où les opérandes ont des effets de bord visibles. C et Scheme laissent l'ordre d'évaluation non spécifié. Java spécifie l'évaluation de gauche à droite comme nous le faisons pour Lox.
 
-I think nailing down stuff like this is generally better for users. When
-expressions are not evaluated in the order users intuit -- possibly in different
-orders across different implementations! -- it can be a burning hellscape of
-pain to figure out what's going on.
+Je pense que clouer des trucs comme ça est généralement mieux pour les utilisateurs. Quand les expressions ne sont pas évaluées dans l'ordre que les utilisateurs intuitent -- possiblement dans des ordres différents à travers différentes implémentations ! -- cela peut être un paysage infernal de douleur brûlante de comprendre ce qui se passe.
 
 </aside>
 
-Here is the syntax tree for the `print` statement:
+Voici l'arbre syntaxique pour le statement `print` :
 
-<img src="image/a-virtual-machine/ast.png" alt="The AST for the example
-statement, with numbers marking the order that the nodes are evaluated." />
+<img src="image/a-virtual-machine/ast.png" alt="L'AST pour le statement exemple, avec des nombres marquant l'ordre dans lequel les nœuds sont évalués." />
 
-Given left-to-right evaluation, and the way the expressions are nested, any
-correct Lox implementation *must* print these numbers in this order:
+Étant donné l'évaluation de gauche à droite, et la façon dont les expressions sont imbriquées, toute implémentation Lox correcte _doit_ imprimer ces nombres dans cet ordre :
 
 ```text
-1  // from echo(1)
-2  // from echo(2)
-3  // from echo(1 + 2)
-4  // from echo(4)
-5  // from echo(5)
-9  // from echo(4 + 5)
-12 // from print 3 + 9
+1  // de echo(1)
+2  // de echo(2)
+3  // de echo(1 + 2)
+4  // de echo(4)
+5  // de echo(5)
+9  // de echo(4 + 5)
+12 // de print 3 + 9
 ```
 
-Our old jlox interpreter accomplishes this by recursively traversing the AST. It
-does a postorder traversal. First it recurses down the left operand branch,
-then the right operand, then finally it evaluates the node itself.
+Notre vieil interpréteur jlox accomplit cela en traversant récursivement l'AST. Il fait un parcours post-ordre. D'abord il récurse en bas de la branche de l'opérande gauche, puis l'opérande droit, puis finalement il évalue le nœud lui-même.
 
-After evaluating the left operand, jlox needs to store that result somewhere
-temporarily while it's busy traversing down through the right operand tree. We
-use a local variable in Java for that. Our recursive tree-walk interpreter
-creates a unique Java call frame for each node being evaluated, so we could have
-as many of these local variables as we needed.
+Après avoir évalué l'opérande gauche, jlox a besoin de stocker ce résultat quelque part temporairement pendant qu'il est occupé à traverser vers le bas à travers l'arbre d'opérande droit. Nous utilisons une variable locale en Java pour cela. Notre interpréteur à parcours d'arbre récursif crée un cadre d'appel Java unique pour chaque nœud étant évalué, donc nous pouvions avoir autant de ces variables locales que nous avions besoin.
 
-In clox, our `run()` function is not recursive -- the nested expression tree is
-flattened out into a linear series of instructions. We don't have the luxury of
-using C local variables, so how and where should we store these temporary
-values? You can probably <span name="guess">guess</span> already, but I want to
-really drill into this because it's an aspect of programming that we take for
-granted, but we rarely learn *why* computers are architected this way.
+Dans clox, notre fonction `run()` n'est pas récursive -- l'arbre d'expression imbriqué est aplati en une série linéaire d'instructions. Nous n'avons pas le luxe d'utiliser des variables locales C, donc comment et où devrions-nous stocker ces valeurs temporaires ? Vous pouvez probablement déjà <span name="guess">deviner</span>, mais je veux vraiment creuser là-dedans parce que c'est un aspect de la programmation que nous prenons pour acquis, mais nous apprenons rarement _pourquoi_ les ordinateurs sont architecturés de cette façon.
 
 <aside name="guess">
 
-Hint: it's in the name of this section, and it's how Java and C manage recursive
-calls to functions.
+Indice : c'est dans le nom de cette section, et c'est comment Java et C gèrent les appels récursifs aux fonctions.
 
 </aside>
 
-Let's do a weird exercise. We'll walk through the execution of the above program
-a step at a time:
+Faisons un exercice bizarre. Nous allons marcher à travers l'exécution du programme ci-dessus une étape à la fois :
 
-<img src="image/a-virtual-machine/bars.png" alt="The series of instructions with
-bars showing which numbers need to be preserved across which instructions." />
+<img src="image/a-virtual-machine/bars.png" alt="La série d'instructions avec des barres montrant quels nombres ont besoin d'être préservés à travers quelles instructions." />
 
-On the left are the steps of code. On the right are the values we're tracking.
-Each bar represents a number. It starts when the value is first produced --
-either a constant or the result of an addition. The length of the bar tracks
-when a previously produced value needs to be kept around, and it ends when that
-value finally gets consumed by an operation.
+À gauche sont les étapes de code. À droite sont les valeurs que nous suivons. Chaque barre représente un nombre. Elle commence quand la valeur est d'abord produite -- soit une constante ou le résultat d'une addition. La longueur de la barre suit quand une valeur précédemment produite a besoin d'être gardée dans le coin, et elle finit quand cette valeur est finalement consommée par une opération.
 
-As you step through, you see values appear and then later get eaten. The
-longest-lived ones are the values produced from the left-hand side of an
-addition. Those stick around while we work through the right-hand operand
-expression.
+Alors que vous avancez, vous voyez des valeurs apparaître et ensuite plus tard être mangées. Celles qui vivent le plus longtemps sont les valeurs produites depuis le côté gauche d'une addition. Celles-ci restent dans le coin pendant que nous travaillons à travers l'expression opérande de droite.
 
-In the above diagram, I gave each unique number its own visual column. Let's be
-a little more parsimonious. Once a number is consumed, we allow its column to be
-reused for another later value. In other words, we take all of those gaps
-up there and fill them in, pushing in numbers from the right:
+Dans le diagramme ci-dessus, j'ai donné à chaque nombre unique sa propre colonne visuelle. Soyons un peu plus parcimonieux. Une fois qu'un nombre est consommé, nous permettons à sa colonne d'être réutilisée pour une autre valeur plus tard. En d'autres termes, nous prenons tous ces trous là-haut et les remplissons, poussant les nombres depuis la droite :
 
-<img src="image/a-virtual-machine/bars-stacked.png" alt="Like the previous
-diagram, but with number bars pushed to the left, forming a stack." />
+<img src="image/a-virtual-machine/bars-stacked.png" alt="Comme le diagramme précédent, mais avec les barres de nombres poussées vers la gauche, formant une pile." />
 
-There's some interesting stuff going on here. When we shift everything over,
-each number still manages to stay in a single column for its entire life. Also,
-there are no gaps left. In other words, whenever a number appears earlier than
-another, then it will live at least as long as that second one. The first number
-to appear is the last to be consumed. Hmm... last-in, first-out... why, that's a
-<span name="pancakes">stack</span>!
+Il y a des trucs intéressants qui se passent ici. Quand nous décalons tout, chaque nombre réussit encore à rester dans une colonne unique pour sa vie entière. Aussi, il n'y a pas de trous laissés. En d'autres termes, chaque fois qu'un nombre apparaît plus tôt qu'un autre, alors il vivra au moins aussi longtemps que ce second. Le premier nombre à apparaître est le dernier à être consommé. Hmm... dernier-entré, premier-sorti (LIFO)... Tiens, c'est une <span name="pancakes">pile</span> !
 
 <aside name="pancakes">
 
-This is also a stack:
+Ceci est aussi une pile :
 
-<img src="image/a-virtual-machine/pancakes.png" alt="A stack... of pancakes." />
+<img src="image/a-virtual-machine/pancakes.png" alt="Une pile... de pancakes." />
 
 </aside>
 
-In the second diagram, each time we introduce a number, we push it onto the
-stack from the right. When numbers are consumed, they are always popped off from
-rightmost to left.
+Dans le second diagramme, chaque fois que nous introduisons un nombre, nous le poussons sur la pile depuis la droite. Quand des nombres sont consommés, ils sont toujours dépilés depuis le plus à droite vers la gauche.
 
-Since the temporary values we need to track naturally have stack-like behavior,
-our VM will use a stack to manage them. When an instruction "produces" a value,
-it pushes it onto the stack. When it needs to consume one or more values, it
-gets them by popping them off the stack.
+Puisque les valeurs temporaires que nous avons besoin de suivre ont naturellement un comportement de type pile, notre VM utilisera une pile pour les gérer. Quand une instruction "produit" une valeur, elle la pousse sur la pile. Quand elle a besoin de consommer une ou plusieurs valeurs, elle les obtient en les dépilant de la pile.
 
-### The VM's Stack
+### La Pile de la VM
 
-Maybe this doesn't seem like a revelation, but I *love* stack-based VMs. When
-you first see a magic trick, it feels like something actually magical. But then
-you learn how it works -- usually some mechanical gimmick or misdirection -- and
-the sense of wonder evaporates. There are a <span name="wonder">couple</span> of
-ideas in computer science where even after I pulled them apart and learned all
-the ins and outs, some of the initial sparkle remained. Stack-based VMs are one
-of those.
+Peut-être que cela ne semble pas comme une révélation, mais j'_adore_ les VMs à base de pile. Quand vous voyez pour la première fois un tour de magie, cela ressemble à quelque chose de réellement magique. Mais ensuite vous apprenez comment ça marche -- habituellement quelque truc mécanique ou de la mauvaise direction -- et le sens du merveilleux s'évapore. Il y a une <span name="wonder">paire</span> d'idées en informatique où même après que je les ai démontées et appris tous les tenants et aboutissants, un peu de l'étincelle initiale est restée. Les VMs à base de pile sont l'une de celles-là.
 
 <aside name="wonder">
 
-Heaps -- [the data structure][heap], not [the memory management thing][heap mem]
--- are another. And Vaughan Pratt's top-down operator precedence parsing scheme,
-which we'll learn about [in due time][pratt].
+Les tas (heaps) -- [la structure de données][heap], pas [le truc de gestion de la mémoire][heap mem] -- en sont une autre. Et le schéma d'analyse à précédence d'opérateur descendante de Vaughan Pratt, duquel nous apprendrons [en temps voulu][pratt].
 
 [heap]: https://en.wikipedia.org/wiki/Heap_(data_structure)
 [heap mem]: https://en.wikipedia.org/wiki/Memory_management#HEAP
-[pratt]: compiling-expressions.html
+[pratt]: compilation-des-expressions.html
 
 </aside>
 
-As you'll see in this chapter, executing instructions in a stack-based VM is
-dead <span name="cheat">simple</span>. In later chapters, you'll also discover
-that compiling a source language to a stack-based instruction set is a piece of
-cake. And yet, this architecture is fast enough to be used by production
-language implementations. It almost feels like cheating at the programming
-language game.
+Comme vous le verrez dans ce chapitre, exécuter des instructions dans une VM à base de pile est mortellement <span name="cheat">simple</span>. Dans les chapitres ultérieurs, vous découvrirez aussi que compiler un langage source vers un jeu d'instructions à base de pile est du gâteau. Et pourtant, cette architecture est assez rapide pour être utilisée par des implémentations de langage en production. Cela ressemble presque à tricher au jeu du langage de programmation.
 
 <aside name="cheat">
 
-To take a bit of the sheen off: stack-based interpreters aren't a silver bullet.
-They're often *adequate*, but modern implementations of the JVM, the CLR, and
-JavaScript all use sophisticated [just-in-time compilation][jit] pipelines to
-generate *much* faster native code on the fly.
+Pour enlever un peu du lustre : les interpréteurs à base de pile ne sont pas une solution miracle. Ils sont souvent _adéquats_, mais les implémentations modernes de la JVM, du CLR, et de JavaScript utilisent toutes des pipelines sophistiqués de [compilation à la volée][jit] (JIT) pour générer du code natif _beaucoup_ plus rapide à la volée.
 
 [jit]: https://en.wikipedia.org/wiki/Just-in-time_compilation
 
 </aside>
 
-Alrighty, it's codin' time! Here's the stack:
+D'accord, c'est l'heure de coder ! Voici la pile :
 
 ^code vm-stack (3 before, 1 after)
 
-We implement the stack semantics ourselves on top of a raw C array. The bottom
-of the stack -- the first value pushed and the last to be popped -- is at
-element zero in the array, and later pushed values follow it. If we push the
-letters of "crepe" -- my favorite stackable breakfast item -- onto the stack, in
-order, the resulting C array looks like this:
+Nous implémentons la sémantique de pile nous-mêmes au-dessus d'un tableau C brut. Le bas de la pile -- la première valeur poussée et la dernière à être dépilée -- est à l'élément zéro dans le tableau, et les valeurs poussées plus tard la suivent. Si nous poussons les lettres de "crepe" -- mon élément de petit-déjeuner empilable favori -- sur la pile, dans l'ordre, le tableau C résultant ressemble à ceci :
 
-<img src="image/a-virtual-machine/array.png" alt="An array containing the
-letters in 'crepe' in order starting at element 0." />
+<img src="image/a-virtual-machine/array.png" alt="Un tableau contenant les lettres dans 'crepe' dans l'ordre commençant à l'élément 0." />
 
-Since the stack grows and shrinks as values are pushed and popped, we need to
-track where the top of the stack is in the array. As with `ip`, we use a direct
-pointer instead of an integer index since it's faster to dereference the pointer
-than calculate the offset from the index each time we need it.
+Puisque la pile grandit et rétrécit alors que les valeurs sont poussées et dépilées, nous avons besoin de suivre où est le sommet de la pile dans le tableau. Comme avec `ip`, nous utilisons un pointeur direct au lieu d'un index entier puisque c'est plus rapide de déréférencer le pointeur que de calculer l'offset depuis l'index chaque fois que nous en avons besoin.
 
-The pointer points at the array element just *past* the element containing the
-top value on the stack. That seems a little odd, but almost every implementation
-does this. It means we can indicate that the stack is empty by pointing at
-element zero in the array.
+Le pointeur pointe à l'élément du tableau juste _après_ l'élément contenant la valeur du sommet de la pile. Cela semble un peu bizarre, mais presque chaque implémentation fait cela. Cela signifie que nous pouvons indiquer que la pile est vide en pointant à l'élément zéro dans le tableau.
 
-<img src="image/a-virtual-machine/stack-empty.png" alt="An empty array with
-stackTop pointing at the first element." />
+<img src="image/a-virtual-machine/stack-empty.png" alt="Un tableau vide avec stackTop pointant au premier élément." />
 
-If we pointed to the top element, then for an empty stack we'd need to point at
-element -1. That's <span name="defined">undefined</span> in C. As we push values
-onto the stack...
+Si nous pointions vers l'élément du sommet, alors pour une pile vide nous aurions besoin de pointer à l'élément -1. C'est <span name="defined">indéfini</span> en C. Alors que nous poussons des valeurs sur la pile...
 
 <aside name="defined">
 
-What about when the stack is *full*, you ask, Clever Reader? The C standard is
-one step ahead of you. It *is* allowed and well-specified to have an array
-pointer that points just past the end of an array.
+Quoi à propos de quand la pile est _pleine_, vous demandez, Lecteur Malin ? Le standard C est une étape en avance sur vous. Il _est_ permis et bien spécifié d'avoir un pointeur de tableau qui pointe juste après la fin d'un tableau.
 
 </aside>
 
-<img src="image/a-virtual-machine/stack-c.png" alt="An array with 'c' at element
-zero." />
+<img src="image/a-virtual-machine/stack-c.png" alt="Un tableau avec 'c' à l'élément zéro." />
 
-...`stackTop` always points just past the last item.
+...`stackTop` pointe toujours juste après le dernier élément.
 
-<img src="image/a-virtual-machine/stack-crepe.png" alt="An array with 'c', 'r',
-'e', 'p', and 'e' in the first five elements." />
+<img src="image/a-virtual-machine/stack-crepe.png" alt="Un tableau avec 'c', 'r', 'e', 'p', et 'e' dans les cinq premiers éléments." />
 
-I remember it like this: `stackTop` points to where the next value to be pushed
-will go. The maximum number of values we can store on the stack (for now, at
-least) is:
+Je me souviens de ça comme ceci : `stackTop` pointe vers où la prochaine valeur à être poussée ira. Le nombre maximum de valeurs que nous pouvons stocker sur la pile (pour l'instant, au moins) est :
 
 ^code stack-max (1 before, 2 after)
 
-Giving our VM a fixed stack size means it's possible for some sequence of
-instructions to push too many values and run out of stack space -- the classic
-"stack overflow". We could grow the stack dynamically as needed, but for now
-we'll keep it simple. Since VM uses Value, we need to include its declaration.
+Donner à notre VM une taille de pile fixe signifie qu'il est possible pour une certaine séquence d'instructions de pousser trop de valeurs et de tomber à court d'espace de pile -- le classique "débordement de pile" (stack overflow). Nous pourrions faire grandir la pile dynamiquement comme nécessaire, mais pour l'instant nous garderons ça simple. Puisque VM utilise Value, nous avons besoin d'inclure sa déclaration.
 
 ^code vm-include-value (1 before, 2 after)
 
-Now that VM has some interesting state, we get to initialize it.
+Maintenant que VM a un état intéressant, nous pouvons l'initialiser.
 
 ^code call-reset-stack (1 before, 1 after)
 
-That uses this helper function:
+Cela utilise cette fonction utilitaire :
 
 ^code reset-stack
 
-Since the stack array is declared directly inline in the VM struct, we don't
-need to allocate it. We don't even need to clear the unused cells in the
-array -- we simply won't access them until after values have been stored in
-them. The only initialization we need is to set `stackTop` to point to the
-beginning of the array to indicate that the stack is empty.
+Puisque le tableau de pile est déclaré directement inline dans la struct VM, nous n'avons pas besoin de l'allouer. Nous n'avons même pas besoin de nettoyer les cellules inutilisées dans le tableau -- nous ne les accèderons simplement pas jusqu'à ce que des valeurs aient été stockées dedans. La seule initialisation dont nous avons besoin est de définir `stackTop` pour pointer au début du tableau pour indiquer que la pile est vide.
 
-The stack protocol supports two operations:
+Le protocole de pile supporte deux opérations :
 
 ^code push-pop (1 before, 2 after)
 
-You can push a new value onto the top of the stack, and you can pop the most
-recently pushed value back off. Here's the first function:
+Vous pouvez pousser une nouvelle valeur sur le sommet de la pile, et vous pouvez dépiler la valeur poussée le plus récemment en retour. Voici la première fonction :
 
 ^code push
 
-If you're rusty on your C pointer syntax and operations, this is a good warm-up.
-The first line stores `value` in the array element at the top of the stack.
-Remember, `stackTop` points just *past* the last used element, at the next
-available one. This stores the value in that slot. Then we increment the pointer
-itself to point to the next unused slot in the array now that the previous slot
-is occupied.
+Si vous êtes rouillé sur votre syntaxe de pointeur C et opérations, c'est un bon échauffement. La première ligne stocke `value` dans l'élément du tableau au sommet de la pile. Rappelez-vous, `stackTop` pointe juste _après_ le dernier élément utilisé, au prochain disponible. Cela stocke la valeur dans cet emplacement. Ensuite nous incrémentons le pointeur lui-même pour pointer vers le prochain emplacement inutilisé dans le tableau maintenant que l'emplacement précédent est occupé.
 
-Popping is the mirror image.
+Dépiler est l'image miroir.
 
 ^code pop
 
-First, we move the stack pointer *back* to get to the most recent used slot in
-the array. Then we look up the value at that index and return it. We don't need
-to explicitly "remove" it from the array -- moving `stackTop` down is enough to
-mark that slot as no longer in use.
+D'abord, nous déplaçons le pointeur de pile en _arrière_ pour arriver à l'emplacement utilisé le plus récent dans le tableau. Ensuite nous cherchons la valeur à cet index et la renvoyons. Nous n'avons pas besoin de l'"enlever" explicitement du tableau -- déplacer `stackTop` vers le bas est assez pour marquer cet emplacement comme n'étant plus utilisé.
 
-### Stack tracing
+### Traçage de pile
 
-We have a working stack, but it's hard to *see* that it's working. When we start
-implementing more complex instructions and compiling and running larger pieces
-of code, we'll end up with a lot of values crammed into that array. It would
-make our lives as VM hackers easier if we had some visibility into the stack.
+Nous avons une pile qui fonctionne, mais c'est dur de _voir_ qu'elle fonctionne. Quand nous commencerons à implémenter des instructions plus complexes et compiler et exécuter de plus gros morceaux de code, nous finirons avec beaucoup de valeurs entassées dans ce tableau. Cela rendrait nos vies en tant que hackers de VM plus faciles si nous avions une certaine visibilité dans la pile.
 
-To that end, whenever we're tracing execution, we'll also show the current
-contents of the stack before we interpret each instruction.
+À cette fin, chaque fois que nous traçons l'exécution, nous montrerons aussi le contenu courant de la pile avant que nous interprétions chaque instruction.
 
 ^code trace-stack (1 before, 1 after)
 
-We loop, printing each value in the array, starting at the first (bottom of the
-stack) and ending when we reach the top. This lets us observe the effect of each
-instruction on the stack. The output is pretty verbose, but it's useful when
-we're surgically extracting a nasty bug from the bowels of the interpreter.
+Nous bouclons, imprimant chaque valeur dans le tableau, commençant à la première (bas de la pile) et finissant quand nous atteignons le sommet. Cela nous laisse observer l'effet de chaque instruction sur la pile. La sortie est assez verbeuse, mais c'est utile quand nous extrayons chirurgicalement un vilain bug des entrailles de l'interpréteur.
 
-Stack in hand, let's revisit our two instructions. First up:
+Pile en main, revisitons nos deux instructions. D'abord :
 
 ^code push-constant (2 before, 1 after)
 
-In the last chapter, I was hand-wavey about how the `OP_CONSTANT` instruction
-"loads" a constant. Now that we have a stack you know what it means to actually
-produce a value: it gets pushed onto the stack.
+Dans le dernier chapitre, j'agitais les mains à propos de comment l'instruction `OP_CONSTANT` "charge" une constante. Maintenant que nous avons une pile vous savez ce que cela signifie de réellement produire une valeur : elle est poussée sur la pile.
 
 ^code print-return (1 before, 1 after)
 
-Then we make `OP_RETURN` pop the stack and print the top value before exiting.
-When we add support for real functions to clox, we'll change this code. But, for
-now, it gives us a way to get the VM executing simple instruction sequences and
-displaying the result.
+Ensuite nous faisons en sorte que `OP_RETURN` dépile la pile et imprime la valeur du sommet avant de sortir. Quand nous ajouterons le support pour les fonctions réelles à clox, nous changerons ce code. Mais, pour l'instant, cela nous donne un moyen d'avoir la VM exécutant des séquences d'instruction simples et affichant le résultat.
 
-## An Arithmetic Calculator
+## Une Calculatrice Arithmétique
 
-The heart and soul of our VM are in place now. The bytecode loop dispatches and
-executes instructions. The stack grows and shrinks as values flow through it.
-The two halves work, but it's hard to get a feel for how cleverly they interact
-with only the two rudimentary instructions we have so far. So let's teach our
-interpreter to do arithmetic.
+Le cœur et l'âme de notre VM sont en place maintenant. La boucle de bytecode dispatche et exécute les instructions. La pile grandit et rétrécit alors que les valeurs coulent à travers elles. Les deux moitiés fonctionnent, mais c'est dur d'avoir un sentiment pour comment intelligemment elles interagissent avec seulement les deux instructions rudimentaires que nous avons jusqu'ici. Donc apprenons à notre interpréteur à faire de l'arithmétique.
 
-We'll start with the simplest arithmetic operation, unary negation.
+Nous commencerons avec l'opération arithmétique la plus simple, la négation unaire.
 
 ```lox
 var a = 1.2;
 print -a; // -1.2.
 ```
 
-The prefix `-` operator takes one operand, the value to negate. It produces a
-single result. We aren't fussing with a parser yet, but we can add the
-bytecode instruction that the above syntax will compile to.
+L'opérateur préfixe `-` prend un opérande, la valeur à nier. Il produit un seul résultat. Nous ne nous en faisons pas avec un parseur encore, mais nous pouvons ajouter l'instruction bytecode vers laquelle la syntaxe ci-dessus compilera.
 
 ^code negate-op (1 before, 1 after)
 
-We execute it like so:
+Nous l'exécutons comme ceci :
 
 ^code op-negate (1 before, 1 after)
 
-The instruction needs a value to operate on, which it gets by popping from the
-stack. It negates that, then pushes the result back on for later instructions to
-use. Doesn't get much easier than that. We can disassemble it too.
+L'instruction a besoin d'une valeur sur laquelle opérer, qu'elle obtient en dépilant de la pile. Elle nie cela, puis pousse le résultat en retour pour que les instructions ultérieures l'utilisent. Ça ne devient pas beaucoup plus facile que ça. Nous pouvons la désassembler aussi.
 
 ^code disassemble-negate (2 before, 1 after)
 
-And we can try it out in our test chunk.
+Et nous pouvons l'essayer dans notre morceau de test.
 
 ^code main-negate (1 before, 2 after)
 
-After loading the constant, but before returning, we execute the negate
-instruction. That replaces the constant on the stack with its negation. Then the
-return instruction prints that out:
+Après avoir chargé la constante, mais avant de retourner, nous exécutons l'instruction de négation. Cela remplace la constante sur la pile avec sa négation. Ensuite l'instruction de retour imprime cela :
 
 ```text
 -1.2
 ```
 
-Magical!
+Magique !
 
-### Binary operators
+### Opérateurs binaires
 
-OK, unary operators aren't *that* impressive. We still only ever have a single
-value on the stack. To really see some depth, we need binary operators. Lox has
-four binary <span name="ops">arithmetic</span> operators: addition, subtraction,
-multiplication, and division. We'll go ahead and implement them all at the same
-time.
+OK, les opérateurs unaires ne sont pas _si_ impressionnants. Nous avons encore seulement jamais une valeur unique sur la pile. Pour voir vraiment de la profondeur, nous avons besoin d'opérateurs binaires. Lox a quatre opérateurs <span name="ops">arithmétiques</span> binaires : addition, soustraction, multiplication, et division. Nous allons aller de l'avant et les implémenter tous en même temps.
 
 <aside name="ops">
 
-Lox has some other binary operators -- comparison and equality -- but those
-don't produce numbers as a result, so we aren't ready for them yet.
+Lox a quelques autres opérateurs binaires -- comparaison et égalité -- mais ceux-là ne produisent pas de nombres comme résultat, donc nous ne sommes pas prêts pour eux encore.
 
 </aside>
 
 ^code binary-ops (1 before, 1 after)
 
-Back in the bytecode loop, they are executed like this:
+De retour dans la boucle bytecode, ils sont exécutés comme ceci :
 
 ^code op-binary (1 before, 1 after)
 
-The only difference between these four instructions is which underlying C
-operator they ultimately use to combine the two operands. Surrounding that core
-arithmetic expression is some boilerplate code to pull values off the stack and
-push the result. When we later add dynamic typing, that boilerplate will grow.
-To avoid repeating that code four times, I wrapped it up in a macro.
+La seule différence entre ces quatre instructions est quel opérateur C sous-jacent elles utilisent ultimement pour combiner les deux opérandes. Autour de cette expression arithmétique centrale est un peu de code boilerplate pour tirer les valeurs de la pile et pousser le résultat. Quand nous ajouterons plus tard le typage dynamique, ce boilerplate grandira. Pour éviter de répéter ce code quatre fois, je l'ai enveloppé dans une macro.
 
 ^code binary-op (1 before, 2 after)
 
-I admit this is a fairly <span name="operator">adventurous</span> use of the C
-preprocessor. I hesitated to do this, but you'll be glad in later chapters when
-we need to add the type checking for each operand and stuff. It would be a chore
-to walk you through the same code four times.
+J'admets que c'est un usage assez <span name="operator">aventureux</span> du préprocesseur C. J'ai hésité à faire cela, mais vous serez content dans les chapitres ultérieurs quand nous aurons besoin d'ajouter la vérification de type pour chaque opérande et tout ça. Ce serait une corvée de vous faire marcher à travers le même code quatre fois.
 
 <aside name="operator">
 
-Did you even know you can pass an *operator* as an argument to a macro? Now you
-do. The preprocessor doesn't care that operators aren't first class in C. As far
-as it's concerned, it's all just text tokens.
+Saviez-vous même que vous pouvez passer un _opérateur_ comme argument à une macro ? Maintenant vous savez. Le préprocesseur ne se soucie pas que les opérateurs ne soient pas de première classe en C. Pour autant qu'il soit concerné, c'est tout juste des tokens de texte.
 
-I know, you can just *feel* the temptation to abuse this, can't you?
+Je sais, vous pouvez juste _sentir_ la tentation d'abuser de ça, n'est-ce pas ?
 
 </aside>
 
-If you aren't familiar with the trick already, that outer `do while` loop
-probably looks really weird. This macro needs to expand to a series of
-statements. To be careful macro authors, we want to ensure those statements all
-end up in the same scope when the macro is expanded. Imagine if you defined:
+Si vous n'êtes pas familier avec le truc déjà, cette boucle `do while` extérieure semble probablement vraiment bizarre. Cette macro a besoin de s'étendre en une série d'instructions. Pour être des auteurs de macro prudents, nous voulons nous assurer que ces instructions finissent toutes dans la même portée quand la macro est étendue. Imaginez si vous définissiez :
 
 ```c
 #define WAKE_UP() makeCoffee(); drinkCoffee();
 ```
 
-And then used it like:
+Et ensuite l'utilisiez comme :
 
 ```c
 if (morning) WAKE_UP();
 ```
 
-The intent is to execute both statements of the macro body only if `morning` is
-true. But it expands to:
+L'intention est d'exécuter les deux instructions du corps de la macro seulement si `morning` est vrai. Mais ça s'étend à :
 
 ```c
 if (morning) makeCoffee(); drinkCoffee();;
 ```
 
-Oops. The `if` attaches only to the *first* statement. You might think you could
-fix this using a block.
+Oups. Le `if` s'attache seulement à la _première_ instruction. Vous pourriez penser que vous pourriez corriger cela en utilisant un bloc.
 
 ```c
 #define WAKE_UP() { makeCoffee(); drinkCoffee(); }
 ```
 
-That's better, but you still risk:
+C'est mieux, mais vous risquez encore :
 
 ```c
 if (morning)
@@ -726,80 +474,47 @@ else
   sleepIn();
 ```
 
-Now you get a compile error on the `else` because of that trailing `;` after the
-macro's block. Using a `do while` loop in the macro looks funny, but it gives
-you a way to contain multiple statements inside a block that *also* permits a
-semicolon at the end.
+Maintenant vous obtenez une erreur de compilation sur le `else` à cause de ce `;` traînant après le bloc de la macro. Utiliser une boucle `do while` dans la macro semble drôle, mais cela vous donne un moyen de contenir de multiples instructions à l'intérieur d'un bloc qui permet _aussi_ un point-virgule à la fin.
 
-Where were we? Right, so what the body of that macro does is straightforward. A
-binary operator takes two operands, so it pops twice. It performs the operation
-on those two values and then pushes the result.
+Où étions-nous ? Juste, donc ce que le corps de cette macro fait est direct. Un opérateur binaire prend deux opérandes, donc il dépile deux fois. Il effectue l'opération sur ces deux valeurs et ensuite pousse le résultat.
 
-Pay close attention to the *order* of the two pops. Note that we assign the
-first popped operand to `b`, not `a`. It looks backwards. When the operands
-themselves are calculated, the left is evaluated first, then the right. That
-means the left operand gets pushed before the right operand. So the right
-operand will be on top of the stack. Thus, the first value we pop is `b`.
+Payez une attention proche à l'_ordre_ des deux dépilements. Notez que nous assignons le premier opérande dépilé à `b`, pas `a`. Ça semble à l'envers. Quand les opérandes eux-mêmes sont calculés, le gauche est évalué d'abord, puis le droit. Cela signifie que l'opérande gauche est poussé avant l'opérande droit. Donc l'opérande droit sera au sommet de la pile. Ainsi, la première valeur que nous dépilons est `b`.
 
-For example, if we compile `3 - 1`, the data flow between the instructions looks
-like so:
+Par exemple, si nous compilons `3 - 1`, le flux de données entre les instructions ressemble à ceci :
 
-<img src="image/a-virtual-machine/reverse.png" alt="A sequence of instructions
-with the stack for each showing how pushing and then popping values reverses
-their order." />
+<img src="image/a-virtual-machine/reverse.png" alt="Une séquence d'instructions avec la pile pour chacune montrant comment pousser et ensuite dépiler les valeurs inverse leur ordre." />
 
-As we did with the other macros inside `run()`, we clean up after ourselves at
-the end of the function.
+Comme nous l'avons fait avec les autres macros à l'intérieur de `run()`, nous nettoyons après nous-mêmes à la fin de la fonction.
 
 ^code undef-binary-op (1 before, 1 after)
 
-Last is disassembler support.
+Le dernier est le support du désassembleur.
 
 ^code disassemble-binary (2 before, 1 after)
 
-The arithmetic instruction formats are simple, like `OP_RETURN`. Even though the
-arithmetic *operators* take operands -- which are found on the stack -- the
-arithmetic *bytecode instructions* do not.
+Les formats d'instruction arithmétique sont simples, comme `OP_RETURN`. Même si les _opérateurs_ arithmétiques prennent des opérandes -- qui sont trouvés sur la pile -- les _instructions bytecode_ arithmétiques ne le font pas.
 
-Let's put some of our new instructions through their paces by evaluating a
-larger expression:
+Mettons certaines de nos nouvelles instructions à l'épreuve en évaluant une plus grosse expression :
 
-<img src="image/a-virtual-machine/chunk.png" alt="The expression being
-evaluated: -((1.2 + 3.4) / 5.6)" />
+<img src="image/a-virtual-machine/chunk.png" alt="L'expression étant évaluée : -((1.2 + 3.4) / 5.6)" />
 
-Building on our existing example chunk, here's the additional instructions we
-need to hand-compile that AST to bytecode.
+Construisant sur notre exemple de morceau existant, voici les instructions additionnelles que nous avons besoin de compiler à la main de cet AST vers le bytecode.
 
 ^code main-chunk (3 before, 3 after)
 
-The addition goes first. The instruction for the left constant, 1.2, is already
-there, so we add another for 3.4. Then we add those two using `OP_ADD`, leaving
-it on the stack. That covers the left side of the division. Next we push the
-5.6, and divide the result of the addition by it. Finally, we negate the result
-of that.
+L'addition va en premier. L'instruction pour la constante de gauche, 1.2, est déjà là, donc nous en ajoutons une autre pour 3.4. Ensuite nous ajoutons ces deux en utilisant `OP_ADD`, laissant cela sur la pile. Cela couvre le côté gauche de la division. Ensuite nous poussons le 5.6, et divisons le résultat de l'addition par lui. Finalement, nous nions le résultat de cela.
 
-Note how the output of the `OP_ADD` implicitly flows into being an operand of
-`OP_DIVIDE` without either instruction being directly coupled to each other.
-That's the magic of the stack. It lets us freely compose instructions without
-them needing any complexity or awareness of the data flow. The stack acts like a
-shared workspace that they all read from and write to.
+Notez comment la sortie de `OP_ADD` coule implicitement en étant un opérande de `OP_DIVIDE` sans qu'aucune instruction ne soit directement couplée l'une à l'autre. C'est la magie de la pile. Elle nous laisse composer librement des instructions sans qu'elles aient besoin d'aucune complexité ou conscience du flux de données. La pile agit comme un espace de travail partagé dans lequel elles lisent et écrivent toutes.
 
-In this tiny example chunk, the stack still only gets two values tall, but when
-we start compiling Lox source to bytecode, we'll have chunks that use much more
-of the stack. In the meantime, try playing around with this hand-authored chunk
-to calculate different nested arithmetic expressions and see how values flow
-through the instructions and stack.
+Dans ce minuscule morceau exemple, la pile devient seulement haute de deux valeurs, mais quand nous commencerons à compiler du code source Lox vers du bytecode, nous aurons des morceaux qui utilisent beaucoup plus de la pile. En attendant, essayez de jouer avec ce morceau écrit à la main pour calculer différentes expressions arithmétiques imbriquées et voyez comment les valeurs coulent à travers les instructions et la pile.
 
-You may as well get it out of your system now. This is the last chunk we'll
-build by hand. When we next revisit bytecode, we will be writing a compiler to
-generate it for us.
+Vous pourriez aussi bien sortir ça de votre système maintenant. C'est le dernier morceau que nous construirons à la main. La prochaine fois que nous revisiterons le bytecode, nous écrirons un compilateur pour le générer pour nous.
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  What bytecode instruction sequences would you generate for the following
-    expressions:
+1.  Quelles séquences d'instructions bytecode généreriez-vous pour les expressions suivantes :
 
     ```lox
     1 * 2 + 3
@@ -808,71 +523,47 @@ generate it for us.
     1 + 2 * 3 - 4 / -5
     ```
 
-    (Remember that Lox does not have a syntax for negative number literals, so
-    the `-5` is negating the number 5.)
+    (Rappelez-vous que Lox n'a pas de syntaxe pour les littéraux de nombres négatifs, donc le `-5` nie le nombre 5.)
 
-1.  If we really wanted a minimal instruction set, we could eliminate either
-    `OP_NEGATE` or `OP_SUBTRACT`. Show the bytecode instruction sequence you
-    would generate for:
+2.  Si nous voulions vraiment un jeu d'instructions minimal, nous pourrions éliminer soit `OP_NEGATE` ou `OP_SUBTRACT`. Montrez la séquence d'instructions bytecode que vous généreriez pour :
 
     ```lox
     4 - 3 * -2
     ```
 
-    First, without using `OP_NEGATE`. Then, without using `OP_SUBTRACT`.
+    D'abord, sans utiliser `OP_NEGATE`. Ensuite, sans utiliser `OP_SUBTRACT`.
 
-    Given the above, do you think it makes sense to have both instructions? Why
-    or why not? Are there any other redundant instructions you would consider
-    including?
+    Étant donné le ci-dessus, pensez-vous que cela a du sens d'avoir les deux instructions ? Pourquoi ou pourquoi pas ? Y a-t-il d'autres instructions redondantes que vous considéreriez inclure ?
 
-1.  Our VM's stack has a fixed size, and we don't check if pushing a value
-    overflows it. This means the wrong series of instructions could cause our
-    interpreter to crash or go into undefined behavior. Avoid that by
-    dynamically growing the stack as needed.
+3.  La pile de notre VM a une taille fixe, et nous ne vérifions pas si pousser une valeur la fait déborder. Cela signifie que la mauvaise série d'instructions pourrait causer le crash de notre interpréteur ou aller en comportement indéfini. Évitez cela en faisant grandir la pile dynamiquement comme nécessaire.
 
-    What are the costs and benefits of doing so?
+    Quels sont les coûts et bénéfices de faire ainsi ?
 
-1.  To interpret `OP_NEGATE`, we pop the operand, negate the value, and then
-    push the result. That's a simple implementation, but it increments and
-    decrements `stackTop` unnecessarily, since the stack ends up the same height
-    in the end. It might be faster to simply negate the value in place on the
-    stack and leave `stackTop` alone. Try that and see if you can measure a
-    performance difference.
+4.  Pour interpréter `OP_NEGATE`, nous dépilons l'opérande, nions la valeur, et ensuite poussons le résultat. C'est une implémentation simple, mais elle incrémente et décrémente `stackTop` inutilement, puisque la pile finit à la même hauteur à la fin. Il pourrait être plus rapide de simplement nier la valeur en place sur la pile et laisser `stackTop` tranquille. Essayez cela et voyez si vous pouvez mesurer une différence de performance.
 
-    Are there other instructions where you can do a similar optimization?
+    Y a-t-il d'autres instructions où vous pouvez faire une optimisation similaire ?
 
 </div>
 
 <div class="design-note">
 
-## Design Note: Register-Based Bytecode
+## Note de Conception : Bytecode à Registres
 
-For the remainder of this book, we'll meticulously implement an interpreter
-around a stack-based bytecode instruction set. There's another family of
-bytecode architectures out there -- *register-based*. Despite the name, these
-bytecode instructions aren't quite as difficult to work with as the registers in
-an actual chip like <span name="x64">x64</span>. With real hardware registers,
-you usually have only a handful for the entire program, so you spend a lot of
-effort [trying to use them efficiently and shuttling stuff in and out of
-them][register allocation].
+Pour le reste de ce livre, nous implémenterons méticuleusement un interpréteur autour d'un jeu d'instructions bytecode basé sur une pile. Il y a une autre famille d'architectures bytecode là-dehors -- _basées sur des registres_. Malgré le nom, ces instructions bytecode ne sont pas tout à fait aussi difficiles à travailler qu'avec les registres dans une puce réelle comme <span name="x64">x64</span>. Avec des registres matériels réels, vous en avez habituellement seulement une poignée pour le programme entier, donc vous passez beaucoup d'effort [à essayer de les utiliser efficacement et à navetter des trucs dedans et dehors][register allocation].
 
 [register allocation]: https://en.wikipedia.org/wiki/Register_allocation
 
 <aside name="x64">
 
-Register-based bytecode is a little closer to the [*register windows*][window]
-supported by SPARC chips.
+Le bytecode à registres est un peu plus proche des [_fenêtres de registres_][window] supportées par les puces SPARC.
 
 [window]: https://en.wikipedia.org/wiki/Register_window
 
 </aside>
 
-In a register-based VM, you still have a stack. Temporary values still get
-pushed onto it and popped when no longer needed. The main difference is that
-instructions can read their inputs from anywhere in the stack and can store
-their outputs into specific stack slots.
+Dans une VM à registres, vous avez encore une pile. Les valeurs temporaires sont encore poussées dessus et dépilées quand elles ne sont plus nécessaires. La différence principale est que les instructions peuvent lire leurs entrées de n'importe où dans la pile et peuvent stocker leurs sorties dans des emplacements de pile spécifiques.
 
-Take this little Lox script:
+Prenez ce petit script Lox :
 
 ```lox
 var a = 1;
@@ -880,67 +571,41 @@ var b = 2;
 var c = a + b;
 ```
 
-In our stack-based VM, the last statement will get compiled to something like:
+Dans notre VM à pile, le dernier statement sera compilé vers quelque chose comme :
 
 ```lox
-load <a>  // Read local variable a and push onto stack.
-load <b>  // Read local variable b and push onto stack.
-add       // Pop two values, add, push result.
-store <c> // Pop value and store in local variable c.
+load <a>  // Lire la variable locale a et pousser sur la pile.
+load <b>  // Lire la variable locale b et pousser sur la pile.
+add       // Dépiler deux valeurs, ajouter, pousser le résultat.
+store <c> // Dépiler la valeur et stocker dans la variable locale c.
 ```
 
-(Don't worry if you don't fully understand the load and store instructions yet.
-We'll go over them in much greater detail [when we implement
-variables][variables].) We have four separate instructions. That means four
-times through the bytecode interpret loop, four instructions to decode and
-dispatch. It's at least seven bytes of code -- four for the opcodes and another
-three for the operands identifying which locals to load and store. Three pushes
-and three pops. A lot of work!
+(Ne vous inquiétez pas si vous ne comprenez pas pleinement les instructions load et store encore. Nous les passerons en revue en bien plus grand détail [quand nous implémenterons les variables][variables].) Nous avons quatre instructions séparées. Cela signifie quatre fois à travers la boucle d'interprétation de bytecode, quatre instructions à décoder et dispatcher. C'est au moins sept octets de code -- quatre pour les opcodes et trois autres pour les opérandes identifiant quels locaux charger et stocker. Trois empilements et trois dépilements. Beaucoup de travail !
 
-[variables]: global-variables.html
+[variables]: variables-globales.html
 
-In a register-based instruction set, instructions can read from and store
-directly into local variables. The bytecode for the last statement above looks
-like:
+Dans un jeu d'instructions à registres, les instructions peuvent lire depuis et stocker directement dans les variables locales. Le bytecode pour le dernier statement ci-dessus ressemble à :
 
 ```lox
-add <a> <b> <c> // Read values from a and b, add, store in c.
+add <a> <b> <c> // Lire les valeurs de a et b, ajouter, stocker dans c.
 ```
 
-The add instruction is bigger -- it has three instruction operands that define
-where in the stack it reads its inputs from and writes the result to. But since
-local variables live on the stack, it can read directly from `a` and `b` and
-then store the result right into `c`.
+L'instruction d'ajout est plus grosse -- elle a trois opérandes d'instruction qui définissent où dans la pile elle lit ses entrées et écrit le résultat. Mais puisque les variables locales vivent sur la pile, elle peut lire directement de `a` et `b` et ensuite stocker le résultat droit dans `c`.
 
-There's only a single instruction to decode and dispatch, and the whole thing
-fits in four bytes. Decoding is more complex because of the additional operands,
-but it's still a net win. There's no pushing and popping or other stack
-manipulation.
+Il y a seulement une unique instruction à décoder et dispatcher, et le truc entier tient dans quatre octets. Le décodage est plus complexe à cause des opérandes additionnels, mais c'est toujours un gain net. Il n'y a pas d'empilement et dépilement ou autre manipulation de pile.
 
-The main implementation of Lua used to be stack-based. For <span name="lua">Lua
-5.0</span>, the implementers switched to a register instruction set and noted a
-speed improvement. The amount of improvement, naturally, depends heavily on the
-details of the language semantics, specific instruction set, and compiler
-sophistication, but that should get your attention.
+L'implémentation principale de Lua avait l'habitude d'être basée sur une pile. Pour <span name="lua">Lua 5.0</span>, les implémenteurs ont changé pour un jeu d'instructions à registres et noté une amélioration de vitesse. Le montant de l'amélioration, naturellement, dépend lourdement des détails de la sémantique du langage, du jeu d'instructions spécifique, et de la sophistication du compilateur, mais cela devrait attirer votre attention.
 
 <aside name="lua">
 
-The Lua dev team -- Roberto Ierusalimschy, Waldemar Celes, and Luiz Henrique de
-Figueiredo -- wrote a *fantastic* paper on this, one of my all time favorite
-computer science papers, "[The Implementation of Lua 5.0][lua]" (PDF).
+L'équipe de dev Lua -- Roberto Ierusalimschy, Waldemar Celes, et Luiz Henrique de Figueiredo -- a écrit un papier _fantastique_ là-dessus, un de mes papiers d'informatique favoris de tous les temps, "[The Implementation of Lua 5.0][lua]" (PDF).
 
 [lua]: https://www.lua.org/doc/jucs05.pdf
 
 </aside>
 
-That raises the obvious question of why I'm going to spend the rest of the book
-doing a stack-based bytecode. Register VMs are neat, but they are quite a bit
-harder to write a compiler for. For what is likely to be your very first
-compiler, I wanted to stick with an instruction set that's easy to generate and
-easy to execute. Stack-based bytecode is marvelously simple.
+Cela soulève la question évidente de pourquoi je vais passer le reste du livre à faire un bytecode basé sur une pile. Les VMs à registres sont chouettes, mais elles sont un peu plus dures pour lesquelles écrire un compilateur. Pour ce qui est probablement votre tout premier compilateur, je voulais rester avec un jeu d'instructions qui est facile à générer et facile à exécuter. Le bytecode à pile est merveilleusement simple.
 
-It's also *much* better known in the literature and the community. Even though
-you may eventually move to something more advanced, it's a good common ground to
-share with the rest of your language hacker peers.
+Il est aussi _bien_ mieux connu dans la littérature et la communauté. Même si vous pouvez éventuellement bouger vers quelque chose de plus avancé, c'est un bon terrain commun à partager avec le reste de vos pairs hackers de langages.
 
 </div>

@@ -37,14 +37,13 @@
 <h3><a href="#top">Instructions et état<small>8</small></a></h3>
 
 <ul>
-    <li><a href="#statements"><small>8.1</small> Statements</a></li>
-    <li><a href="#global-variables"><small>8.2</small> Global Variables</a></li>
-    <li><a href="#environments"><small>8.3</small> Environments</a></li>
-    <li><a href="#assignment"><small>8.4</small> Assignment</a></li>
-    <li><a href="#scope"><small>8.5</small> Scope</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
-    <li class="end-part"><a href="#design-note"><small>note</small>Implicit Variable Declaration</a></li>
+    <li><a href="#instructions"><small>8.1</small> Instructions</a></li>
+    <li><a href="#variables-globales"><small>8.2</small> Variables Globales</a></li>
+    <li><a href="#environnements"><small>8.3</small> Environnements</a></li>
+    <li><a href="#affectation"><small>8.4</small> Affectation</a></li>
+    <li><a href="#portée"><small>8.5</small> Portée</a></li>
+    <li><a href="#défis"><small>8.6</small> Défis</a></li>
+    <li><a href="#note-de-conception--déclaration-de-variable-implicite"><small>8.7</small> Note de Conception : Déclaration de Variable Implicite</a></li>
 </ul>
 
 
@@ -69,14 +68,13 @@
 <h3><a href="#top">Instructions et état<small>8</small></a></h3>
 
 <ul>
-    <li><a href="#statements"><small>8.1</small> Statements</a></li>
-    <li><a href="#global-variables"><small>8.2</small> Global Variables</a></li>
-    <li><a href="#environments"><small>8.3</small> Environments</a></li>
-    <li><a href="#assignment"><small>8.4</small> Assignment</a></li>
-    <li><a href="#scope"><small>8.5</small> Scope</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
-    <li class="end-part"><a href="#design-note"><small>note</small>Implicit Variable Declaration</a></li>
+    <li><a href="#instructions"><small>8.1</small> Instructions</a></li>
+    <li><a href="#variables-globales"><small>8.2</small> Variables Globales</a></li>
+    <li><a href="#environnements"><small>8.3</small> Environnements</a></li>
+    <li><a href="#affectation"><small>8.4</small> Affectation</a></li>
+    <li><a href="#portée"><small>8.5</small> Portée</a></li>
+    <li><a href="#défis"><small>8.6</small> Défis</a></li>
+    <li><a href="#note-de-conception--déclaration-de-variable-implicite"><small>8.7</small> Note de Conception : Déclaration de Variable Implicite</a></li>
 </ul>
 
 
@@ -95,72 +93,31 @@
   <h1>Instructions et état</h1>
 
 <blockquote>
-<p>All my life, my heart has yearned for a thing I cannot name.
-<cite>Andr&eacute; Breton, <em>Mad Love</em></cite></p>
+<p>Toute ma vie, mon cœur a aspiré à une chose que je ne peux nommer.
+<cite>André Breton, <em>L&rsquo;Amour fou</em></cite></p>
 </blockquote>
-<p>The interpreter we have so far feels less like programming a real language and
-more like punching buttons on a calculator. &ldquo;Programming&rdquo; to me means building
-up a system out of smaller pieces. We can&rsquo;t do that yet because we have no way
-to bind a name to some data or function. We can&rsquo;t compose software without a way
-to refer to the pieces.</p>
-<p>To support bindings, our interpreter needs internal state. When you define a
-variable at the beginning of the program and use it at the end, the interpreter
-has to hold on to the value of that variable in the meantime. So in this
-chapter, we will give our interpreter a brain that can not just process, but
-<em>remember</em>.</p><img src="image/statements-and-state/brain.png" alt="A brain, presumably remembering stuff." />
-<p>State and <span name="expr">statements</span> go hand in hand. Since statements,
-by definition, don&rsquo;t evaluate to a value, they need to do something else to be
-useful. That something is called a <strong>side effect</strong>. It could mean producing
-user-visible output or modifying some state in the interpreter that can be
-detected later. The latter makes them a great fit for defining variables or
-other named entities.</p>
+<p>L&rsquo;interpréteur que nous avons jusqu&rsquo;ici ressemble moins à la programmation d&rsquo;un vrai langage et plus à tapoter des boutons sur une calculatrice. &ldquo;Programmer&rdquo; pour moi signifie construire un système à partir de plus petits morceaux. Nous ne pouvons pas encore faire cela car nous n&rsquo;avons aucun moyen de lier un nom à une donnée ou une fonction. Nous ne pouvons pas composer de logiciel sans un moyen de faire référence aux morceaux.</p>
+<p>Pour supporter les liaisons (bindings), notre interpréteur a besoin d&rsquo;un état interne. Quand vous définissez une variable au début du programme et l&rsquo;utilisez à la fin, l&rsquo;interpréteur doit conserver la valeur de cette variable entre-temps. Donc dans ce chapitre, nous allons donner à notre interpréteur un cerveau qui peut non seulement traiter, mais <em>se souvenir</em>.</p><img src="image/statements-and-state/brain.png" alt="Un cerveau, se souvenant probablement de trucs." />
+<p>L&rsquo;état et les <span name="expr">instructions</span> (statements) vont main dans la main. Puisque les instructions, par définition, ne s&rsquo;évaluent pas en une valeur, elles doivent faire quelque chose d&rsquo;autre pour être utiles. Ce quelque chose est appelé un <strong>effet de bord</strong>. Cela peut signifier produire une sortie visible par l&rsquo;utilisateur ou modifier un état dans l&rsquo;interpréteur qui pourra être détecté plus tard. Ce dernier en fait un excellent candidat pour définir des variables ou d&rsquo;autres entités nommées.</p>
 <aside name="expr">
-<p>You could make a language that treats variable declarations as expressions that
-both create a binding and produce a value. The only language I know that does
-that is Tcl. Scheme seems like a contender, but note that after a <code>let</code>
-expression is evaluated, the variable it bound is forgotten. The <code>define</code> syntax
-is not an expression.</p>
+<p>Vous pourriez faire un langage qui traite les déclarations de variables comme des expressions qui créent à la fois une liaison et produisent une valeur. Le seul langage que je connaisse qui fait cela est Tcl. Scheme semble être un candidat, mais notez qu&rsquo;après qu&rsquo;une expression <code>let</code> soit évaluée, la variable qu&rsquo;elle liait est oubliée. La syntaxe <code>define</code> n&rsquo;est pas une expression.</p>
 </aside>
-<p>In this chapter, we&rsquo;ll do all of that. We&rsquo;ll define statements that produce
-output (<code>print</code>) and create state (<code>var</code>). We&rsquo;ll add expressions to access and
-assign to variables. Finally, we&rsquo;ll add blocks and local scope. That&rsquo;s a lot to
-stuff into one chapter, but we&rsquo;ll chew through it all one bite at a time.</p>
-<h2><a href="#statements" id="statements"><small>8&#8202;.&#8202;1</small>Statements</a></h2>
-<p>We start by extending Lox&rsquo;s grammar with statements. They aren&rsquo;t very different
-from expressions. We start with the two simplest kinds:</p>
+<p>Dans ce chapitre, nous allons faire tout cela. Nous définirons des instructions qui produisent une sortie (<code>print</code>) et créent un état (<code>var</code>). Nous ajouterons des expressions pour accéder aux variables et leur assigner une valeur. Enfin, nous ajouterons les blocs et la portée locale. C&rsquo;est beaucoup à bourrer dans un seul chapitre, mais nous allons mâcher tout cela une bouchée à la fois.</p>
+<h2><a href="#instructions" id="instructions"><small>8&#8202;.&#8202;1</small>Instructions</a></h2>
+<p>Nous commençons par étendre la grammaire de Lox avec des instructions. Elles ne sont pas très différentes des expressions. Nous commençons avec les deux types les plus simples :</p>
 <ol>
 <li>
-<p>An <strong>expression statement</strong> lets you place an expression where a statement
-is expected. They exist to evaluate expressions that have side effects. You
-may not notice them, but you use them all the time in <span
-name="expr-stmt">C</span>, Java, and other languages. Any time you see a
-function or method call followed by a <code>;</code>, you&rsquo;re looking at an expression
-statement.</p>
+<p>Une <strong>instruction d&rsquo;expression</strong> vous permet de placer une expression là où une instruction est attendue. Elles existent pour évaluer des expressions qui ont des effets de bord. Vous ne les remarquez peut-être pas, mais vous les utilisez tout le temps en <span name="expr-stmt">C</span>, Java, et d&rsquo;autres langages. Chaque fois que vous voyez un appel de fonction ou de méthode suivi d&rsquo;un <code>;</code>, vous regardez une instruction d&rsquo;expression.</p>
 <aside name="expr-stmt">
-<p>Pascal is an outlier. It distinguishes between <em>procedures</em> and <em>functions</em>.
-Functions return values, but procedures cannot. There is a statement form
-for calling a procedure, but functions can only be called where an
-expression is expected. There are no expression statements in Pascal.</p>
+<p>Pascal est un cas à part. Il distingue entre <em>procédures</em> et <em>fonctions</em>. Les fonctions renvoient des valeurs, mais les procédures ne le peuvent pas. Il y a une forme d&rsquo;instruction pour appeler une procédure, mais les fonctions peuvent seulement être appelées là où une expression est attendue. Il n&rsquo;y a pas d&rsquo;instructions d&rsquo;expression en Pascal.</p>
 </aside></li>
 <li>
-<p>A <strong><code>print</code> statement</strong> evaluates an expression and displays the result to
-the user. I admit it&rsquo;s weird to bake printing right into the language
-instead of making it a library function. Doing so is a concession to the
-fact that we&rsquo;re building this interpreter one chapter at a time and want to
-be able to play with it before it&rsquo;s all done. To make print a library
-function, we&rsquo;d have to wait until we had all of the machinery for defining
-and calling functions <span name="print">before</span> we could witness any
-side effects.</p>
+<p>Une <strong>instruction <code>print</code></strong> évalue une expression et affiche le résultat à l&rsquo;utilisateur. J&rsquo;admets que c&rsquo;est bizarre d&rsquo;intégrer l&rsquo;impression directement dans le langage au lieu d&rsquo;en faire une fonction de bibliothèque. Faire ainsi est une concession au fait que nous construisons cet interpréteur un chapitre à la fois et voulons être capables de jouer avec avant qu&rsquo;il ne soit tout fini. Pour faire de print une fonction de bibliothèque, nous devrions attendre jusqu&rsquo;à ce que nous ayons toute la machinerie pour définir et appeler des fonctions <span name="print">avant</span> que nous puissions témoigner du moindre effet de bord.</p>
 <aside name="print">
-<p>I will note with only a modicum of defensiveness that BASIC and Python
-have dedicated <code>print</code> statements and they are real languages. Granted,
-Python did remove their <code>print</code> statement in 3.0<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
+<p>Je noterai avec seulement un soupçon de défensive que BASIC et Python ont des instructions <code>print</code> dédiées et ce sont de vrais langages. C&rsquo;est vrai, Python a retiré son instruction <code>print</code> en 3.0<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
 </aside></li>
 </ol>
-<p>New syntax means new grammar rules. In this chapter, we finally gain the ability
-to parse an entire Lox script. Since Lox is an imperative, dynamically typed
-language, the &ldquo;top level&rdquo; of a script is simply a list of statements. The new
-rules are:</p>
+<p>Une nouvelle syntaxe signifie de nouvelles règles de grammaire. Dans ce chapitre, nous gagnons enfin la capacité de parser un script Lox entier. Puisque Lox est un langage impératif, typé dynamiquement, le &ldquo;niveau supérieur&rdquo; d&rsquo;un script est simplement une liste d&rsquo;instructions. Les nouvelles règles sont :</p>
 <div class="codehilite"><pre><span class="i">program</span>        → <span class="i">statement</span>* <span class="t">EOF</span> ;
 
 <span class="i">statement</span>      → <span class="i">exprStmt</span>
@@ -169,30 +126,14 @@ rules are:</p>
 <span class="i">exprStmt</span>       → <span class="i">expression</span> <span class="s">&quot;;&quot;</span> ;
 <span class="i">printStmt</span>      → <span class="s">&quot;print&quot;</span> <span class="i">expression</span> <span class="s">&quot;;&quot;</span> ;
 </pre></div>
-<p>The first rule is now <code>program</code>, which is the starting point for the grammar and
-represents a complete Lox script or REPL entry. A program is a list of
-statements followed by the special &ldquo;end of file&rdquo; token. The mandatory end token
-ensures the parser consumes the entire input and doesn&rsquo;t silently ignore
-erroneous unconsumed tokens at the end of a script.</p>
-<p>Right now, <code>statement</code> only has two cases for the two kinds of statements we&rsquo;ve
-described. We&rsquo;ll fill in more later in this chapter and in the following ones.
-The next step is turning this grammar into something we can store in memory<span class="em">&mdash;</span>syntax trees.</p>
-<h3><a href="#statement-syntax-trees" id="statement-syntax-trees"><small>8&#8202;.&#8202;1&#8202;.&#8202;1</small>Statement syntax trees</a></h3>
-<p>There is no place in the grammar where both an expression and a statement are
-allowed. The operands of, say, <code>+</code> are always expressions, never statements. The
-body of a <code>while</code> loop is always a statement.</p>
-<p>Since the two syntaxes are disjoint, we don&rsquo;t need a single base class that they
-all inherit from. Splitting expressions and statements into separate class
-hierarchies enables the Java compiler to help us find dumb mistakes like passing
-a statement to a Java method that expects an expression.</p>
-<p>That means a new base class for statements. As our elders did before us, we will
-use the cryptic name &ldquo;Stmt&rdquo;. With great <span name="foresight">foresight</span>,
-I have designed our little AST metaprogramming script in anticipation of this.
-That&rsquo;s why we passed in &ldquo;Expr&rdquo; as a parameter to <code>defineAst()</code>. Now we add
-another call to define Stmt and its <span name="stmt-ast">subclasses</span>.</p>
+<p>La première règle est maintenant <code>program</code>, qui est le point de départ pour la grammaire et représente un script Lox complet ou une entrée REPL. Un programme est une liste d&rsquo;instructions suivie par le token spécial &ldquo;fin de fichier&rdquo; (EOF). Le token de fin obligatoire assure que le parseur consomme l&rsquo;entrée entière et n&rsquo;ignore pas silencieusement des tokens non consommés erronés à la fin d&rsquo;un script.</p>
+<p>Pour l&rsquo;instant, <code>statement</code> a seulement deux cas pour les deux types d&rsquo;instructions que nous avons décrits. Nous en remplirons plus plus tard dans ce chapitre et dans les suivants. L&rsquo;étape suivante est de transformer cette grammaire en quelque chose que nous pouvons stocker en mémoire<span class="em">&mdash;</span>des arbres syntaxiques.</p>
+<h3><a href="#arbres-syntaxiques-dinstruction" id="arbres-syntaxiques-dinstruction"><small>8&#8202;.&#8202;1&#8202;.&#8202;1</small>Arbres syntaxiques d&rsquo;instruction</a></h3>
+<p>Il n&rsquo;y a aucun endroit dans la grammaire où à la fois une expression et une instruction sont autorisées. Les opérandes de, disons, <code>+</code> sont toujours des expressions, jamais des instructions. Le corps d&rsquo;une boucle <code>while</code> est toujours une instruction.</p>
+<p>Puisque les deux syntaxes sont disjointes, nous n&rsquo;avons pas besoin d&rsquo;une seule classe de base dont elles héritent toutes. Séparer les expressions et les instructions dans des hiérarchies de classes séparées permet au compilateur Java de nous aider à trouver des erreurs bêtes comme passer une instruction à une méthode Java qui attend une expression.</p>
+<p>Cela signifie une nouvelle classe de base pour les instructions. Comme nos aînés l&rsquo;ont fait avant nous, nous utiliserons le nom cryptique &ldquo;Stmt&rdquo;. Avec une grande <span name="foresight">prévoyance</span>, j&rsquo;ai conçu notre petit script de métaprogrammation AST en anticipation de cela. C&rsquo;est pourquoi nous avons passé &ldquo;Expr&rdquo; comme paramètre à <code>defineAst()</code>. Maintenant nous ajoutons un autre appel pour définir Stmt et ses <span name="stmt-ast">sous-classes</span>.</p>
 <aside name="foresight">
-<p>Not really foresight: I wrote all the code for the book before I sliced it into
-chapters.</p>
+<p>Pas vraiment de la prévoyance : j&rsquo;ai écrit tout le code pour le livre avant de le découper en chapitres.</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">      &quot;Unary    : Token operator, Expr right&quot;
     ));
@@ -209,15 +150,11 @@ in <em>main</em>()</div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, in <em>main</em>()</div>
 
 <aside name="stmt-ast">
-<p>The generated code for the new nodes is in <a href="appendix-ii.html">Appendix II</a>: <a href="appendix-ii.html#expression-statement">Expression statement</a>, <a href="appendix-ii.html#print-statement">Print statement</a>.</p>
+<p>Le code généré pour les nouveaux nœuds est dans l&rsquo;<a href="appendix-ii.html">Annexe II</a> : <a href="appendix-ii.html#expression-statement">Instruction d&rsquo;expression</a>, <a href="appendix-ii.html#print-statement">Instruction print</a>.</p>
 </aside>
-<p>Run the AST generator script and behold the resulting &ldquo;Stmt.java&rdquo; file with the
-syntax tree classes we need for expression and <code>print</code> statements. Don&rsquo;t forget
-to add the file to your IDE project or makefile or whatever.</p>
-<h3><a href="#parsing-statements" id="parsing-statements"><small>8&#8202;.&#8202;1&#8202;.&#8202;2</small>Parsing statements</a></h3>
-<p>The parser&rsquo;s <code>parse()</code> method that parses and returns a single expression was a
-temporary hack to get the last chapter up and running. Now that our grammar has
-the correct starting rule, <code>program</code>, we can turn <code>parse()</code> into the real deal.</p>
+<p>Exécutez le script générateur d&rsquo;AST et contemplez le fichier &ldquo;Stmt.java&rdquo; résultant avec les classes d&rsquo;arbre syntaxique dont nous avons besoin pour l&rsquo;expression et les instructions <code>print</code>. N&rsquo;oubliez pas d&rsquo;ajouter le fichier à votre projet IDE ou makefile ou peu importe.</p>
+<h3><a href="#parser-les-instructions" id="parser-les-instructions"><small>8&#8202;.&#8202;1&#8202;.&#8202;2</small>Parser les instructions</a></h3>
+<p>La méthode <code>parse()</code> du parseur qui parse et renvoie une seule expression était un hack temporaire pour avoir le dernier chapitre opérationnel. Maintenant que notre grammaire a la règle de départ correcte, <code>program</code>, nous pouvons transformer <code>parse()</code> en la vraie affaire.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Parser.java</em><br>
 method <em>parse</em>()<br>
 replace 7 lines</div>
@@ -233,14 +170,9 @@ replace 7 lines</div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, method <em>parse</em>(), replace 7 lines</div>
 
 <aside name="parse-error-handling">
-<p>What about the code we had in here for catching <code>ParseError</code> exceptions? We&rsquo;ll
-put better parse error handling in place soon when we add support for additional
-statement types.</p>
+<p>Qu&rsquo;en est-il du code que nous avions ici pour attraper les exceptions <code>ParseError</code> ? Nous mettrons une meilleure gestion d&rsquo;erreur de parsing en place bientôt quand nous ajouterons le support pour des types d&rsquo;instruction supplémentaires.</p>
 </aside>
-<p>This parses a series of statements, as many as it can find until it hits the end
-of the input. This is a pretty direct translation of the <code>program</code> rule into
-recursive descent style. We must also chant a minor prayer to the Java verbosity
-gods since we are using ArrayList now.</p>
+<p>Ceci parse une série d&rsquo;instructions, autant qu&rsquo;il peut en trouver jusqu&rsquo;à ce qu&rsquo;il frappe la fin de l&rsquo;entrée. C&rsquo;est une traduction assez directe de la règle <code>program</code> en style descente récursive. Nous devons aussi chanter une prière mineure aux dieux de la verbosité Java puisque nous utilisons ArrayList maintenant.</p>
 <div class="codehilite"><pre class="insert-before">package com.craftinginterpreters.lox;
 
 </pre><div class="source-file"><em>lox/Parser.java</em></div>
@@ -249,8 +181,7 @@ gods since we are using ArrayList now.</p>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em></div>
 
-<p>A program is a list of statements, and we parse one of those statements using
-this method:</p>
+<p>Un programme est une liste d&rsquo;instructions, et nous parsons une de ces instructions en utilisant cette méthode :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Parser.java</em><br>
 add after <em>expression</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">Stmt</span> <span class="i">statement</span>() {
@@ -261,14 +192,9 @@ add after <em>expression</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, add after <em>expression</em>()</div>
 
-<p>A little bare bones, but we&rsquo;ll fill it in with more statement types later. We
-determine which specific statement rule is matched by looking at the current
-token. A <code>print</code> token means it&rsquo;s obviously a <code>print</code> statement.</p>
-<p>If the next token doesn&rsquo;t look like any known kind of statement, we assume it
-must be an expression statement. That&rsquo;s the typical final fallthrough case when
-parsing a statement, since it&rsquo;s hard to proactively recognize an expression from
-its first token.</p>
-<p>Each statement kind gets its own method. First <code>print</code>:</p>
+<p>Un peu squelettique, mais nous le remplirons avec plus de types d&rsquo;instruction plus tard. Nous déterminons quelle règle d&rsquo;instruction spécifique est matchée en regardant le token courant. Un token <code>print</code> signifie que c&rsquo;est évidemment une instruction <code>print</code>.</p>
+<p>Si le prochain token ne ressemble à aucun type connu d&rsquo;instruction, nous supposons que ce doit être une instruction d&rsquo;expression. C&rsquo;est le cas par défaut typique final lors du parsing d&rsquo;une instruction, puisqu&rsquo;il est difficile de reconnaître proactivement une expression à partir de son premier token.</p>
+<p>Chaque type d&rsquo;instruction obtient sa propre méthode. D&rsquo;abord <code>print</code> :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Parser.java</em><br>
 add after <em>statement</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">Stmt</span> <span class="i">printStatement</span>() {
@@ -279,10 +205,8 @@ add after <em>statement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, add after <em>statement</em>()</div>
 
-<p>Since we already matched and consumed the <code>print</code> token itself, we don&rsquo;t need to
-do that here. We parse the subsequent expression, consume the terminating
-semicolon, and emit the syntax tree.</p>
-<p>If we didn&rsquo;t match a <code>print</code> statement, we must have one of these:</p>
+<p>Puisque nous avons déjà matché et consommé le token <code>print</code> lui-même, nous n&rsquo;avons pas besoin de faire cela ici. Nous parsons l&rsquo;expression subséquente, consommons le point-virgule terminal, et émettons l&rsquo;arbre syntaxique.</p>
+<p>Si nous n&rsquo;avons pas matché une instruction <code>print</code>, nous devons avoir une de celles-ci :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Parser.java</em><br>
 add after <em>printStatement</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">Stmt</span> <span class="i">expressionStatement</span>() {
@@ -293,15 +217,10 @@ add after <em>printStatement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, add after <em>printStatement</em>()</div>
 
-<p>Similar to the previous method, we parse an expression followed by a semicolon.
-We wrap that Expr in a Stmt of the right type and return it.</p>
-<h3><a href="#executing-statements" id="executing-statements"><small>8&#8202;.&#8202;1&#8202;.&#8202;3</small>Executing statements</a></h3>
-<p>We&rsquo;re running through the previous couple of chapters in microcosm, working our
-way through the front end. Our parser can now produce statement syntax trees, so
-the next and final step is to interpret them. As in expressions, we use the
-Visitor pattern, but we have a new visitor interface, Stmt.Visitor, to
-implement since statements have their own base class.</p>
-<p>We add that to the list of interfaces Interpreter implements.</p>
+<p>Similaire à la méthode précédente, nous parsons une expression suivie par un point-virgule. Nous enveloppons cette Expr dans une Stmt du bon type et la renvoyons.</p>
+<h3><a href="#exécuter-les-instructions" id="exécuter-les-instructions"><small>8&#8202;.&#8202;1&#8202;.&#8202;3</small>Exécuter les instructions</a></h3>
+<p>Nous parcourons les quelques chapitres précédents en microcosme, en faisant notre chemin à travers le front end. Notre parseur peut maintenant produire des arbres syntaxiques d&rsquo;instruction, donc la prochaine et dernière étape est de les interpréter. Comme dans les expressions, nous utilisons le patron Visiteur, mais nous avons une nouvelle interface visiteur, Stmt.Visitor, à implémenter puisque les instructions ont leur propre classe de base.</p>
+<p>Nous ajoutons cela à la liste des interfaces que Interpreter implémente.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 replace 1 line</div>
 <pre class="insert"><span class="k">class</span> <span class="t">Interpreter</span> <span class="k">implements</span> <span class="t">Expr</span>.<span class="t">Visitor</span>&lt;<span class="t">Object</span>&gt;,
@@ -311,14 +230,9 @@ replace 1 line</div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, replace 1 line</div>
 
 <aside name="void">
-<p>Java doesn&rsquo;t let you use lowercase &ldquo;void&rdquo; as a generic type argument for obscure
-reasons having to do with type erasure and the stack. Instead, there is a
-separate &ldquo;Void&rdquo; type specifically for this use. Sort of a &ldquo;boxed void&rdquo;, like
-&ldquo;Integer&rdquo; is for &ldquo;int&rdquo;.</p>
+<p>Java ne vous laisse pas utiliser le &ldquo;void&rdquo; minuscule comme argument de type générique pour des raisons obscures ayant à voir avec l&rsquo;effacement de type (type erasure) et la pile. Au lieu de cela, il y a un type &ldquo;Void&rdquo; séparé spécifiquement pour cet usage. Sorte de &ldquo;void boxé&rdquo;, comme &ldquo;Integer&rdquo; l&rsquo;est pour &ldquo;int&rdquo;.</p>
 </aside>
-<p>Unlike expressions, statements produce no values, so the return type of the
-visit methods is Void, not Object. We have two statement types, and we need a
-visit method for each. The easiest is expression statements.</p>
+<p>Contrairement aux expressions, les instructions ne produisent aucune valeur, donc le type de retour des méthodes visit est Void, pas Object. Nous avons deux types d&rsquo;instruction, et nous avons besoin d&rsquo;une méthode visit pour chaque. La plus facile est les instructions d&rsquo;expression.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>evaluate</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -329,15 +243,11 @@ add after <em>evaluate</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>evaluate</em>()</div>
 
-<p>We evaluate the inner expression using our existing <code>evaluate()</code> method and
-<span name="discard">discard</span> the value. Then we return <code>null</code>. Java
-requires that to satisfy the special capitalized Void return type. Weird, but
-what can you do?</p>
+<p>Nous évaluons l&rsquo;expression interne en utilisant notre méthode <code>evaluate()</code> existante et <span name="discard">rejetons</span> la valeur. Ensuite nous renvoyons <code>null</code>. Java exige cela pour satisfaire le type de retour spécial Void avec majuscule. Bizarre, mais que pouvez-vous faire ?</p>
 <aside name="discard">
-<p>Appropriately enough, we discard the value returned by <code>evaluate()</code> by placing
-that call inside a <em>Java</em> expression statement.</p>
+<p>De manière assez appropriée, nous rejetons la valeur renvoyée par <code>evaluate()</code> en plaçant cet appel à l&rsquo;intérieur d&rsquo;une instruction d&rsquo;expression <em>Java</em>.</p>
 </aside>
-<p>The <code>print</code> statement&rsquo;s visit method isn&rsquo;t much different.</p>
+<p>La méthode visit de l&rsquo;instruction <code>print</code> n&rsquo;est pas très différente.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>visitExpressionStmt</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -349,12 +259,8 @@ add after <em>visitExpressionStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>visitExpressionStmt</em>()</div>
 
-<p>Before discarding the expression&rsquo;s value, we convert it to a string using the
-<code>stringify()</code> method we introduced in the last chapter and then dump it to
-stdout.</p>
-<p>Our interpreter is able to visit statements now, but we have some work to do to
-feed them to it. First, modify the old <code>interpret()</code> method in the Interpreter
-class to accept a list of statements<span class="em">&mdash;</span>in other words, a program.</p>
+<p>Avant de rejeter la valeur de l&rsquo;expression, nous la convertissons en une chaîne en utilisant la méthode <code>stringify()</code> que nous avons introduite dans le dernier chapitre et ensuite la déversons sur la sortie standard (stdout).</p>
+<p>Notre interpréteur est capable de visiter des instructions maintenant, mais nous avons un peu de travail à faire pour les lui donner à manger. D&rsquo;abord, modifiez la vieille méthode <code>interpret()</code> dans la classe Interpreter pour accepter une liste d&rsquo;instructions<span class="em">&mdash;</span>en d&rsquo;autres termes, un programme.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 method <em>interpret</em>()<br>
 replace 8 lines</div>
@@ -370,8 +276,7 @@ replace 8 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, method <em>interpret</em>(), replace 8 lines</div>
 
-<p>This replaces the old code which took a single expression. The new code relies
-on this tiny helper method:</p>
+<p>Ceci remplace l&rsquo;ancien code qui prenait une seule expression. Le nouveau code repose sur cette minuscule méthode d&rsquo;aide :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>evaluate</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">void</span> <span class="i">execute</span>(<span class="t">Stmt</span> <span class="i">stmt</span>) {
@@ -380,8 +285,7 @@ add after <em>evaluate</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>evaluate</em>()</div>
 
-<p>That&rsquo;s the statement analogue to the <code>evaluate()</code> method we have for
-expressions. Since we&rsquo;re working with lists now, we need to let Java know.</p>
+<p>C&rsquo;est l&rsquo;analogue pour l&rsquo;instruction de la méthode <code>evaluate()</code> que nous avons pour les expressions. Puisque nous travaillons avec des listes maintenant, nous avons besoin de le faire savoir à Java.</p>
 <div class="codehilite"><pre class="insert-before">package com.craftinginterpreters.lox;
 </pre><div class="source-file"><em>lox/Interpreter.java</em></div>
 <pre class="insert">
@@ -393,8 +297,7 @@ class Interpreter implements Expr.Visitor&lt;Object&gt;,
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em></div>
 
-<p>The main Lox class is still trying to parse a single expression and pass it to
-the interpreter. We fix the parsing line like so:</p>
+<p>La classe principale Lox essaie toujours de parser une seule expression et de la passer à l&rsquo;interpréteur. Nous corrigeons la ligne de parsing comme ceci :</p>
 <div class="codehilite"><pre class="insert-before">    Parser parser = new Parser(tokens);
 </pre><div class="source-file"><em>lox/Lox.java</em><br>
 in <em>run</em>()<br>
@@ -406,7 +309,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Lox.java</em>, in <em>run</em>(), replace 1 line</div>
 
-<p>And then replace the call to the interpreter with this:</p>
+<p>Et ensuite remplaçons l&rsquo;appel à l&rsquo;interpréteur par ceci :</p>
 <div class="codehilite"><pre class="insert-before">    if (hadError) return;
 
 </pre><div class="source-file"><em>lox/Lox.java</em><br>
@@ -417,80 +320,46 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Lox.java</em>, in <em>run</em>(), replace 1 line</div>
 
-<p>Basically just plumbing the new syntax through. OK, fire up the interpreter and
-give it a try. At this point, it&rsquo;s worth sketching out a little Lox program in a
-text file to run as a script. Something like:</p>
-<div class="codehilite"><pre><span class="k">print</span> <span class="s">&quot;one&quot;</span>;
+<p>Fondamentalement juste faire passer la nouvelle syntaxe dans la tuyauterie. OK, démarrez l&rsquo;interpréteur et donnez-lui un essai. À ce stade, cela vaut la peine d&rsquo;esquisser un petit programme Lox dans un fichier texte pour l&rsquo;exécuter comme un script. Quelque chose comme :</p>
+<div class="codehilite"><pre><span class="k">print</span> <span class="s">&quot;un&quot;</span>;
 <span class="k">print</span> <span class="k">true</span>;
 <span class="k">print</span> <span class="n">2</span> + <span class="n">1</span>;
 </pre></div>
-<p>It almost looks like a real program! Note that the REPL, too, now requires you
-to enter a full statement instead of a simple expression. Don&rsquo;t forget your
-semicolons.</p>
-<h2><a href="#global-variables" id="global-variables"><small>8&#8202;.&#8202;2</small>Global Variables</a></h2>
-<p>Now that we have statements, we can start working on state. Before we get into
-all of the complexity of lexical scoping, we&rsquo;ll start off with the easiest kind
-of variables<span class="em">&mdash;</span><span name="globals">globals</span>. We need two new constructs.</p>
+<p>Cela ressemble presque à un vrai programme ! Notez que le REPL, aussi, exige maintenant que vous entriez une instruction complète au lieu d&rsquo;une simple expression. N&rsquo;oubliez pas vos points-virgules.</p>
+<h2><a href="#variables-globales" id="variables-globales"><small>8&#8202;.&#8202;2</small>Variables Globales</a></h2>
+<p>Maintenant que nous avons des instructions, nous pouvons commencer à travailler sur l&rsquo;état. Avant que nous entrions dans toute la complexité de la portée lexicale, nous commencerons avec le type le plus facile de variables<span class="em">&mdash;</span>les <span name="globals">globales</span>. Nous avons besoin de deux nouvelles constructions.</p>
 <ol>
 <li>
-<p>A <strong>variable declaration</strong> statement brings a new variable into the world.</p>
+<p>Une instruction de <strong>déclaration de variable</strong> amène une nouvelle variable au monde.</p>
 <div class="codehilite"><pre><span class="k">var</span> <span class="i">beverage</span> = <span class="s">&quot;espresso&quot;</span>;
 </pre></div>
-<p>This creates a new binding that associates a name (here &ldquo;beverage&rdquo;) with a
-value (here, the string <code>"espresso"</code>).</p>
+<p>Ceci crée une nouvelle liaison qui associe un nom (ici &ldquo;beverage&rdquo;) avec une valeur (ici, la chaîne <code>"espresso"</code>).</p>
 </li>
 <li>
-<p>Once that&rsquo;s done, a <strong>variable expression</strong> accesses that binding. When the
-identifier &ldquo;beverage&rdquo; is used as an expression, it looks up the value bound
-to that name and returns it.</p>
+<p>Une fois que c&rsquo;est fait, une <strong>expression de variable</strong> accède à cette liaison. Quand l&rsquo;identifiant &ldquo;beverage&rdquo; est utilisé comme une expression, il cherche la valeur liée à ce nom et la renvoie.</p>
 <div class="codehilite"><pre><span class="k">print</span> <span class="i">beverage</span>; <span class="c">// &quot;espresso&quot;.</span>
 </pre></div>
 </li>
 </ol>
-<p>Later, we&rsquo;ll add assignment and block scope, but that&rsquo;s enough to get moving.</p>
+<p>Plus tard, nous ajouterons l&rsquo;affectation et la portée de bloc, mais c&rsquo;est assez pour commencer à bouger.</p>
 <aside name="globals">
-<p>Global state gets a bad rap. Sure, lots of global state<span class="em">&mdash;</span>especially <em>mutable</em>
-state<span class="em">&mdash;</span>makes it hard to maintain large programs. It&rsquo;s good software
-engineering to minimize how much you use.</p>
-<p>But when you&rsquo;re slapping together a simple programming language or, heck, even
-learning your first language, the flat simplicity of global variables helps. My
-first language was BASIC and, though I outgrew it eventually, it was nice that I
-didn&rsquo;t have to wrap my head around scoping rules before I could make a computer
-do fun stuff.</p>
+<p>L&rsquo;état global a mauvaise réputation. Bien sûr, beaucoup d&rsquo;état global<span class="em">&mdash;</span>surtout l&rsquo;état <em>mutable</em><span class="em">&mdash;</span>rend difficile la maintenance de gros programmes. C&rsquo;est une bonne ingénierie logicielle de minimiser combien vous en utilisez.</p>
+<p>Mais quand vous bricolez un langage de programmation simple ou, zut, même apprenez votre premier langage, la simplicité plate des variables globales aide. Mon premier langage était le BASIC et, bien que je l&rsquo;ai dépassé finalement, c&rsquo;était agréable que je n&rsquo;aie pas à me prendre la tête avec les règles de portée avant que je puisse faire faire des trucs amusants à un ordinateur.</p>
 </aside>
-<h3><a href="#variable-syntax" id="variable-syntax"><small>8&#8202;.&#8202;2&#8202;.&#8202;1</small>Variable syntax</a></h3>
-<p>As before, we&rsquo;ll work through the implementation from front to back, starting
-with the syntax. Variable declarations are statements, but they are different
-from other statements, and we&rsquo;re going to split the statement grammar in two to
-handle them. That&rsquo;s because the grammar restricts where some kinds of statements
-are allowed.</p>
-<p>The clauses in control flow statements<span class="em">&mdash;</span>think the then and else branches of
-an <code>if</code> statement or the body of a <code>while</code><span class="em">&mdash;</span>are each a single statement. But
-that statement is not allowed to be one that declares a name. This is OK:</p>
-<div class="codehilite"><pre><span class="k">if</span> (<span class="i">monday</span>) <span class="k">print</span> <span class="s">&quot;Ugh, already?&quot;</span>;
+<h3><a href="#syntaxe-de-variable" id="syntaxe-de-variable"><small>8&#8202;.&#8202;2&#8202;.&#8202;1</small>Syntaxe de variable</a></h3>
+<p>Comme avant, nous travaillerons à travers l&rsquo;implémentation de l&rsquo;avant vers l&rsquo;arrière, en commençant par la syntaxe. Les déclarations de variable sont des instructions, mais elles sont différentes des autres instructions, et nous allons diviser la grammaire des instructions en deux pour les gérer. C&rsquo;est parce que la grammaire restreint où certains types d&rsquo;instructions sont autorisés.</p>
+<p>Les clauses dans les instructions de contrôle de flux<span class="em">&mdash;</span>pensez aux branches then et else d&rsquo;une instruction <code>if</code> ou le corps d&rsquo;un <code>while</code><span class="em">&mdash;</span>sont chacune une instruction unique. Mais cette instruction n&rsquo;est pas autorisée à être une qui déclare un nom. Ceci est OK :</p>
+<div class="codehilite"><pre><span class="k">if</span> (<span class="i">monday</span>) <span class="k">print</span> <span class="s">&quot;Ugh, déjà ?&quot;</span>;
 </pre></div>
-<p>But this is not:</p>
+<p>Mais ceci ne l&rsquo;est pas :</p>
 <div class="codehilite"><pre><span class="k">if</span> (<span class="i">monday</span>) <span class="k">var</span> <span class="i">beverage</span> = <span class="s">&quot;espresso&quot;</span>;
 </pre></div>
-<p>We <em>could</em> allow the latter, but it&rsquo;s confusing. What is the scope of that
-<code>beverage</code> variable? Does it persist after the <code>if</code> statement? If so, what is
-its value on days other than Monday? Does the variable exist at all on those
-days?</p>
-<p>Code like this is weird, so C, Java, and friends all disallow it. It&rsquo;s as if
-there are two levels of <span name="brace">&ldquo;precedence&rdquo;</span> for statements.
-Some places where a statement is allowed<span class="em">&mdash;</span>like inside a block or at the top
-level<span class="em">&mdash;</span>allow any kind of statement, including declarations. Others allow only
-the &ldquo;higher&rdquo; precedence statements that don&rsquo;t declare names.</p>
+<p>Nous <em>pourrions</em> autoriser ce dernier, mais c&rsquo;est confus. Quelle est la portée de cette variable <code>beverage</code> ? Persiste-t-elle après l&rsquo;instruction <code>if</code> ? Si oui, quelle est sa valeur les jours autres que lundi ? La variable existe-t-elle tout court ces jours-là ?</p>
+<p>Du code comme celui-ci est bizarre, donc C, Java, et consorts l&rsquo;interdisent tous. C&rsquo;est comme s&rsquo;il y avait deux niveaux de <span name="brace">&ldquo;précédence&rdquo;</span> pour les instructions. Certains endroits où une instruction est autorisée<span class="em">&mdash;</span>comme à l&rsquo;intérieur d&rsquo;un bloc ou au niveau supérieur<span class="em">&mdash;</span>autorisent n&rsquo;importe quel type d&rsquo;instruction, y compris les déclarations. D&rsquo;autres autorisent seulement les instructions de &ldquo;plus haute&rdquo; précédence qui ne déclarent pas de noms.</p>
 <aside name="brace">
-<p>In this analogy, block statements work sort of like parentheses do for
-expressions. A block is itself in the &ldquo;higher&rdquo; precedence level and can be used
-anywhere, like in the clauses of an <code>if</code> statement. But the statements it
-<em>contains</em> can be lower precedence. You&rsquo;re allowed to declare variables and
-other names inside the block. The curlies let you escape back into the full
-statement grammar from a place where only some statements are allowed.</p>
+<p>Dans cette analogie, les instructions de bloc fonctionnent un peu comme les parenthèses pour les expressions. Un bloc est lui-même dans le niveau de précédence &ldquo;plus haut&rdquo; et peut être utilisé n&rsquo;importe où, comme dans les clauses d&rsquo;une instruction <code>if</code>. Mais les instructions qu&rsquo;il <em>contient</em> peuvent être de plus basse précédence. Vous êtes autorisé à déclarer des variables et d&rsquo;autres noms à l&rsquo;intérieur du bloc. Les accolades vous laissent vous échapper de nouveau vers la grammaire d&rsquo;instructions complète depuis un endroit où seules certaines instructions sont autorisées.</p>
 </aside>
-<p>To accommodate the distinction, we add another rule for kinds of statements that
-declare names.</p>
+<p>Pour accommoder la distinction, nous ajoutons une autre règle pour les types d&rsquo;instructions qui déclarent des noms.</p>
 <div class="codehilite"><pre><span class="i">program</span>        → <span class="i">declaration</span>* <span class="t">EOF</span> ;
 
 <span class="i">declaration</span>    → <span class="i">varDecl</span>
@@ -499,29 +368,19 @@ declare names.</p>
 <span class="i">statement</span>      → <span class="i">exprStmt</span>
                | <span class="i">printStmt</span> ;
 </pre></div>
-<p>Declaration statements go under the new <code>declaration</code> rule. Right now, it&rsquo;s only
-variables, but later it will include functions and classes. Any place where a
-declaration is allowed also allows non-declaring statements, so the
-<code>declaration</code> rule falls through to <code>statement</code>. Obviously, you can declare
-stuff at the top level of a script, so <code>program</code> routes to the new rule.</p>
-<p>The rule for declaring a variable looks like:</p>
+<p>Les instructions de déclaration vont sous la nouvelle règle <code>declaration</code>. Pour l&rsquo;instant, c&rsquo;est seulement les variables, mais plus tard cela inclura les fonctions et les classes. N&rsquo;importe quel endroit où une déclaration est autorisée permet aussi les instructions non-déclarantes, donc la règle <code>declaration</code> tombe vers <code>statement</code>. Évidemment, vous pouvez déclarer des trucs au niveau supérieur d&rsquo;un script, donc <code>program</code> route vers la nouvelle règle.</p>
+<p>La règle pour déclarer une variable ressemble à :</p>
 <div class="codehilite"><pre><span class="i">varDecl</span>        → <span class="s">&quot;var&quot;</span> <span class="t">IDENTIFIER</span> ( <span class="s">&quot;=&quot;</span> <span class="i">expression</span> )? <span class="s">&quot;;&quot;</span> ;
 </pre></div>
-<p>Like most statements, it starts with a leading keyword. In this case, <code>var</code>.
-Then an identifier token for the name of the variable being declared, followed
-by an optional initializer expression. Finally, we put a bow on it with the
-semicolon.</p>
-<p>To access a variable, we define a new kind of primary expression.</p>
+<p>Comme la plupart des instructions, elle commence par un mot-clé de tête. Dans ce cas, <code>var</code>. Ensuite un token identifiant pour le nom de la variable étant déclarée, suivi par une expression d&rsquo;initialisation optionnelle. Finalement, nous mettons un nœud dessus avec le point-virgule.</p>
+<p>Pour accéder à une variable, nous définissons un nouveau type d&rsquo;expression primaire.</p>
 <div class="codehilite"><pre><span class="i">primary</span>        → <span class="s">&quot;true&quot;</span> | <span class="s">&quot;false&quot;</span> | <span class="s">&quot;nil&quot;</span>
                | <span class="t">NUMBER</span> | <span class="t">STRING</span>
                | <span class="s">&quot;(&quot;</span> <span class="i">expression</span> <span class="s">&quot;)&quot;</span>
                | <span class="t">IDENTIFIER</span> ;
 </pre></div>
-<p>That <code>IDENTIFIER</code> clause matches a single identifier token, which is understood
-to be the name of the variable being accessed.</p>
-<p>These new grammar rules get their corresponding syntax trees. Over in the AST
-generator, we add a <span name="var-stmt-ast">new statement</span> node for a
-variable declaration.</p>
+<p>Cette clause <code>IDENTIFIER</code> matche un seul token identifiant, qui est compris comme être le nom de la variable à laquelle on accède.</p>
+<p>Ces nouvelles règles de grammaire obtiennent leurs arbres syntaxiques correspondants. Là-bas dans le générateur d&rsquo;AST, nous ajoutons un <span name="var-stmt-ast">nouveau nœud d&rsquo;instruction</span> pour une déclaration de variable.</p>
 <div class="codehilite"><pre class="insert-before">      &quot;Expression : Expr expression&quot;,
 </pre><pre class="insert-before">      <span class="s">&quot;Print      : Expr expression&quot;</span><span class="insert-comma">,</span>
 </pre><div class="source-file"><em>tool/GenerateAst.java</em><br>
@@ -533,11 +392,10 @@ add <em>&ldquo;,&rdquo;</em> to previous line</div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, in <em>main</em>(), add <em>&ldquo;,&rdquo;</em> to previous line</div>
 
 <aside name="var-stmt-ast">
-<p>The generated code for the new node is in <a href="appendix-ii.html#variable-statement">Appendix II</a>.</p>
+<p>Le code généré pour le nouveau nœud est dans l&rsquo;<a href="appendix-ii.html#variable-statement">Annexe II</a>.</p>
 </aside>
-<p>It stores the name token so we know what it&rsquo;s declaring, along with the
-initializer expression. (If there isn&rsquo;t an initializer, that field is <code>null</code>.)</p>
-<p>Then we add an expression node for accessing a variable.</p>
+<p>Il stocke le token de nom pour que nous sachions ce qu&rsquo;il déclare, avec l&rsquo;expression d&rsquo;initialisation. (S&rsquo;il n&rsquo;y a pas d&rsquo;initialiseur, ce champ est <code>null</code>.)</p>
+<p>Puis nous ajoutons un nœud d&rsquo;expression pour accéder à une variable.</p>
 <div class="codehilite"><pre class="insert-before">      &quot;Literal  : Object value&quot;,
 </pre><pre class="insert-before">      <span class="s">&quot;Unary    : Token operator, Expr right&quot;</span><span class="insert-comma">,</span>
 </pre><div class="source-file"><em>tool/GenerateAst.java</em><br>
@@ -548,16 +406,12 @@ add <em>&ldquo;,&rdquo;</em> to previous line</div>
 </pre></div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, in <em>main</em>(), add <em>&ldquo;,&rdquo;</em> to previous line</div>
 
-<p><span name="var-expr-ast">It&rsquo;s</span> simply a wrapper around the token for the
-variable name. That&rsquo;s it. As always, don&rsquo;t forget to run the AST generator
-script so that you get updated &ldquo;Expr.java&rdquo; and &ldquo;Stmt.java&rdquo; files.</p>
+<p><span name="var-expr-ast">C&rsquo;est</span> simplement une enveloppe autour du token pour le nom de la variable. C&rsquo;est tout. Comme toujours, n&rsquo;oubliez pas d&rsquo;exécuter le script générateur d&rsquo;AST pour que vous obteniez des fichiers &ldquo;Expr.java&rdquo; et &ldquo;Stmt.java&rdquo; mis à jour.</p>
 <aside name="var-expr-ast">
-<p>The generated code for the new node is in <a href="appendix-ii.html#variable-expression">Appendix II</a>.</p>
+<p>Le code généré pour le nouveau nœud est dans l&rsquo;<a href="appendix-ii.html#variable-expression">Annexe II</a>.</p>
 </aside>
-<h3><a href="#parsing-variables" id="parsing-variables"><small>8&#8202;.&#8202;2&#8202;.&#8202;2</small>Parsing variables</a></h3>
-<p>Before we parse variable statements, we need to shift around some code to make
-room for the new <code>declaration</code> rule in the grammar. The top level of a program
-is now a list of declarations, so the entrypoint method to the parser changes.</p>
+<h3><a href="#parser-les-variables" id="parser-les-variables"><small>8&#8202;.&#8202;2&#8202;.&#8202;2</small>Parser les variables</a></h3>
+<p>Avant de parser les instructions de variable, nous avons besoin de bouger un peu de code pour faire de la place pour la nouvelle règle <code>declaration</code> dans la grammaire. Le niveau supérieur d&rsquo;un programme est maintenant une liste de déclarations, donc la méthode point d&rsquo;entrée vers le parseur change.</p>
 <div class="codehilite"><pre class="insert-before">  List&lt;Stmt&gt; parse() {
     List&lt;Stmt&gt; statements = new ArrayList&lt;&gt;();
     while (!isAtEnd()) {
@@ -572,7 +426,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>parse</em>(), replace 1 line</div>
 
-<p>That calls this new method:</p>
+<p>Cela appelle cette nouvelle méthode :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Parser.java</em><br>
 add after <em>expression</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">Stmt</span> <span class="i">declaration</span>() {
@@ -588,24 +442,11 @@ add after <em>expression</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, add after <em>expression</em>()</div>
 
-<p>Hey, do you remember way back in that <a href="parsing-expressions.html">earlier chapter</a> when we put the
-infrastructure in place to do error recovery? We are finally ready to hook that
-up.</p>
-<p>This <code>declaration()</code> method is the method we call repeatedly when parsing a
-series of statements in a block or a script, so it&rsquo;s the right place to
-synchronize when the parser goes into panic mode. The whole body of this method
-is wrapped in a try block to catch the exception thrown when the parser begins
-error recovery. This gets it back to trying to parse the beginning of the next
-statement or declaration.</p>
-<p>The real parsing happens inside the try block. First, it looks to see if we&rsquo;re
-at a variable declaration by looking for the leading <code>var</code> keyword. If not, it
-falls through to the existing <code>statement()</code> method that parses <code>print</code> and
-expression statements.</p>
-<p>Remember how <code>statement()</code> tries to parse an expression statement if no other
-statement matches? And <code>expression()</code> reports a syntax error if it can&rsquo;t parse
-an expression at the current token? That chain of calls ensures we report an
-error if a valid declaration or statement isn&rsquo;t parsed.</p>
-<p>When the parser matches a <code>var</code> token, it branches to:</p>
+<p>Hé, vous souvenez-vous loin en arrière dans ce <a href="parsing-expressions.html">chapitre précédent</a> quand nous avons mis l&rsquo;infrastructure en place pour faire la récupération d&rsquo;erreur ? Nous sommes enfin prêts à brancher cela.</p>
+<p>Cette méthode <code>declaration()</code> est la méthode que nous appelons de manière répétée lors du parsing d&rsquo;une série d&rsquo;instructions dans un bloc ou un script, donc c&rsquo;est le bon endroit pour synchroniser quand le parseur entre en mode panique. Tout le corps de cette méthode est enveloppé dans un bloc try pour attraper l&rsquo;exception lancée quand le parseur commence la récupération d&rsquo;erreur. Cela le ramène à essayer de parser le début de l&rsquo;instruction ou déclaration suivante.</p>
+<p>Le vrai parsing se passe à l&rsquo;intérieur du bloc try. D&rsquo;abord, il regarde pour voir si nous sommes à une déclaration de variable en cherchant le mot-clé <code>var</code> de tête. Si non, il tombe dans la méthode <code>statement()</code> existante qui parse <code>print</code> et les instructions d&rsquo;expression.</p>
+<p>Rappelez-vous comment <code>statement()</code> essaie de parser une instruction d&rsquo;expression si aucune autre instruction ne matche ? Et <code>expression()</code> rapporte une erreur de syntaxe si elle ne peut pas parser une expression au token courant ? Cette chaîne d&rsquo;appels assure que nous rapportons une erreur si une déclaration ou instruction valide n&rsquo;est pas parsée.</p>
+<p>Quand le parseur matche un token <code>var</code>, il branche vers :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Parser.java</em><br>
 add after <em>printStatement</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">Stmt</span> <span class="i">varDeclaration</span>() {
@@ -622,15 +463,9 @@ add after <em>printStatement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, add after <em>printStatement</em>()</div>
 
-<p>As always, the recursive descent code follows the grammar rule. The parser has
-already matched the <code>var</code> token, so next it requires and consumes an identifier
-token for the variable name.</p>
-<p>Then, if it sees an <code>=</code> token, it knows there is an initializer expression and
-parses it. Otherwise, it leaves the initializer <code>null</code>. Finally, it consumes the
-required semicolon at the end of the statement. All this gets wrapped in a
-Stmt.Var syntax tree node and we&rsquo;re groovy.</p>
-<p>Parsing a variable expression is even easier. In <code>primary()</code>, we look for an
-identifier token.</p>
+<p>Comme toujours, le code de descente récursive suit la règle de grammaire. Le parseur a déjà matché le token <code>var</code>, donc ensuite il exige et consomme un token identifiant pour le nom de la variable.</p>
+<p>Puis, s&rsquo;il voit un token <code>=</code>, il sait qu&rsquo;il y a une expression d&rsquo;initialisation et la parse. Sinon, il laisse l&rsquo;initialiseur à <code>null</code>. Finalement, il consomme le point-virgule requis à la fin de l&rsquo;instruction. Tout cela est enveloppé dans un nœud d&rsquo;arbre syntaxique Stmt.Var et nous sommes groovy.</p>
+<p>Parser une expression de variable est encore plus facile. Dans <code>primary()</code>, nous cherchons un token identifiant.</p>
 <div class="codehilite"><pre class="insert-before">      return new Expr.Literal(previous().literal);
     }
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
@@ -646,28 +481,16 @@ in <em>primary</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>primary</em>()</div>
 
-<p>That gives us a working front end for declaring and using variables. All that&rsquo;s
-left is to feed it into the interpreter. Before we get to that, we need to talk
-about where variables live in memory.</p>
-<h2><a href="#environments" id="environments"><small>8&#8202;.&#8202;3</small>Environments</a></h2>
-<p>The bindings that associate variables to values need to be stored somewhere.
-Ever since the Lisp folks invented parentheses, this data structure has been
-called an <span name="env"><strong>environment</strong></span>.</p><img src="image/statements-and-state/environment.png" alt="An environment containing two bindings." />
+<p>Cela nous donne un front end fonctionnel pour déclarer et utiliser des variables. Tout ce qui reste est de le donner à manger à l&rsquo;interpréteur. Avant que nous arrivions à cela, nous devons parler de l&rsquo;endroit où les variables vivent en mémoire.</p>
+<h2><a href="#environnements" id="environnements"><small>8&#8202;.&#8202;3</small>Environnements</a></h2>
+<p>Les liaisons qui associent des variables à des valeurs ont besoin d&rsquo;être stockées quelque part. Depuis que les gens de Lisp ont inventé les parenthèses, cette structure de données a été appelée un <span name="env"><strong>environnement</strong></span>.</p><img src="image/statements-and-state/environment.png" alt="Un environnement contenant deux liaisons." />
 <aside name="env">
-<p>I like to imagine the environment literally, as a sylvan wonderland where
-variables and values frolic.</p>
+<p>J&rsquo;aime imaginer l&rsquo;environnement littéralement, comme un pays des merveilles sylvestre où les variables et les valeurs gambadent.</p>
 </aside>
-<p>You can think of it like a <span name="map">map</span> where the keys are
-variable names and the values are the variable&rsquo;s, uh, values. In fact, that&rsquo;s
-how we&rsquo;ll implement it in Java. We could stuff that map and the code to manage
-it right into Interpreter, but since it forms a nicely delineated concept, we&rsquo;ll
-pull it out into its own class.</p>
-<p>Start a new file and add:</p>
+<p>Vous pouvez penser à cela comme une <span name="map">map</span> où les clés sont les noms de variables et les valeurs sont les valeurs de la variable, euh, valeurs. En fait, c&rsquo;est comme ça que nous l&rsquo;implémenterons en Java. Nous pourrions fourrer cette map et le code pour la gérer directement dans Interpreter, mais puisqu&rsquo;elle forme un concept joliment délimité, nous la sortirons dans sa propre classe.</p>
+<p>Commencez un nouveau fichier et ajoutez :</p>
 <aside name="map">
-<p>Java calls them <strong>maps</strong> or <strong>hashmaps</strong>. Other languages call them <strong>hash
-tables</strong>, <strong>dictionaries</strong> (Python and C#), <strong>hashes</strong> (Ruby and Perl),
-<strong>tables</strong> (Lua), or <strong>associative arrays</strong> (PHP). Way back when, they were
-known as <strong>scatter tables</strong>.</p>
+<p>Java les appelle <strong>maps</strong> ou <strong>hashmaps</strong>. D&rsquo;autres langages les appellent <strong>tables de hachage</strong>, <strong>dictionnaires</strong> (Python et C#), <strong>hashes</strong> (Ruby et Perl), <strong>tables</strong> (Lua), ou <strong>tableaux associatifs</strong> (PHP). Très loin dans le temps, elles étaient connues comme <strong>scatter tables</strong> (tables de dispersion).</p>
 </aside>
 <div class="codehilite"><div class="source-file"><em>lox/Environment.java</em><br>
 create new file</div>
@@ -682,13 +505,8 @@ create new file</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Environment.java</em>, create new file</div>
 
-<p>There&rsquo;s a Java Map in there to store the bindings. It uses bare strings for the
-keys, not tokens. A token represents a unit of code at a specific place in the
-source text, but when it comes to looking up variables, all identifier tokens
-with the same name should refer to the same variable (ignoring scope for now).
-Using the raw string ensures all of those tokens refer to the same map key.</p>
-<p>There are two operations we need to support. First, a variable definition binds
-a new name to a value.</p>
+<p>Il y a une Map Java là-dedans pour stocker les liaisons. Elle utilise des chaînes nues pour les clés, pas des tokens. Un token représente une unité de code à un endroit spécifique dans le texte source, mais quand il s&rsquo;agit de chercher des variables, tous les tokens identifiants avec le même nom devraient se référer à la même variable (en ignorant la portée pour l&rsquo;instant). Utiliser la chaîne brute assure que tous ces tokens se réfèrent à la même clé de map.</p>
+<p>Il y a deux opérations que nous devons supporter. D&rsquo;abord, une définition de variable lie un nouveau nom à une valeur.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Environment.java</em><br>
 in class <em>Environment</em></div>
 <pre>  <span class="t">void</span> <span class="i">define</span>(<span class="t">String</span> <span class="i">name</span>, <span class="t">Object</span> <span class="i">value</span>) {
@@ -697,34 +515,19 @@ in class <em>Environment</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Environment.java</em>, in class <em>Environment</em></div>
 
-<p>Not exactly brain surgery, but we have made one interesting semantic choice.
-When we add the key to the map, we don&rsquo;t check to see if it&rsquo;s already present.
-That means that this program works:</p>
-<div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;before&quot;</span>;
-<span class="k">print</span> <span class="i">a</span>; <span class="c">// &quot;before&quot;.</span>
-<span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;after&quot;</span>;
-<span class="k">print</span> <span class="i">a</span>; <span class="c">// &quot;after&quot;.</span>
+<p>Pas exactement de la chirurgie du cerveau, mais nous avons fait un choix sémantique intéressant. Quand nous ajoutons la clé à la map, nous ne vérifions pas pour voir si elle est déjà présente. Cela signifie que ce programme fonctionne :</p>
+<div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;avant&quot;</span>;
+<span class="k">print</span> <span class="i">a</span>; <span class="c">// &quot;avant&quot;.</span>
+<span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;après&quot;</span>;
+<span class="k">print</span> <span class="i">a</span>; <span class="c">// &quot;après&quot;.</span>
 </pre></div>
-<p>A variable statement doesn&rsquo;t just define a <em>new</em> variable, it can also be used
-to <em>re</em>define an existing variable. We could <span name="scheme">choose</span>
-to make this an error instead. The user may not intend to redefine an existing
-variable. (If they did mean to, they probably would have used assignment, not
-<code>var</code>.) Making redefinition an error would help them find that bug.</p>
-<p>However, doing so interacts poorly with the REPL. In the middle of a REPL
-session, it&rsquo;s nice to not have to mentally track which variables you&rsquo;ve already
-defined. We could allow redefinition in the REPL but not in scripts, but then
-users would have to learn two sets of rules, and code copied and pasted from one
-form to the other might not work.</p>
+<p>Une instruction de variable ne définit pas juste une <em>nouvelle</em> variable, elle peut aussi être utilisée pour <em>re</em>définir une variable existante. Nous pourrions <span name="scheme">choisir</span> de faire de cela une erreur à la place. L&rsquo;utilisateur peut ne pas avoir l&rsquo;intention de redéfinir une variable existante. (S&rsquo;ils le voulaient, ils auraient probablement utilisé l&rsquo;affectation, pas <code>var</code>.) Faire de la redéfinition une erreur les aiderait à trouver ce bug.</p>
+<p>Cependant, faire ainsi interagit mal avec le REPL. Au milieu d&rsquo;une session REPL, c&rsquo;est agréable de ne pas avoir à suivre mentalement quelles variables vous avez déjà définies. Nous pourrions autoriser la redéfinition dans le REPL mais pas dans les scripts, mais alors les utilisateurs devraient apprendre deux ensembles de règles, et le code copié et collé d&rsquo;une forme à l&rsquo;autre pourrait ne pas fonctionner.</p>
 <aside name="scheme">
-<p>My rule about variables and scoping is, &ldquo;When in doubt, do what Scheme does&rdquo;.
-The Scheme folks have probably spent more time thinking about variable scope
-than we ever will<span class="em">&mdash;</span>one of the main goals of Scheme was to introduce lexical
-scoping to the world<span class="em">&mdash;</span>so it&rsquo;s hard to go wrong if you follow in their
-footsteps.</p>
-<p>Scheme allows redefining variables at the top level.</p>
+<p>Ma règle à propos des variables et de la portée est, &ldquo;Dans le doute, fais ce que Scheme fait&rdquo;. Les gens de Scheme ont probablement passé plus de temps à penser à la portée des variables que nous ne le ferons jamais<span class="em">&mdash;</span>l&rsquo;un des buts principaux de Scheme était d&rsquo;introduire la portée lexicale au monde<span class="em">&mdash;</span>donc il est difficile de se tromper si vous suivez leurs traces.</p>
+<p>Scheme autorise la redéfinition de variables au niveau supérieur.</p>
 </aside>
-<p>So, to keep the two modes consistent, we&rsquo;ll allow it<span class="em">&mdash;</span>at least for global
-variables. Once a variable exists, we need a way to look it up.</p>
+<p>Donc, pour garder les deux modes cohérents, nous l&rsquo;autoriserons<span class="em">&mdash;</span>au moins pour les variables globales. Une fois qu&rsquo;une variable existe, nous avons besoin d&rsquo;un moyen de la chercher.</p>
 <div class="codehilite"><pre class="insert-before">class Environment {
   private final Map&lt;String, Object&gt; values = new HashMap&lt;&gt;();
 </pre><div class="source-file"><em>lox/Environment.java</em><br>
@@ -744,32 +547,21 @@ in class <em>Environment</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Environment.java</em>, in class <em>Environment</em></div>
 
-<p>This is a little more semantically interesting. If the variable is found, it
-simply returns the value bound to it. But what if it&rsquo;s not? Again, we have a
-choice:</p>
+<p>Ceci est un peu plus sémantiquement intéressant. Si la variable est trouvée, elle renvoie simplement la valeur liée à elle. Mais qu&rsquo;en est-il si elle ne l&rsquo;est pas ? Encore une fois, nous avons un choix :</p>
 <ul>
 <li>
-<p>Make it a syntax error.</p>
+<p>En faire une erreur de syntaxe.</p>
 </li>
 <li>
-<p>Make it a runtime error.</p>
+<p>En faire une erreur d&rsquo;exécution.</p>
 </li>
 <li>
-<p>Allow it and return some default value like <code>nil</code>.</p>
+<p>L&rsquo;autoriser et renvoyer une certaine valeur par défaut comme <code>nil</code>.</p>
 </li>
 </ul>
-<p>Lox is pretty lax, but the last option is a little <em>too</em> permissive to me.
-Making it a syntax error<span class="em">&mdash;</span>a compile-time error<span class="em">&mdash;</span>seems like a smart choice.
-Using an undefined variable is a bug, and the sooner you detect the mistake, the
-better.</p>
-<p>The problem is that <em>using</em> a variable isn&rsquo;t the same as <em>referring</em> to it. You
-can refer to a variable in a chunk of code without immediately evaluating it if
-that chunk of code is wrapped inside a function. If we make it a static error to
-<em>mention</em> a variable before it&rsquo;s been declared, it becomes much harder to define
-recursive functions.</p>
-<p>We could accommodate single recursion<span class="em">&mdash;</span>a function that calls itself<span class="em">&mdash;</span>by
-declaring the function&rsquo;s own name before we examine its body. But that doesn&rsquo;t
-help with mutually recursive procedures that call each other. Consider:</p>
+<p>Lox est assez laxiste, mais la dernière option est un peu <em>trop</em> permissive pour moi. En faire une erreur de syntaxe<span class="em">&mdash;</span>une erreur à la compilation<span class="em">&mdash;</span>semble être un choix intelligent. Utiliser une variable indéfinie est un bug, et plus tôt vous détectez l&rsquo;erreur, mieux c&rsquo;est.</p>
+<p>Le problème est qu&rsquo;<em>utiliser</em> une variable n&rsquo;est pas la même chose que s&rsquo;y <em>référer</em>. Vous pouvez vous référer à une variable dans un morceau de code sans l&rsquo;évaluer immédiatement si ce morceau de code est enveloppé à l&rsquo;intérieur d&rsquo;une fonction. Si nous en faisons une erreur statique de <em>mentionner</em> une variable avant qu&rsquo;elle ait été déclarée, cela devient beaucoup plus difficile de définir des fonctions récursives.</p>
+<p>Nous pourrions accommoder la récursion simple<span class="em">&mdash;</span>une fonction qui s&rsquo;appelle elle-même<span class="em">&mdash;</span>en déclarant le propre nom de la fonction avant que nous examinions son corps. Mais cela n&rsquo;aide pas avec les procédures mutuellement récursives qui s&rsquo;appellent l&rsquo;une l&rsquo;autre. Considérez :</p>
 <p><span name="contrived"></span></p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">isOdd</span>(<span class="i">n</span>) {
   <span class="k">if</span> (<span class="i">n</span> == <span class="n">0</span>) <span class="k">return</span> <span class="k">false</span>;
@@ -782,39 +574,20 @@ help with mutually recursive procedures that call each other. Consider:</p>
 }
 </pre></div>
 <aside name="contrived">
-<p>Granted, this is probably not the most efficient way to tell if a number is even
-or odd (not to mention the bad things that happen if you pass a non-integer or
-negative number to them). Bear with me.</p>
+<p>Il est vrai que ce n&rsquo;est probablement pas la façon la plus efficace de dire si un nombre est pair ou impair (sans mentionner les mauvaises choses qui arrivent si vous leur passez un non-entier ou un nombre négatif). Soyez indulgents avec moi.</p>
 </aside>
-<p>The <code>isEven()</code> function isn&rsquo;t defined by the <span name="declare">time</span> we
-are looking at the body of <code>isOdd()</code> where it&rsquo;s called. If we swap the order of
-the two functions, then <code>isOdd()</code> isn&rsquo;t defined when we&rsquo;re looking at
-<code>isEven()</code>&rsquo;s body.</p>
+<p>La fonction <code>isEven()</code> n&rsquo;est pas définie au <span name="declare">moment</span> où nous regardons le corps de <code>isOdd()</code> où elle est appelée. Si nous échangeons l&rsquo;ordre des deux fonctions, alors <code>isOdd()</code> n&rsquo;est pas définie quand nous regardons le corps de <code>isEven()</code>.</p>
 <aside name="declare">
-<p>Some statically typed languages like Java and C# solve this by specifying that
-the top level of a program isn&rsquo;t a sequence of imperative statements. Instead, a
-program is a set of declarations which all come into being simultaneously. The
-implementation declares <em>all</em> of the names before looking at the bodies of <em>any</em>
-of the functions.</p>
-<p>Older languages like C and Pascal don&rsquo;t work like this. Instead, they force you
-to add explicit <em>forward declarations</em> to declare a name before it&rsquo;s fully
-defined. That was a concession to the limited computing power at the time. They
-wanted to be able to compile a source file in one single pass through the text,
-so those compilers couldn&rsquo;t gather up all of the declarations first before
-processing function bodies.</p>
+<p>Certains langages typés statiquement comme Java et C# résolvent cela en spécifiant que le niveau supérieur d&rsquo;un programme n&rsquo;est pas une séquence d&rsquo;instructions impératives. Au lieu de cela, un programme est un ensemble de déclarations qui viennent toutes à l&rsquo;existence simultanément. L&rsquo;implémentation déclare <em>tous</em> les noms avant de regarder les corps de <em>n&rsquo;importe quelle</em> fonction.</p>
+<p>Des langages plus vieux comme C et Pascal ne fonctionnent pas comme ça. Au lieu de cela, ils vous forcent à ajouter des <em>déclarations anticipées</em> (forward declarations) explicites pour déclarer un nom avant qu&rsquo;il soit entièrement défini. C&rsquo;était une concession à la puissance de calcul limitée à l&rsquo;époque. Ils voulaient être capables de compiler un fichier source en une seule passe à travers le texte, donc ces compilateurs ne pouvaient pas rassembler toutes les déclarations d&rsquo;abord avant de traiter les corps de fonction.</p>
 </aside>
-<p>Since making it a <em>static</em> error makes recursive declarations too difficult,
-we&rsquo;ll defer the error to runtime. It&rsquo;s OK to refer to a variable before it&rsquo;s
-defined as long as you don&rsquo;t <em>evaluate</em> the reference. That lets the program
-for even and odd numbers work, but you&rsquo;d get a runtime error in:</p>
+<p>Puisque en faire une erreur <em>statique</em> rend les déclarations récursives trop difficiles, nous différerons l&rsquo;erreur à l&rsquo;exécution. C&rsquo;est OK de se référer à une variable avant qu&rsquo;elle soit définie tant que vous n&rsquo;<em>évaluez</em> pas la référence. Cela laisse le programme pour les nombres pairs et impairs fonctionner, mais vous obtiendriez une erreur d&rsquo;exécution dans :</p>
 <div class="codehilite"><pre><span class="k">print</span> <span class="i">a</span>;
-<span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;too late!&quot;</span>;
+<span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;trop tard !&quot;</span>;
 </pre></div>
-<p>As with type errors in the expression evaluation code, we report a runtime error
-by throwing an exception. The exception contains the variable&rsquo;s token so we can
-tell the user where in their code they messed up.</p>
-<h3><a href="#interpreting-global-variables" id="interpreting-global-variables"><small>8&#8202;.&#8202;3&#8202;.&#8202;1</small>Interpreting global variables</a></h3>
-<p>The Interpreter class gets an instance of the new Environment class.</p>
+<p>Comme avec les erreurs de type dans le code d&rsquo;évaluation d&rsquo;expression, nous rapportons une erreur d&rsquo;exécution en lançant une exception. L&rsquo;exception contient le token de la variable pour que nous puissions dire à l&rsquo;utilisateur où dans son code il a fait une erreur.</p>
+<h3><a href="#interpréter-les-variables-globales" id="interpréter-les-variables-globales"><small>8&#8202;.&#8202;3&#8202;.&#8202;1</small>Interpréter les variables globales</a></h3>
+<p>La classe Interpreter obtient une instance de la nouvelle classe Environment.</p>
 <div class="codehilite"><pre class="insert-before">class Interpreter implements Expr.Visitor&lt;Object&gt;,
                              Stmt.Visitor&lt;Void&gt; {
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
@@ -825,10 +598,8 @@ in class <em>Interpreter</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in class <em>Interpreter</em></div>
 
-<p>We store it as a field directly in Interpreter so that the variables stay in
-memory as long as the interpreter is still running.</p>
-<p>We have two new syntax trees, so that&rsquo;s two new visit methods. The first is for
-declaration statements.</p>
+<p>Nous la stockons comme un champ directement dans Interpreter pour que les variables restent en mémoire tant que l&rsquo;interpréteur est encore en cours d&rsquo;exécution.</p>
+<p>Nous avons deux nouveaux arbres syntaxiques, donc c&rsquo;est deux nouvelles méthodes visit. La première est pour les instructions de déclaration.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>visitPrintStmt</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -844,22 +615,13 @@ add after <em>visitPrintStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>visitPrintStmt</em>()</div>
 
-<p>If the variable has an initializer, we evaluate it. If not, we have another
-choice to make. We could have made this a syntax error in the parser by
-<em>requiring</em> an initializer. Most languages don&rsquo;t, though, so it feels a little
-harsh to do so in Lox.</p>
-<p>We could make it a runtime error. We&rsquo;d let you define an uninitialized variable,
-but if you accessed it before assigning to it, a runtime error would occur. It&rsquo;s
-not a bad idea, but most dynamically typed languages don&rsquo;t do that. Instead,
-we&rsquo;ll keep it simple and say that Lox sets a variable to <code>nil</code> if it isn&rsquo;t
-explicitly initialized.</p>
+<p>Si la variable a un initialiseur, nous l&rsquo;évaluons. Si non, nous avons un autre choix à faire. Nous aurions pu en faire une erreur de syntaxe dans le parseur en <em>exigeant</em> un initialiseur. La plupart des langages ne le font pas, cependant, donc cela semble un peu dur de le faire dans Lox.</p>
+<p>Nous pourrions en faire une erreur d&rsquo;exécution. Nous vous laisserions définir une variable non initialisée, mais si vous y accédiez avant de lui assigner quelque chose, une erreur d&rsquo;exécution se produirait. Ce n&rsquo;est pas une mauvaise idée, mais la plupart des langages typés dynamiquement ne font pas ça. Au lieu de cela, nous garderons les choses simples et dirons que Lox définit une variable à <code>nil</code> si elle n&rsquo;est pas explicitement initialisée.</p>
 <div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span>;
 <span class="k">print</span> <span class="i">a</span>; <span class="c">// &quot;nil&quot;.</span>
 </pre></div>
-<p>Thus, if there isn&rsquo;t an initializer, we set the value to <code>null</code>, which is the
-Java representation of Lox&rsquo;s <code>nil</code> value. Then we tell the environment to bind
-the variable to that value.</p>
-<p>Next, we evaluate a variable expression.</p>
+<p>Ainsi, s&rsquo;il n&rsquo;y a pas d&rsquo;initialiseur, nous définissons la valeur à <code>null</code>, qui est la représentation Java de la valeur <code>nil</code> de Lox. Puis nous disons à l&rsquo;environnement de lier la variable à cette valeur.</p>
+<p>Ensuite, nous évaluons une expression de variable.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>visitUnaryExpr</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -869,55 +631,32 @@ add after <em>visitUnaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>visitUnaryExpr</em>()</div>
 
-<p>This simply forwards to the environment which does the heavy lifting to make
-sure the variable is defined. With that, we&rsquo;ve got rudimentary variables
-working. Try this out:</p>
+<p>Ceci transmet simplement à l&rsquo;environnement qui fait le gros du travail pour s&rsquo;assurer que la variable est définie. Avec cela, nous avons des variables rudimentaires qui fonctionnent. Essayez ceci :</p>
 <div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="n">1</span>;
 <span class="k">var</span> <span class="i">b</span> = <span class="n">2</span>;
 <span class="k">print</span> <span class="i">a</span> + <span class="i">b</span>;
 </pre></div>
-<p>We can&rsquo;t reuse <em>code</em> yet, but we can start to build up programs that reuse
-<em>data</em>.</p>
-<h2><a href="#assignment" id="assignment"><small>8&#8202;.&#8202;4</small>Assignment</a></h2>
-<p>It&rsquo;s possible to create a language that has variables but does not let you
-reassign<span class="em">&mdash;</span>or <strong>mutate</strong><span class="em">&mdash;</span>them. Haskell is one example. SML supports only
-mutable references and arrays<span class="em">&mdash;</span>variables cannot be reassigned. Rust steers you
-away from mutation by requiring a <code>mut</code> modifier to enable assignment.</p>
-<p>Mutating a variable is a side effect and, as the name suggests, some language
-folks think side effects are <span name="pure">dirty</span> or inelegant. Code
-should be pure math that produces values<span class="em">&mdash;</span>crystalline, unchanging ones<span class="em">&mdash;</span>like
-an act of divine creation. Not some grubby automaton that beats blobs of data
-into shape, one imperative grunt at a time.</p>
+<p>Nous ne pouvons pas encore réutiliser de <em>code</em>, mais nous pouvons commencer à construire des programmes qui réutilisent des <em>données</em>.</p>
+<h2><a href="#affectation" id="affectation"><small>8&#8202;.&#8202;4</small>Affectation</a></h2>
+<p>Il est possible de créer un langage qui a des variables mais ne vous laisse pas les réassigner<span class="em">&mdash;</span>ou les <strong>muter</strong>. Haskell est un exemple. SML supporte seulement les références mutables et les tableaux<span class="em">&mdash;</span>les variables ne peuvent pas être réassignées. Rust vous éloigne de la mutation en exigeant un modificateur <code>mut</code> pour activer l&rsquo;affectation.</p>
+<p>Muter une variable est un effet de bord et, comme le nom le suggère, certains gens des langages pensent que les effets de bord sont <span name="pure">sales</span> ou inélégants. Le code devrait être des mathématiques pures qui produisent des valeurs<span class="em">&mdash;</span>cristallines, inchangeables<span class="em">&mdash;</span>comme un acte de création divine. Pas un automate crasseux qui bat des paquets de données pour leur donner forme, un grognement impératif à la fois.</p>
 <aside name="pure">
-<p>I find it delightful that the same group of people who pride themselves on
-dispassionate logic are also the ones who can&rsquo;t resist emotionally loaded terms
-for their work: &ldquo;pure&rdquo;, &ldquo;side effect&rdquo;, &ldquo;lazy&rdquo;, &ldquo;persistent&rdquo;, &ldquo;first-class&rdquo;,
-&ldquo;higher-order&rdquo;.</p>
+<p>Je trouve délicieux que le même groupe de personnes qui sont fières de leur logique impartiale sont aussi celles qui ne peuvent pas résister aux termes chargés émotionnellement pour leur travail : &ldquo;pur&rdquo;, &ldquo;effet de bord&rdquo;, &ldquo;paresseux&rdquo;, &ldquo;persistant&rdquo;, &ldquo;de première classe&rdquo;, &ldquo;d&rsquo;ordre supérieur&rdquo;.</p>
 </aside>
-<p>Lox is not so austere. Lox is an imperative language, and mutation comes with
-the territory. Adding support for assignment doesn&rsquo;t require much work. Global
-variables already support redefinition, so most of the machinery is there now.
-Mainly, we&rsquo;re missing an explicit assignment notation.</p>
-<h3><a href="#assignment-syntax" id="assignment-syntax"><small>8&#8202;.&#8202;4&#8202;.&#8202;1</small>Assignment syntax</a></h3>
-<p>That little <code>=</code> syntax is more complex than it might seem. Like most C-derived
-languages, assignment is an <span name="assign">expression</span> and not a
-statement. As in C, it is the lowest precedence expression form. That means the
-rule slots between <code>expression</code> and <code>equality</code> (the next lowest precedence
-expression).</p>
+<p>Lox n&rsquo;est pas si austère. Lox est un langage impératif, et la mutation vient avec le territoire. Ajouter le support pour l&rsquo;affectation (assignation) ne nécessite pas beaucoup de travail. Les variables globales supportent déjà la redéfinition, donc la plupart de la machinerie est là maintenant. Principalement, il nous manque une notation d&rsquo;affectation explicite.</p>
+<h3><a href="#syntaxe-daffectation" id="syntaxe-daffectation"><small>8&#8202;.&#8202;4&#8202;.&#8202;1</small>Syntaxe d&rsquo;affectation</a></h3>
+<p>Cette petite syntaxe <code>=</code> est plus complexe qu&rsquo;elle pourrait le sembler. Comme la plupart des langages dérivés du C, l&rsquo;affectation est une <span name="assign">expression</span> et non une instruction. Comme en C, c&rsquo;est la forme d&rsquo;expression de plus basse précédence. Cela signifie que la règle se glisse entre <code>expression</code> et <code>equality</code> (la prochaine expression de plus basse précédence).</p>
 <aside name="assign">
-<p>In some other languages, like Pascal, Python, and Go, assignment is a statement.</p>
+<p>Dans certains autres langages, comme Pascal, Python, et Go, l&rsquo;affectation est une instruction.</p>
 </aside>
 <div class="codehilite"><pre><span class="i">expression</span>     → <span class="i">assignment</span> ;
 <span class="i">assignment</span>     → <span class="t">IDENTIFIER</span> <span class="s">&quot;=&quot;</span> <span class="i">assignment</span>
                | <span class="i">equality</span> ;
 </pre></div>
-<p>This says an <code>assignment</code> is either an identifier followed by an <code>=</code> and an
-expression for the value, or an <code>equality</code> (and thus any other) expression.
-Later, <code>assignment</code> will get more complex when we add property setters on
-objects, like:</p>
-<div class="codehilite"><pre><span class="i">instance</span>.<span class="i">field</span> = <span class="s">&quot;value&quot;</span>;
+<p>Ceci dit qu&rsquo;une <code>assignment</code> (affectation) est soit un identifiant suivi par un <code>=</code> et une expression pour la valeur, ou une expression <code>equality</code> (et ainsi n&rsquo;importe quelle autre). Plus tard, <code>assignment</code> deviendra plus complexe quand nous ajouterons les setters de propriété sur les objets, comme :</p>
+<div class="codehilite"><pre><span class="i">instance</span>.<span class="i">field</span> = <span class="s">&quot;valeur&quot;</span>;
 </pre></div>
-<p>The easy part is adding the <span name="assign-ast">new syntax tree node</span>.</p>
+<p>La partie facile est d&rsquo;ajouter le <span name="assign-ast">nouveau nœud d&rsquo;arbre syntaxique</span>.</p>
 <div class="codehilite"><pre class="insert-before">    defineAst(outputDir, &quot;Expr&quot;, Arrays.asList(
 </pre><div class="source-file"><em>tool/GenerateAst.java</em><br>
 in <em>main</em>()</div>
@@ -927,12 +666,9 @@ in <em>main</em>()</div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, in <em>main</em>()</div>
 
 <aside name="assign-ast">
-<p>The generated code for the new node is in <a href="appendix-ii.html#assign-expression">Appendix II</a>.</p>
+<p>Le code généré pour le nouveau nœud est dans l&rsquo;<a href="appendix-ii.html#assign-expression">Annexe II</a>.</p>
 </aside>
-<p>It has a token for the variable being assigned to, and an expression for the new
-value. After you run the AstGenerator to get the new Expr.Assign class, swap out
-the body of the parser&rsquo;s existing <code>expression()</code> method to match the updated
-rule.</p>
+<p>Il a un token pour la variable à laquelle on assigne, et une expression pour la nouvelle valeur. Après que vous exécutiez le générateur AST pour obtenir la nouvelle classe Expr.Assign, échangez le corps de la méthode <code>expression()</code> existante du parseur pour correspondre à la règle mise à jour.</p>
 <div class="codehilite"><pre class="insert-before">  private Expr expression() {
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
 in <em>expression</em>()<br>
@@ -942,41 +678,22 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>expression</em>(), replace 1 line</div>
 
-<p>Here is where it gets tricky. A single token lookahead recursive descent parser
-can&rsquo;t see far enough to tell that it&rsquo;s parsing an assignment until <em>after</em> it
-has gone through the left-hand side and stumbled onto the <code>=</code>. You might wonder
-why it even needs to. After all, we don&rsquo;t know we&rsquo;re parsing a <code>+</code> expression
-until after we&rsquo;ve finished parsing the left operand.</p>
-<p>The difference is that the left-hand side of an assignment isn&rsquo;t an expression
-that evaluates to a value. It&rsquo;s a sort of pseudo-expression that evaluates to a
-&ldquo;thing&rdquo; you can assign to. Consider:</p>
-<div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;before&quot;</span>;
-<span class="i">a</span> = <span class="s">&quot;value&quot;</span>;
+<p>C&rsquo;est ici que ça devient délicat. Un parseur à descente récursive avec un seul token de lookahead ne peut pas voir assez loin pour dire qu&rsquo;il est en train de parser une affectation avant qu&rsquo;il ait traversé le côté gauche et trébuché sur le <code>=</code>. Vous pourriez vous demander pourquoi il a même besoin de le savoir. Après tout, nous ne savons pas que nous parsons une expression <code>+</code> avant que nous ayons fini de parser l&rsquo;opérande gauche.</p>
+<p>La différence est que le côté gauche d&rsquo;une affectation n&rsquo;est pas une expression qui s&rsquo;évalue en une valeur. C&rsquo;est une sorte de pseudo-expression qui s&rsquo;évalue en une &ldquo;chose&rdquo; à laquelle vous pouvez assigner. Considérez :</p>
+<div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;avant&quot;</span>;
+<span class="i">a</span> = <span class="s">&quot;valeur&quot;</span>;
 </pre></div>
-<p>On the second line, we don&rsquo;t <em>evaluate</em> <code>a</code> (which would return the string
-&ldquo;before&rdquo;). We figure out what variable <code>a</code> refers to so we know where to store
-the right-hand side expression&rsquo;s value. The <a href="https://en.wikipedia.org/wiki/Value_(computer_science)#lrvalue">classic terms</a> for these
-two <span name="l-value">constructs</span> are <strong>l-value</strong> and <strong>r-value</strong>. All
-of the expressions that we&rsquo;ve seen so far that produce values are r-values. An
-l-value &ldquo;evaluates&rdquo; to a storage location that you can assign into.</p>
+<p>Sur la seconde ligne, nous n&rsquo;<em>évaluons</em> pas <code>a</code> (ce qui renverrait la chaîne &ldquo;avant&rdquo;). Nous comprenons à quelle variable <code>a</code> se réfère pour savoir où stocker la valeur de l&rsquo;expression du côté droit. Les <a href="https://en.wikipedia.org/wiki/Value_(computer_science)#lrvalue">termes classiques</a> pour ces deux <span name="l-value">constructions</span> sont <strong>l-value</strong> et <strong>r-value</strong>. Toutes les expressions que nous avons vues jusqu&rsquo;ici qui produisent des valeurs sont des r-values. Une l-value &ldquo;s&rsquo;évalue&rdquo; en un emplacement de stockage dans lequel vous pouvez assigner.</p>
 <aside name="l-value">
-<p>In fact, the names come from assignment expressions: <em>l</em>-values appear on the
-<em>left</em> side of the <code>=</code> in an assignment, and <em>r</em>-values on the <em>right</em>.</p>
+<p>En fait, les noms viennent des expressions d&rsquo;affectation : les <em>l</em>-values apparaissent sur le côté <em>gauche</em> (left) du <code>=</code> dans une affectation, et les <em>r</em>-values sur la <em>droite</em> (right).</p>
 </aside>
-<p>We want the syntax tree to reflect that an l-value isn&rsquo;t evaluated like a normal
-expression. That&rsquo;s why the Expr.Assign node has a <em>Token</em> for the left-hand
-side, not an Expr. The problem is that the parser doesn&rsquo;t know it&rsquo;s parsing an
-l-value until it hits the <code>=</code>. In a complex l-value, that may occur <span
-name="many">many</span> tokens later.</p>
+<p>Nous voulons que l&rsquo;arbre syntaxique reflète qu&rsquo;une l-value n&rsquo;est pas évaluée comme une expression normale. C&rsquo;est pourquoi le nœud Expr.Assign a un <em>Token</em> pour le côté gauche, pas une Expr. Le problème est que le parseur ne sait pas qu&rsquo;il parse une l-value jusqu&rsquo;à ce qu&rsquo;il frappe le <code>=</code>. Dans une l-value complexe, cela peut se produire <span name="many">de nombreux</span> tokens plus tard.</p>
 <div class="codehilite"><pre><span class="i">makeList</span>().<span class="i">head</span>.<span class="i">next</span> = <span class="i">node</span>;
 </pre></div>
 <aside name="many">
-<p>Since the receiver of a field assignment can be any expression, and expressions
-can be as long as you want to make them, it may take an <em>unbounded</em> number of
-tokens of lookahead to find the <code>=</code>.</p>
+<p>Puisque le receveur d&rsquo;une affectation de champ peut être n&rsquo;importe quelle expression, et que les expressions peuvent être aussi longues que vous voulez les faire, cela peut prendre un nombre <em>illimité</em> de tokens de lookahead pour trouver le <code>=</code>.</p>
 </aside>
-<p>We have only a single token of lookahead, so what do we do? We use a little
-trick, and it looks like this:</p>
+<p>Nous avons seulement un token de lookahead, donc que faisons-nous ? Nous utilisons une petite astuce, et cela ressemble à ceci :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Parser.java</em><br>
 add after <em>expressionStatement</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">Expr</span> <span class="i">assignment</span>() {
@@ -999,59 +716,34 @@ add after <em>expressionStatement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, add after <em>expressionStatement</em>()</div>
 
-<p>Most of the code for parsing an assignment expression looks similar to that of
-the other binary operators like <code>+</code>. We parse the left-hand side, which can be
-any expression of higher precedence. If we find an <code>=</code>, we parse the right-hand
-side and then wrap it all up in an assignment expression tree node.</p>
+<p>La plupart du code pour parser une expression d&rsquo;affectation ressemble à celui des autres opérateurs binaires comme <code>+</code>. Nous parsons le côté gauche, qui peut être n&rsquo;importe quelle expression de plus haute précédence. Si nous trouvons un <code>=</code>, nous parsons le côté droit et ensuite enveloppons le tout dans un nœud d&rsquo;arbre d&rsquo;expression d&rsquo;affectation.</p>
 <aside name="no-throw">
-<p>We <em>report</em> an error if the left-hand side isn&rsquo;t a valid assignment target, but
-we don&rsquo;t <em>throw</em> it because the parser isn&rsquo;t in a confused state where we need
-to go into panic mode and synchronize.</p>
+<p>Nous <em>rapportons</em> une erreur si le côté gauche n&rsquo;est pas une cible d&rsquo;affectation valide, mais nous ne la <em>lançons</em> pas parce que le parseur n&rsquo;est pas dans un état confus où nous avons besoin d&rsquo;aller en mode panique et de synchroniser.</p>
 </aside>
-<p>One slight difference from binary operators is that we don&rsquo;t loop to build up a
-sequence of the same operator. Since assignment is right-associative, we instead
-recursively call <code>assignment()</code> to parse the right-hand side.</p>
-<p>The trick is that right before we create the assignment expression node, we look
-at the left-hand side expression and figure out what kind of assignment target
-it is. We convert the r-value expression node into an l-value representation.</p>
-<p>This conversion works because it turns out that every valid assignment target
-happens to also be <span name="converse">valid syntax</span> as a normal
-expression. Consider a complex field assignment like:</p>
+<p>Une légère différence avec les opérateurs binaires est que nous ne bouclons pas pour construire une séquence du même opérateur. Puisque l&rsquo;affectation est associative à droite, nous appelons à la place récursivement <code>assignment()</code> pour parser le côté droit.</p>
+<p>L&rsquo;astuce est que juste avant que nous créions le nœud d&rsquo;expression d&rsquo;affectation, nous regardons l&rsquo;expression du côté gauche et comprenons quel type de cible d&rsquo;affectation c&rsquo;est. Nous convertissons le nœud d&rsquo;expression r-value en une représentation l-value.</p>
+<p>Cette conversion fonctionne parce qu&rsquo;il s&rsquo;avère que chaque cible d&rsquo;affectation valide se trouve être aussi une <span name="converse">syntaxe valide</span> comme expression normale. Considérez une affectation de champ complexe comme :</p>
 <aside name="converse">
-<p>You can still use this trick even if there are assignment targets that are not
-valid expressions. Define a <strong>cover grammar</strong>, a looser grammar that accepts
-all of the valid expression <em>and</em> assignment target syntaxes. When you hit
-an <code>=</code>, report an error if the left-hand side isn&rsquo;t within the valid assignment
-target grammar. Conversely, if you <em>don&rsquo;t</em> hit an <code>=</code>, report an error if the
-left-hand side isn&rsquo;t a valid <em>expression</em>.</p>
+<p>Vous pouvez toujours utiliser cette astuce même s&rsquo;il y a des cibles d&rsquo;affectation qui ne sont pas des expressions valides. Définissez une <strong>grammaire de couverture</strong>, une grammaire plus lâche qui accepte toutes les syntaxes valides d&rsquo;expression <em>et</em> de cible d&rsquo;affectation. Quand vous frappez un <code>=</code>, rapportez une erreur si le côté gauche n&rsquo;est pas à l&rsquo;intérieur de la grammaire de cible d&rsquo;affectation valide. Inversement, si vous ne frappez <em>pas</em> un <code>=</code>, rapportez une erreur si le côté gauche n&rsquo;est pas une <em>expression</em> valide.</p>
 </aside>
 <div class="codehilite"><pre><span class="i">newPoint</span>(<span class="i">x</span> + <span class="n">2</span>, <span class="n">0</span>).<span class="i">y</span> = <span class="n">3</span>;
 </pre></div>
-<p>The left-hand side of that assignment could also work as a valid expression.</p>
+<p>Le côté gauche de cette affectation pourrait aussi fonctionner comme une expression valide.</p>
 <div class="codehilite"><pre><span class="i">newPoint</span>(<span class="i">x</span> + <span class="n">2</span>, <span class="n">0</span>).<span class="i">y</span>;
 </pre></div>
-<p>The first example sets the field, the second gets it.</p>
-<p>This means we can parse the left-hand side <em>as if it were</em> an expression and
-then after the fact produce a syntax tree that turns it into an assignment
-target. If the left-hand side expression isn&rsquo;t a <span name="paren">valid</span>
-assignment target, we fail with a syntax error. That ensures we report an error
-on code like this:</p>
+<p>Le premier exemple définit le champ, le second l&rsquo;obtient.</p>
+<p>Cela signifie que nous pouvons parser le côté gauche <em>comme si c&rsquo;était</em> une expression et ensuite après coup produire un arbre syntaxique qui le transforme en une cible d&rsquo;affectation. Si l&rsquo;expression du côté gauche n&rsquo;est pas une cible d&rsquo;affectation <span name="paren">valide</span>, nous échouons avec une erreur de syntaxe. Cela assure que nous rapportons une erreur sur du code comme ceci :</p>
 <div class="codehilite"><pre><span class="i">a</span> + <span class="i">b</span> = <span class="i">c</span>;
 </pre></div>
 <aside name="paren">
-<p>Way back in the parsing chapter, I said we represent parenthesized expressions
-in the syntax tree because we&rsquo;ll need them later. This is why. We need to be
-able to distinguish these cases:</p>
+<p>Loin en arrière dans le chapitre sur le parsing, j&rsquo;ai dit que nous représentions les expressions parenthésées dans l&rsquo;arbre syntaxique parce que nous en aurions besoin plus tard. C&rsquo;est pourquoi. Nous devons être capables de distinguer ces cas :</p>
 <div class="codehilite"><pre><span class="i">a</span> = <span class="n">3</span>;   <span class="c">// OK.</span>
-(<span class="i">a</span>) = <span class="n">3</span>; <span class="c">// Error.</span>
+(<span class="i">a</span>) = <span class="n">3</span>; <span class="c">// Erreur.</span>
 </pre></div>
 </aside>
-<p>Right now, the only valid target is a simple variable expression, but we&rsquo;ll add
-fields later. The end result of this trick is an assignment expression tree node
-that knows what it is assigning to and has an expression subtree for the value
-being assigned. All with only a single token of lookahead and no backtracking.</p>
-<h3><a href="#assignment-semantics" id="assignment-semantics"><small>8&#8202;.&#8202;4&#8202;.&#8202;2</small>Assignment semantics</a></h3>
-<p>We have a new syntax tree node, so our interpreter gets a new visit method.</p>
+<p>Pour l&rsquo;instant, la seule cible valide est une simple expression de variable, mais nous ajouterons les champs plus tard. Le résultat final de cette astuce est un nœud d&rsquo;arbre d&rsquo;expression d&rsquo;affectation qui sait à quoi il assigne et a un sous-arbre d&rsquo;expression pour la valeur étant assignée. Tout cela avec seulement un token de lookahead et pas de backtracking.</p>
+<h3><a href="#sémantique-daffectation" id="sémantique-daffectation"><small>8&#8202;.&#8202;4&#8202;.&#8202;2</small>Sémantique d&rsquo;affectation</a></h3>
+<p>Nous avons un nouveau nœud d&rsquo;arbre syntaxique, donc notre interpréteur obtient une nouvelle méthode visit.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>visitVarStmt</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -1063,9 +755,7 @@ add after <em>visitVarStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>visitVarStmt</em>()</div>
 
-<p>For obvious reasons, it&rsquo;s similar to variable declaration. It evaluates the
-right-hand side to get the value, then stores it in the named variable. Instead
-of using <code>define()</code> on Environment, it calls this new method:</p>
+<p>Pour des raisons évidentes, c&rsquo;est similaire à la déclaration de variable. Elle évalue le côté droit pour obtenir la valeur, puis la stocke dans la variable nommée. Au lieu d&rsquo;utiliser <code>define()</code> sur Environment, elle appelle cette nouvelle méthode :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Environment.java</em><br>
 add after <em>get</em>()</div>
 <pre>  <span class="t">void</span> <span class="i">assign</span>(<span class="t">Token</span> <span class="i">name</span>, <span class="t">Object</span> <span class="i">value</span>) {
@@ -1080,56 +770,30 @@ add after <em>get</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Environment.java</em>, add after <em>get</em>()</div>
 
-<p>The key difference between assignment and definition is that assignment is not
-<span name="new">allowed</span> to create a <em>new</em> variable. In terms of our
-implementation, that means it&rsquo;s a runtime error if the key doesn&rsquo;t already exist
-in the environment&rsquo;s variable map.</p>
+<p>La différence clé entre l&rsquo;affectation et la définition est que l&rsquo;affectation n&rsquo;est pas <span name="new">autorisée</span> à créer une <em>nouvelle</em> variable. En termes de notre implémentation, cela signifie que c&rsquo;est une erreur d&rsquo;exécution si la clé n&rsquo;existe pas déjà dans la map de variables de l&rsquo;environnement.</p>
 <aside name="new">
-<p>Unlike Python and Ruby, Lox doesn&rsquo;t do <a href="#design-note">implicit variable declaration</a>.</p>
+<p>Contrairement à Python et Ruby, Lox ne fait pas de <a href="#design-note">déclaration de variable implicite</a>.</p>
 </aside>
-<p>The last thing the <code>visit()</code> method does is return the assigned value. That&rsquo;s
-because assignment is an expression that can be nested inside other expressions,
-like so:</p>
+<p>La dernière chose que la méthode <code>visit()</code> fait est de renvoyer la valeur assignée. C&rsquo;est parce que l&rsquo;affectation est une expression qui peut être imbriquée à l&rsquo;intérieur d&rsquo;autres expressions, comme ceci :</p>
 <div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="n">1</span>;
 <span class="k">print</span> <span class="i">a</span> = <span class="n">2</span>; <span class="c">// &quot;2&quot;.</span>
 </pre></div>
-<p>Our interpreter can now create, read, and modify variables. It&rsquo;s about as
-sophisticated as early <span name="basic">BASICs</span>. Global variables are
-simple, but writing a large program when any two chunks of code can accidentally
-step on each other&rsquo;s state is no fun. We want <em>local</em> variables, which means
-it&rsquo;s time for <em>scope</em>.</p>
+<p>Notre interpréteur peut maintenant créer, lire, et modifier des variables. C&rsquo;est à peu près aussi sophistiqué que les premiers <span name="basic">BASICs</span>. Les variables globales sont simples, mais écrire un gros programme quand deux morceaux de code quelconques peuvent accidentellement marcher sur l&rsquo;état de l&rsquo;autre n&rsquo;est pas amusant. Nous voulons des variables <em>locales</em>, ce qui signifie qu&rsquo;il est temps pour la <em>portée</em>.</p>
 <aside name="basic">
-<p>Maybe a little better than that. Unlike some old BASICs, Lox can handle variable
-names longer than two characters.</p>
+<p>Peut-être un peu mieux que ça. Contrairement à certains vieux BASICs, Lox peut gérer des noms de variables plus longs que deux caractères.</p>
 </aside>
-<h2><a href="#scope" id="scope"><small>8&#8202;.&#8202;5</small>Scope</a></h2>
-<p>A <strong>scope</strong> defines a region where a name maps to a certain entity. Multiple
-scopes enable the same name to refer to different things in different contexts.
-In my house, &ldquo;Bob&rdquo; usually refers to me. But maybe in your town you know a
-different Bob. Same name, but different dudes based on where you say it.</p>
-<p><span name="lexical"><strong>Lexical scope</strong></span> (or the less commonly heard
-<strong>static scope</strong>) is a specific style of scoping where the text of the program
-itself shows where a scope begins and ends. In Lox, as in most modern languages,
-variables are lexically scoped. When you see an expression that uses some
-variable, you can figure out which variable declaration it refers to just by
-statically reading the code.</p>
+<h2><a href="#portée" id="portée"><small>8&#8202;.&#8202;5</small>Portée</a></h2>
+<p>Une <strong>portée</strong> (scope) définit une région où un nom mappe vers une certaine entité. De multiples portées permettent au même nom de se référer à différentes choses dans différents contextes. Dans ma maison, &ldquo;Bob&rdquo; se réfère généralement à moi. Mais peut-être que dans votre ville vous connaissez un Bob différent. Même nom, mais différents mecs basés sur où vous le dites.</p>
+<p>La <span name="lexical"><strong>portée lexicale</strong></span> (ou la <strong>portée statique</strong> moins communément entendue) est un style spécifique de portée où le texte du programme lui-même montre où une portée commence et se termine. Dans Lox, comme dans la plupart des langages modernes, les variables sont lexicalement portées. Quand vous voyez une expression qui utilise une certaine variable, vous pouvez comprendre à quelle déclaration de variable elle se réfère juste en lisant statiquement le code.</p>
 <aside name="lexical">
-<p>&ldquo;Lexical&rdquo; comes from the Greek &ldquo;lexikos&rdquo; which means &ldquo;related to words&rdquo;. When we
-use it in programming languages, it usually means a thing you can figure out
-from source code itself without having to execute anything.</p>
-<p>Lexical scope came onto the scene with ALGOL. Earlier languages were often
-dynamically scoped. Computer scientists back then believed dynamic scope was
-faster to execute. Today, thanks to early Scheme hackers, we know that isn&rsquo;t
-true. If anything, it&rsquo;s the opposite.</p>
-<p>Dynamic scope for variables lives on in some corners. Emacs Lisp defaults to
-dynamic scope for variables. The <a href="http://clojuredocs.org/clojure.core/binding"><code>binding</code></a> macro in Clojure provides
-it. The widely disliked <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/with"><code>with</code> statement</a> in JavaScript turns properties
-on an object into dynamically scoped variables.</p>
+<p>&ldquo;Lexical&rdquo; vient du grec &ldquo;lexikos&rdquo; qui signifie &ldquo;lié aux mots&rdquo;. Quand nous l&rsquo;utilisons dans les langages de programmation, cela signifie généralement une chose que vous pouvez comprendre à partir du code source lui-même sans avoir à exécuter quoi que ce soit.</p>
+<p>La portée lexicale est arrivée sur la scène avec ALGOL. Les langages plus tôt étaient souvent portés dynamiquement. Les informaticiens à l&rsquo;époque croyaient que la portée dynamique était plus rapide à exécuter. Aujourd&rsquo;hui, grâce aux premiers hackers Scheme, nous savons que ce n&rsquo;est pas vrai. Au contraire, c&rsquo;est l&rsquo;opposé.</p>
+<p>La portée dynamique pour les variables survit dans certains coins. Emacs Lisp utilise par défaut la portée dynamique pour les variables. La macro <a href="http://clojuredocs.org/clojure.core/binding"><code>binding</code></a> dans Clojure la fournit. L&rsquo;instruction <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/with"><code>with</code></a> largement détestée en JavaScript transforme les propriétés sur un objet en variables portées dynamiquement.</p>
 </aside>
-<p>For example:</p>
+<p>Par exemple :</p>
 <div class="codehilite"><pre>{
-  <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;first&quot;</span>;
-  <span class="k">print</span> <span class="i">a</span>; <span class="c">// &quot;first&quot;.</span>
+  <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;premier&quot;</span>;
+  <span class="k">print</span> <span class="i">a</span>; <span class="c">// &quot;premier&quot;.</span>
 }
 
 {
@@ -1137,13 +801,8 @@ on an object into dynamically scoped variables.</p>
   <span class="k">print</span> <span class="i">a</span>; <span class="c">// &quot;second&quot;.</span>
 }
 </pre></div>
-<p>Here, we have two blocks with a variable <code>a</code> declared in each of them. You and
-I can tell just from looking at the code that the use of <code>a</code> in the first
-<code>print</code> statement refers to the first <code>a</code>, and the second one refers to the
-second.</p><img src="image/statements-and-state/blocks.png" alt="An environment for each 'a'." />
-<p>This is in contrast to <strong>dynamic scope</strong> where you don&rsquo;t know what a name refers
-to until you execute the code. Lox doesn&rsquo;t have dynamically scoped <em>variables</em>,
-but methods and fields on objects are dynamically scoped.</p>
+<p>Ici, nous avons deux blocs avec une variable <code>a</code> déclarée dans chacun d&rsquo;eux. Vous et moi pouvons dire juste en regardant le code que l&rsquo;utilisation de <code>a</code> dans la première instruction <code>print</code> se réfère au premier <code>a</code>, et la seconde se réfère au second.</p><img src="image/statements-and-state/blocks.png" alt="Un environnement pour chaque 'a'." />
+<p>Ceci est en contraste avec la <strong>portée dynamique</strong> où vous ne savez pas à quoi un nom se réfère avant d&rsquo;exécuter le code. Lox n&rsquo;a pas de <em>variables</em> portées dynamiquement, mais les méthodes et champs sur les objets sont portés dynamiquement.</p>
 <div class="codehilite"><pre><span class="k">class</span> <span class="t">Saxophone</span> {
   <span class="i">play</span>() {
     <span class="k">print</span> <span class="s">&quot;Careless Whisper&quot;</span>;
@@ -1160,91 +819,54 @@ but methods and fields on objects are dynamically scoped.</p>
   <span class="i">thing</span>.<span class="i">play</span>();
 }
 </pre></div>
-<p>When <code>playIt()</code> calls <code>thing.play()</code>, we don&rsquo;t know if we&rsquo;re about to hear
-&ldquo;Careless Whisper&rdquo; or &ldquo;Fore!&rdquo; It depends on whether you pass a Saxophone or a
-GolfClub to the function, and we don&rsquo;t know that until runtime.</p>
-<p>Scope and environments are close cousins. The former is the theoretical concept,
-and the latter is the machinery that implements it. As our interpreter works its
-way through code, syntax tree nodes that affect scope will change the
-environment. In a C-ish syntax like Lox&rsquo;s, scope is controlled by curly-braced
-blocks. (That&rsquo;s why we call it <strong>block scope</strong>.)</p>
+<p>Quand <code>playIt()</code> appelle <code>thing.play()</code>, nous ne savons pas si nous sommes sur le point d&rsquo;entendre &ldquo;Careless Whisper&rdquo; ou &ldquo;Fore!&rdquo;. Cela dépend de si vous passez un Saxophone ou un GolfClub à la fonction, et nous ne le savons pas avant l&rsquo;exécution.</p>
+<p>La portée et les environnements sont des cousins proches. La première est le concept théorique, et le second est la machinerie qui l&rsquo;implémente. Alors que notre interpréteur fait son chemin à travers le code, les nœuds d&rsquo;arbre syntaxique qui affectent la portée changeront l&rsquo;environnement. Dans une syntaxe à la C comme celle de Lox, la portée est contrôlée par des blocs entre accolades. (C&rsquo;est pourquoi nous l&rsquo;appelons <strong>portée de bloc</strong>.)</p>
 <div class="codehilite"><pre>{
-  <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;in block&quot;</span>;
+  <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;dans le bloc&quot;</span>;
 }
-<span class="k">print</span> <span class="i">a</span>; <span class="c">// Error! No more &quot;a&quot;.</span>
+<span class="k">print</span> <span class="i">a</span>; <span class="c">// Erreur ! Plus de &quot;a&quot;.</span>
 </pre></div>
-<p>The beginning of a block introduces a new local scope, and that scope ends when
-execution passes the closing <code>}</code>. Any variables declared inside the block
-disappear.</p>
-<h3><a href="#nesting-and-shadowing" id="nesting-and-shadowing"><small>8&#8202;.&#8202;5&#8202;.&#8202;1</small>Nesting and shadowing</a></h3>
-<p>A first cut at implementing block scope might work like this:</p>
+<p>Le début d&rsquo;un bloc introduit une nouvelle portée locale, et cette portée se termine quand l&rsquo;exécution passe le <code>}</code> fermant. Toutes les variables déclarées à l&rsquo;intérieur du bloc disparaissent.</p>
+<h3><a href="#imbrication-et-masquage" id="imbrication-et-masquage"><small>8&#8202;.&#8202;5&#8202;.&#8202;1</small>Imbrication et masquage</a></h3>
+<p>Un premier essai pour implémenter la portée de bloc pourrait fonctionner comme ceci :</p>
 <ol>
 <li>
-<p>As we visit each statement inside the block, keep track of any variables
-declared.</p>
+<p>Alors que nous visitons chaque instruction à l&rsquo;intérieur du bloc, garder une trace de toutes les variables déclarées.</p>
 </li>
 <li>
-<p>After the last statement is executed, tell the environment to delete all of
-those variables.</p>
+<p>Après que la dernière instruction est exécutée, dire à l&rsquo;environnement de supprimer toutes ces variables.</p>
 </li>
 </ol>
-<p>That would work for the previous example. But remember, one motivation for
-local scope is encapsulation<span class="em">&mdash;</span>a block of code in one corner of the program
-shouldn&rsquo;t interfere with some other block. Check this out:</p>
-<div class="codehilite"><pre><span class="c">// How loud?</span>
+<p>Cela fonctionnerait pour l&rsquo;exemple précédent. Mais rappelez-vous, une motivation pour la portée locale est l&rsquo;encapsulation<span class="em">&mdash;</span>un bloc de code dans un coin du programme ne devrait pas interférer avec un autre bloc. Regardez ça :</p>
+<div class="codehilite"><pre><span class="c">// Quel volume ?</span>
 <span class="k">var</span> <span class="i">volume</span> = <span class="n">11</span>;
 
 <span class="c">// Silence.</span>
 <span class="i">volume</span> = <span class="n">0</span>;
 
-<span class="c">// Calculate size of 3x4x5 cuboid.</span>
+<span class="c">// Calculer la taille d&#39;un cuboïde 3x4x5.</span>
 {
   <span class="k">var</span> <span class="i">volume</span> = <span class="n">3</span> * <span class="n">4</span> * <span class="n">5</span>;
   <span class="k">print</span> <span class="i">volume</span>;
 }
 </pre></div>
-<p>Look at the block where we calculate the volume of the cuboid using a local
-declaration of <code>volume</code>. After the block exits, the interpreter will delete the
-<em>global</em> <code>volume</code> variable. That ain&rsquo;t right. When we exit the block, we should
-remove any variables declared inside the block, but if there is a variable with
-the same name declared outside of the block, <em>that&rsquo;s a different variable</em>. It
-shouldn&rsquo;t get touched.</p>
-<p>When a local variable has the same name as a variable in an enclosing scope, it
-<strong>shadows</strong> the outer one. Code inside the block can&rsquo;t see it any more<span class="em">&mdash;</span>it is
-hidden in the &ldquo;shadow&rdquo; cast by the inner one<span class="em">&mdash;</span>but it&rsquo;s still there.</p>
-<p>When we enter a new block scope, we need to preserve variables defined in outer
-scopes so they are still around when we exit the inner block. We do that by
-defining a fresh environment for each block containing only the variables
-defined in that scope. When we exit the block, we discard its environment and
-restore the previous one.</p>
-<p>We also need to handle enclosing variables that are <em>not</em> shadowed.</p>
-<div class="codehilite"><pre><span class="k">var</span> <span class="i">global</span> = <span class="s">&quot;outside&quot;</span>;
+<p>Regardez le bloc où nous calculons le volume du cuboïde en utilisant une déclaration locale de <code>volume</code>. Après que le bloc sorte, l&rsquo;interpréteur supprimera la variable <code>volume</code> <em>globale</em>. Ce n&rsquo;est pas juste. Quand nous sortons du bloc, nous devrions retirer toutes les variables déclarées à l&rsquo;intérieur du bloc, mais s&rsquo;il y a une variable avec le même nom déclarée à l&rsquo;extérieur du bloc, <em>c&rsquo;est une variable différente</em>. Elle ne devrait pas être touchée.</p>
+<p>Quand une variable locale a le même nom qu&rsquo;une variable dans une portée englobante, elle <strong>masque</strong> (shadows) l&rsquo;externe. Le code à l&rsquo;intérieur du bloc ne peut plus la voir<span class="em">&mdash;</span>elle est cachée dans l&rsquo;&ldquo;ombre&rdquo; jetée par l&rsquo;interne<span class="em">&mdash;</span>mais elle est toujours là.</p>
+<p>Quand nous entrons dans une nouvelle portée de bloc, nous devons préserver les variables définies dans les portées externes pour qu&rsquo;elles soient toujours là quand nous sortons du bloc interne. Nous faisons cela en définissant un environnement frais pour chaque bloc contenant seulement les variables définies dans cette portée. Quand nous sortons du bloc, nous rejetons son environnement et restaurons le précédent.</p>
+<p>Nous avons aussi besoin de gérer les variables englobantes qui ne sont <em>pas</em> masquées.</p>
+<div class="codehilite"><pre><span class="k">var</span> <span class="i">global</span> = <span class="s">&quot;dehors&quot;</span>;
 {
-  <span class="k">var</span> <span class="i">local</span> = <span class="s">&quot;inside&quot;</span>;
+  <span class="k">var</span> <span class="i">local</span> = <span class="s">&quot;dedans&quot;</span>;
   <span class="k">print</span> <span class="i">global</span> + <span class="i">local</span>;
 }
 </pre></div>
-<p>Here, <code>global</code> lives in the outer global environment and <code>local</code> is defined
-inside the block&rsquo;s environment. In that <code>print</code> statement, both of those
-variables are in scope. In order to find them, the interpreter must search not
-only the current innermost environment, but also any enclosing ones.</p>
-<p>We implement this by <span name="cactus">chaining</span> the environments
-together. Each environment has a reference to the environment of the immediately
-enclosing scope. When we look up a variable, we walk that chain from innermost
-out until we find the variable. Starting at the inner scope is how we make local
-variables shadow outer ones.</p><img src="image/statements-and-state/chaining.png" alt="Environments for each scope, linked together." />
+<p>Ici, <code>global</code> vit dans l&rsquo;environnement global externe et <code>local</code> est défini à l&rsquo;intérieur de l&rsquo;environnement du bloc. Dans cette instruction <code>print</code>, ces deux variables sont dans la portée. Afin de les trouver, l&rsquo;interpréteur doit chercher non seulement l&rsquo;environnement le plus interne courant, mais aussi tous ceux englobants.</p>
+<p>Nous implémentons cela en <span name="cactus">chaînant</span> les environnements ensemble. Chaque environnement a une référence vers l&rsquo;environnement de la portée immédiatement englobante. Quand nous cherchons une variable, nous marchons dans cette chaîne du plus interne vers l&rsquo;extérieur jusqu&rsquo;à ce que nous trouvions la variable. Commencer à la portée interne est la façon dont nous faisons masquer les variables externes par les locales.</p><img src="image/statements-and-state/chaining.png" alt="Environnements pour chaque portée, liés ensemble." />
 <aside name="cactus">
-<p>While the interpreter is running, the environments form a linear list of
-objects, but consider the full set of environments created during the entire
-execution. An outer scope may have multiple blocks nested within it, and each
-will point to the outer one, giving a tree-like structure, though only one path
-through the tree exists at a time.</p>
-<p>The boring name for this is a <a href="https://en.wikipedia.org/wiki/Parent_pointer_tree"><strong>parent-pointer tree</strong></a>, but I
-much prefer the evocative <strong>cactus stack</strong>.</p><img class="above" src="image/statements-and-state/cactus.png" alt="Each branch points to its parent. The root is global scope." />
+<p>Pendant que l&rsquo;interpréteur tourne, les environnements forment une liste linéaire d&rsquo;objets, mais considérez l&rsquo;ensemble complet des environnements créés durant l&rsquo;exécution entière. Une portée externe peut avoir de multiples blocs imbriqués en son sein, et chacun pointera vers l&rsquo;externe, donnant une structure arborescente, bien qu&rsquo;un seul chemin à travers l&rsquo;arbre existe à la fois.</p>
+<p>Le nom ennuyeux pour cela est un <a href="https://en.wikipedia.org/wiki/Parent_pointer_tree"><strong>arbre à pointeur de parent</strong></a>, mais je préfère de loin le nom évocateur de <strong>pile cactus</strong>.</p><img class="above" src="image/statements-and-state/cactus.png" alt="Chaque branche pointe vers son parent. La racine est la portée globale." />
 </aside>
-<p>Before we add block syntax to the grammar, we&rsquo;ll beef up our Environment class
-with support for this nesting. First, we give each environment a reference to
-its enclosing one.</p>
+<p>Avant que nous ajoutions la syntaxe de bloc à la grammaire, nous allons renforcer notre classe Environment avec le support pour cette imbrication. D&rsquo;abord, nous donnons à chaque environnement une référence vers son englobant.</p>
 <div class="codehilite"><pre class="insert-before">class Environment {
 </pre><div class="source-file"><em>lox/Environment.java</em><br>
 in class <em>Environment</em></div>
@@ -1253,7 +875,7 @@ in class <em>Environment</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Environment.java</em>, in class <em>Environment</em></div>
 
-<p>This field needs to be initialized, so we add a couple of constructors.</p>
+<p>Ce champ doit être initialisé, donc nous ajoutons une paire de constructeurs.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Environment.java</em><br>
 in class <em>Environment</em></div>
 <pre>  <span class="t">Environment</span>() {
@@ -1266,13 +888,8 @@ in class <em>Environment</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Environment.java</em>, in class <em>Environment</em></div>
 
-<p>The no-argument constructor is for the global scope&rsquo;s environment, which ends
-the chain. The other constructor creates a new local scope nested inside the
-given outer one.</p>
-<p>We don&rsquo;t have to touch the <code>define()</code> method<span class="em">&mdash;</span>a new variable is always
-declared in the current innermost scope. But variable lookup and assignment work
-with existing variables and they need to walk the chain to find them. First,
-lookup:</p>
+<p>Le constructeur sans argument est pour l&rsquo;environnement de la portée globale, qui termine la chaîne. L&rsquo;autre constructeur crée une nouvelle portée locale imbriquée à l&rsquo;intérieur de celle externe donnée.</p>
+<p>Nous n&rsquo;avons pas à toucher la méthode <code>define()</code><span class="em">&mdash;</span>une nouvelle variable est toujours déclarée dans la portée la plus interne courante. Mais la recherche de variable et l&rsquo;affectation fonctionnent avec des variables existantes et elles doivent marcher dans la chaîne pour les trouver. D&rsquo;abord, la recherche :</p>
 <div class="codehilite"><pre class="insert-before">      return values.get(name.lexeme);
     }
 </pre><div class="source-file"><em>lox/Environment.java</em><br>
@@ -1287,15 +904,10 @@ in <em>get</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Environment.java</em>, in <em>get</em>()</div>
 
-<p>If the variable isn&rsquo;t found in this environment, we simply try the enclosing
-one. That in turn does the same thing <span name="recurse">recursively</span>,
-so this will ultimately walk the entire chain. If we reach an environment with
-no enclosing one and still don&rsquo;t find the variable, then we give up and report
-an error as before.</p>
-<p>Assignment works the same way.</p>
+<p>Si la variable n&rsquo;est pas trouvée dans cet environnement, nous essayons simplement celui englobant. Celui-là fait à son tour la même chose <span name="recurse">récursivement</span>, donc cela marchera finalement la chaîne entière. Si nous atteignons un environnement sans englobant et ne trouvons toujours pas la variable, alors nous abandonnons et rapportons une erreur comme avant.</p>
+<p>L&rsquo;affectation fonctionne de la même manière.</p>
 <aside name="recurse">
-<p>It&rsquo;s likely faster to iteratively walk the chain, but I think the recursive
-solution is prettier. We&rsquo;ll do something <em>much</em> faster in clox.</p>
+<p>C&rsquo;est probablement plus rapide de marcher itérativement dans la chaîne, mais je pense que la solution récursive est plus jolie. Nous ferons quelque chose de <em>beaucoup</em> plus rapide dans clox.</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">      values.put(name.lexeme, value);
       return;
@@ -1312,20 +924,16 @@ in <em>assign</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Environment.java</em>, in <em>assign</em>()</div>
 
-<p>Again, if the variable isn&rsquo;t in this environment, it checks the outer one,
-recursively.</p>
-<h3><a href="#block-syntax-and-semantics" id="block-syntax-and-semantics"><small>8&#8202;.&#8202;5&#8202;.&#8202;2</small>Block syntax and semantics</a></h3>
-<p>Now that Environments nest, we&rsquo;re ready to add blocks to the language. Behold
-the grammar:</p>
+<p>Encore une fois, si la variable n&rsquo;est pas dans cet environnement, elle vérifie l&rsquo;externe, récursivement.</p>
+<h3><a href="#syntaxe-et-sémantique-de-bloc" id="syntaxe-et-sémantique-de-bloc"><small>8&#8202;.&#8202;5&#8202;.&#8202;2</small>Syntaxe et sémantique de bloc</a></h3>
+<p>Maintenant que les environnements s&rsquo;imbriquent, nous sommes prêts à ajouter les blocs au langage. Contemplez la grammaire :</p>
 <div class="codehilite"><pre><span class="i">statement</span>      → <span class="i">exprStmt</span>
                | <span class="i">printStmt</span>
                | <span class="i">block</span> ;
 
 <span class="i">block</span>          → <span class="s">&quot;{&quot;</span> <span class="i">declaration</span>* <span class="s">&quot;}&quot;</span> ;
 </pre></div>
-<p>A block is a (possibly empty) series of statements or declarations surrounded by
-curly braces. A block is itself a statement and can appear anywhere a statement
-is allowed. The <span name="block-ast">syntax tree</span> node looks like this:</p>
+<p>Un bloc est une série (possiblement vide) d&rsquo;instructions ou de déclarations entourée par des accolades. Un bloc est lui-même une instruction et peut apparaître n&rsquo;importe où une instruction est autorisée. Le nœud d&rsquo;<span name="block-ast">arbre syntaxique</span> ressemble à ceci :</p>
 <div class="codehilite"><pre class="insert-before">    defineAst(outputDir, &quot;Stmt&quot;, Arrays.asList(
 </pre><div class="source-file"><em>tool/GenerateAst.java</em><br>
 in <em>main</em>()</div>
@@ -1335,14 +943,11 @@ in <em>main</em>()</div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, in <em>main</em>()</div>
 
 <aside name="block-ast">
-<p>The generated code for the new node is in <a href="appendix-ii.html#block-statement">Appendix II</a>.</p>
+<p>Le code généré pour le nouveau nœud est dans l&rsquo;<a href="appendix-ii.html#block-statement">Annexe II</a>.</p>
 </aside>
-<p><span name="generate">It</span> contains the list of statements that are inside
-the block. Parsing is straightforward. Like other statements, we detect the
-beginning of a block by its leading token<span class="em">&mdash;</span>in this case the <code>{</code>. In the
-<code>statement()</code> method, we add:</p>
+<p><span name="generate">Il</span> contient la liste des instructions qui sont à l&rsquo;intérieur du bloc. Le parsing est direct. Comme d&rsquo;autres instructions, nous détectons le début d&rsquo;un bloc par son token de tête<span class="em">&mdash;</span>dans ce cas le <code>{</code>. Dans la méthode <code>statement()</code>, nous ajoutons :</p>
 <aside name="generate">
-<p>As always, don&rsquo;t forget to run &ldquo;GenerateAst.java&rdquo;.</p>
+<p>Comme toujours, n&rsquo;oubliez pas d&rsquo;exécuter &ldquo;GenerateAst.java&rdquo;.</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">    if (match(PRINT)) return printStatement();
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
@@ -1354,7 +959,7 @@ in <em>statement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>statement</em>()</div>
 
-<p>All the real work happens here:</p>
+<p>Tout le vrai travail se passe ici :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Parser.java</em><br>
 add after <em>expressionStatement</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">List</span>&lt;<span class="t">Stmt</span>&gt; <span class="i">block</span>() {
@@ -1370,18 +975,11 @@ add after <em>expressionStatement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, add after <em>expressionStatement</em>()</div>
 
-<p>We <span name="list">create</span> an empty list and then parse statements and
-add them to the list until we reach the end of the block, marked by the closing
-<code>}</code>. Note that the loop also has an explicit check for <code>isAtEnd()</code>. We have to
-be careful to avoid infinite loops, even when parsing invalid code. If the user
-forgets a closing <code>}</code>, the parser needs to not get stuck.</p>
+<p>Nous <span name="list">créons</span> une liste vide et ensuite parsons les instructions et les ajoutons à la liste jusqu&rsquo;à ce que nous atteignions la fin du bloc, marquée par le <code>}</code> fermant. Notez que la boucle a aussi une vérification explicite pour <code>isAtEnd()</code>. Nous devons faire attention à éviter les boucles infinies, même en parsant du code invalide. Si l&rsquo;utilisateur oublie un <code>}</code> fermant, le parseur ne doit pas rester coincé.</p>
 <aside name="list">
-<p>Having <code>block()</code> return the raw list of statements and leaving it to
-<code>statement()</code> to wrap the list in a Stmt.Block looks a little odd. I did it that
-way because we&rsquo;ll reuse <code>block()</code> later for parsing function bodies and we don&rsquo;t
-want that body wrapped in a Stmt.Block.</p>
+<p>Faire que <code>block()</code> renvoie la liste brute d&rsquo;instructions et laisser à <code>statement()</code> le soin d&rsquo;envelopper la liste dans un Stmt.Block semble un peu bizarre. Je l&rsquo;ai fait de cette façon parce que nous réutiliserons <code>block()</code> plus tard pour parser les corps de fonction et nous ne voulons pas que ce corps soit enveloppé dans un Stmt.Block.</p>
 </aside>
-<p>That&rsquo;s it for syntax. For semantics, we add another visit method to Interpreter.</p>
+<p>C&rsquo;est tout pour la syntaxe. Pour la sémantique, nous ajoutons une autre méthode visit à Interpreter.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>execute</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -1392,8 +990,7 @@ add after <em>execute</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>execute</em>()</div>
 
-<p>To execute a block, we create a new environment for the block&rsquo;s scope and pass
-it off to this other method:</p>
+<p>Pour exécuter un bloc, nous créons un nouvel environnement pour la portée du bloc et le passons à cette autre méthode :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>execute</em>()</div>
 <pre>  <span class="t">void</span> <span class="i">executeBlock</span>(<span class="t">List</span>&lt;<span class="t">Stmt</span>&gt; <span class="i">statements</span>,
@@ -1412,29 +1009,13 @@ add after <em>execute</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>execute</em>()</div>
 
-<p>This new method executes a list of statements in the context of a given <span
-name="param">environment</span>. Up until now, the <code>environment</code> field in
-Interpreter always pointed to the same environment<span class="em">&mdash;</span>the global one. Now, that
-field represents the <em>current</em> environment. That&rsquo;s the environment that
-corresponds to the innermost scope containing the code to be executed.</p>
-<p>To execute code within a given scope, this method updates the interpreter&rsquo;s
-<code>environment</code> field, visits all of the statements, and then restores the
-previous value. As is always good practice in Java, it restores the previous
-environment using a finally clause. That way it gets restored even if an
-exception is thrown.</p>
+<p>Cette nouvelle méthode exécute une liste d&rsquo;instructions dans le contexte d&rsquo;un <span name="param">environnement</span> donné. Jusqu&rsquo;à maintenant, le champ <code>environment</code> dans Interpreter pointait toujours vers le même environnement<span class="em">&mdash;</span>le global. Maintenant, ce champ représente l&rsquo;environnement <em>courant</em>. C&rsquo;est l&rsquo;environnement qui correspond à la portée la plus interne contenant le code à exécuter.</p>
+<p>Pour exécuter du code au sein d&rsquo;une portée donnée, cette méthode met à jour le champ <code>environment</code> de l&rsquo;interpréteur, visite toutes les instructions, et ensuite restaure la valeur précédente. Comme c&rsquo;est toujours une bonne pratique en Java, elle restaure l&rsquo;environnement précédent en utilisant une clause finally. De cette façon il est restauré même si une exception est lancée.</p>
 <aside name="param">
-<p>Manually changing and restoring a mutable <code>environment</code> field feels inelegant.
-Another classic approach is to explicitly pass the environment as a parameter to
-each visit method. To &ldquo;change&rdquo; the environment, you pass a different one as you
-recurse down the tree. You don&rsquo;t have to restore the old one, since the new one
-lives on the Java stack and is implicitly discarded when the interpreter returns
-from the block&rsquo;s visit method.</p>
-<p>I considered that for jlox, but it&rsquo;s kind of tedious and verbose adding an
-environment parameter to every single visit method. To keep the book a little
-simpler, I went with the mutable field.</p>
+<p>Changer manuellement et restaurer un champ <code>environment</code> mutable semble inélégant. Une autre approche classique est de passer explicitement l&rsquo;environnement comme paramètre à chaque méthode visit. Pour &ldquo;changer&rdquo; l&rsquo;environnement, vous en passez un différent alors que vous récursez vers le bas de l&rsquo;arbre. Vous n&rsquo;avez pas à restaurer l&rsquo;ancien, puisque le nouveau vit sur la pile Java et est implicitement rejeté quand l&rsquo;interpréteur revient de la méthode visit du bloc.</p>
+<p>J&rsquo;ai considéré cela pour jlox, mais c&rsquo;est un peu fastidieux et verbeux d&rsquo;ajouter un paramètre environnement à chaque méthode visit unique. Pour garder le livre un peu plus simple, je suis allé avec le champ mutable.</p>
 </aside>
-<p>Surprisingly, that&rsquo;s all we need to do in order to fully support local
-variables, nesting, and shadowing. Go ahead and try this out:</p>
+<p>Étonnamment, c&rsquo;est tout ce que nous avons besoin de faire afin de supporter entièrement les variables locales, l&rsquo;imbrication, et le masquage. Allez-y et essayez ceci :</p>
 <div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;global a&quot;</span>;
 <span class="k">var</span> <span class="i">b</span> = <span class="s">&quot;global b&quot;</span>;
 <span class="k">var</span> <span class="i">c</span> = <span class="s">&quot;global c&quot;</span>;
@@ -1455,149 +1036,84 @@ variables, nesting, and shadowing. Go ahead and try this out:</p>
 <span class="k">print</span> <span class="i">b</span>;
 <span class="k">print</span> <span class="i">c</span>;
 </pre></div>
-<p>Our little interpreter can remember things now. We are inching closer to
-something resembling a full-featured programming language.</p>
+<p>Notre petit interpréteur peut se souvenir de choses maintenant. Nous nous rapprochons centimètre par centimètre de quelque chose ressemblant à un langage de programmation complet.</p>
 <div class="challenges">
-<h2><a href="#challenges" id="challenges">Challenges</a></h2>
+<h2><a href="#défis" id="défis"><small>8&#8202;.&#8202;6</small>Défis</a></h2>
 <ol>
 <li>
-<p>The REPL no longer supports entering a single expression and automatically
-printing its result value. That&rsquo;s a drag. Add support to the REPL to let
-users type in both statements and expressions. If they enter a statement,
-execute it. If they enter an expression, evaluate it and display the result
-value.</p>
+<p>Le REPL ne supporte plus l&rsquo;entrée d&rsquo;une seule expression et l&rsquo;impression automatique de sa valeur résultat. C&rsquo;est barbant. Ajoutez le support au REPL pour laisser les utilisateurs taper à la fois des instructions et des expressions. S&rsquo;ils entrent une instruction, exécutez-la. S&rsquo;ils entrent une expression, évaluez-la et affichez la valeur résultat.</p>
 </li>
 <li>
-<p>Maybe you want Lox to be a little more explicit about variable
-initialization. Instead of implicitly initializing variables to <code>nil</code>, make
-it a runtime error to access a variable that has not been initialized or
-assigned to, as in:</p>
-<div class="codehilite"><pre><span class="c">// No initializers.</span>
+<p>Peut-être voulez-vous que Lox soit un peu plus explicite à propos de l&rsquo;initialisation de variable. Au lieu d&rsquo;initialiser implicitement les variables à <code>nil</code>, faites-en une erreur d&rsquo;exécution d&rsquo;accéder à une variable qui n&rsquo;a pas été initialisée ou assignée, comme dans :</p>
+<div class="codehilite"><pre><span class="c">// Pas d&#39;initialiseurs.</span>
 <span class="k">var</span> <span class="i">a</span>;
 <span class="k">var</span> <span class="i">b</span>;
 
-<span class="i">a</span> = <span class="s">&quot;assigned&quot;</span>;
-<span class="k">print</span> <span class="i">a</span>; <span class="c">// OK, was assigned first.</span>
+<span class="i">a</span> = <span class="s">&quot;assigné&quot;</span>;
+<span class="k">print</span> <span class="i">a</span>; <span class="c">// OK, a été assigné en premier.</span>
 
-<span class="k">print</span> <span class="i">b</span>; <span class="c">// Error!</span>
+<span class="k">print</span> <span class="i">b</span>; <span class="c">// Erreur !</span>
 </pre></div>
 </li>
 <li>
-<p>What does the following program do?</p>
+<p>Que fait le programme suivant ?</p>
 <div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="n">1</span>;
 {
   <span class="k">var</span> <span class="i">a</span> = <span class="i">a</span> + <span class="n">2</span>;
   <span class="k">print</span> <span class="i">a</span>;
 }
 </pre></div>
-<p>What did you <em>expect</em> it to do? Is it what you think it should do? What
-does analogous code in other languages you are familiar with do? What do
-you think users will expect this to do?</p>
+<p>que vous <em>attendiez</em>-vous à ce qu&rsquo;il fasse ? Est-ce ce que vous pensez qu&rsquo;il devrait faire ? Que fait le code analogue dans d&rsquo;autres langages avec lesquels vous êtes familiers ? Que pensez-vous que les utilisateurs s&rsquo;attendront à ce qu&rsquo;il fasse ?</p>
 </li>
 </ol>
 </div>
 <div class="design-note">
-<h2><a href="#design-note" id="design-note">Design Note: Implicit Variable Declaration</a></h2>
-<p>Lox has distinct syntax for declaring a new variable and assigning to an
-existing one. Some languages collapse those to only assignment syntax. Assigning
-to a non-existent variable automatically brings it into being. This is called
-<strong>implicit variable declaration</strong> and exists in Python, Ruby, and CoffeeScript,
-among others. JavaScript has an explicit syntax to declare variables, but can
-also create new variables on assignment. Visual Basic has <a href="https://msdn.microsoft.com/en-us/library/xe53dz5w(v=vs.100).aspx">an option to enable
-or disable implicit variables</a>.</p>
-<p>When the same syntax can assign or create a variable, each language must decide
-what happens when it isn&rsquo;t clear about which behavior the user intends. In
-particular, each language must choose how implicit declaration interacts with
-shadowing, and which scope an implicitly declared variable goes into.</p>
+<h2><a href="#note-de-conception--déclaration-de-variable-implicite" id="note-de-conception--déclaration-de-variable-implicite"><small>8&#8202;.&#8202;7</small>Note de Conception : Déclaration de Variable Implicite</a></h2>
+<p>Lox a une syntaxe distincte pour déclarer une nouvelle variable et assigner à une existante. Certains langages effondrent celles-ci en seulement la syntaxe d&rsquo;affectation. Assigner à une variable non-existante l&rsquo;amène automatiquement à l&rsquo;existence. Ceci est appelé <strong>déclaration de variable implicite</strong> et existe en Python, Ruby, et CoffeeScript, parmi d&rsquo;autres. JavaScript a une syntaxe explicite pour déclarer des variables, mais peut aussi créer de nouvelles variables lors de l&rsquo;affectation. Visual Basic a <a href="https://msdn.microsoft.com/en-us/library/xe53dz5w(v=vs.100).aspx">une option pour activer ou désactiver les variables implicites</a>.</p>
+<p>Quand la même syntaxe peut assigner ou créer une variable, chaque langage doit décider ce qui se passe quand il n&rsquo;est pas clair quel comportement l&rsquo;utilisateur a l&rsquo;intention d&rsquo;avoir. En particulier, chaque langage doit choisir comment la déclaration implicite interagit avec le masquage, et dans quelle portée une variable implicitement déclarée va.</p>
 <ul>
 <li>
-<p>In Python, assignment always creates a variable in the current function&rsquo;s
-scope, even if there is a variable with the same name declared outside of
-the function.</p>
+<p>En Python, l&rsquo;affectation crée toujours une variable dans la portée de la fonction courante, même s&rsquo;il y a une variable avec le même nom déclarée à l&rsquo;extérieur de la fonction.</p>
 </li>
 <li>
-<p>Ruby avoids some ambiguity by having different naming rules for local and
-global variables. However, blocks in Ruby (which are more like closures than
-like &ldquo;blocks&rdquo; in C) have their own scope, so it still has the problem.
-Assignment in Ruby assigns to an existing variable outside of the current
-block if there is one with the same name. Otherwise, it creates a new
-variable in the current block&rsquo;s scope.</p>
+<p>Ruby évite une certaine ambiguïté en ayant des règles de nommage différentes pour les variables locales et globales. Cependant, les blocs en Ruby (qui sont plus comme des fermetures que comme des &ldquo;blocs&rdquo; en C) ont leur propre portée, donc il a toujours le problème. L&rsquo;affectation en Ruby assigne à une variable existante à l&rsquo;extérieur du bloc courant s&rsquo;il y en a une avec le même nom. Sinon, elle crée une nouvelle variable dans la portée du bloc courant.</p>
 </li>
 <li>
-<p>CoffeeScript, which takes after Ruby in many ways, is similar. It explicitly
-disallows shadowing by saying that assignment always assigns to a variable
-in an outer scope if there is one, all the way up to the outermost global
-scope. Otherwise, it creates the variable in the current function scope.</p>
+<p>CoffeeScript, qui tient de Ruby de nombreuses façons, est similaire. Il interdit explicitement le masquage en disant que l&rsquo;affectation assigne toujours à une variable dans une portée externe s&rsquo;il y en a une, tout le chemin jusqu&rsquo;à la portée globale la plus externe. Sinon, il crée la variable dans la portée de la fonction courante.</p>
 </li>
 <li>
-<p>In JavaScript, assignment modifies an existing variable in any enclosing
-scope, if found. If not, it implicitly creates a new variable in the
-<em>global</em> scope.</p>
+<p>En JavaScript, l&rsquo;affectation modifie une variable existante dans n&rsquo;importe quelle portée englobante, si trouvée. Si non, elle crée implicitement une nouvelle variable dans la portée <em>globale</em>.</p>
 </li>
 </ul>
-<p>The main advantage to implicit declaration is simplicity. There&rsquo;s less syntax
-and no &ldquo;declaration&rdquo; concept to learn. Users can just start assigning stuff and
-the language figures it out.</p>
-<p>Older, statically typed languages like C benefit from explicit declaration
-because they give the user a place to tell the compiler what type each variable
-has and how much storage to allocate for it. In a dynamically typed,
-garbage-collected language, that isn&rsquo;t really necessary, so you can get away
-with making declarations implicit. It feels a little more &ldquo;scripty&rdquo;, more &ldquo;you
-know what I mean&rdquo;.</p>
-<p>But is that a good idea? Implicit declaration has some problems.</p>
+<p>L&rsquo;avantage principal de la déclaration implicite est la simplicité. Il y a moins de syntaxe et pas de concept de &ldquo;déclaration&rdquo; à apprendre. Les utilisateurs peuvent juste commencer à assigner des trucs et le langage se débrouille.</p>
+<p>Les langages plus vieux, typés statiquement comme C bénéficient de la déclaration explicite parce qu&rsquo;ils donnent à l&rsquo;utilisateur un endroit pour dire au compilateur quel type chaque variable a et combien de stockage allouer pour elle. Dans un langage typé dynamiquement, ramassé par le garbage collector, ce n&rsquo;est pas vraiment nécessaire, donc vous pouvez vous en sortir en rendant les déclarations implicites. Cela semble un peu plus &ldquo;scripty&rdquo;, plus &ldquo;tu vois ce que je veux dire&rdquo;.</p>
+<p>Mais est-ce une bonne idée ? La déclaration implicite a quelques problèmes.</p>
 <ul>
 <li>
-<p>A user may intend to assign to an existing variable, but may have misspelled
-it. The interpreter doesn&rsquo;t know that, so it goes ahead and silently creates
-some new variable and the variable the user wanted to assign to still has
-its old value. This is particularly heinous in JavaScript where a typo will
-create a <em>global</em> variable, which may in turn interfere with other code.</p>
+<p>Un utilisateur peut avoir l&rsquo;intention d&rsquo;assigner à une variable existante, mais peut l&rsquo;avoir mal orthographiée. L&rsquo;interpréteur ne le sait pas, donc il y va et crée silencieusement une nouvelle variable et la variable à laquelle l&rsquo;utilisateur voulait assigner a toujours son ancienne valeur. C&rsquo;est particulièrement odieux en JavaScript où une faute de frappe créera une variable <em>globale</em>, qui peut à son tour interférer avec d&rsquo;autre code.</p>
 </li>
 <li>
-<p>JS, Ruby, and CoffeeScript use the presence of an existing variable with the
-same name<span class="em">&mdash;</span>even in an outer scope<span class="em">&mdash;</span>to determine whether or not an
-assignment creates a new variable or assigns to an existing one. That means
-adding a new variable in a surrounding scope can change the meaning of
-existing code. What was once a local variable may silently turn into an
-assignment to that new outer variable.</p>
+<p>JS, Ruby, et CoffeeScript utilisent la présence d&rsquo;une variable existante avec le même nom<span class="em">&mdash;</span>même dans une portée externe<span class="em">&mdash;</span>pour déterminer si oui ou non une affectation crée une nouvelle variable ou assigne à une existante. Cela signifie qu&rsquo;ajouter une nouvelle variable dans une portée environnante peut changer le sens du code existant. Ce qui était une fois une variable locale peut silencieusement se transformer en une affectation à cette nouvelle variable externe.</p>
 </li>
 <li>
-<p>In Python, you may <em>want</em> to assign to some variable outside of the current
-function instead of creating a new variable in the current one, but you
-can&rsquo;t.</p>
+<p>En Python, vous pouvez <em>vouloir</em> assigner à une variable à l&rsquo;extérieur de la fonction courante au lieu de créer une nouvelle variable dans la courante, mais vous ne pouvez pas.</p>
 </li>
 </ul>
-<p>Over time, the languages I know with implicit variable declaration ended up
-adding more features and complexity to deal with these problems.</p>
+<p>Avec le temps, les langages que je connais avec déclaration de variable implicite ont fini par ajouter plus de fonctionnalités et de complexité pour gérer ces problèmes.</p>
 <ul>
 <li>
-<p>Implicit declaration of global variables in JavaScript is universally
-considered a mistake today. &ldquo;Strict mode&rdquo; disables it and makes it a compile
-error.</p>
+<p>La déclaration implicite de variables globales en JavaScript est universellement considérée comme une erreur aujourd&rsquo;hui. Le &ldquo;mode strict&rdquo; la désactive et en fait une erreur de compilation.</p>
 </li>
 <li>
-<p>Python added a <code>global</code> statement to let you explicitly assign to a global
-variable from within a function. Later, as functional programming and nested
-functions became more popular, they added a similar <code>nonlocal</code> statement to
-assign to variables in enclosing functions.</p>
+<p>Python a ajouté une instruction <code>global</code> pour vous laisser assigner explicitement à une variable globale depuis l&rsquo;intérieur d&rsquo;une fonction. Plus tard, alors que la programmation fonctionnelle et les fonctions imbriquées devenaient plus populaires, ils ont ajouté une instruction <code>nonlocal</code> similaire pour assigner aux variables dans les fonctions englobantes.</p>
 </li>
 <li>
-<p>Ruby extended its block syntax to allow declaring certain variables to be
-explicitly local to the block even if the same name exists in an outer
-scope.</p>
+<p>Ruby a étendu sa syntaxe de bloc pour permettre de déclarer certaines variables comme étant explicitement locales au bloc même si le même nom existe dans une portée externe.</p>
 </li>
 </ul>
-<p>Given those, I think the simplicity argument is mostly lost. There is an
-argument that implicit declaration is the right <em>default</em> but I personally find
-that less compelling.</p>
-<p>My opinion is that implicit declaration made sense in years past when most
-scripting languages were heavily imperative and code was pretty flat. As
-programmers have gotten more comfortable with deep nesting, functional
-programming, and closures, it&rsquo;s become much more common to want access to
-variables in outer scopes. That makes it more likely that users will run into
-the tricky cases where it&rsquo;s not clear whether they intend their assignment to
-create a new variable or reuse a surrounding one.</p>
-<p>So I prefer explicitly declaring variables, which is why Lox requires it.</p>
+<p>Étant donné ceux-là, je pense que l&rsquo;argument de simplicité est principalement perdu. Il y a un argument que la déclaration implicite est le bon <em>défaut</em> mais je trouve personnellement cela moins convaincant.</p>
+<p>Mon opinion est que la déclaration implicite avait du sens dans les années passées quand la plupart des langages de script étaient lourdement impératifs et le code était assez plat. À mesure que les programmeurs sont devenus plus à l&rsquo;aise avec l&rsquo;imbrication profonde, la programmation fonctionnelle, et les fermetures, il est devenu beaucoup plus courant de vouloir accéder aux variables dans les portées externes. Cela rend plus probable le fait que les utilisateurs tomberont dans les cas délicats où il n&rsquo;est pas clair s&rsquo;ils ont l&rsquo;intention que leur affectation crée une nouvelle variable ou réutilise une environnante.</p>
+<p>Donc je préfère déclarer explicitement les variables, c&rsquo;est pourquoi Lox l&rsquo;exige.</p>
 </div>
 
 <footer>

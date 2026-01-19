@@ -37,18 +37,17 @@
 <h3><a href="#top">Types de valeurs<small>18</small></a></h3>
 
 <ul>
-    <li><a href="#tagged-unions"><small>18.1</small> Tagged Unions</a></li>
-    <li><a href="#lox-values-and-c-values"><small>18.2</small> Lox Values and C Values</a></li>
-    <li><a href="#dynamically-typed-numbers"><small>18.3</small> Dynamically Typed Numbers</a></li>
-    <li><a href="#two-new-types"><small>18.4</small> Two New Types</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
+    <li><a href="#unions-étiquetées"><small>18.1</small> Unions Étiquetées</a></li>
+    <li><a href="#valeurs-lox-et-valeurs-c"><small>18.2</small> Valeurs Lox et Valeurs C</a></li>
+    <li><a href="#nombres-typés-dynamiquement"><small>18.3</small> Nombres Typés Dynamiquement</a></li>
+    <li><a href="#deux-nouveaux-types"><small>18.4</small> Deux Nouveaux Types</a></li>
+    <li><a href="#défis"><small>18.5</small> Défis</a></li>
 </ul>
 
 
 <div class="prev-next">
     <a href="compilation-des-expressions.html" title="Compilation des expressions" class="left">&larr;&nbsp;Previous</a>
-    <a href="a-bytecode-virtual-machine.html" title="A Bytecode Virtual Machine">&uarr;&nbsp;Up</a>
+    <a href="une-machine-virtuelle-à-bytecode.html" title="Une machine virtuelle à bytecode">&uarr;&nbsp;Up</a>
     <a href="chaînes-de-caractères.html" title="Chaînes de caractères" class="right">Next&nbsp;&rarr;</a>
 </div>  </div>
 </nav>
@@ -67,18 +66,17 @@
 <h3><a href="#top">Types de valeurs<small>18</small></a></h3>
 
 <ul>
-    <li><a href="#tagged-unions"><small>18.1</small> Tagged Unions</a></li>
-    <li><a href="#lox-values-and-c-values"><small>18.2</small> Lox Values and C Values</a></li>
-    <li><a href="#dynamically-typed-numbers"><small>18.3</small> Dynamically Typed Numbers</a></li>
-    <li><a href="#two-new-types"><small>18.4</small> Two New Types</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
+    <li><a href="#unions-étiquetées"><small>18.1</small> Unions Étiquetées</a></li>
+    <li><a href="#valeurs-lox-et-valeurs-c"><small>18.2</small> Valeurs Lox et Valeurs C</a></li>
+    <li><a href="#nombres-typés-dynamiquement"><small>18.3</small> Nombres Typés Dynamiquement</a></li>
+    <li><a href="#deux-nouveaux-types"><small>18.4</small> Deux Nouveaux Types</a></li>
+    <li><a href="#défis"><small>18.5</small> Défis</a></li>
 </ul>
 
 
 <div class="prev-next">
     <a href="compilation-des-expressions.html" title="Compilation des expressions" class="left">&larr;&nbsp;Previous</a>
-    <a href="a-bytecode-virtual-machine.html" title="A Bytecode Virtual Machine">&uarr;&nbsp;Up</a>
+    <a href="une-machine-virtuelle-à-bytecode.html" title="Une machine virtuelle à bytecode">&uarr;&nbsp;Up</a>
     <a href="chaînes-de-caractères.html" title="Chaînes de caractères" class="right">Next&nbsp;&rarr;</a>
 </div>  </div>
   <a id="expand-nav">≡</a>
@@ -91,55 +89,28 @@
   <h1>Types de valeurs</h1>
 
 <blockquote>
-<p>When you are a Bear of Very Little Brain, and you Think of Things, you find
-sometimes that a Thing which seemed very Thingish inside you is quite
-different when it gets out into the open and has other people looking at it.</p>
-<p><cite>A. A. Milne, <em>Winnie-the-Pooh</em></cite></p>
+<p>Quand tu es un Ours de Très Peu de Cerveau, et que tu Penses à des Choses, tu trouves parfois qu&rsquo;une Chose qui semblait très Chosifiée à l&rsquo;intérieur de toi est tout à fait différente quand elle sort à l&rsquo;air libre et que d&rsquo;autres personnes la regardent.</p>
+<p><cite>A. A. Milne, <em>Winnie l&rsquo;Ourson</em></cite></p>
 </blockquote>
-<p>The past few chapters were huge, packed full of complex techniques and pages of
-code. In this chapter, there&rsquo;s only one new concept to learn and a scattering of
-straightforward code. You&rsquo;ve earned a respite.</p>
-<p>Lox is <span name="unityped">dynamically</span> typed. A single variable can
-hold a Boolean, number, or string at different points in time. At least, that&rsquo;s
-the idea. Right now, in clox, all values are numbers. By the end of the chapter,
-it will also support Booleans and <code>nil</code>. While those aren&rsquo;t super interesting,
-they force us to figure out how our value representation can dynamically handle
-different types.</p>
+<p>Les quelques chapitres passés étaient énormes, remplis de techniques complexes et de pages de code. Dans ce chapitre, il n&rsquo;y a qu&rsquo;un seul nouveau concept à apprendre et un éparpillement de code simple. Vous avez mérité un répit.</p>
+<p>Lox est <span name="unityped">dynamiquement</span> typé. Une variable unique peut contenir un Booléen, un nombre, ou une chaîne de caractères à différents points dans le temps. Au moins, c&rsquo;est l&rsquo;idée. En ce moment, dans clox, toutes les valeurs sont des nombres. À la fin du chapitre, il supportera aussi les Booléens et <code>nil</code>. Bien que ceux-ci ne soient pas super intéressants, ils nous forcent à comprendre comment notre représentation de valeur peut gérer dynamiquement différents types.</p>
 <aside name="unityped">
-<p>There is a third category next to statically typed and dynamically typed:
-<strong>unityped</strong>. In that paradigm, all variables have a single type, usually a
-machine register integer. Unityped languages aren&rsquo;t common today, but some
-Forths and BCPL, the language that inspired C, worked like this.</p>
-<p>As of this moment, clox is unityped.</p>
+<p>Il y a une troisième catégorie à côté de typé statiquement et typé dynamiquement : <strong>unitypé</strong>. Dans ce paradigme, toutes les variables ont un type unique, généralement un entier de registre machine. Les langages unitypés ne sont pas communs aujourd&rsquo;hui, mais certains Forths et BCPL, le langage qui a inspiré C, fonctionnaient comme ceci.</p>
+<p>À ce moment précis, clox est unitypé.</p>
 </aside>
-<h2><a href="#tagged-unions" id="tagged-unions"><small>18&#8202;.&#8202;1</small>Tagged Unions</a></h2>
-<p>The nice thing about working in C is that we can build our data structures from
-the raw bits up. The bad thing is that we <em>have</em> to do that. C doesn&rsquo;t give you
-much for free at compile time and even less at runtime. As far as C is
-concerned, the universe is an undifferentiated array of bytes. It&rsquo;s up to us to
-decide how many of those bytes to use and what they mean.</p>
-<p>In order to choose a value representation, we need to answer two key questions:</p>
+<h2><a href="#unions-étiquetées" id="unions-étiquetées"><small>18&#8202;.&#8202;1</small>Unions Étiquetées</a></h2>
+<p>La chose sympa à propos de travailler en C est que nous pouvons construire nos structures de données depuis les bits bruts. La mauvaise chose est que nous <em>devons</em> faire cela. C ne vous donne pas grand-chose gratuitement à la compilation et encore moins à l&rsquo;exécution. Pour autant que C soit concerné, l&rsquo;univers est un tableau indifférencié d&rsquo;octets. C&rsquo;est à nous de décider combien de ces octets utiliser et ce qu&rsquo;ils signifient.</p>
+<p>Afin de choisir une représentation de valeur, nous avons besoin de répondre à deux questions clés :</p>
 <ol>
 <li>
-<p><strong>How do we represent the type of a value?</strong> If you try to, say, multiply a
-number by <code>true</code>, we need to detect that error at runtime and report it. In
-order to do that, we need to be able to tell what a value&rsquo;s type is.</p>
+<p><strong>Comment représentons-nous le type d&rsquo;une valeur ?</strong> Si vous essayez de, disons, multiplier un nombre par <code>true</code>, nous avons besoin de détecter cette erreur à l&rsquo;exécution et de la rapporter. Afin de faire cela, nous avons besoin d&rsquo;être capables de dire quel est le type d&rsquo;une valeur.</p>
 </li>
 <li>
-<p><strong>How do we store the value itself?</strong> We need to not only be able to tell
-that three is a number, but that it&rsquo;s different from the number four. I
-know, seems obvious, right? But we&rsquo;re operating at a level where it&rsquo;s good
-to spell these things out.</p>
+<p><strong>Comment stockons-nous la valeur elle-même ?</strong> Nous avons besoin non seulement d&rsquo;être capables de dire que trois est un nombre, mais qu&rsquo;il est différent du nombre quatre. Je sais, ça semble évident, pas vrai ? Mais nous opérons à un niveau où il est bon d&rsquo;épeler ces choses.</p>
 </li>
 </ol>
-<p>Since we&rsquo;re not just designing this language but building it ourselves, when
-answering these two questions we also have to keep in mind the implementer&rsquo;s
-eternal quest: to do it <em>efficiently</em>.</p>
-<p>Language hackers over the years have come up with a variety of clever ways to
-pack the above information into as few bits as possible. For now, we&rsquo;ll start
-with the simplest, classic solution: a <strong>tagged union</strong>. A value contains two
-parts: a type &ldquo;tag&rdquo;, and a payload for the actual value. To store the value&rsquo;s
-type, we define an enum for each kind of value the VM supports.</p>
+<p>Puisque nous ne faisons pas juste concevoir ce langage mais le construisons nous-mêmes, en répondant à ces deux questions nous devons aussi garder en tête la quête éternelle de l&rsquo;implémenteur : le faire <em>efficacement</em>.</p>
+<p>Les hackers de langage au fil des années ont trouvé une variété de façons intelligentes d&rsquo;empaqueter les informations ci-dessus dans aussi peu de bits que possible. Pour l&rsquo;instant, nous commencerons avec la solution la plus simple et classique : une <strong>union étiquetée</strong>. Une valeur contient deux parties : une étiquette de type (ou &ldquo;tag&rdquo;), et une charge utile pour la valeur réelle. Pour stocker le type de la valeur, nous définissons un enum pour chaque sorte de valeur que la VM supporte.</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;common.h&quot;
 
 </pre><div class="source-file"><em>value.h</em></div>
@@ -154,38 +125,19 @@ type, we define an enum for each kind of value the VM supports.</p>
 <div class="source-file-narrow"><em>value.h</em></div>
 
 <aside name="user-types">
-<p>The cases here cover each kind of value that has <em>built-in support in the VM</em>.
-When we get to adding classes to the language, each class the user defines
-doesn&rsquo;t need its own entry in this enum. As far as the VM is concerned, every
-instance of a class is the same type: &ldquo;instance&rdquo;.</p>
-<p>In other words, this is the VM&rsquo;s notion of &ldquo;type&rdquo;, not the user&rsquo;s.</p>
+<p>Les cas ici couvrent chaque sorte de valeur qui a un <em>support intégré dans la VM</em>. Quand nous en arriverons à ajouter des classes au langage, chaque classe que l&rsquo;utilisateur définit n&rsquo;a pas besoin de sa propre entrée dans cet enum. Pour autant que la VM soit concernée, chaque instance d&rsquo;une classe est du même type : &ldquo;instance&rdquo;.</p>
+<p>En d&rsquo;autres termes, c&rsquo;est la notion de &ldquo;type&rdquo; de la VM, pas celle de l&rsquo;utilisateur.</p>
 </aside>
-<p>For now, we have only a couple of cases, but this will grow as we add strings,
-functions, and classes to clox. In addition to the type, we also need to store
-the data for the value<span class="em">&mdash;</span>the <code>double</code> for a number, <code>true</code> or <code>false</code> for a
-Boolean. We could define a struct with fields for each possible type.</p><img src="image/types-of-values/struct.png" alt="A struct with two fields laid next to each other in memory." />
-<p>But this is a waste of memory. A value can&rsquo;t simultaneously be both a number and
-a Boolean. So at any point in time, only one of those fields will be used. C
-lets you optimize this by defining a <span name="sum">union</span>. A union
-looks like a struct except that all of its fields overlap in memory.</p>
+<p>Pour l&rsquo;instant, nous avons seulement une couple de cas, mais cela grandira alors que nous ajouterons les chaînes, fonctions, et classes à clox. En plus du type, nous avons aussi besoin de stocker les données pour la valeur<span class="em">&mdash;</span>le <code>double</code> pour un nombre, <code>true</code> ou <code>false</code> pour un Booléen. Nous pourrions définir une struct avec des champs pour chaque type possible.</p><img src="image/types-of-values/struct.png" alt="Une struct avec deux champs posés l'un à côté de l'autre en mémoire." />
+<p>Mais c&rsquo;est un gaspillage de mémoire. Une valeur ne peut pas être simultanément à la fois un nombre et un Booléen. Donc à n&rsquo;importe quel point dans le temps, seulement un de ces champs sera utilisé. C vous laisse optimiser cela en définissant une <span name="sum">union</span>. Une union ressemble à une struct sauf que tous ses champs se chevauchent en mémoire.</p>
 <aside name="sum">
-<p>If you&rsquo;re familiar with a language in the ML family, structs and unions in C
-roughly mirror the difference between product and sum types, between tuples
-and algebraic data types.</p>
-</aside><img src="image/types-of-values/union.png" alt="A union with two fields overlapping in memory." />
-<p>The size of a union is the size of its largest field. Since the fields all reuse
-the same bits, you have to be very careful when working with them. If you store
-data using one field and then access it using <span
-name="reinterpret">another</span>, you will reinterpret what the underlying bits
-mean.</p>
+<p>Si vous êtes familier avec un langage dans la famille ML, les structs et unions en C reflètent grossièrement la différence entre types produits et types sommes, entre tuples et types de données algébriques.</p>
+</aside><img src="image/types-of-values/union.png" alt="Une union avec deux champs se chevauchant en mémoire." />
+<p>La taille d&rsquo;une union est la taille de son plus grand champ. Puisque les champs réutilisent tous les mêmes bits, vous devez être très prudent quand vous travaillez avec eux. Si vous stockez des données en utilisant un champ et qu&rsquo;ensuite vous y accédez en utilisant un <span name="reinterpret">autre</span>, vous réinterpréterez ce que les bits sous-jacents signifient.</p>
 <aside name="reinterpret">
-<p>Using a union to interpret bits as different types is the quintessence of C. It
-opens up a number of clever optimizations and lets you slice and dice each byte
-of memory in ways that memory-safe languages disallow. But it is also wildly
-unsafe and will happily saw your fingers off if you don&rsquo;t watch out.</p>
+<p>Utiliser une union pour interpréter des bits comme différents types est la quintessence du C. Cela ouvre un nombre d&rsquo;optimisations intelligentes et vous laisse couper et désosser chaque octet de mémoire de façons que les langages à mémoire sûre interdisent. Mais c&rsquo;est aussi sauvagement peu sûr et sciera joyeusement vos doigts si vous ne faites pas attention.</p>
 </aside>
-<p>As the name &ldquo;tagged union&rdquo; implies, our new value representation combines these
-two parts into a single struct.</p>
+<p>Comme le nom &ldquo;union étiquetée&rdquo; l&rsquo;implique, notre nouvelle représentation de valeur combine ces deux parties en une struct unique.</p>
 <div class="codehilite"><pre class="insert-before">} ValueType;
 
 </pre><div class="source-file"><em>value.h</em><br>
@@ -204,44 +156,19 @@ typedef struct {
 </pre></div>
 <div class="source-file-narrow"><em>value.h</em>, add after enum <em>ValueType</em>, replace 1 line</div>
 
-<p>There&rsquo;s a field for the type tag, and then a second field containing the union
-of all of the underlying values. On a 64-bit machine with a typical C compiler,
-the layout looks like this:</p>
+<p>Il y a un champ pour l&rsquo;étiquette de type, et ensuite un second champ contenant l&rsquo;union de toutes les valeurs sous-jacentes. Sur une machine 64-bit avec un compilateur C typique, la disposition ressemble à ceci :</p>
 <aside name="as">
-<p>A smart language hacker gave me the idea to use &ldquo;as&rdquo; for the name of the union
-field because it reads nicely, almost like a cast, when you pull the various
-values out.</p>
-</aside><img src="image/types-of-values/value.png" alt="The full value struct, with the type and as fields next to each other in memory." />
-<p>The four-byte type tag comes first, then the union. Most architectures prefer
-values be aligned to their size. Since the union field contains an eight-byte
-double, the compiler adds four bytes of <span name="pad">padding</span> after
-the type field to keep that double on the nearest eight-byte boundary. That
-means we&rsquo;re effectively spending eight bytes on the type tag, which only needs
-to represent a number between zero and three. We could stuff the enum in a
-smaller size, but all that would do is increase the padding.</p>
+<p>Un hacker de langage intelligent m&rsquo;a donné l&rsquo;idée d&rsquo;utiliser &ldquo;as&rdquo; pour le nom du champ union parce que cela se lit joliment, presque comme un cast, quand vous tirez les diverses valeurs hors de là.</p>
+</aside><img src="image/types-of-values/value.png" alt="La struct value complète, avec les champs type et as l'un à côté de l'autre en mémoire." />
+<p>L&rsquo;étiquette de type de quatre octets vient en premier, ensuite l&rsquo;union. La plupart des architectures préfèrent que les valeurs soient alignées à leur taille. Puisque le champ union contient un double de huit octets, le compilateur ajoute quatre octets de <span name="pad">remplissage</span> (padding) après le champ type pour garder ce double sur la frontière de huit octets la plus proche. Cela signifie que nous dépensons effectivement huit octets sur l&rsquo;étiquette de type, qui a seulement besoin de représenter un nombre entre zéro et trois. Nous pourrions bourrer l&rsquo;enum dans une taille plus petite, mais tout ce que ça ferait serait d&rsquo;augmenter le remplissage.</p>
 <aside name="pad">
-<p>We could move the tag field <em>after</em> the union, but that doesn&rsquo;t help much
-either. Whenever we create an array of Values<span class="em">&mdash;</span>which is where most of our
-memory usage for Values will be<span class="em">&mdash;</span>the C compiler will insert that same padding
-<em>between</em> each Value to keep the doubles aligned.</p>
+<p>Nous pourrions déplacer le champ d&rsquo;étiquette <em>après</em> l&rsquo;union, mais cela n&rsquo;aide pas beaucoup non plus. Chaque fois que nous créons un tableau de Values<span class="em">&mdash;</span>ce qui est où la plupart de notre utilisation mémoire pour les Values sera<span class="em">&mdash;</span>le compilateur C insérera ce même remplissage <em>entre</em> chaque Value pour garder les doubles alignés.</p>
 </aside>
-<p>So our Values are 16 bytes, which seems a little large. We&rsquo;ll improve it
-<a href="optimization.html">later</a>. In the meantime, they&rsquo;re still small enough to store on
-the C stack and pass around by value. Lox&rsquo;s semantics allow that because the
-only types we support so far are <strong>immutable</strong>. If we pass a copy of a Value
-containing the number three to some function, we don&rsquo;t need to worry about the
-caller seeing modifications to the value. You can&rsquo;t &ldquo;modify&rdquo; three. It&rsquo;s three
-forever.</p>
-<h2><a href="#lox-values-and-c-values" id="lox-values-and-c-values"><small>18&#8202;.&#8202;2</small>Lox Values and C Values</a></h2>
-<p>That&rsquo;s our new value representation, but we aren&rsquo;t done. Right now, the rest of
-clox assumes Value is an alias for <code>double</code>. We have code that does a straight C
-cast from one to the other. That code is all broken now. So sad.</p>
-<p>With our new representation, a Value can <em>contain</em> a double, but it&rsquo;s not
-<em>equivalent</em> to it. There is a mandatory conversion step to get from one to the
-other. We need to go through the code and insert those conversions to get clox
-working again.</p>
-<p>We&rsquo;ll implement these conversions as a handful of macros, one for each type and
-operation. First, to promote a native C value to a clox Value:</p>
+<p>Donc nos Values font 16 octets, ce qui semble un peu grand. Nous améliorerons cela <a href="optimisation.html">plus tard</a>. En attendant, elles sont toujours assez petites pour stocker sur la pile C et passer par valeur. La sémantique de Lox permet cela parce que les seuls types que nous supportons jusqu&rsquo;ici sont <strong>immuables</strong>. Si nous passons une copie d&rsquo;une Value contenant le nombre trois à quelque fonction, nous n&rsquo;avons pas besoin de nous inquiéter que l&rsquo;appelant voie des modifications à la valeur. Vous ne pouvez pas &ldquo;modifier&rdquo; trois. C&rsquo;est trois pour toujours.</p>
+<h2><a href="#valeurs-lox-et-valeurs-c" id="valeurs-lox-et-valeurs-c"><small>18&#8202;.&#8202;2</small>Valeurs Lox et Valeurs C</a></h2>
+<p>C&rsquo;est notre nouvelle représentation de valeur, mais nous n&rsquo;avons pas fini. Pour l&rsquo;instant, le reste de clox suppose que Value est un alias pour <code>double</code>. Nous avons du code qui fait un cast C direct de l&rsquo;un à l&rsquo;autre. Ce code est tout cassé maintenant. Si triste.</p>
+<p>Avec notre nouvelle représentation, une Value peut <em>contenir</em> un double, mais elle n&rsquo;est pas <em>équivalente</em> à lui. Il y a une étape de conversion obligatoire pour aller de l&rsquo;un à l&rsquo;autre. Nous devons passer à travers le code et insérer ces conversions pour faire marcher clox de nouveau.</p>
+<p>Nous implémenterons ces conversions comme une poignée de macros, une pour chaque type et opération. D&rsquo;abord, pour promouvoir une valeur C native en une Value clox :</p>
 <div class="codehilite"><pre class="insert-before">} Value;
 </pre><div class="source-file"><em>value.h</em><br>
 add after struct <em>Value</em></div>
@@ -256,11 +183,7 @@ typedef struct {
 </pre></div>
 <div class="source-file-narrow"><em>value.h</em>, add after struct <em>Value</em></div>
 
-<p>Each one of these takes a C value of the appropriate type and produces a Value
-that has the correct type tag and contains the underlying value. This hoists
-statically typed values up into clox&rsquo;s dynamically typed universe. In order to
-<em>do</em> anything with a Value, though, we need to unpack it and get the C value
-back out.</p>
+<p>Chacune de celles-ci prend une valeur C du type approprié et produit une Value qui a la bonne étiquette de type et contient la valeur sous-jacente. Ceci hisse les valeurs typées statiquement vers l&rsquo;univers typé dynamiquement de clox. Afin de <em>faire</em> quoi que ce soit avec une Value, cependant, nous avons besoin de la dépaqueter et d&rsquo;obtenir la valeur C en retour.</p>
 <div class="codehilite"><pre class="insert-before">} Value;
 </pre><div class="source-file"><em>value.h</em><br>
 add after struct <em>Value</em></div>
@@ -275,19 +198,13 @@ add after struct <em>Value</em></div>
 <div class="source-file-narrow"><em>value.h</em>, add after struct <em>Value</em></div>
 
 <aside name="as-null">
-<p>There&rsquo;s no <code>AS_NIL</code> macro because there is only one <code>nil</code> value, so a Value with
-type <code>VAL_NIL</code> doesn&rsquo;t carry any extra data.</p>
+<p>Il n&rsquo;y a pas de macro <code>AS_NIL</code> parce qu&rsquo;il n&rsquo;y a qu&rsquo;une seule valeur <code>nil</code>, donc une Value avec le type <code>VAL_NIL</code> ne porte aucune donnée supplémentaire.</p>
 </aside>
-<p><span name="as-null">These</span> macros go in the opposite direction. Given a
-Value of the right type, they unwrap it and return the corresponding raw C
-value. The &ldquo;right type&rdquo; part is important! These macros directly access the
-union fields. If we were to do something like:</p>
+<p><span name="as-null">Ces</span> macros vont dans la direction opposée. Étant donné une Value du bon type, elles la déballent et renvoient la valeur C brute correspondante. La partie &ldquo;bon type&rdquo; est importante ! Ces macros accèdent directement aux champs de l&rsquo;union. Si nous devions faire quelque chose comme :</p>
 <div class="codehilite"><pre><span class="t">Value</span> <span class="i">value</span> = <span class="a">BOOL_VAL</span>(<span class="k">true</span>);
 <span class="t">double</span> <span class="i">number</span> = <span class="a">AS_NUMBER</span>(<span class="i">value</span>);
 </pre></div>
-<p>Then we may open a smoldering portal to the Shadow Realm. It&rsquo;s not safe to use
-any of the <code>AS_</code> macros unless we know the Value contains the appropriate type.
-To that end, we define a last few macros to check a Value&rsquo;s type.</p>
+<p>Alors nous pourrions ouvrir un portail fumant vers le Royaume des Ombres. Ce n&rsquo;est pas sûr d&rsquo;utiliser n&rsquo;importe laquelle des macros <code>AS_</code> à moins que nous sachions que la Value contient le type approprié. À cette fin, nous définissons quelques dernières macros pour vérifier le type d&rsquo;une Value.</p>
 <div class="codehilite"><pre class="insert-before">} Value;
 </pre><div class="source-file"><em>value.h</em><br>
 add after struct <em>Value</em></div>
@@ -302,23 +219,13 @@ add after struct <em>Value</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>value.h</em>, add after struct <em>Value</em></div>
 
-<p><span name="universe">These</span> macros return <code>true</code> if the Value has that
-type. Any time we call one of the <code>AS_</code> macros, we need to guard it behind a
-call to one of these first. With these eight macros, we can now safely shuttle
-data between Lox&rsquo;s dynamic world and C&rsquo;s static one.</p>
-<aside name="universe"><img src="image/types-of-values/universe.png" alt="The earthly C firmament with the Lox heavens above." />
-<p>The <code>_VAL</code> macros lift a C value into the heavens. The <code>AS_</code> macros bring it
-back down.</p>
+<p><span name="universe">Ces</span> macros renvoient <code>true</code> si la Value a ce type. Chaque fois que nous appelons une des macros <code>AS_</code>, nous avons besoin de la garder derrière un appel à une de celles-ci d&rsquo;abord. Avec ces huit macros, nous pouvons maintenant navetter les données en toute sécurité entre le monde dynamique de Lox et celui statique de C.</p>
+<aside name="universe"><img src="image/types-of-values/universe.png" alt="Le firmament C terrestre avec les cieux Lox au-dessus." />
+<p>Les macros <code>_VAL</code> lèvent une valeur C dans les cieux. Les macros <code>AS_</code> la ramènent en bas.</p>
 </aside>
-<h2><a href="#dynamically-typed-numbers" id="dynamically-typed-numbers"><small>18&#8202;.&#8202;3</small>Dynamically Typed Numbers</a></h2>
-<p>We&rsquo;ve got our value representation and the tools to convert to and from it. All
-that&rsquo;s left to get clox running again is to grind through the code and fix every
-place where data moves across that boundary. This is one of those sections of
-the book that isn&rsquo;t exactly mind-blowing, but I promised I&rsquo;d show you every
-single line of code, so here we are.</p>
-<p>The first values we create are the constants generated when we compile number
-literals. After we convert the lexeme to a C double, we simply wrap it in a
-Value before storing it in the constant table.</p>
+<h2><a href="#nombres-typés-dynamiquement" id="nombres-typés-dynamiquement"><small>18&#8202;.&#8202;3</small>Nombres Typés Dynamiquement</a></h2>
+<p>Nous avons notre représentation de valeur et les outils pour convertir vers et depuis elle. Tout ce qui reste pour faire tourner clox de nouveau est de piocher à travers le code et de fixer chaque endroit où les données bougent à travers cette frontière. C&rsquo;est une de ces sections du livre qui n&rsquo;est pas exactement époustouflante, mais j&rsquo;ai promis que je vous montrerais chaque ligne de code unique, donc nous y voici.</p>
+<p>Les premières valeurs que nous créons sont les constantes générées quand nous compilons les littéraux nombre. Après avoir converti le lexème en un double C, nous l&rsquo;enveloppons simplement dans une Value avant de le stocker dans la table de constantes.</p>
 <div class="codehilite"><pre class="insert-before">  double value = strtod(parser.previous.start, NULL);
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>number</em>()<br>
@@ -328,7 +235,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>number</em>(), replace 1 line</div>
 
-<p>Over in the runtime, we have a function to print values.</p>
+<p>Là-bas dans le runtime, nous avons une fonction pour imprimer les valeurs.</p>
 <div class="codehilite"><pre class="insert-before">void printValue(Value value) {
 </pre><div class="source-file"><em>value.c</em><br>
 in <em>printValue</em>()<br>
@@ -338,19 +245,13 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>value.c</em>, in <em>printValue</em>(), replace 1 line</div>
 
-<p>Right before we send the Value to <code>printf()</code>, we unwrap it and extract the
-double value. We&rsquo;ll revisit this function shortly to add the other types, but
-let&rsquo;s get our existing code working first.</p>
-<h3><a href="#unary-negation-and-runtime-errors" id="unary-negation-and-runtime-errors"><small>18&#8202;.&#8202;3&#8202;.&#8202;1</small>Unary negation and runtime errors</a></h3>
-<p>The next simplest operation is unary negation. It pops a value off the stack,
-negates it, and pushes the result. Now that we have other types of values, we
-can&rsquo;t assume the operand is a number anymore. The user could just as well do:</p>
-<div class="codehilite"><pre><span class="k">print</span> -<span class="k">false</span>; <span class="c">// Uh...</span>
+<p>Juste avant que nous envoyions la Value à <code>printf()</code>, nous la déballons et extrayons la valeur double. Nous revisiterons cette fonction sous peu pour ajouter les autres types, mais faisons marcher notre code existant d&rsquo;abord.</p>
+<h3><a href="#négation-unaire-et-erreurs-dexécution" id="négation-unaire-et-erreurs-dexécution"><small>18&#8202;.&#8202;3&#8202;.&#8202;1</small>Négation unaire et erreurs d&rsquo;exécution</a></h3>
+<p>La prochaine opération la plus simple est la négation unaire. Elle dépile une valeur, la nie, et pousse le résultat. Maintenant que nous avons d&rsquo;autres types de valeurs (ou que nous en aurons bientôt), nous ne pouvons plus supposer que l&rsquo;opérande est un nombre. L&rsquo;utilisateur pourrait tout aussi bien faire :</p>
+<div class="codehilite"><pre><span class="k">print</span> -<span class="k">false</span>; <span class="c">// Euh...</span>
 </pre></div>
-<p>We need to handle that gracefully, which means it&rsquo;s time for <em>runtime errors</em>.
-Before performing an operation that requires a certain type, we need to make
-sure the Value <em>is</em> that type.</p>
-<p>For unary negation, the check looks like this:</p>
+<p>Nous avons besoin de gérer cela avec grâce, ce qui signifie qu&rsquo;il est temps pour les <em>erreurs d&rsquo;exécution</em>. Avant d&rsquo;effectuer une opération qui exige un certain type, nous avons besoin de nous assurer que la Value <em>est</em> de ce type.</p>
+<p>Pour la négation unaire, la vérification ressemble à ceci :</p>
 <div class="codehilite"><pre class="insert-before">      case OP_DIVIDE:   BINARY_OP(/); break;
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>run</em>()<br>
@@ -366,17 +267,11 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>(), replace 1 line</div>
 
-<p>First, we check to see if the Value on top of the stack is a number. If it&rsquo;s
-not, we report the runtime error and <span name="halt">stop</span> the
-interpreter. Otherwise, we keep going. Only after this validation do we unwrap
-the operand, negate it, wrap the result and push it.</p>
+<p>D&rsquo;abord, nous vérifions pour voir si la Value au sommet de la pile est un nombre. Si ce n&rsquo;est pas le cas, nous rapportons l&rsquo;erreur d&rsquo;exécution et <span name="halt">arrêtons</span> l&rsquo;interpréteur. Sinon, nous continuons. Seulement après cette validation nous déballons l&rsquo;opérande, le nions, emballons le résultat et le poussons.</p>
 <aside name="halt">
-<p>Lox&rsquo;s approach to error-handling is rather<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span><em>spare</em>. All errors are fatal and
-immediately halt the interpreter. There&rsquo;s no way for user code to recover from
-an error. If Lox were a real language, this is one of the first things I would
-remedy.</p>
+<p>L&rsquo;approche de Lox pour la gestion d&rsquo;erreur est plutôt<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span><em>austère</em>. Toutes les erreurs sont fatales et arrêtent immédiatement l&rsquo;interpréteur. Il n&rsquo;y a aucun moyen pour le code utilisateur de récupérer d&rsquo;une erreur. Si Lox était un vrai langage, ce serait une des premières choses que je remédierais.</p>
 </aside>
-<p>To access the Value, we use a new little function.</p>
+<p>Pour accéder à la Value, nous utilisons une nouvelle petite fonction.</p>
 <div class="codehilite"><div class="source-file"><em>vm.c</em><br>
 add after <em>pop</em>()</div>
 <pre><span class="k">static</span> <span class="t">Value</span> <span class="i">peek</span>(<span class="t">int</span> <span class="i">distance</span>) {
@@ -385,17 +280,11 @@ add after <em>pop</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, add after <em>pop</em>()</div>
 
-<p>It returns a Value from the stack but doesn&rsquo;t <span name="peek">pop</span> it.
-The <code>distance</code> argument is how far down from the top of the stack to look: zero
-is the top, one is one slot down, etc.</p>
+<p>Elle renvoie une Value depuis la pile mais ne la <span name="peek">dépile</span> pas. L&rsquo;argument <code>distance</code> est à quelle distance du sommet de la pile regarder : zéro est le sommet, un est un emplacement en dessous, etc.</p>
 <aside name="peek">
-<p>Why not just pop the operand and then validate it? We could do that. In later
-chapters, it will be important to leave operands on the stack to ensure the
-garbage collector can find them if a collection is triggered in the middle of
-the operation. I do the same thing here mostly out of habit.</p>
+<p>Pourquoi ne pas juste dépiler l&rsquo;opérande et ensuite le valider ? Nous pourrions faire ça. Dans les chapitres ultérieurs, il sera important de laisser les opérandes sur la pile pour assurer que le ramasse-miettes peut les trouver si une collection est déclenchée au milieu de l&rsquo;opération. Je fais la même chose ici surtout par habitude.</p>
 </aside>
-<p>We report the runtime error using a new function that we&rsquo;ll get a lot of mileage
-out of over the remainder of the book.</p>
+<p>Nous rapportons l&rsquo;erreur d&rsquo;exécution en utilisant une nouvelle fonction dont nous tirerons beaucoup de profit sur le reste du livre.</p>
 <div class="codehilite"><div class="source-file"><em>vm.c</em><br>
 add after <em>resetStack</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">runtimeError</span>(<span class="k">const</span> <span class="t">char</span>* <span class="i">format</span>, ...) {
@@ -413,40 +302,17 @@ add after <em>resetStack</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, add after <em>resetStack</em>()</div>
 
-<p>You&rsquo;ve certainly <em>called</em> variadic functions<span class="em">&mdash;</span>ones that take a varying number
-of arguments<span class="em">&mdash;</span>in C before: <code>printf()</code> is one. But you may not have <em>defined</em>
-your own. This book isn&rsquo;t a C <span name="tutorial">tutorial</span>, so I&rsquo;ll
-skim over it here, but basically the <code>...</code> and <code>va_list</code> stuff let us pass an
-arbitrary number of arguments to <code>runtimeError()</code>. It forwards those on to
-<code>vfprintf()</code>, which is the flavor of <code>printf()</code> that takes an explicit
-<code>va_list</code>.</p>
+<p>Vous avez certainement <em>appelé</em> des fonctions variadiques<span class="em">&mdash;</span>celles qui prennent un nombre variable d&rsquo;arguments<span class="em">&mdash;</span>en C avant : <code>printf()</code> en est une. Mais vous pourriez ne pas avoir <em>défini</em> la vôtre. Ce livre n&rsquo;est pas un <span name="tutorial">tutoriel</span> C, donc je vais survoler ça ici, mais basiquement le trucs <code>...</code> et <code>va_list</code> nous laisse passer un nombre arbitraire d&rsquo;arguments à <code>runtimeError()</code>. Elle transfère ceux-là à <code>vfprintf()</code>, qui est la saveur de <code>printf()</code> qui prend une <code>va_list</code> explicite.</p>
 <aside name="tutorial">
-<p>If you are looking for a C tutorial, I love <em><a href="https://www.cs.princeton.edu/~bwk/cbook.html">The C Programming Language</a></em>,
-usually called &ldquo;K&amp;R&rdquo; in honor of its authors. It&rsquo;s not entirely up to date, but
-the quality of the writing more than makes up for it.</p>
+<p>Si vous cherchez un tutoriel C, j&rsquo;adore <em><a href="https://www.cs.princeton.edu/~bwk/cbook.html">Le Langage de Programmation C</a></em>, habituellement appelé &ldquo;K&amp;R&rdquo; en l&rsquo;honneur de ses auteurs. Il n&rsquo;est pas entièrement à jour, mais la qualité de l&rsquo;écriture fait plus que compenser cela.</p>
 </aside>
-<p>Callers can pass a format string to <code>runtimeError()</code> followed by a number of
-arguments, just like they can when calling <code>printf()</code> directly. <code>runtimeError()</code>
-then formats and prints those arguments. We won&rsquo;t take advantage of that in this
-chapter, but later chapters will produce formatted runtime error messages that
-contain other data.</p>
-<p>After we show the hopefully helpful error message, we tell the user which <span
-name="stack">line</span> of their code was being executed when the error
-occurred. Since we left the tokens behind in the compiler, we look up the line
-in the debug information compiled into the chunk. If our compiler did its job
-right, that corresponds to the line of source code that the bytecode was
-compiled from.</p>
-<p>We look into the chunk&rsquo;s debug line array using the current bytecode instruction
-index <em>minus one</em>. That&rsquo;s because the interpreter advances past each instruction
-before executing it. So, at the point that we call <code>runtimeError()</code>, the failed
-instruction is the previous one.</p>
+<p>Les appelants peuvent passer une chaîne de format à <code>runtimeError()</code> suivie par un nombre d&rsquo;arguments, juste comme ils peuvent quand ils appellent <code>printf()</code> directement. <code>runtimeError()</code> formate et imprime ensuite ces arguments. Nous ne prendrons pas avantage de cela dans ce chapitre, mais les chapitres plus tardifs produiront des messages d&rsquo;erreur d&rsquo;exécution formatés qui contiennent d&rsquo;autres données.</p>
+<p>Après avoir montré le message d&rsquo;erreur espérons-le utile, nous disons à l&rsquo;utilisateur quelle <span name="stack">ligne</span> de leur code était exécutée quand l&rsquo;erreur s&rsquo;est produite. Puisque nous avons laissé les tokens derrière dans le compilateur, nous cherchons la ligne dans l&rsquo;information de débogage compilée dans le morceau. Si notre compilateur a fait son travail correctement, cela correspond à la ligne de code source à partir de laquelle le bytecode a été compilé.</p>
+<p>Nous regardons dans le tableau de lignes de débogage du morceau en utilisant l&rsquo;index d&rsquo;instruction bytecode courant <em>moins un</em>. C&rsquo;est parce que l&rsquo;interpréteur avance au-delà de chaque instruction avant de l&rsquo;exécuter. Donc, au point où nous appelons <code>runtimeError()</code>, l&rsquo;instruction échouée est la précédente.</p>
 <aside name="stack">
-<p>Just showing the immediate line where the error occurred doesn&rsquo;t provide much
-context. Better would be a full stack trace. But we don&rsquo;t even have functions to
-call yet, so there is no call stack to trace.</p>
+<p>Juste montrer la ligne immédiate où l&rsquo;erreur s&rsquo;est produite ne fournit pas beaucoup de contexte. Mieux serait une trace de pile complète. Mais nous n&rsquo;avons même pas de fonction à appeler encore, donc il n&rsquo;y a pas de pile d&rsquo;appels à tracer.</p>
 </aside>
-<p>In order to use <code>va_list</code> and the macros for working with it, we need to bring
-in a standard header.</p>
+<p>Afin d&rsquo;utiliser <code>va_list</code> et les macros pour travailler avec elle, nous avons besoin d&rsquo;apporter un en-tête standard.</p>
 <div class="codehilite"><div class="source-file"><em>vm.c</em><br>
 add to top of file</div>
 <pre class="insert"><span class="a">#include &lt;stdarg.h&gt;</span>
@@ -454,19 +320,10 @@ add to top of file</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, add to top of file</div>
 
-<p>With this, our VM can not only do the right thing when we negate numbers (like
-it used to before we broke it), but it also gracefully handles erroneous
-attempts to negate other types (which we don&rsquo;t have yet, but still).</p>
-<h3><a href="#binary-arithmetic-operators" id="binary-arithmetic-operators"><small>18&#8202;.&#8202;3&#8202;.&#8202;2</small>Binary arithmetic operators</a></h3>
-<p>We have our runtime error machinery in place now, so fixing the binary operators
-is easier even though they&rsquo;re more complex. We support four binary operators
-today: <code>+</code>, <code>-</code>, <code>*</code>, and <code>/</code>. The only difference between them is which
-underlying C operator they use. To minimize redundant code between the four
-operators, we wrapped up the commonality in a big preprocessor macro that takes
-the operator token as a parameter.</p>
-<p>That macro seemed like overkill a <a href="a-virtual-machine.html#binary-operators">few chapters ago</a>, but we get the benefit
-from it today. It lets us add the necessary type checking and conversions in one
-place.</p>
+<p>Avec ceci, notre VM peut non seulement faire la bonne chose quand nous nions des nombres (comme elle le faisait avant que nous la cassions), mais elle gère aussi avec grâce les tentatives erronées de nier d&rsquo;autres types (que nous n&rsquo;avons pas encore, mais quand même).</p>
+<h3><a href="#opérateurs-arithmétiques-binaires" id="opérateurs-arithmétiques-binaires"><small>18&#8202;.&#8202;3&#8202;.&#8202;2</small>Opérateurs arithmétiques binaires</a></h3>
+<p>Nous avons notre machinerie d&rsquo;erreur d&rsquo;exécution en place maintenant, donc réparer les opérateurs binaires est plus facile même s&rsquo;ils sont plus complexes. Nous supportons quatre opérateurs binaires aujourd&rsquo;hui : <code>+</code>, <code>-</code>, <code>*</code>, et <code>/</code>. La seule différence entre eux est quel opérateur C sous-jacent ils utilisent. Pour minimiser le code redondant entre les quatre opérateurs, nous avons emballé la communalité dans une grosse macro préprocesseur qui prend le token opérateur comme paramètre.</p>
+<p>Cette macro semblait un peu excessive il y a <a href="machine-virtuelle.html#opérateurs-binaires">quelques chapitres</a>, mais nous tirons profit d&rsquo;elle aujourd&rsquo;hui. Elle nous laisse ajouter la vérification de type et les conversions nécessaires en un seul endroit.</p>
 <div class="codehilite"><pre class="insert-before">#define READ_CONSTANT() (vm.chunk-&gt;constants.values[READ_BYTE()])
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>run</em>()<br>
@@ -487,18 +344,10 @@ replace 6 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>(), replace 6 lines</div>
 
-<p>Yeah, I realize that&rsquo;s a monster of a macro. It&rsquo;s not what I&rsquo;d normally consider
-good C practice, but let&rsquo;s roll with it. The changes are similar to what we did
-for unary negate. First, we check that the two operands are both numbers. If
-either isn&rsquo;t, we report a runtime error and yank the ejection seat lever.</p>
-<p>If the operands are fine, we pop them both and unwrap them. Then we apply the
-given operator, wrap the result, and push it back on the stack. Note that we
-don&rsquo;t wrap the result by directly using <code>NUMBER_VAL()</code>. Instead, the wrapper to
-use is passed in as a macro <span name="macro">parameter</span>. For our
-existing arithmetic operators, the result is a number, so we pass in the
-<code>NUMBER_VAL</code> macro.</p>
+<p>Ouais, je réalise que c&rsquo;est un monstre de macro. Ce n&rsquo;est pas ce que je considérerais normalement comme une bonne pratique C, mais roulons avec. Les changements sont similaires à ce que nous avons fait pour la négation unaire. D&rsquo;abord, nous vérifions que les deux opérandes sont tous deux des nombres. Si l&rsquo;un ou l&rsquo;autre ne l&rsquo;est pas, nous rapportons une erreur d&rsquo;exécution et tirons le levier du siège éjectable.</p>
+<p>Si les opérandes sont bons, nous les dépilons tous les deux et les déballons. Ensuite nous appliquons l&rsquo;opérateur donné, emballons le résultat, et le repoussons sur la pile. Notez que nous n&rsquo;emballons pas le résultat en utilisant directement <code>NUMBER_VAL()</code>. Au lieu de cela, l&rsquo;emballeur à utiliser est passé comme un <span name="macro">paramètre</span> macro. Pour nos opérateurs arithmétiques existants, le résultat est un nombre, donc nous passons la macro <code>NUMBER_VAL</code>.</p>
 <aside name="macro">
-<p>Did you know you can pass macros as parameters to macros? Now you do!</p>
+<p>Saviez-vous que vous pouvez passer des macros comme paramètres à des macros ? Maintenant vous savez !</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">      }
 </pre><div class="source-file"><em>vm.c</em><br>
@@ -512,36 +361,15 @@ replace 4 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>(), replace 4 lines</div>
 
-<p>Soon, I&rsquo;ll show you why we made the wrapping macro an argument.</p>
-<h2><a href="#two-new-types" id="two-new-types"><small>18&#8202;.&#8202;4</small>Two New Types</a></h2>
-<p>All of our existing clox code is back in working order. Finally, it&rsquo;s time to
-add some new types. We&rsquo;ve got a running numeric calculator that now does a
-number of pointless paranoid runtime type checks. We can represent other types
-internally, but there&rsquo;s no way for a user&rsquo;s program to ever create a Value of
-one of those types.</p>
-<p>Not until now, that is. We&rsquo;ll start by adding compiler support for the three new
-literals: <code>true</code>, <code>false</code>, and <code>nil</code>. They&rsquo;re all pretty simple, so we&rsquo;ll do all
-three in a single batch.</p>
-<p>With number literals, we had to deal with the fact that there are billions of
-possible numeric values. We attended to that by storing the literal&rsquo;s value in
-the chunk&rsquo;s constant table and emitting a bytecode instruction that simply
-loaded that constant. We could do the same thing for the new types. We&rsquo;d store,
-say, <code>true</code>, in the constant table, and use an <code>OP_CONSTANT</code> to read it out.</p>
-<p>But given that there are literally (heh) only three possible values we need to
-worry about with these new types, it&rsquo;s gratuitous<span class="em">&mdash;</span>and <span
-name="small">slow!</span><span class="em">&mdash;</span>to waste a two-byte instruction and a constant
-table entry on them. Instead, we&rsquo;ll define three dedicated instructions to push
-each of these literals on the stack.</p>
+<p>Bientôt, je vous montrerai pourquoi nous avons fait de la macro d&rsquo;emballage un argument.</p>
+<h2><a href="#deux-nouveaux-types" id="deux-nouveaux-types"><small>18&#8202;.&#8202;4</small>Deux Nouveaux Types</a></h2>
+<p>Tout notre code clox existant est de retour en état de marche. Finalement, il est temps d&rsquo;ajouter de nouveaux types. Nous avons une calculatrice numérique tournante qui fait maintenant un certain nombre de vérifications de type à l&rsquo;exécution paranoïaques et sans objet. Nous pouvons représenter d&rsquo;autres types en interne, mais il n&rsquo;y a aucun moyen pour un programme utilisateur de jamais créer une Value d&rsquo;un de ces types.</p>
+<p>Pas jusqu&rsquo;à maintenant, c&rsquo;est-à-dire. Nous commencerons par ajouter le support du compilateur pour les trois nouveaux littéraux : <code>true</code>, <code>false</code>, et <code>nil</code>. Ils sont tous assez simples, donc nous ferons tous les trois dans un seul lot.</p>
+<p>Avec les littéraux nombre, nous avons dû gérer le fait qu&rsquo;il y a des milliards de valeurs numériques possibles. Nous nous sommes occupés de cela en stockant la valeur du littéral dans la table de constantes du morceau et en émettant une instruction bytecode qui chargeait simplement cette constante. Nous pourrions faire la même chose pour les nouveaux types. Nous stockerions, disons, <code>true</code>, dans la table de constantes, et utiliserions un <code>OP_CONSTANT</code> pour le lire.</p>
+<p>Mais étant donné qu&rsquo;il y a littéralement (hé) seulement trois valeurs possibles dont nous avons besoin de nous inquiéter avec ces nouveaux types, c&rsquo;est gratuit<span class="em">&mdash;</span>et <span name="small">lent !</span><span class="em">&mdash;</span>de gaspiller une instruction de deux octets et une entrée de table de constantes pour eux. Au lieu de cela, nous définirons trois instructions dédiées pour pousser chacun de ces littéraux sur la pile.</p>
 <aside name="small" class="bottom">
-<p>I&rsquo;m not kidding about dedicated operations for certain constant values being
-faster. A bytecode VM spends much of its execution time reading and decoding
-instructions. The fewer, simpler instructions you need for a given piece of
-behavior, the faster it goes. Short instructions dedicated to common operations
-are a classic optimization.</p>
-<p>For example, the Java bytecode instruction set has dedicated instructions for
-loading 0.0, 1.0, 2.0, and the integer values from -1 through 5. (This ends up
-being a vestigial optimization given that most mature JVMs now JIT-compile the
-bytecode to machine code before execution anyway.)</p>
+<p>Je ne plaisante pas à propos des opérations dédiées pour certaines valeurs constantes qui sont plus rapides. Une VM à bytecode passe beaucoup de son temps d&rsquo;exécution à lire et décoder des instructions. Moins vous avez besoin d&rsquo;instructions, et plus elles sont simples pour un comportement donné, plus ça va vite. Les instructions courtes dédiées aux opérations communes sont une optimisation classique.</p>
+<p>Par exemple, le jeu d&rsquo;instructions bytecode Java a des instructions dédiées pour charger 0.0, 1.0, 2.0, et les valeurs entières de -1 à 5. (Cela finit par être une optimisation vestigiale étant donné que la plupart des JVMs matures compilent maintenant à la volée (JIT) le bytecode en code machine avant l&rsquo;exécution de toute façon.)</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">  OP_CONSTANT,
 </pre><div class="source-file"><em>chunk.h</em><br>
@@ -553,10 +381,7 @@ in enum <em>OpCode</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>chunk.h</em>, in enum <em>OpCode</em></div>
 
-<p>Our scanner already treats <code>true</code>, <code>false</code>, and <code>nil</code> as keywords, so we can
-skip right to the parser. With our table-based Pratt parser, we just need to
-slot parser functions into the rows associated with those keyword token types.
-We&rsquo;ll use the same function in all three slots. Here:</p>
+<p>Notre scanner traite déjà <code>true</code>, <code>false</code>, et <code>nil</code> comme des mots-clés, donc nous pouvons sauter directement au parseur. Avec notre parseur Pratt basé sur table, nous avons juste besoin d&rsquo;insérer des fonctions de parseur dans les lignes associées avec ces types de token mot-clé. Nous utiliserons la même fonction dans les trois emplacements. Ici :</p>
 <div class="codehilite"><pre class="insert-before">  [TOKEN_ELSE]          = {NULL,     NULL,   PREC_NONE},
 </pre><div class="source-file"><em>compiler.c</em><br>
 replace 1 line</div>
@@ -565,7 +390,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, replace 1 line</div>
 
-<p>Here:</p>
+<p>Ici :</p>
 <div class="codehilite"><pre class="insert-before">  [TOKEN_THIS]          = {NULL,     NULL,   PREC_NONE},
 </pre><div class="source-file"><em>compiler.c</em><br>
 replace 1 line</div>
@@ -574,7 +399,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, replace 1 line</div>
 
-<p>And here:</p>
+<p>Et ici :</p>
 <div class="codehilite"><pre class="insert-before">  [TOKEN_IF]            = {NULL,     NULL,   PREC_NONE},
 </pre><div class="source-file"><em>compiler.c</em><br>
 replace 1 line</div>
@@ -583,8 +408,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, replace 1 line</div>
 
-<p>When the parser encounters <code>false</code>, <code>nil</code>, or <code>true</code>, in prefix position, it
-calls this new parser function:</p>
+<p>Quand le parseur rencontre <code>false</code>, <code>nil</code>, ou <code>true</code>, en position préfixe, il appelle cette nouvelle fonction de parseur :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>binary</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">literal</span>() {
@@ -598,15 +422,9 @@ add after <em>binary</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>binary</em>()</div>
 
-<p>Since <code>parsePrecedence()</code> has already consumed the keyword token, all we need to
-do is output the proper instruction. We <span name="switch">figure</span> that
-out based on the type of token we parsed. Our front end can now compile Boolean
-and nil literals to bytecode. Moving down the execution pipeline, we reach the
-interpreter.</p>
+<p>Puisque <code>parsePrecedence()</code> a déjà consommé le token mot-clé, tout ce que nous avons besoin de faire est de sortir l&rsquo;instruction appropriée. Nous <span name="switch">déterminons</span> celle-ci basé sur le type de token que nous avons parsé. Notre front end peut maintenant compiler les littéraux Booléens et nil en bytecode. En descendant le pipeline d&rsquo;exécution, nous atteignons l&rsquo;interpréteur.</p>
 <aside name="switch">
-<p>We could have used separate parser functions for each literal and saved
-ourselves a switch but that felt needlessly verbose to me. I think it&rsquo;s mostly a
-matter of taste.</p>
+<p>Nous aurions pu utiliser des fonctions de parseur séparées pour chaque littéral et nous épargner un switch mais cela me semblait inutilement verbeux. Je pense que c&rsquo;est surtout une question de goût.</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">      case OP_CONSTANT: {
         Value constant = READ_CONSTANT();
@@ -622,8 +440,7 @@ in <em>run</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>()</div>
 
-<p>This is pretty self-explanatory. Each instruction summons the appropriate value
-and pushes it onto the stack. We shouldn&rsquo;t forget our disassembler either.</p>
+<p>C&rsquo;est assez auto-explicatif. Chaque instruction invoque la valeur appropriée et la pousse sur la pile. Nous ne devrions pas oublier notre désassembleur non plus.</p>
 <div class="codehilite"><pre class="insert-before">    case OP_CONSTANT:
       return constantInstruction(&quot;OP_CONSTANT&quot;, chunk, offset);
 </pre><div class="source-file"><em>debug.c</em><br>
@@ -638,11 +455,10 @@ in <em>disassembleInstruction</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>debug.c</em>, in <em>disassembleInstruction</em>()</div>
 
-<p>With this in place, we can run this Earth-shattering program:</p>
+<p>Avec ceci en place, nous pouvons lancer ce programme bouleversant :</p>
 <div class="codehilite"><pre><span class="k">true</span>
 </pre></div>
-<p>Except that when the interpreter tries to print the result, it blows up. We need
-to extend <code>printValue()</code> to handle the new types too:</p>
+<p>Sauf que quand l&rsquo;interpréteur essaie d&rsquo;imprimer le résultat, il explose. Nous avons besoin d&rsquo;étendre <code>printValue()</code> pour gérer aussi les nouveaux types :</p>
 <div class="codehilite"><pre class="insert-before">void printValue(Value value) {
 </pre><div class="source-file"><em>value.c</em><br>
 in <em>printValue</em>()<br>
@@ -658,15 +474,12 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>value.c</em>, in <em>printValue</em>(), replace 1 line</div>
 
-<p>There we go! Now we have some new types. They just aren&rsquo;t very useful yet. Aside
-from the literals, you can&rsquo;t really <em>do</em> anything with them. It will be a while
-before <code>nil</code> comes into play, but we can start putting Booleans to work in the
-logical operators.</p>
-<h3><a href="#logical-not-and-falsiness" id="logical-not-and-falsiness"><small>18&#8202;.&#8202;4&#8202;.&#8202;1</small>Logical not and falsiness</a></h3>
-<p>The simplest logical operator is our old exclamatory friend unary not.</p>
+<p>Et voilà ! Maintenant nous avons de nouveaux types. Ils ne sont juste pas encore très utiles. À part les littéraux, vous ne pouvez pas vraiment <em>faire</em> quoi que ce soit avec eux. Il se passera un moment avant que <code>nil</code> entre en jeu, mais nous pouvons commencer à mettre les Booléens au travail dans les opérateurs logiques.</p>
+<h3><a href="#non-logique-et-fausseté" id="non-logique-et-fausseté"><small>18&#8202;.&#8202;4&#8202;.&#8202;1</small>Non logique et fausseté</a></h3>
+<p>L&rsquo;opérateur logique le plus simple est notre vieil ami exclamatif non unaire.</p>
 <div class="codehilite"><pre><span class="k">print</span> !<span class="k">true</span>; <span class="c">// &quot;false&quot;</span>
 </pre></div>
-<p>This new operation gets a new instruction.</p>
+<p>Cette nouvelle opération obtient une nouvelle instruction.</p>
 <div class="codehilite"><pre class="insert-before">  OP_DIVIDE,
 </pre><div class="source-file"><em>chunk.h</em><br>
 in enum <em>OpCode</em></div>
@@ -675,8 +488,7 @@ in enum <em>OpCode</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>chunk.h</em>, in enum <em>OpCode</em></div>
 
-<p>We can reuse the <code>unary()</code> parser function we wrote for unary negation to
-compile a not expression. We just need to slot it into the parsing table.</p>
+<p>Nous pouvons réutiliser la fonction de parseur <code>unary()</code> que nous avons écrite pour la négation unaire pour compiler une expression non. Nous avons juste besoin de l&rsquo;insérer dans la table de parsing.</p>
 <div class="codehilite"><pre class="insert-before">  [TOKEN_STAR]          = {NULL,     binary, PREC_FACTOR},
 </pre><div class="source-file"><em>compiler.c</em><br>
 replace 1 line</div>
@@ -685,9 +497,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, replace 1 line</div>
 
-<p>Because I knew we were going to do this, the <code>unary()</code> function already has a
-switch on the token type to figure out which bytecode instruction to output. We
-merely add another case.</p>
+<p>Parce que je savais que nous allions faire ceci, la fonction <code>unary()</code> a déjà un switch sur le type de token pour déterminer quelle instruction bytecode sortir. Nous ajoutons simplement un autre cas.</p>
 <div class="codehilite"><pre class="insert-before">  switch (operatorType) {
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>unary</em>()</div>
@@ -698,8 +508,7 @@ in <em>unary</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>unary</em>()</div>
 
-<p>That&rsquo;s it for the front end. Let&rsquo;s head over to the VM and conjure this
-instruction into life.</p>
+<p>C&rsquo;est tout pour le front end. Allons vers la VM et conjurons cette instruction à la vie.</p>
 <div class="codehilite"><pre class="insert-before">      case OP_DIVIDE:   BINARY_OP(NUMBER_VAL, /); break;
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>run</em>()</div>
@@ -710,21 +519,12 @@ in <em>run</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>()</div>
 
-<p>Like our previous unary operator, it pops the one operand, performs the
-operation, and pushes the result. And, as we did there, we have to worry about
-dynamic typing. Taking the logical not of <code>true</code> is easy, but there&rsquo;s nothing
-preventing an unruly programmer from writing something like this:</p>
+<p>Comme notre opérateur unaire précédent, il dépile l&rsquo;unique opérande, effectue l&rsquo;opération, et pousse le résultat. Et, comme nous l&rsquo;avons fait là, nous devons nous inquiéter du typage dynamique. Prendre le non logique de <code>true</code> est facile, mais il n&rsquo;y a rien empêchant un programmeur indiscipliné d&rsquo;écrire quelque chose comme ceci :</p>
 <div class="codehilite"><pre><span class="k">print</span> !<span class="k">nil</span>;
 </pre></div>
-<p>For unary minus, we made it an error to negate anything that isn&rsquo;t a <span
-name="negate">number</span>. But Lox, like most scripting languages, is more
-permissive when it comes to <code>!</code> and other contexts where a Boolean is expected.
-The rule for how other types are handled is called &ldquo;falsiness&rdquo;, and we implement
-it here:</p>
+<p>Pour le moins unaire, nous avons fait une erreur de nier tout ce qui n&rsquo;est pas un <span name="negate">nombre</span>. Mais Lox, comme la plupart des langages de script, est plus permissif quand il s&rsquo;agit de <code>!</code> et d&rsquo;autres contextes où un Booléen est attendu. La règle pour comment les autres types sont gérés est appelée &ldquo;fausseté&rdquo; (falsiness), et nous l&rsquo;implémentons ici :</p>
 <aside name="negate">
-<p>Now I can&rsquo;t help but try to figure out what it would mean to negate other types
-of values. <code>nil</code> is probably its own negation, sort of like a weird pseudo-zero.
-Negating a string could, uh, reverse it?</p>
+<p>Maintenant je ne peux m&rsquo;empêcher d&rsquo;essayer de comprendre ce que cela signifierait de nier d&rsquo;autres types de valeurs. <code>nil</code> est probablement sa propre négation, une sorte de pseudo-zéro bizarre. Nier une chaîne pourrait, euh, la renverser ?</p>
 </aside>
 <div class="codehilite"><div class="source-file"><em>vm.c</em><br>
 add after <em>peek</em>()</div>
@@ -734,9 +534,7 @@ add after <em>peek</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, add after <em>peek</em>()</div>
 
-<p>Lox follows Ruby in that <code>nil</code> and <code>false</code> are falsey and every other value
-behaves like <code>true</code>. We&rsquo;ve got a new instruction we can generate, so we also
-need to be able to <em>un</em>generate it in the disassembler.</p>
+<p>Lox suit Ruby en ce que <code>nil</code> et <code>false</code> sont faux (&ldquo;falsey&rdquo;) et toute autre valeur se comporte comme <code>true</code>. Nous avons une nouvelle instruction que nous pouvons générer, donc nous avons aussi besoin d&rsquo;être capable de la <em>dé</em>générer dans le désassembleur.</p>
 <div class="codehilite"><pre class="insert-before">    case OP_DIVIDE:
       return simpleInstruction(&quot;OP_DIVIDE&quot;, offset);
 </pre><div class="source-file"><em>debug.c</em><br>
@@ -747,13 +545,9 @@ in <em>disassembleInstruction</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>debug.c</em>, in <em>disassembleInstruction</em>()</div>
 
-<h3><a href="#equality-and-comparison-operators" id="equality-and-comparison-operators"><small>18&#8202;.&#8202;4&#8202;.&#8202;2</small>Equality and comparison operators</a></h3>
-<p>That wasn&rsquo;t too bad. Let&rsquo;s keep the momentum going and knock out the equality
-and comparison operators too: <code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, and <code>&gt;=</code>. That covers
-all of the operators that return Boolean results except the logical operators
-<code>and</code> and <code>or</code>. Since those need to short-circuit (basically do a little
-control flow) we aren&rsquo;t ready for them yet.</p>
-<p>Here are the new instructions for those operators:</p>
+<h3><a href="#égalité-et-opérateurs-de-comparaison" id="égalité-et-opérateurs-de-comparaison"><small>18&#8202;.&#8202;4&#8202;.&#8202;2</small>Égalité et opérateurs de comparaison</a></h3>
+<p>Ce n&rsquo;était pas trop mal. Gardons le momentum et assommons l&rsquo;égalité et les opérateurs de comparaison aussi : <code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, et <code>&gt;=</code>. Cela couvre tous les opérateurs qui renvoient des résultats Booléens excepté les opérateurs logiques <code>and</code> et <code>or</code>. Puisque ceux-là ont besoin de court-circuiter (basiquement faire un peu de contrôle de flux) nous ne sommes pas prêts pour eux encore.</p>
+<p>Voici les nouvelles instructions pour ce opérateurs :</p>
 <div class="codehilite"><pre class="insert-before">  OP_FALSE,
 </pre><div class="source-file"><em>chunk.h</em><br>
 in enum <em>OpCode</em></div>
@@ -764,29 +558,14 @@ in enum <em>OpCode</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>chunk.h</em>, in enum <em>OpCode</em></div>
 
-<p>Wait, only three? What about <code>!=</code>, <code>&lt;=</code>, and <code>&gt;=</code>? We could create instructions
-for those too. Honestly, the VM would execute faster if we did, so we <em>should</em>
-do that if the goal is performance.</p>
-<p>But my main goal is to teach you about bytecode compilers. I want you to start
-internalizing the idea that the bytecode instructions don&rsquo;t need to closely
-follow the user&rsquo;s source code. The VM has total freedom to use whatever
-instruction set and code sequences it wants as long as they have the right
-user-visible behavior.</p>
-<p>The expression <code>a != b</code> has the same semantics as <code>!(a == b)</code>, so the compiler
-is free to compile the former as if it were the latter. Instead of a dedicated
-<code>OP_NOT_EQUAL</code> instruction, it can output an <code>OP_EQUAL</code> followed by an <code>OP_NOT</code>.
-Likewise, <code>a &lt;= b</code> is the <span name="same">same</span> as <code>!(a &gt; b)</code> and <code>a &gt;= b</code> is <code>!(a &lt; b)</code>. Thus, we only need three new instructions.</p>
+<p>Attendez, seulement trois ? Quoi à propos de <code>!=</code>, <code>&lt;=</code>, et <code>&gt;=</code> ? Nous pourrions créer des instructions pour ceux-là aussi. Honnêtement, la VM s&rsquo;exécuterait plus vite si nous le faisions, donc nous <em>devrions</em> faire ça si le but est la performance.</p>
+<p>Mais mon but principal est de vous enseigner à propos des compilateurs bytecode. Je veux que vous commenciez à internaliser l&rsquo;idée que les instructions bytecode n&rsquo;ont pas besoin de suivre de près le code source de l&rsquo;utilisateur. La VM a une liberté totale d&rsquo;utiliser n&rsquo;importe quel jeu d&rsquo;instructions et séquences de code qu&rsquo;elle veut tant qu&rsquo;ils ont le bon comportement visible par l&rsquo;utilisateur.</p>
+<p>L&rsquo;expression <code>a != b</code> a la même sémantique que <code>!(a == b)</code>, donc le compilateur est libre de compiler la première comme si c&rsquo;était la seconde. Au lieu d&rsquo;une instruction <code>OP_NOT_EQUAL</code> dédiée, il peut sortir un <code>OP_EQUAL</code> suivi par un <code>OP_NOT</code>. De même, <code>a &lt;= b</code> est la <span name="same">même</span> chose que <code>!(a &gt; b)</code> et <code>a &gt;= b</code> est <code>!(a &lt; b)</code>. Ainsi, nous avons seulement besoin de trois nouvelles instructions.</p>
 <aside name="same" class="bottom">
-<p><em>Is</em> <code>a &lt;= b</code> always the same as <code>!(a &gt; b)</code>? According to <a href="https://en.wikipedia.org/wiki/IEEE_754">IEEE 754</a>, all
-comparison operators return false when an operand is NaN. That means <code>NaN &lt;= 1</code>
-is false and <code>NaN &gt; 1</code> is also false. But our desugaring assumes the latter is
-always the negation of the former.</p>
-<p>For the book, we won&rsquo;t get hung up on this, but these kinds of details will
-matter in your real language implementations.</p>
+<p><em>Est-ce que</em> <code>a &lt;= b</code> est toujours la même chose que <code>!(a &gt; b)</code> ? Selon <a href="https://en.wikipedia.org/wiki/IEEE_754">IEEE 754</a>, tous les opérateurs de comparaison renvoient faux quand un opérande est NaN. Cela signifie que <code>NaN &lt;= 1</code> est faux et <code>NaN &gt; 1</code> est aussi faux. Mais notre désucrage suppose que ce dernier est toujours la négation du premier.</p>
+<p>Pour le livre, nous ne nous bloquerons pas là-dessus, mais ces genres de détails compteront dans vos implémentations de langage réelles.</p>
 </aside>
-<p>Over in the parser, though, we do have six new operators to slot into the parse
-table. We use the same <code>binary()</code> parser function from before. Here&rsquo;s the row
-for <code>!=</code>:</p>
+<p>Là-bas dans le parseur, cependant, nous avons six nouveaux opérateurs à insérer dans la table de parsing. Nous utilisons la même fonction de parseur <code>binary()</code> d&rsquo;avant. Voici la ligne pour <code>!=</code> :</p>
 <div class="codehilite"><pre class="insert-before">  [TOKEN_BANG]          = {unary,    NULL,   PREC_NONE},
 </pre><div class="source-file"><em>compiler.c</em><br>
 replace 1 line</div>
@@ -795,7 +574,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, replace 1 line</div>
 
-<p>The remaining five operators are a little farther down in the table.</p>
+<p>Les cinq opérateurs restants sont un peu plus bas dans la table.</p>
 <div class="codehilite"><pre class="insert-before">  [TOKEN_EQUAL]         = {NULL,     NULL,   PREC_NONE},
 </pre><div class="source-file"><em>compiler.c</em><br>
 replace 5 lines</div>
@@ -808,8 +587,7 @@ replace 5 lines</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, replace 5 lines</div>
 
-<p>Inside <code>binary()</code> we already have a switch to generate the right bytecode for
-each token type. We add cases for the six new operators.</p>
+<p>À l&rsquo;intérieur de <code>binary()</code> nous avons déjà un switch pour générer le bon bytecode pour chaque type de token. Nous ajoutons des cas pour les six nouveaux opérateurs.</p>
 <div class="codehilite"><pre class="insert-before">  switch (operatorType) {
 </pre><div class="source-file"><em>compiler.c</em><br>
 in <em>binary</em>()</div>
@@ -823,11 +601,8 @@ in <em>binary</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, in <em>binary</em>()</div>
 
-<p>The <code>==</code>, <code>&lt;</code>, and <code>&gt;</code> operators output a single instruction. The others output
-a pair of instructions, one to evalute the inverse operation, and then an
-<code>OP_NOT</code> to flip the result. Six operators for the price of three instructions!</p>
-<p>That means over in the VM, our job is simpler. Equality is the most general
-operation.</p>
+<p>Les opérateurs <code>==</code>, <code>&lt;</code>, et <code>&gt;</code> sortent une instruction unique. Les autres sortent une paire d&rsquo;instructions, une pour évaluer l&rsquo;opération inverse, et ensuite un <code>OP_NOT</code> pour inverser le résultat. Six opérateurs pour le prix de trois instructions !</p>
+<p>Cela signifie que là-bas dans la VM, notre travail est plus simple. L&rsquo;égalité est l&rsquo;opération la plus générale.</p>
 <div class="codehilite"><pre class="insert-before">      case OP_FALSE: push(BOOL_VAL(false)); break;
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>run</em>()</div>
@@ -841,11 +616,7 @@ in <em>run</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>()</div>
 
-<p>You can evaluate <code>==</code> on any pair of objects, even objects of different types.
-There&rsquo;s enough complexity that it makes sense to shunt that logic over to a
-separate function. That function always returns a C <code>bool</code>, so we can safely
-wrap the result in a <code>BOOL_VAL</code>. The function relates to Values, so it lives
-over in the &ldquo;value&rdquo; module.</p>
+<p>Vous pouvez évaluer <code>==</code> sur n&rsquo;importe quelle paire d&rsquo;objets, même des objets de types différents. Il y a assez de complexité pour que cela ait du sens de déporter cette logique vers une fonction séparée. Cette fonction renvoie toujours un <code>bool</code> C, donc nous pouvons emballer en toute sécurité le résultat dans une <code>BOOL_VAL</code>. La fonction se rapporte aux Values, donc elle vit là-bas dans le module &ldquo;value&rdquo;.</p>
 <div class="codehilite"><pre class="insert-before">} ValueArray;
 
 </pre><div class="source-file"><em>value.h</em><br>
@@ -855,7 +626,7 @@ add after struct <em>ValueArray</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>value.h</em>, add after struct <em>ValueArray</em></div>
 
-<p>And here&rsquo;s the implementation:</p>
+<p>Et voici l&rsquo;implémentation :</p>
 <div class="codehilite"><div class="source-file"><em>value.c</em><br>
 add after <em>printValue</em>()</div>
 <pre><span class="t">bool</span> <span class="i">valuesEqual</span>(<span class="t">Value</span> <span class="i">a</span>, <span class="t">Value</span> <span class="i">b</span>) {
@@ -870,33 +641,15 @@ add after <em>printValue</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>value.c</em>, add after <em>printValue</em>()</div>
 
-<p>First, we check the types. If the Values have <span
-name="equal">different</span> types, they are definitely not equal. Otherwise,
-we unwrap the two Values and compare them directly.</p>
+<p>D&rsquo;abord, nous vérifions les types. Si les Values ont des types <span name="equal">différents</span>, elles ne sont définitivement pas égales. Sinon, nous déballons les deux Values et les comparons directement.</p>
 <aside name="equal">
-<p>Some languages have &ldquo;implicit conversions&rdquo; where values of different types may
-be considered equal if one can be converted to the other&rsquo;s type. For example,
-the number 0 is equivalent to the string &ldquo;0&rdquo; in JavaScript. This looseness was a
-large enough source of pain that JS added a separate &ldquo;strict equality&rdquo; operator,
-<code>===</code>.</p>
-<p>PHP considers the strings &ldquo;1&rdquo; and &ldquo;01&rdquo; to be equivalent because both can be
-converted to equivalent numbers, though the ultimate reason is because PHP was
-designed by a Lovecraftian eldritch god to destroy the mind.</p>
-<p>Most dynamically typed languages that have separate integer and floating-point
-number types consider values of different number types equal if the numeric
-values are the same (so, say, 1.0 is equal to 1), though even that seemingly
-innocuous convenience can bite the unwary.</p>
+<p>Certains langages ont des &ldquo;conversions implicites&rdquo; où des valeurs de types différents peuvent être considérées égales si l&rsquo;une peut être convertie vers le type de l&rsquo;autre. Par exemple, le nombre 0 est équivalent à la chaîne &ldquo;0&rdquo; en JavaScript. Ce relâchement était une source de douleur assez grande pour que JS ajoute un opérateur d&rsquo;&ldquo;égalité stricte&rdquo; séparé, <code>===</code>.</p>
+<p>PHP considère les chaînes &ldquo;1&rdquo; et &ldquo;01&rdquo; comme étant équivalentes parce que les deux peuvent être converties en nombres équivalents, bien que la raison ultime soit parce que PHP a été conçu par un dieu ancien lovecraftien pour détruire l&rsquo;esprit.</p>
+<p>La plupart des langages typés dynamiquement qui ont des types nombre entier et à virgule flottante séparés considèrent les valeurs de types de nombre différents égales si les valeurs numériques sont les mêmes (donc, disons, 1.0 est égal à 1), bien que même cette commodité apparemment inoffensive puisse mordre les imprudents.</p>
 </aside>
-<p>For each value type, we have a separate case that handles comparing the value
-itself. Given how similar the cases are, you might wonder why we can&rsquo;t simply
-<code>memcmp()</code> the two Value structs and be done with it. The problem is that
-because of padding and different-sized union fields, a Value contains unused
-bits. C gives no guarantee about what is in those, so it&rsquo;s possible that two
-equal Values actually differ in memory that isn&rsquo;t used.</p><img src="image/types-of-values/memcmp.png" alt="The memory respresentations of two equal values that differ in unused bytes." />
-<p>(You wouldn&rsquo;t believe how much pain I went through before learning this fact.)</p>
-<p>Anyway, as we add more types to clox, this function will grow new cases. For
-now, these three are sufficient. The other comparison operators are easier since
-they work only on numbers.</p>
+<p>Pour chaque type de valeur, nous avons un cas séparé qui gère la comparaison de la valeur elle-même. Étant donné combien les cas sont similaires, vous pourriez vous demander pourquoi nous ne pouvons pas simplement <code>memcmp()</code> les deux structs Value et en avoir fini avec ça. Le problème est qu&rsquo;à cause du remplissage et des champs d&rsquo;union de tailles différentes, une Value contient des bits inutilisés. C ne donne aucune garantie sur ce qui est dans ceux-ci, donc il est possible que deux Values égales diffèrent en fait dans la mémoire qui n&rsquo;est pas utilisée.</p><img src="image/types-of-values/memcmp.png" alt="Les représentations mémoire de deux valeurs égales qui diffèrent dans les octets inutilisés." />
+<p>(Vous ne croiriez pas combien de douleur j&rsquo;ai traversée avant d&rsquo;apprendre ce fait.)</p>
+<p>Quoi qu&rsquo;il en soit, alors que nous ajoutons plus de types à clox, cette fonction grandira de nouveaux cas. Pour l&rsquo;instant, ces trois sont suffisants. Les autres opérateurs de comparaison sont plus faciles puisqu&rsquo;ils fonctionnent seulement sur les nombres.</p>
 <div class="codehilite"><pre class="insert-before">        push(BOOL_VAL(valuesEqual(a, b)));
         break;
       }
@@ -908,10 +661,8 @@ in <em>run</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>()</div>
 
-<p>We already extended the <code>BINARY_OP</code> macro to handle operators that return
-non-numeric types. Now we get to use that. We pass in <code>BOOL_VAL</code> since the
-result value type is Boolean. Otherwise, it&rsquo;s no different from plus or minus.</p>
-<p>As always, the coda to today&rsquo;s aria is disassembling the new instructions.</p>
+<p>Nous avons déjà étendu la macro <code>BINARY_OP</code> pour gérer les opérateurs qui renvoient des types non-numériques. Maintenant nous pouvons utiliser cela. Nous passons <code>BOOL_VAL</code> puisque le type de valeur résultat est Booléen. Sinon, ce n&rsquo;est pas différent de plus ou moins.</p>
+<p>Comme toujours, la coda de l&rsquo;aria d&rsquo;aujourd&rsquo;hui est de désassembler les nouvelles instructions.</p>
 <div class="codehilite"><pre class="insert-before">    case OP_FALSE:
       return simpleInstruction(&quot;OP_FALSE&quot;, offset);
 </pre><div class="source-file"><em>debug.c</em><br>
@@ -926,28 +677,18 @@ in <em>disassembleInstruction</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>debug.c</em>, in <em>disassembleInstruction</em>()</div>
 
-<p>With that, our numeric calculator has become something closer to a general
-expression evaluator. Fire up clox and type in:</p>
+<p>Avec cela, notre calculatrice numérique est devenue quelque chose de plus proche d&rsquo;un évaluateur d&rsquo;expressions général. Démarrez clox et tapez :</p>
 <div class="codehilite"><pre>!(<span class="n">5</span> - <span class="n">4</span> &gt; <span class="n">3</span> * <span class="n">2</span> == !<span class="k">nil</span>)
 </pre></div>
-<p>OK, I&rsquo;ll admit that&rsquo;s maybe not the most <em>useful</em> expression, but we&rsquo;re making
-progress. We have one missing built-in type with its own literal form: strings.
-Those are much more complex because strings can vary in size. That tiny
-difference turns out to have implications so large that we give strings <a href="strings.html">their
-very own chapter</a>.</p>
+<p>OK, j&rsquo;admettrai que ce n&rsquo;est peut-être pas l&rsquo;expression la plus <em>utile</em>, mais nous faisons des progrès. Nous avons un type intégré manquant avec sa propre forme littérale : les chaînes. Celles-ci sont bien plus complexes parce que les chaînes peuvent varier en taille. Cette minuscule différence s&rsquo;avère avoir des implications si grandes que nous donnons aux chaînes <a href="chaînes-de-caractères.html">leur propre chapitre</a>.</p>
 <div class="challenges">
-<h2><a href="#challenges" id="challenges">Challenges</a></h2>
+<h2><a href="#défis" id="défis"><small>18&#8202;.&#8202;5</small>Défis</a></h2>
 <ol>
 <li>
-<p>We could reduce our binary operators even further than we did here. Which
-other instructions can you eliminate, and how would the compiler cope with
-their absence?</p>
+<p>Nous pourrions réduire nos opérateurs binaires encore plus loin que nous l&rsquo;avons fait ici. Quelles autres instructions pouvez-vous éliminer, et comment le compilateur se débrouillerait-il avec leur absence ?</p>
 </li>
 <li>
-<p>Conversely, we can improve the speed of our bytecode VM by adding more
-specific instructions that correspond to higher-level operations. What
-instructions would you define to speed up the kind of user code we added
-support for in this chapter?</p>
+<p>Inversement, nous pouvons améliorer la vitesse de notre VM bytecode en ajoutant plus d&rsquo;instructions spécifiques qui correspondent à des opérations de plus haut niveau. Quelles instructions définiriez-vous pour accélérer le genre de code utilisateur pour lequel nous avons ajouté le support dans ce chapitre ?</p>
 </li>
 </ol>
 </div>

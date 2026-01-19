@@ -37,20 +37,19 @@
 <h3><a href="#top">Chaînes de caractères<small>19</small></a></h3>
 
 <ul>
-    <li><a href="#values-and-objects"><small>19.1</small> Values and Objects</a></li>
-    <li><a href="#struct-inheritance"><small>19.2</small> Struct Inheritance</a></li>
-    <li><a href="#strings"><small>19.3</small> Strings</a></li>
-    <li><a href="#operations-on-strings"><small>19.4</small> Operations on Strings</a></li>
-    <li><a href="#freeing-objects"><small>19.5</small> Freeing Objects</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
-    <li class="end-part"><a href="#design-note"><small>note</small>String Encoding</a></li>
+    <li><a href="#valeurs-et-objets"><small>19.1</small> Valeurs et Objets</a></li>
+    <li><a href="#héritage-de-structure"><small>19.2</small> Héritage de Structure</a></li>
+    <li><a href="#chaînes"><small>19.3</small> Chaînes</a></li>
+    <li><a href="#opérations-sur-les-chaînes"><small>19.4</small> Opérations sur les Chaînes</a></li>
+    <li><a href="#libérer-les-objets"><small>19.5</small> Libérer les Objets</a></li>
+    <li><a href="#défis"><small>19.6</small> Défis</a></li>
+    <li><a href="#note-de-conception--encodage-de-chaîne"><small>19.7</small> Note de Conception : Encodage de Chaîne</a></li>
 </ul>
 
 
 <div class="prev-next">
     <a href="types-de-valeurs.html" title="Types de valeurs" class="left">&larr;&nbsp;Previous</a>
-    <a href="a-bytecode-virtual-machine.html" title="A Bytecode Virtual Machine">&uarr;&nbsp;Up</a>
+    <a href="une-machine-virtuelle-à-bytecode.html" title="Une machine virtuelle à bytecode">&uarr;&nbsp;Up</a>
     <a href="tables-de-hachage.html" title="Tables de hachage" class="right">Next&nbsp;&rarr;</a>
 </div>  </div>
 </nav>
@@ -69,20 +68,19 @@
 <h3><a href="#top">Chaînes de caractères<small>19</small></a></h3>
 
 <ul>
-    <li><a href="#values-and-objects"><small>19.1</small> Values and Objects</a></li>
-    <li><a href="#struct-inheritance"><small>19.2</small> Struct Inheritance</a></li>
-    <li><a href="#strings"><small>19.3</small> Strings</a></li>
-    <li><a href="#operations-on-strings"><small>19.4</small> Operations on Strings</a></li>
-    <li><a href="#freeing-objects"><small>19.5</small> Freeing Objects</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
-    <li class="end-part"><a href="#design-note"><small>note</small>String Encoding</a></li>
+    <li><a href="#valeurs-et-objets"><small>19.1</small> Valeurs et Objets</a></li>
+    <li><a href="#héritage-de-structure"><small>19.2</small> Héritage de Structure</a></li>
+    <li><a href="#chaînes"><small>19.3</small> Chaînes</a></li>
+    <li><a href="#opérations-sur-les-chaînes"><small>19.4</small> Opérations sur les Chaînes</a></li>
+    <li><a href="#libérer-les-objets"><small>19.5</small> Libérer les Objets</a></li>
+    <li><a href="#défis"><small>19.6</small> Défis</a></li>
+    <li><a href="#note-de-conception--encodage-de-chaîne"><small>19.7</small> Note de Conception : Encodage de Chaîne</a></li>
 </ul>
 
 
 <div class="prev-next">
     <a href="types-de-valeurs.html" title="Types de valeurs" class="left">&larr;&nbsp;Previous</a>
-    <a href="a-bytecode-virtual-machine.html" title="A Bytecode Virtual Machine">&uarr;&nbsp;Up</a>
+    <a href="une-machine-virtuelle-à-bytecode.html" title="Une machine virtuelle à bytecode">&uarr;&nbsp;Up</a>
     <a href="tables-de-hachage.html" title="Tables de hachage" class="right">Next&nbsp;&rarr;</a>
 </div>  </div>
   <a id="expand-nav">≡</a>
@@ -95,46 +93,22 @@
   <h1>Chaînes de caractères</h1>
 
 <blockquote>
-<p>&ldquo;Ah? A small aversion to menial labor?&rdquo; The doctor cocked an eyebrow.
-&ldquo;Understandable, but misplaced. One should treasure those hum-drum
-tasks that keep the body occupied but leave the mind and heart unfettered.&rdquo;</p>
+<p>&ldquo;Ah ? Une petite aversion pour le travail manuel ?&rdquo; Le docteur haussa un sourcil.
+&ldquo;Compréhensible, mais mal placé. On devrait chérir ces tâches terre-à-terre qui gardent le corps occupé mais laissent l&rsquo;esprit et le cœur libres.&rdquo; (1)</p>
 <p><cite>Tad Williams, <em>The Dragonbone Chair</em></cite></p>
 </blockquote>
-<p>Our little VM can represent three types of values right now: numbers, Booleans,
-and <code>nil</code>. Those types have two important things in common: they&rsquo;re immutable
-and they&rsquo;re small. Numbers are the largest, and they still fit into two 64-bit
-words. That&rsquo;s a small enough price that we can afford to pay it for all values,
-even Booleans and nils which don&rsquo;t need that much space.</p>
-<p>Strings, unfortunately, are not so petite. There&rsquo;s no maximum length for a
-string. Even if we were to artificially cap it at some contrived limit like
-<span name="pascal">255</span> characters, that&rsquo;s still too much memory to spend
-on every single value.</p>
+<p>Notre petite VM peut représenter trois types de valeurs en ce moment : les nombres, les Booléens, et <code>nil</code>. Ces types deux choses importantes en commun : ils sont immuables et ils sont petits. Les nombres sont les plus grands, et ils tiennent toujours dans deux mots de 64 bits. C&rsquo;est un prix assez petit que nous pouvons nous permettre de payer pour toutes les valeurs, même les Booléens et les nils qui n&rsquo;ont pas besoin d&rsquo;autant d&rsquo;espace.</p>
+<p>Les chaînes de caractères, malheureusement, ne sont pas si petites. Il n&rsquo;y a pas de longueur maximale pour une chaîne. Même si nous devions artificiellement la plafonner à quelque limite controuvée comme <span name="pascal">255</span> caractères, c&rsquo;est encore trop de mémoire à dépenser sur chaque valeur unique.</p>
 <aside name="pascal">
-<p>UCSD Pascal, one of the first implementations of Pascal, had this exact limit.
-Instead of using a terminating null byte to indicate the end of the string like
-C, Pascal strings started with a length value. Since UCSD used only a single
-byte to store the length, strings couldn&rsquo;t be any longer than 255 characters.</p><img src="image/strings/pstring.png" alt="The Pascal string 'hello' with a length byte of 5 preceding it." />
+<p>UCSD Pascal, une des premières implémentations de Pascal, avait cette limite exacte. Au lieu d&rsquo;utiliser un octet nul de terminaison pour indiquer la fin de la chaîne comme C, les chaînes Pascal commençaient avec une valeur de longueur. Puisque UCSD utilisait seulement un octet unique pour stocker la longueur, les chaînes ne pouvaient pas être plus longues que 255 caractères.</p><img src="image/strings/pstring.png" alt="La chaîne Pascal 'hello' avec un octet de longueur de 5 la précédant." />
 </aside>
-<p>We need a way to support values whose sizes vary, sometimes greatly. This is
-exactly what dynamic allocation on the heap is designed for. We can allocate as
-many bytes as we need. We get back a pointer that we&rsquo;ll use to keep track of the
-value as it flows through the VM.</p>
-<h2><a href="#values-and-objects" id="values-and-objects"><small>19&#8202;.&#8202;1</small>Values and Objects</a></h2>
-<p>Using the heap for larger, variable-sized values and the stack for smaller,
-atomic ones leads to a two-level representation. Every Lox value that you can
-store in a variable or return from an expression will be a Value. For small,
-fixed-size types like numbers, the payload is stored directly inside the Value
-struct itself.</p>
-<p>If the object is larger, its data lives on the heap. Then the Value&rsquo;s payload is
-a <em>pointer</em> to that blob of memory. We&rsquo;ll eventually have a handful of
-heap-allocated types in clox: strings, instances, functions, you get the idea.
-Each type has its own unique data, but there is also state they all share that
-<a href="garbage-collection.html">our future garbage collector</a> will use to manage their memory.</p><img src="image/strings/value.png" class="wide" alt="Field layout of number and obj values." />
-<p>We&rsquo;ll call this common representation <span name="short">&ldquo;Obj&rdquo;</span>. Each Lox
-value whose state lives on the heap is an Obj. We can thus use a single new
-ValueType case to refer to all heap-allocated types.</p>
+<p>Nous avons besoin d&rsquo;un moyen de supporter des valeurs dont les tailles varient, parfois grandement. C&rsquo;est exactement ce pour quoi l&rsquo;allocation dynamique sur le tas est conçue. Nous pouvons allouer autant d&rsquo;octets que nous en avons besoin. Nous recevons en retour un pointeur que nous utiliserons pour garder une trace de la valeur alors qu&rsquo;elle coule à travers la VM.</p>
+<h2><a href="#valeurs-et-objets" id="valeurs-et-objets"><small>19&#8202;.&#8202;1</small>Valeurs et Objets</a></h2>
+<p>Utiliser le tas pour des valeurs plus grandes, de taille variable et la pile pour celles plus petites, atomiques mène à une représentation à deux niveaux. Chaque valeur Lox que vous pouvez stocker dans une variable ou renvoyer d&rsquo;une expression sera une Value. Pour les petits types de taille fixe comme les nombres, la charge utile est stockée directement à l&rsquo;intérieur de la struct Value elle-même.</p>
+<p>Si l&rsquo;objet est plus grand, ses données vivent sur le tas. Alors la charge utile de la Value est un <em>pointeur</em> vers ce blob de mémoire. Nous aurons éventuellement une poignée de types alloués sur le tas dans clox : chaînes, instances, fonctions, vous voyez l&rsquo;idée. Chaque type a ses propres données uniques, mais il y a aussi un état qu&rsquo;ils partagent tous que <a href="ramasse-miettes.html">notre futur ramasse-miettes</a> utilisera pour gérer leur mémoire.</p><img src="image/strings/value.png" class="wide" alt="Disposition des champs des valeurs nombre et obj." />
+<p>Nous appellerons cette représentation commune <span name="short">&ldquo;Obj&rdquo;</span>. Chaque valeur Lox dont l&rsquo;état vit sur le tas est un Obj. Nous pouvons ainsi utiliser un unique nouveau cas <code>ValueType</code> pour référer à tous les types alloués sur le tas.</p>
 <aside name="short">
-<p>&ldquo;Obj&rdquo; is short for &ldquo;object&rdquo;, natch.</p>
+<p>&ldquo;Obj&rdquo; est court pour &ldquo;objet&rdquo;, évidemment.</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">  VAL_NUMBER,
 </pre><div class="source-file"><em>value.h</em><br>
@@ -144,8 +118,7 @@ in enum <em>ValueType</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>value.h</em>, in enum <em>ValueType</em></div>
 
-<p>When a Value&rsquo;s type is <code>VAL_OBJ</code>, the payload is a pointer to the heap memory,
-so we add another case to the union for that.</p>
+<p>Quand le type d&rsquo;une Value est <code>VAL_OBJ</code>, la charge utile est un pointeur vers la mémoire du tas, donc nous ajoutons un autre cas à l&rsquo;union pour ça.</p>
 <div class="codehilite"><pre class="insert-before">    double number;
 </pre><div class="source-file"><em>value.h</em><br>
 in struct <em>Value</em></div>
@@ -154,8 +127,7 @@ in struct <em>Value</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>value.h</em>, in struct <em>Value</em></div>
 
-<p>As we did with the other value types, we crank out a couple of helpful macros
-for working with Obj values.</p>
+<p>Comme nous l&rsquo;avons fait avec les autres types de valeur, nous produisons une couple de macros utiles pour travailler avec les valeurs Obj.</p>
 <div class="codehilite"><pre class="insert-before">#define IS_NUMBER(value)  ((value).type == VAL_NUMBER)
 </pre><div class="source-file"><em>value.h</em><br>
 add after struct <em>Value</em></div>
@@ -166,7 +138,7 @@ add after struct <em>Value</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>value.h</em>, add after struct <em>Value</em></div>
 
-<p>This evaluates to <code>true</code> if the given Value is an Obj. If so, we can use this:</p>
+<p>Cela évalue à <code>true</code> si la Value donnée est un Obj. Si c&rsquo;est le cas, nous pouvons utiliser ceci :</p>
 <div class="codehilite"><pre class="insert-before">#define IS_OBJ(value)     ((value).type == VAL_OBJ)
 
 </pre><div class="source-file"><em>value.h</em></div>
@@ -175,7 +147,7 @@ add after struct <em>Value</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>value.h</em></div>
 
-<p>It extracts the Obj pointer from the value. We can also go the other way.</p>
+<p>Elle extrait le pointeur Obj de la valeur. Nous pouvons aussi aller dans l&rsquo;autre sens.</p>
 <div class="codehilite"><pre class="insert-before">#define NUMBER_VAL(value) ((Value){VAL_NUMBER, {.number = value}})
 </pre><div class="source-file"><em>value.h</em></div>
 <pre class="insert"><span class="a">#define OBJ_VAL(object)   ((Value){VAL_OBJ, {.obj = (Obj*)object}})</span>
@@ -185,33 +157,15 @@ typedef struct {
 </pre></div>
 <div class="source-file-narrow"><em>value.h</em></div>
 
-<p>This takes a bare Obj pointer and wraps it in a full Value.</p>
-<h2><a href="#struct-inheritance" id="struct-inheritance"><small>19&#8202;.&#8202;2</small>Struct Inheritance</a></h2>
-<p>Every heap-allocated value is an Obj, but <span name="objs">Objs</span> are
-not all the same. For strings, we need the array of characters. When we get to
-instances, they will need their data fields. A function object will need its
-chunk of bytecode. How do we handle different payloads and sizes? We can&rsquo;t use
-another union like we did for Value since the sizes are all over the place.</p>
+<p>Cela prend un pointeur Obj nu et l&rsquo;enveloppe dans une Value complète.</p>
+<h2><a href="#héritage-de-structure" id="héritage-de-structure"><small>19&#8202;.&#8202;2</small>Héritage de Structure</a></h2>
+<p>Chaque valeur allouée sur le tas est un Obj, mais les <span name="objs">Objs</span> ne sont pas tous les mêmes. Pour les chaînes, nous avons besoin du tableau de caractères. Quand nous arriverons aux instances, elles auront besoin de leurs champs de données. Un objet fonction aura besoin de son morceau de bytecode. Comment gérons-nous différentes charges utiles et tailles ? Nous ne pouvons pas utiliser une autre union comme nous l&rsquo;avons fait pour Value puisque les tailles sont partout.</p>
 <aside name="objs">
-<p>No, I don&rsquo;t know how to pronounce &ldquo;objs&rdquo; either. Feels like there should be a
-vowel in there somewhere.</p>
+<p>Non, je ne sais pas comment prononcer &ldquo;objs&rdquo; non plus. J&rsquo;ai l&rsquo;impression qu&rsquo;il devrait y avoir une voyelle là-dedans quelque part.</p>
 </aside>
-<p>Instead, we&rsquo;ll use another technique. It&rsquo;s been around for ages, to the point
-that the C specification carves out specific support for it, but I don&rsquo;t know
-that it has a canonical name. It&rsquo;s an example of <a href="https://en.wikipedia.org/wiki/Type_punning"><em>type punning</em></a>, but that
-term is too broad. In the absence of any better ideas, I&rsquo;ll call it <strong>struct
-inheritance</strong>, because it relies on structs and roughly follows how
-single-inheritance of state works in object-oriented languages.</p>
-<p>Like a tagged union, each Obj starts with a tag field that identifies what kind
-of object it is<span class="em">&mdash;</span>string, instance, etc. Following that are the payload fields.
-Instead of a union with cases for each type, each type is its own separate
-struct. The tricky part is how to treat these structs uniformly since C has no
-concept of inheritance or polymorphism. I&rsquo;ll explain that soon, but first lets
-get the preliminary stuff out of the way.</p>
-<p>The name &ldquo;Obj&rdquo; itself refers to a struct that contains the state shared across
-all object types. It&rsquo;s sort of like the &ldquo;base class&rdquo; for objects. Because of
-some cyclic dependencies between values and objects, we forward-declare it in
-the &ldquo;value&rdquo; module.</p>
+<p>Au lieu de cela, nous utiliserons une autre technique. Elle existe depuis des lustres, au point que la spécification C taille un support spécifique pour elle, mais je ne sais pas si elle a un nom canonique. C&rsquo;est un exemple de <a href="https://en.wikipedia.org/wiki/Type_punning"><em>type punning</em></a>, mais ce terme est trop large. En l&rsquo;absence de meilleures idées, je l&rsquo;appellerai <strong>héritage de structure</strong>, parce qu&rsquo;elle repose sur des structs et suit grossièrement comment l&rsquo;héritage simple d&rsquo;état fonctionne dans les langages orientés objet.</p>
+<p>Comme une union étiquetée, chaque Obj commence par un champ d&rsquo;étiquette (tag) qui identifie quel genre d&rsquo;objet c&rsquo;est<span class="em">&mdash;</span>chaîne, instance, etc. Suivant cela sont les champs de charge utile. Au lieu d&rsquo;une union avec des cas pour chaque type, chaque type est sa propre struct séparée. La partie délicate est comment traiter ces structs uniformément puisque C n&rsquo;a aucun concept d&rsquo;héritage ou de polymorphisme. J&rsquo;expliquerai cela bientôt, mais d&rsquo;abord sortons les trucs préliminaires du chemin.</p>
+<p>Le nom &ldquo;Obj&rdquo; lui-même réfère à une struct qui contient l&rsquo;état partagé à travers tous les types d&rsquo;objet. C&rsquo;est un peu comme la &ldquo;classe de base&rdquo; pour les objets. À cause de certaines dépendances cycliques entre valeurs et objets, nous la déclarons de manière anticipée dans le module &ldquo;value&rdquo;.</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;common.h&quot;
 
 </pre><div class="source-file"><em>value.h</em></div>
@@ -221,7 +175,7 @@ the &ldquo;value&rdquo; module.</p>
 </pre></div>
 <div class="source-file-narrow"><em>value.h</em></div>
 
-<p>And the actual definition is in a new module.</p>
+<p>Et la définition réelle est dans un nouveau module.</p>
 <div class="codehilite"><div class="source-file"><em>object.h</em><br>
 create new file</div>
 <pre><span class="a">#ifndef clox_object_h</span>
@@ -238,8 +192,7 @@ create new file</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, create new file</div>
 
-<p>Right now, it contains only the type tag. Shortly, we&rsquo;ll add some other
-bookkeeping information for memory management. The type enum is this:</p>
+<p>Pour l&rsquo;instant, elle contient seulement l&rsquo;étiquette de type. Sous peu, nous ajouterons d&rsquo;autres informations de comptabilité pour la gestion de la mémoire. L&rsquo;enum de type est ceci :</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;value.h&quot;
 </pre><div class="source-file"><em>object.h</em></div>
 <pre class="insert">
@@ -253,10 +206,7 @@ struct Obj {
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em></div>
 
-<p>Obviously, that will be more useful in later chapters after we add more
-heap-allocated types. Since we&rsquo;ll be accessing these tag types frequently, it&rsquo;s
-worth making a little macro that extracts the object type tag from a given
-Value.</p>
+<p>Évidemment, cela sera plus utile dans les chapitres ultérieurs après que nous ayons ajouté plus de types alloués sur le tas. Puisque nous accéderons fréquemment à ces types d&rsquo;étiquette, cela vaut la peine de faire une petite macro qui extrait l&rsquo;étiquette de type d&rsquo;objet d&rsquo;une Value donnée.</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;value.h&quot;
 </pre><div class="source-file"><em>object.h</em></div>
 <pre class="insert">
@@ -268,9 +218,8 @@ typedef enum {
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em></div>
 
-<p>That&rsquo;s our foundation.</p>
-<p>Now, let&rsquo;s build strings on top of it. The payload for strings is defined in a
-separate struct. Again, we need to forward-declare it.</p>
+<p>C&rsquo;est notre fondation.</p>
+<p>Maintenant, construisons les chaînes par-dessus. La charge utile pour les chaînes est définie dans une struct séparée. De nouveau, nous avons besoin de la déclarer de manière anticipée.</p>
 <div class="codehilite"><pre class="insert-before">typedef struct Obj Obj;
 </pre><div class="source-file"><em>value.h</em></div>
 <pre class="insert"><span class="k">typedef</span> <span class="k">struct</span> <span class="t">ObjString</span> <span class="t">ObjString</span>;
@@ -280,7 +229,7 @@ typedef enum {
 </pre></div>
 <div class="source-file-narrow"><em>value.h</em></div>
 
-<p>The definition lives alongside Obj.</p>
+<p>La définition vit aux côtés d&rsquo;Obj.</p>
 <div class="codehilite"><pre class="insert-before">};
 </pre><div class="source-file"><em>object.h</em><br>
 add after struct <em>Obj</em></div>
@@ -297,42 +246,18 @@ add after struct <em>Obj</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, add after struct <em>Obj</em></div>
 
-<p>A string object contains an array of characters. Those are stored in a separate,
-heap-allocated array so that we set aside only as much room as needed for each
-string. We also store the number of bytes in the array. This isn&rsquo;t strictly
-necessary but lets us tell how much memory is allocated for the string without
-walking the character array to find the null terminator.</p>
-<p>Because ObjString is an Obj, it also needs the state all Objs share. It
-accomplishes that by having its first field be an Obj. C specifies that struct
-fields are arranged in memory in the order that they are declared. Also, when
-you nest structs, the inner struct&rsquo;s fields are expanded right in place. So the
-memory for Obj and for ObjString looks like this:</p><img src="image/strings/obj.png" alt="The memory layout for the fields in Obj and ObjString." />
-<p>Note how the first bytes of ObjString exactly line up with Obj. This is not a
-coincidence<span class="em">&mdash;</span>C <span name="spec">mandates</span> it. This is designed to
-enable a clever pattern: You can take a pointer to a struct and safely convert
-it to a pointer to its first field and back.</p>
+<p>Un objet chaîne contient un tableau de caractères. Ceux-ci sont stockés dans un tableau séparé, alloué sur le tas pour que nous mettions de côté seulement autant de place que nécessaire pour chaque chaîne. Nous stockons aussi le nombre d&rsquo;octets dans le tableau. Ce n&rsquo;est pas strictement nécessaire mais nous permet de dire combien de mémoire est allouée pour la chaîne sans parcourir le tableau de caractères pour trouver le terminateur nul.</p>
+<p>Parce qu&rsquo;ObjString est un Obj, il a aussi besoin de l&rsquo;état que tous les Objs partagent. Il accomplit cela en ayant son premier champ être un Obj. C spécifie que les champs de struct sont arrangés en mémoire dans l&rsquo;ordre où ils sont déclarés. Aussi, quand vous imbriquez des structs, les champs de la struct interne sont étendus juste sur place. Donc la mémoire pour Obj et pour ObjString ressemble à ceci :</p><img src="image/strings/obj.png" alt="La disposition mémoire pour les champs dans Obj et ObjString." />
+<p>Notez comment les premiers octets d&rsquo;ObjString s&rsquo;alignent exactement avec Obj. Ce n&rsquo;est pas une coïncidence<span class="em">&mdash;</span>C le <span name="spec">mandate</span>. C&rsquo;est conçu pour permettre un motif intelligent : Vous pouvez prendre un pointeur vers une struct et le convertir en toute sécurité en un pointeur vers son premier champ et inversement.</p>
 <aside name="spec">
-<p>The key part of the spec is:</p>
+<p>La partie clé de la spec est :</p>
 <blockquote>
 <p>&sect; 6.7.2.1 13</p>
-<p>Within a structure object, the non-bit-field members and the units in which
-bit-fields reside have addresses that increase in the order in which they
-are declared. A pointer to a structure object, suitably converted, points to
-its initial member (or if that member is a bit-field, then to the unit in
-which it resides), and vice versa. There may be unnamed padding within a
-structure object, but not at its beginning.</p>
+<p>À l&rsquo;intérieur d&rsquo;un objet structure, les membres non-champs-de-bits et les unités dans lesquelles résident les champs-de-bits ont des adresses qui augmentent dans l&rsquo;ordre dans lequel ils sont déclarés. Un pointeur vers un objet structure, convenablement converti, pointe vers son membre initial (ou si ce membre est un champ-de-bits, alors vers l&rsquo;unité dans laquelle il réside), et vice versa. Il peut y avoir du remplissage sans nom à l&rsquo;intérieur d&rsquo;un objet structure, mais pas à son début.</p>
 </blockquote>
 </aside>
-<p>Given an <code>ObjString*</code>, you can safely cast it to <code>Obj*</code> and then access the
-<code>type</code> field from it. Every ObjString &ldquo;is&rdquo; an Obj in the OOP sense of &ldquo;is&rdquo;. When
-we later add other object types, each struct will have an Obj as its first
-field. Any code that wants to work with all objects can treat them as base
-<code>Obj*</code> and ignore any other fields that may happen to follow.</p>
-<p>You can go in the other direction too. Given an <code>Obj*</code>, you can &ldquo;downcast&rdquo; it to
-an <code>ObjString*</code>. Of course, you need to ensure that the <code>Obj*</code> pointer you have
-does point to the <code>obj</code> field of an actual ObjString. Otherwise, you are
-unsafely reinterpreting random bits of memory. To detect that such a cast is
-safe, we add another macro.</p>
+<p>Étant donné un <code>ObjString*</code>, vous pouvez le caster en toute sécurité en <code>Obj*</code> et ensuite accéder au champ <code>type</code> depuis lui. Chaque ObjString &ldquo;est&rdquo; un Obj dans le sens POO de &ldquo;est&rdquo;. Quand nous ajouterons plus tard d&rsquo;autres types d&rsquo;objet, chaque struct aura un Obj comme son premier champ. Tout code qui veut travailler avec tous les objets peut les traiter comme des <code>Obj*</code> de base et ignorer tous les autres champs qui peuvent arriver à suivre.</p>
+<p>Vous pouvez aller dans l&rsquo;autre direction aussi. Étant donné un <code>Obj*</code>, vous pouvez le &ldquo;descendre&rdquo; (downcast) en un <code>ObjString*</code>. Bien sûr, vous devez vous assurer que le pointeur <code>Obj*</code> que vous avez pointe bien vers le champ <code>obj</code> d&rsquo;un ObjString réel. Sinon, vous réinterprétez de manière non sûre des bits aléatoires de mémoire. Pour détecter qu&rsquo;un tel cast est sûr, nous ajoutons une autre macro.</p>
 <div class="codehilite"><pre class="insert-before">#define OBJ_TYPE(value)        (AS_OBJ(value)-&gt;type)
 </pre><div class="source-file"><em>object.h</em></div>
 <pre class="insert">
@@ -344,8 +269,7 @@ typedef enum {
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em></div>
 
-<p>It takes a Value, not a raw <code>Obj*</code> because most code in the VM works with
-Values. It relies on this inline function:</p>
+<p>Elle prend une Value, pas un <code>Obj*</code> brut parce que la plupart du code dans la VM travaille avec des Values. Elle repose sur cette fonction en ligne :</p>
 <div class="codehilite"><pre class="insert-before">};
 
 </pre><div class="source-file"><em>object.h</em><br>
@@ -358,19 +282,12 @@ add after struct <em>ObjString</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, add after struct <em>ObjString</em></div>
 
-<p>Pop quiz: Why not just put the body of this function right in the macro? What&rsquo;s
-different about this one compared to the others? Right, it&rsquo;s because the body
-uses <code>value</code> twice. A macro is expanded by inserting the argument <em>expression</em>
-every place the parameter name appears in the body. If a macro uses a parameter
-more than once, that expression gets evaluated multiple times.</p>
-<p>That&rsquo;s bad if the expression has side effects. If we put the body of
-<code>isObjType()</code> into the macro definition and then you did, say,</p>
+<p>Quiz surprise : Pourquoi ne pas juste mettre le corps de cette fonction juste dans la macro ? Qu&rsquo;est-ce qui est différent à propos de celle-ci comparé aux autres ? Correct, c&rsquo;est parce que le corps utilise <code>value</code> deux fois. Une macro est étendue en insérant l&rsquo;<em>expression</em> argument chaque endroit où le nom du paramètre apparaît dans le corps. Si une macro utilise un paramètre plus d&rsquo;une fois, cette expression est évaluée de multiples fois.</p>
+<p>C&rsquo;est mauvais si l&rsquo;expression a des effets de bord. Si nous mettions le corps de <code>isObjType()</code> dans la définition de macro et qu&rsquo;ensuite vous faisiez, disons,</p>
 <div class="codehilite"><pre><span class="a">IS_STRING</span>(<span class="a">POP</span>())
 </pre></div>
-<p>then it would pop two values off the stack! Using a function fixes that.</p>
-<p>As long as we ensure that we set the type tag correctly whenever we create an
-Obj of some type, this macro will tell us when it&rsquo;s safe to cast a value to a
-specific object type. We can do that using these:</p>
+<p>alors cela dépilerait deux valeurs de la pile ! Utiliser une fonction corrige cela.</p>
+<p>Tant que nous assurons que nous définissons l&rsquo;étiquette de type correctement chaque fois que nous créons un Obj de quelque type, cette macro nous dira quand il est sûr de caster une valeur vers un type d&rsquo;objet spécifique. Nous pouvons faire cela en utilisant celles-ci :</p>
 <div class="codehilite"><pre class="insert-before">#define IS_STRING(value)       isObjType(value, OBJ_STRING)
 </pre><div class="source-file"><em>object.h</em></div>
 <pre class="insert">
@@ -383,14 +300,9 @@ typedef enum {
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em></div>
 
-<p>These two macros take a Value that is expected to contain a pointer to a valid
-ObjString on the heap. The first one returns the <code>ObjString*</code> pointer. The
-second one steps through that to return the character array itself, since that&rsquo;s
-often what we&rsquo;ll end up needing.</p>
-<h2><a href="#strings" id="strings"><small>19&#8202;.&#8202;3</small>Strings</a></h2>
-<p>OK, our VM can now represent string values. It&rsquo;s time to add strings to the
-language itself. As usual, we begin in the front end. The lexer already
-tokenizes string literals, so it&rsquo;s the parser&rsquo;s turn.</p>
+<p>Ces deux macros prennent une Value qui est attendue contenir un pointeur vers un ObjString valide sur le tas. La première renvoie le pointeur <code>ObjString*</code>. La seconde fait un pas à travers pour renvoyer le tableau de caractères lui-même, puisque c&rsquo;est souvent ce dont nous finirons par avoir besoin.</p>
+<h2><a href="#chaînes" id="chaînes"><small>19&#8202;.&#8202;3</small>Chaînes</a></h2>
+<p>OK, notre VM peut maintenant représenter des valeurs chaîne. Il est temps d&rsquo;ajouter les chaînes au langage lui-même. Comme d&rsquo;habitude, nous commençons dans le front end. Le lexer tokenise déjà les littéraux chaîne, donc c&rsquo;est au tour du parseur.</p>
 <div class="codehilite"><pre class="insert-before">  [TOKEN_IDENTIFIER]    = {NULL,     NULL,   PREC_NONE},
 </pre><div class="source-file"><em>compiler.c</em><br>
 replace 1 line</div>
@@ -399,7 +311,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, replace 1 line</div>
 
-<p>When the parser hits a string token, it calls this parse function:</p>
+<p>Quand le parseur touche un token chaîne, il appelle cette fonction de parsing :</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>number</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">string</span>() {
@@ -409,15 +321,11 @@ add after <em>number</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.c</em>, add after <em>number</em>()</div>
 
-<p>This takes the string&rsquo;s characters <span name="escape">directly</span> from the
-lexeme. The <code>+ 1</code> and <code>- 2</code> parts trim the leading and trailing quotation marks.
-It then creates a string object, wraps it in a Value, and stuffs it into the
-constant table.</p>
+<p>Cela prend les caractères de la chaîne <span name="escape">directement</span> du lexème. Les parties <code>+ 1</code> et <code>- 2</code> enlèvent les guillemets de tête et de traîne. Elle crée ensuite un objet chaîne, l&rsquo;enveloppe dans une Value, et le bourre dans la table de constantes.</p>
 <aside name="escape">
-<p>If Lox supported string escape sequences like <code>\n</code>, we&rsquo;d translate those here.
-Since it doesn&rsquo;t, we can take the characters as they are.</p>
+<p>Si Lox supportait les séquences d&rsquo;échappement de chaîne comme <code>\n</code>, nous traduirions celles-ci ici. Puisqu&rsquo;il ne le fait pas, nous pouvons prendre les caractères tels qu&rsquo;ils sont.</p>
 </aside>
-<p>To create the string, we use <code>copyString()</code>, which is declared in <code>object.h</code>.</p>
+<p>Pour créer la chaîne, nous utilisons <code>copyString()</code>, qui est déclarée dans <code>object.h</code>.</p>
 <div class="codehilite"><pre class="insert-before">};
 
 </pre><div class="source-file"><em>object.h</em><br>
@@ -428,7 +336,7 @@ add after struct <em>ObjString</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, add after struct <em>ObjString</em></div>
 
-<p>The compiler module needs to include that.</p>
+<p>Le module compilateur a besoin d&rsquo;inclure cela.</p>
 <div class="codehilite"><pre class="insert-before">#define clox_compiler_h
 
 </pre><div class="source-file"><em>compiler.h</em></div>
@@ -437,8 +345,7 @@ add after struct <em>ObjString</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>compiler.h</em></div>
 
-<p>Our &ldquo;object&rdquo; module gets an implementation file where we define the new
-function.</p>
+<p>Notre module &ldquo;object&rdquo; obtient un fichier d&rsquo;implémentation où nous définissons la nouvelle fonction.</p>
 <div class="codehilite"><div class="source-file"><em>object.c</em><br>
 create new file</div>
 <pre><span class="a">#include &lt;stdio.h&gt;</span>
@@ -458,10 +365,7 @@ create new file</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, create new file</div>
 
-<p>First, we allocate a new array on the heap, just big enough for the string&rsquo;s
-characters and the trailing <span name="terminator">terminator</span>, using
-this low-level macro that allocates an array with a given element type and
-count:</p>
+<p>D&rsquo;abord, nous allouons un nouveau tableau sur le tas, juste assez grand pour les caractères de la chaîne et le <span name="terminator">terminateur</span> de traîne, en utilisant cette macro de bas niveau qui alloue un tableau avec un type d&rsquo;élément donné et un compte :</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;common.h&quot;
 
 </pre><div class="source-file"><em>memory.h</em></div>
@@ -472,26 +376,14 @@ count:</p>
 </pre></div>
 <div class="source-file-narrow"><em>memory.h</em></div>
 
-<p>Once we have the array, we copy over the characters from the lexeme and
-terminate it.</p>
+<p>Une fois que nous avons le tableau, nous copions par-dessus les caractères depuis le lexème et le terminons.</p>
 <aside name="terminator" class="bottom">
-<p>We need to terminate the string ourselves because the lexeme points at a range
-of characters inside the monolithic source string and isn&rsquo;t terminated.</p>
-<p>Since ObjString stores the length explicitly, we <em>could</em> leave the character
-array unterminated, but slapping a terminator on the end costs us only a byte
-and lets us pass the character array to C standard library functions that expect
-a terminated string.</p>
+<p>Nous avons besoin de terminer la chaîne nous-mêmes parce que le lexème pointe à une plage de caractères à l&rsquo;intérieur de la chaîne source monolithique et n&rsquo;est pas terminé.</p>
+<p>Puisque ObjString stocke la longueur explicitement, nous <em>pourrions</em> laisser le tableau de caractères non terminé, mais coller un terminateur à la fin nous coûte seulement un octet et nous laisse passer le tableau de caractères aux fonctions de bibliothèque standard C qui attendent une chaîne terminée.</p>
 </aside>
-<p>You might wonder why the ObjString can&rsquo;t just point back to the original
-characters in the source string. Some ObjStrings will be created dynamically at
-runtime as a result of string operations like concatenation. Those strings
-obviously need to dynamically allocate memory for the characters, which means
-the string needs to <em>free</em> that memory when it&rsquo;s no longer needed.</p>
-<p>If we had an ObjString for a string literal, and tried to free its character
-array that pointed into the original source code string, bad things would
-happen. So, for literals, we preemptively copy the characters over to the heap.
-This way, every ObjString reliably owns its character array and can free it.</p>
-<p>The real work of creating a string object happens in this function:</p>
+<p>Vous pourriez vous demander pourquoi l&rsquo;ObjString ne peut pas juste pointer en retour vers les caractères originaux dans la chaîne source. Certains ObjStrings seront créés dynamiquement à l&rsquo;exécution comme résultat d&rsquo;opérations sur les chaînes comme la concaténation. Ces chaînes ont évidemment besoin d&rsquo;allouer dynamiquement de la mémoire pour les caractères, ce qui signifie que la chaîne a besoin de <em>libérer</em> cette mémoire quand elle n&rsquo;est plus nécessaire.</p>
+<p>Si nous avions un ObjString pour un littéral chaîne, et essayions de libérer son tableau de caractères qui pointait dans la chaîne de code source originale, de mauvaises choses arriveraient. Donc, pour les littéraux, nous copions préventivement les caractères sur le tas. De cette façon, chaque ObjString possède de manière fiable son tableau de caractères et peut le libérer.</p>
+<p>Le vrai travail de création d&rsquo;un objet chaîne se passe dans cette fonction :</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;vm.h&quot;
 
 </pre><div class="source-file"><em>object.c</em></div>
@@ -504,9 +396,7 @@ This way, every ObjString reliably owns its character array and can free it.</p>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em></div>
 
-<p>It creates a new ObjString on the heap and then initializes its fields. It&rsquo;s
-sort of like a constructor in an OOP language. As such, it first calls the &ldquo;base
-class&rdquo; constructor to initialize the Obj state, using a new macro.</p>
+<p>Elle crée un nouvel ObjString sur le tas et ensuite initialise ses champs. C&rsquo;est un peu comme un constructeur dans un langage POO. En tant que tel, elle appelle d&rsquo;abord le constructeur de &ldquo;classe de base&rdquo; pour initialiser l&rsquo;état Obj, utilisant une nouvelle macro.</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;vm.h&quot;
 </pre><div class="source-file"><em>object.c</em></div>
 <pre class="insert">
@@ -519,13 +409,9 @@ static ObjString* allocateString(char* chars, int length) {
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em></div>
 
-<p><span name="factored">Like</span> the previous macro, this exists mainly to
-avoid the need to redundantly cast a <code>void*</code> back to the desired type. The
-actual functionality is here:</p>
+<p><span name="factored">Comme</span> la macro précédente, celle-ci existe principalement pour éviter le besoin de caster de manière redondante un <code>void*</code> de retour vers le type désiré. La fonctionnalité réelle est ici :</p>
 <aside name="factored">
-<p>I admit this chapter has a sea of helper functions and macros to wade through. I
-try to keep the code nicely factored, but that leads to a scattering of tiny
-functions. They will pay off when we reuse them later.</p>
+<p>J&rsquo;admets que ce chapitre a une mer de fonctions aides et de macros à traverser. J&rsquo;essaie de garder le code joliment factorisé, mais cela mène à un éparpillement de minuscules fonctions. Elles payeront quand nous les réutiliserons plus tard.</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">#define ALLOCATE_OBJ(type, objectType) \
     (type*)allocateObject(sizeof(type), objectType)
@@ -543,22 +429,13 @@ static ObjString* allocateString(char* chars, int length) {
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em></div>
 
-<p>It allocates an object of the given size on the heap. Note that the size is
-<em>not</em> just the size of Obj itself. The caller passes in the number of bytes so
-that there is room for the extra payload fields needed by the specific object
-type being created.</p>
-<p>Then it initializes the Obj state<span class="em">&mdash;</span>right now, that&rsquo;s just the type tag. This
-function returns to <code>allocateString()</code>, which finishes initializing the ObjString
-fields. <span name="viola"><em>Voilà</em></span>, we can compile and execute string
-literals.</p>
-<aside name="viola"><img src="image/strings/viola.png" class="above" alt="A viola." />
-<p>Don&rsquo;t get &ldquo;voilà&rdquo; confused with &ldquo;viola&rdquo;. One means &ldquo;there it is&rdquo; and the other
-is a string instrument, the middle child between a violin and a cello. Yes, I
-did spend two hours drawing a viola just to mention that.</p>
+<p>Elle alloue un objet de la taille donnée sur le tas. Notez que la taille n&rsquo;est <em>pas</em> juste la taille d&rsquo;Obj lui-même. L&rsquo;appelant passe le nombre d&rsquo;octets pour qu&rsquo;il y ait de la place pour les champs de charge utile supplémentaires nécessaires par le type d&rsquo;objet spécifique étant créé.</p>
+<p>Ensuite elle initialise l&rsquo;état Obj<span class="em">&mdash;</span>pour l&rsquo;instant, c&rsquo;est juste l&rsquo;étiquette de type. Cette fonction revient à <code>allocateString()</code>, qui finit d&rsquo;initialiser les champs d&rsquo;ObjString. <span name="viola"><em>Voilà</em></span>, nous pouvons compiler et exécuter des littéraux chaîne.</p>
+<aside name="viola"><img src="image/strings/viola.png" class="above" alt="Un alto." />
+<p>Ne confondez pas &ldquo;voilà&rdquo; avec &ldquo;viola&rdquo;. L&rsquo;un signifie &ldquo;ça y est&rdquo; et l&rsquo;autre est un instrument à cordes, l&rsquo;enfant du milieu entre un violon et un violoncelle. Oui, j&rsquo;ai passé deux heures à dessiner un alto juste pour mentionner ça.</p>
 </aside>
-<h2><a href="#operations-on-strings" id="operations-on-strings"><small>19&#8202;.&#8202;4</small>Operations on Strings</a></h2>
-<p>Our fancy strings are there, but they don&rsquo;t do much of anything yet. A good
-first step is to make the existing print code not barf on the new value type.</p>
+<h2><a href="#opérations-sur-les-chaînes" id="opérations-sur-les-chaînes"><small>19&#8202;.&#8202;4</small>Opérations sur les Chaînes</a></h2>
+<p>Nos chaînes fantaisie sont là, mais elles ne font pas grand-chose encore. Une bonne première étape est de faire en sorte que le code d&rsquo;impression existant ne vomisse pas sur le nouveau type de valeur.</p>
 <div class="codehilite"><pre class="insert-before">    case VAL_NUMBER: printf(&quot;%g&quot;, AS_NUMBER(value)); break;
 </pre><div class="source-file"><em>value.c</em><br>
 in <em>printValue</em>()</div>
@@ -567,8 +444,7 @@ in <em>printValue</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>value.c</em>, in <em>printValue</em>()</div>
 
-<p>If the value is a heap-allocated object, it defers to a helper function over in
-the &ldquo;object&rdquo; module.</p>
+<p>Si la valeur est un objet alloué sur le tas, elle défère à une fonction aide là-bas dans le module &ldquo;object&rdquo;.</p>
 <div class="codehilite"><pre class="insert-before">ObjString* copyString(const char* chars, int length);
 </pre><div class="source-file"><em>object.h</em><br>
 add after <em>copyString</em>()</div>
@@ -579,7 +455,7 @@ static inline bool isObjType(Value value, ObjType type) {
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, add after <em>copyString</em>()</div>
 
-<p>The implementation looks like this:</p>
+<p>L&rsquo;implémentation ressemble à ceci :</p>
 <div class="codehilite"><div class="source-file"><em>object.c</em><br>
 add after <em>copyString</em>()</div>
 <pre><span class="t">void</span> <span class="i">printObject</span>(<span class="t">Value</span> <span class="i">value</span>) {
@@ -592,20 +468,14 @@ add after <em>copyString</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, add after <em>copyString</em>()</div>
 
-<p>We have only a single object type now, but this function will sprout additional
-switch cases in later chapters. For string objects, it simply <span
-name="term-2">prints</span> the character array as a C string.</p>
+<p>Nous n&rsquo;avons qu&rsquo;un seul type d&rsquo;objet maintenant, mais cette fonction germera des cas switch additionnels dans les chapitres ultérieurs. Pour les objets chaîne, elle <span name="term-2">imprime</span> simplement le tableau de caractères comme une chaîne C.</p>
 <aside name="term-2">
-<p>I told you terminating the string would come in handy.</p>
+<p>Je vous avais dit que terminer la chaîne deviendrait utile.</p>
 </aside>
-<p>The equality operators also need to gracefully handle strings. Consider:</p>
+<p>Les opérateurs d&rsquo;égalité ont aussi besoin de gérer avec grâce les chaînes. Considérez :</p>
 <div class="codehilite"><pre><span class="s">&quot;string&quot;</span> == <span class="s">&quot;string&quot;</span>
 </pre></div>
-<p>These are two separate string literals. The compiler will make two separate
-calls to <code>copyString()</code>, create two distinct ObjString objects and store them as
-two constants in the chunk. They are different objects in the heap. But our
-users (and thus we) expect strings to have value equality. The above expression
-should evaluate to <code>true</code>. That requires a little special support.</p>
+<p>Ce sont deux littéraux chaîne séparés. Le compilateur fera deux appels séparés à <code>copyString()</code>, créera deux objets ObjString distincts et les stockera comme deux constantes dans le morceau. Ce sont des objets différents dans le tas. Mais nos utilisateurs (et donc nous) s&rsquo;attendent à ce que les chaînes aient une égalité de valeur. L&rsquo;expression ci-dessus devrait évaluer à <code>true</code>. Cela exige un petit support spécial.</p>
 <div class="codehilite"><pre class="insert-before">    case VAL_NUMBER: return AS_NUMBER(a) == AS_NUMBER(b);
 </pre><div class="source-file"><em>value.c</em><br>
 in <em>valuesEqual</em>()</div>
@@ -620,13 +490,8 @@ in <em>valuesEqual</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>value.c</em>, in <em>valuesEqual</em>()</div>
 
-<p>If the two values are both strings, then they are equal if their character
-arrays contain the same characters, regardless of whether they are two separate
-objects or the exact same one. This does mean that string equality is slower
-than equality on other types since it has to walk the whole string. We&rsquo;ll revise
-that <a href="hash-tables.html">later</a>, but this gives us the right semantics for now.</p>
-<p>Finally, in order to use <code>memcmp()</code> and the new stuff in the &ldquo;object&rdquo; module, we
-need a couple of includes. Here:</p>
+<p>Si les deux valeurs sont toutes deux des chaînes, alors elles sont égales si leurs tableaux de caractères contiennent les mêmes caractères, indépendamment de si elles sont deux objets séparés ou exactement le même. Cela signifie bien que l&rsquo;égalité de chaîne est plus lente que l&rsquo;égalité sur les autres types puisqu&rsquo;elle doit parcourir la chaîne entière. Nous réviserons cela <a href="tables-de-hachage.html">plus tard</a>, mais cela nous donne la bonne sémantique pour l&rsquo;instant.</p>
+<p>Finalement, afin d&rsquo;utiliser <code>memcmp()</code> et les nouveaux trucs dans le module &ldquo;object&rdquo;, nous avons besoin d&rsquo;une couple d&rsquo;includes. Ici :</p>
 <div class="codehilite"><pre class="insert-before">#include &lt;stdio.h&gt;
 </pre><div class="source-file"><em>value.c</em></div>
 <pre class="insert"><span class="a">#include &lt;string.h&gt;</span>
@@ -636,7 +501,7 @@ need a couple of includes. Here:</p>
 </pre></div>
 <div class="source-file-narrow"><em>value.c</em></div>
 
-<p>And here:</p>
+<p>Et ici :</p>
 <div class="codehilite"><pre class="insert-before">#include &lt;string.h&gt;
 
 </pre><div class="source-file"><em>value.c</em></div>
@@ -645,16 +510,9 @@ need a couple of includes. Here:</p>
 </pre></div>
 <div class="source-file-narrow"><em>value.c</em></div>
 
-<h3><a href="#concatenation" id="concatenation"><small>19&#8202;.&#8202;4&#8202;.&#8202;1</small>Concatenation</a></h3>
-<p>Full-grown languages provide lots of operations for working with strings<span class="em">&mdash;</span>access to individual characters, the string&rsquo;s length, changing case, splitting,
-joining, searching, etc. When you implement your language, you&rsquo;ll likely want
-all that. But for this book, we keep things <em>very</em> minimal.</p>
-<p>The only interesting operation we support on strings is <code>+</code>. If you use that
-operator on two string objects, it produces a new string that&rsquo;s a concatenation
-of the two operands. Since Lox is dynamically typed, we can&rsquo;t tell which
-behavior is needed at compile time because we don&rsquo;t know the types of the
-operands until runtime. Thus, the <code>OP_ADD</code> instruction dynamically inspects the
-operands and chooses the right operation.</p>
+<h3><a href="#concaténation" id="concaténation"><small>19&#8202;.&#8202;4&#8202;.&#8202;1</small>Concaténation</a></h3>
+<p>Les langages adultes fournissent beaucoup d&rsquo;opérations pour travailler avec les chaînes<span class="em">&mdash;</span>accès aux caractères individuels, la longueur de la chaîne, changer la casse, diviser, joindre, chercher, etc. Quand vous implémentez votre langage, vous voudrez probablement tout ça. Mais pour ce livre, nous gardons les choses <em>très</em> minimales.</p>
+<p>La seule opération intéressante que nous supportons sur les chaînes est <code>+</code>. Si vous utilisez cet opérateur sur deux objets chaîne, il produit une nouvelle chaîne qui est une concaténation des deux opérandes. Puisque Lox est dynamiquement typé, nous ne pouvons pas dire quel comportement est nécessaire à la compilation parce que nous ne connaissons pas les types des opérandes avant l&rsquo;exécution. Ainsi, l&rsquo;instruction <code>OP_ADD</code> inspecte dynamiquement les opérandes et choisit la bonne opération.</p>
 <div class="codehilite"><pre class="insert-before">      case OP_LESS:     BINARY_OP(BOOL_VAL, &lt;); break;
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>run</em>()<br>
@@ -677,17 +535,12 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>run</em>(), replace 1 line</div>
 
-<p>If both operands are strings, it concatenates. If they&rsquo;re both numbers, it adds
-them. Any other <span name="convert">combination</span> of operand types is a
-runtime error.</p>
+<p>Si les deux opérandes sont des chaînes, il concatène. S&rsquo;ils sont tous deux des nombres, il les additionne. Toute autre <span name="convert">combinaison</span> de types d&rsquo;opérande est une erreur d&rsquo;exécution.</p>
 <aside name="convert" class="bottom">
-<p>This is more conservative than most languages. In other languages, if one
-operand is a string, the other can be any type and it will be implicitly
-converted to a string before concatenating the two.</p>
-<p>I think that&rsquo;s a fine feature, but would require writing tedious &ldquo;convert to
-string&rdquo; code for each type, so I left it out of Lox.</p>
+<p>C&rsquo;est plus conservateur que la plupart des langages. Dans d&rsquo;autres langages, si un opérande est une chaîne, l&rsquo;autre peut être n&rsquo;importe quel type et il sera implicitement converti en une chaîne avant de concaténer les deux.</p>
+<p>Je pense que c&rsquo;est une fonctionnalité correcte, mais exigerait d&rsquo;écrire du code fastidieux &ldquo;convertir en chaîne&rdquo; pour chaque type, donc je l&rsquo;ai laissée hors de Lox.</p>
 </aside>
-<p>To concatenate strings, we define a new function.</p>
+<p>Pour concaténer des chaînes, nous définissons une nouvelle fonction.</p>
 <div class="codehilite"><div class="source-file"><em>vm.c</em><br>
 add after <em>isFalsey</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">concatenate</span>() {
@@ -706,11 +559,8 @@ add after <em>isFalsey</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, add after <em>isFalsey</em>()</div>
 
-<p>It&rsquo;s pretty verbose, as C code that works with strings tends to be. First, we
-calculate the length of the result string based on the lengths of the operands.
-We allocate a character array for the result and then copy the two halves in. As
-always, we carefully ensure the string is terminated.</p>
-<p>In order to call <code>memcpy()</code>, the VM needs an include.</p>
+<p>Elle est assez verbeuse, comme le code C qui travaille avec les chaînes tend à être. D&rsquo;abord, nous calculons la longueur de la chaîne résultat basée sur les longueurs des opérandes. Nous allouons un tableau de caractères pour le résultat et ensuite copions les deux moitiés dedans. Comme toujours, nous assurons soigneusement que la chaîne est terminée.</p>
+<p>Afin d&rsquo;appeler <code>memcpy()</code>, la VM a besoin d&rsquo;un include.</p>
 <div class="codehilite"><pre class="insert-before">#include &lt;stdio.h&gt;
 </pre><div class="source-file"><em>vm.c</em></div>
 <pre class="insert"><span class="a">#include &lt;string.h&gt;</span>
@@ -720,8 +570,7 @@ always, we carefully ensure the string is terminated.</p>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em></div>
 
-<p>Finally, we produce an ObjString to contain those characters. This time we use a
-new function, <code>takeString()</code>.</p>
+<p>Finalement, nous produisons un ObjString pour contenir ces caractères. Cette fois nous utilisons une nouvelle fonction, <code>takeString()</code>.</p>
 <div class="codehilite"><pre class="insert-before">};
 
 </pre><div class="source-file"><em>object.h</em><br>
@@ -731,7 +580,7 @@ add after struct <em>ObjString</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, add after struct <em>ObjString</em></div>
 
-<p>The implementation looks like this:</p>
+<p>L&rsquo;implémentation ressemble à ceci :</p>
 <div class="codehilite"><div class="source-file"><em>object.c</em><br>
 add after <em>allocateString</em>()</div>
 <pre><span class="t">ObjString</span>* <span class="i">takeString</span>(<span class="t">char</span>* <span class="i">chars</span>, <span class="t">int</span> <span class="i">length</span>) {
@@ -740,16 +589,9 @@ add after <em>allocateString</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, add after <em>allocateString</em>()</div>
 
-<p>The previous <code>copyString()</code> function assumes it <em>cannot</em> take ownership of the
-characters you pass in. Instead, it conservatively creates a copy of the
-characters on the heap that the ObjString can own. That&rsquo;s the right thing for
-string literals where the passed-in characters are in the middle of the source
-string.</p>
-<p>But, for concatenation, we&rsquo;ve already dynamically allocated a character array on
-the heap. Making another copy of that would be redundant (and would mean
-<code>concatenate()</code> has to remember to free its copy). Instead, this function claims
-ownership of the string you give it.</p>
-<p>As usual, stitching this functionality together requires a couple of includes.</p>
+<p>La fonction <code>copyString()</code> précédente suppose qu&rsquo;elle ne <em>peut pas</em> prendre la propriété des caractères que vous passez dedans. Au lieu de cela, elle crée de manière conservatrice une copie des caractères sur le tas que l&rsquo;ObjString peut posséder. C&rsquo;est la bonne chose pour les littéraux chaîne où les caractères passés sont au milieu de la chaîne source.</p>
+<p>Mais, pour la concaténation, nous avons déjà alloué dynamiquement un tableau de caractères sur le tas. Faire une autre copie de cela serait redondant (et signifierait que <code>concatenate()</code> doit se souvenir de libérer sa copie). Au lieu de cela, cette fonction réclame la propriété de la chaîne que vous lui donnez.</p>
+<p>Comme d&rsquo;habitude, coudre cette fonctionnalité ensemble exige une couple d&rsquo;includes.</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;debug.h&quot;
 </pre><div class="source-file"><em>vm.c</em></div>
 <pre class="insert"><span class="a">#include &quot;object.h&quot;</span>
@@ -758,15 +600,13 @@ ownership of the string you give it.</p>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em></div>
 
-<h2><a href="#freeing-objects" id="freeing-objects"><small>19&#8202;.&#8202;5</small>Freeing Objects</a></h2>
-<p>Behold this innocuous-seeming expression:</p>
+<h2><a href="#libérer-les-objets" id="libérer-les-objets"><small>19&#8202;.&#8202;5</small>Libérer les Objets</a></h2>
+<p>Contemplez cette expression à l&rsquo;apparence inoffensive :</p>
 <div class="codehilite"><pre><span class="s">&quot;st&quot;</span> + <span class="s">&quot;ri&quot;</span> + <span class="s">&quot;ng&quot;</span>
 </pre></div>
-<p>When the compiler chews through this, it allocates an ObjString for each of
-those three string literals and stores them in the chunk&rsquo;s constant table and
-generates this <span name="stack">bytecode</span>:</p>
+<p>Quand le compilateur mâche à travers ceci, il alloue un ObjString pour chacun de ces trois littéraux chaîne et les stocke dans la table de constantes du morceau et génère ce <span name="stack">bytecode</span> :</p>
 <aside name="stack">
-<p>Here&rsquo;s what the stack looks like after each instruction:</p><img src="image/strings/stack.png" alt="The state of the stack at each instruction." />
+<p>Voici à quoi ressemble la pile après chaque instruction :</p><img src="image/strings/stack.png" alt="L'état de la pile à chaque instruction." />
 </aside>
 <div class="codehilite"><pre>0000    OP_CONSTANT         0 &quot;st&quot;
 0002    OP_CONSTANT         1 &quot;ri&quot;
@@ -775,50 +615,18 @@ generates this <span name="stack">bytecode</span>:</p>
 0007    OP_ADD
 0008    OP_RETURN
 </pre></div>
-<p>The first two instructions push <code>"st"</code> and <code>"ri"</code> onto the stack. Then the
-<code>OP_ADD</code> pops those and concatenates them. That dynamically allocates a new
-<code>"stri"</code> string on the heap. The VM pushes that and then pushes the <code>"ng"</code>
-constant. The last <code>OP_ADD</code> pops <code>"stri"</code> and <code>"ng"</code>, concatenates them, and
-pushes the result: <code>"string"</code>. Great, that&rsquo;s what we expect.</p>
-<p>But, wait. What happened to that <code>"stri"</code> string? We dynamically allocated it,
-then the VM discarded it after concatenating it with <code>"ng"</code>. We popped it from
-the stack and no longer have a reference to it, but we never freed its memory.
-We&rsquo;ve got ourselves a classic memory leak.</p>
-<p>Of course, it&rsquo;s perfectly fine for the <em>Lox program</em> to forget about
-intermediate strings and not worry about freeing them. Lox automatically manages
-memory on the user&rsquo;s behalf. The responsibility to manage memory doesn&rsquo;t
-<em>disappear</em>. Instead, it falls on our shoulders as VM implementers.</p>
-<p>The full <span name="borrowed">solution</span> is a <a href="garbage-collection.html">garbage collector</a> that
-reclaims unused memory while the program is running. We&rsquo;ve got some other stuff
-to get in place before we&rsquo;re ready to tackle that project. Until then, we are
-living on borrowed time. The longer we wait to add the collector, the harder it
-is to do.</p>
+<p>Les deux premières instructions poussent <code>"st"</code> et <code>"ri"</code> sur la pile. Ensuite l&rsquo;<code>OP_ADD</code> dépile ceux-ci et les concatène. Cela alloue dynamiquement une nouvelle chaîne <code>"stri"</code> sur le tas. La VM pousse cela et ensuite pousse la constante <code>"ng"</code>. Le dernier <code>OP_ADD</code> dépile <code>"stri"</code> et <code>"ng"</code>, les concatène, et pousse le résultat : <code>"string"</code>. Super, c&rsquo;est ce que nous attendons.</p>
+<p>Mais, attendez. Qu&rsquo;est-ce qui est arrivé à cette chaîne <code>"stri"</code> ? Nous l&rsquo;avons allouée dynamiquement, ensuite la VM l&rsquo;a jetée après l&rsquo;avoir concaténée avec <code>"ng"</code>. Nous l&rsquo;avons dépilée de la pile et n&rsquo;avons plus de référence vers elle, mais nous n&rsquo;avons jamais libéré sa mémoire. Nous avons nous-mêmes une fuite de mémoire classique.</p>
+<p>Bien sûr, il est parfaitement correct pour le <em>programme Lox</em> d&rsquo;oublier les chaînes intermédiaires et de ne pas s&rsquo;inquiéter de les libérer. Lox gère automatiquement la mémoire pour le compte de l&rsquo;utilisateur. La responsabilité de gérer la mémoire ne <em>disparaît</em> pas. Au lieu de cela, elle tombe sur nos épaules en tant qu&rsquo;implémenteurs de VM.</p>
+<p>La <span name="borrowed">solution</span> complète est un <a href="ramasse-miettes.html">ramasse-miettes</a> qui récupère la mémoire inutilisée pendant que le programme tourne. Nous avons d&rsquo;autres trucs à mettre en place avant que nous soyons prêts à tacler ce projet. Jusque-là, nous vivons sur du temps emprunté. Plus nous attendons pour ajouter le collecteur, plus il est dur à faire.</p>
 <aside name="borrowed">
-<p>I&rsquo;ve seen a number of people implement large swathes of their language before
-trying to start on the GC. For the kind of toy programs you typically run while
-a language is being developed, you actually don&rsquo;t run out of memory before
-reaching the end of the program, so this gets you surprisingly far.</p>
-<p>But that underestimates how <em>hard</em> it is to add a garbage collector later. The
-collector <em>must</em> ensure it can find every bit of memory that <em>is</em> still being
-used so that it doesn&rsquo;t collect live data. There are hundreds of places a
-language implementation can squirrel away a reference to some object. If you
-don&rsquo;t find all of them, you get nightmarish bugs.</p>
-<p>I&rsquo;ve seen language implementations die because it was too hard to get the GC in
-later. If your language needs GC, get it working as soon as you can. It&rsquo;s a
-crosscutting concern that touches the entire codebase.</p>
+<p>J&rsquo;ai vu un certain nombre de gens implémenter de larges pans de leur langage avant d&rsquo;essayer de commencer sur le GC. Pour le genre de programmes jouets que vous lancez typiquement pendant qu&rsquo;un langage est développé, vous ne tombez en fait pas à court de mémoire avant d&rsquo;atteindre la fin du programme, donc cela vous mène étonnamment loin.</p>
+<p>Mais cela sous-estime combien il est <em>dur</em> d&rsquo;ajouter un ramasse-miettes plus tard. Le collecteur <em>doit</em> assurer qu&rsquo;il peut trouver chaque bout de mémoire qui <em>est</em> encore utilisé de sorte qu&rsquo;il ne collecte pas des données vivantes. Il y a des centaines d&rsquo;endroits où une implémentation de langage peut écureuiller une référence vers quelque objet. Si vous ne les trouvez pas tous, vous obtenez des bugs cauchemardesques.</p>
+<p>J&rsquo;ai vu des implémentations de langage mourir parce qu&rsquo;il était trop dur de mettre le GC dedans plus tard. Si votre langage a besoin d&rsquo;un GC, faites-le marcher aussi tôt que vous pouvez. C&rsquo;est une préoccupation transverse qui touche la base de code entière.</p>
 </aside>
-<p>Today, we should at least do the bare minimum: avoid <em>leaking</em> memory by making
-sure the VM can still find every allocated object even if the Lox program itself
-no longer references them. There are many sophisticated techniques that advanced
-memory managers use to allocate and track memory for objects. We&rsquo;re going to
-take the simplest practical approach.</p>
-<p>We&rsquo;ll create a linked list that stores every Obj. The VM can traverse that
-list to find every single object that has been allocated on the heap, whether or
-not the user&rsquo;s program or the VM&rsquo;s stack still has a reference to it.</p>
-<p>We could define a separate linked list node struct but then we&rsquo;d have to
-allocate those too. Instead, we&rsquo;ll use an <strong>intrusive list</strong><span class="em">&mdash;</span>the Obj struct
-itself will be the linked list node. Each Obj gets a pointer to the next Obj in
-the chain.</p>
+<p>Aujourd&rsquo;hui, nous devrions au moins faire le strict minimum : éviter de <em>fuiter</em> de la mémoire en nous assurant que la VM peut toujours trouver chaque objet alloué même si le programme Lox lui-même ne les référence plus. Il y a beaucoup de techniques sophistiquées que les gestionnaires de mémoire avancés utilisent pour allouer et suivre la mémoire pour les objets. Nous allons prendre l&rsquo;approche pratique la plus simple.</p>
+<p>Nous créerons une liste chaînée qui stocke chaque Obj. La VM peut traverser cette liste pour trouver chaque objet unique qui a été alloué sur le tas, que le programme de l&rsquo;utilisateur ou la pile de la VM ait encore une référence vers lui ou non.</p>
+<p>Nous pourrions définir une struct de nœud de liste chaînée séparée mais alors nous aurions à allouer ceux-là aussi. Au lieu de cela, nous utiliserons une <strong>liste intrusive</strong><span class="em">&mdash;</span>la struct Obj elle-même sera le nœud de liste chaînée. Chaque Obj obtient un pointeur vers le prochain Obj dans la chaîne.</p>
 <div class="codehilite"><pre class="insert-before">struct Obj {
   ObjType type;
 </pre><div class="source-file"><em>object.h</em><br>
@@ -828,7 +636,7 @@ in struct <em>Obj</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>object.h</em>, in struct <em>Obj</em></div>
 
-<p>The VM stores a pointer to the head of the list.</p>
+<p>La VM stocke un pointeur vers la tête de la liste.</p>
 <div class="codehilite"><pre class="insert-before">  Value* stackTop;
 </pre><div class="source-file"><em>vm.h</em><br>
 in struct <em>VM</em></div>
@@ -837,7 +645,7 @@ in struct <em>VM</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.h</em>, in struct <em>VM</em></div>
 
-<p>When we first initialize the VM, there are no allocated objects.</p>
+<p>Quand nous initialisons la VM pour la première fois, il n&rsquo;y a pas d&rsquo;objets alloués.</p>
 <div class="codehilite"><pre class="insert-before">  resetStack();
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>initVM</em>()</div>
@@ -846,7 +654,7 @@ in <em>initVM</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>initVM</em>()</div>
 
-<p>Every time we allocate an Obj, we insert it in the list.</p>
+<p>Chaque fois que nous allouons un Obj, nous l&rsquo;insérons dans la liste.</p>
 <div class="codehilite"><pre class="insert-before">  object-&gt;type = type;
 </pre><div class="source-file"><em>object.c</em><br>
 in <em>allocateObject</em>()</div>
@@ -858,11 +666,8 @@ in <em>allocateObject</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>object.c</em>, in <em>allocateObject</em>()</div>
 
-<p>Since this is a singly linked list, the easiest place to insert it is as the
-head. That way, we don&rsquo;t need to also store a pointer to the tail and keep it
-updated.</p>
-<p>The &ldquo;object&rdquo; module is directly using the global <code>vm</code> variable from the &ldquo;vm&rdquo;
-module, so we need to expose that externally.</p>
+<p>Puisque c&rsquo;est une liste chaînée simple, l&rsquo;endroit le plus facile pour l&rsquo;insérer est comme la tête. De cette façon, nous n&rsquo;avons pas besoin de stocker aussi un pointeur vers la queue et de le garder à jour.</p>
+<p>Le module &ldquo;object&rdquo; utilise directement la variable globale <code>vm</code> du module &ldquo;vm&rdquo;, donc nous avons besoin d&rsquo;exposer ça extérieurement.</p>
 <div class="codehilite"><pre class="insert-before">} InterpretResult;
 
 </pre><div class="source-file"><em>vm.h</em><br>
@@ -873,11 +678,8 @@ add after enum <em>InterpretResult</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.h</em>, add after enum <em>InterpretResult</em></div>
 
-<p>Eventually, the garbage collector will free memory while the VM is still
-running. But, even then, there will usually be unused objects still lingering in
-memory when the user&rsquo;s program completes. The VM should free those too.</p>
-<p>There&rsquo;s no sophisticated logic for that. Once the program is done, we can free
-<em>every</em> object. We can and should implement that now.</p>
+<p>Éventuellement, le ramasse-miettes libérera la mémoire alors que la VM tourne encore. Mais, même alors, il y aura habituellement des objets inutilisés traînant encore en mémoire quand le programme de l&rsquo;utilisateur termine. La VM devrait libérer ceux-là aussi.</p>
+<p>Il n&rsquo;y a pas de logique sophistiquée pour cela. Une fois que le programme est fini, nous pouvons libérer <em>chaque</em> objet. Nous pouvons et devrions implémenter cela maintenant.</p>
 <div class="codehilite"><pre class="insert-before">void freeVM() {
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>freeVM</em>()</div>
@@ -886,8 +688,7 @@ in <em>freeVM</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>vm.c</em>, in <em>freeVM</em>()</div>
 
-<p>That empty function we defined <a href="a-virtual-machine.html#an-instruction-execution-machine">way back when</a> finally does something! It
-calls this:</p>
+<p>Cette fonction vide que nous avons définie <a href="machine-virtuelle.html#une-machine-d-exécution-d-instruction">il y a longtemps</a> fait finalement quelque chose ! Elle appelle ceci :</p>
 <div class="codehilite"><pre class="insert-before">void* reallocate(void* pointer, size_t oldSize, size_t newSize);
 </pre><div class="source-file"><em>memory.h</em><br>
 add after <em>reallocate</em>()</div>
@@ -898,7 +699,7 @@ add after <em>reallocate</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>memory.h</em>, add after <em>reallocate</em>()</div>
 
-<p>Here&rsquo;s how we free the objects:</p>
+<p>Voici comment nous libérons les objets :</p>
 <div class="codehilite"><div class="source-file"><em>memory.c</em><br>
 add after <em>reallocate</em>()</div>
 <pre><span class="t">void</span> <span class="i">freeObjects</span>() {
@@ -912,8 +713,7 @@ add after <em>reallocate</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>memory.c</em>, add after <em>reallocate</em>()</div>
 
-<p>This is a CS 101 textbook implementation of walking a linked list and freeing
-its nodes. For each node, we call:</p>
+<p>C&rsquo;est une implémentation de manuel de CS 101 de parcourir une liste chaînée et de libérer ses nœuds. Pour chaque nœud, nous appelons :</p>
 <div class="codehilite"><div class="source-file"><em>memory.c</em><br>
 add after <em>reallocate</em>()</div>
 <pre><span class="k">static</span> <span class="t">void</span> <span class="i">freeObject</span>(<span class="t">Obj</span>* <span class="i">object</span>) {
@@ -929,10 +729,7 @@ add after <em>reallocate</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>memory.c</em>, add after <em>reallocate</em>()</div>
 
-<p>We aren&rsquo;t only freeing the Obj itself. Since some object types also allocate
-other memory that they own, we also need a little type-specific code to handle
-each object type&rsquo;s special needs. Here, that means we free the character array
-and then free the ObjString. Those both use one last memory management macro.</p>
+<p>Nous ne libérons pas seulement l&rsquo;Obj lui-même. Puisque certains types d&rsquo;objet allouent aussi d&rsquo;autre mémoire qu&rsquo;ils possèdent, nous avons aussi besoin d&rsquo;un peu de code spécifique au type pour gérer les besoins spéciaux de chaque type d&rsquo;objet. Ici, cela signifie que nous libérons le tableau de caractères et ensuite libérons l&rsquo;ObjString. Ceux-ci utilisent tous deux une dernière macro de gestion de la mémoire.</p>
 <div class="codehilite"><pre class="insert-before">    (type*)reallocate(NULL, 0, sizeof(type) * (count))
 </pre><div class="source-file"><em>memory.h</em></div>
 <pre class="insert">
@@ -944,15 +741,11 @@ and then free the ObjString. Those both use one last memory management macro.</p
 </pre></div>
 <div class="source-file-narrow"><em>memory.h</em></div>
 
-<p>It&rsquo;s a tiny <span name="free">wrapper</span> around <code>reallocate()</code> that
-&ldquo;resizes&rdquo; an allocation down to zero bytes.</p>
+<p>C&rsquo;est un minuscule <span name="free">emballage</span> autour de <code>reallocate()</code> qui &ldquo;redimensionne&rdquo; une allocation à zéro octet.</p>
 <aside name="free">
-<p>Using <code>reallocate()</code> to free memory might seem pointless. Why not just call
-<code>free()</code>? Later, this will help the VM track how much memory is still being
-used. If all allocation and freeing goes through <code>reallocate()</code>, it&rsquo;s easy to
-keep a running count of the number of bytes of allocated memory.</p>
+<p>Utiliser <code>reallocate()</code> pour libérer de la mémoire pourrait sembler inutile. Pourquoi ne pas juste appeler <code>free()</code> ? Plus tard, cela aidera la VM à suivre combien de mémoire est encore utilisée. Si toute allocation et libération passe par <code>reallocate()</code>, il est facile de garder un compte courant du nombre d&rsquo;octets de mémoire allouée.</p>
 </aside>
-<p>As usual, we need an include to wire everything together.</p>
+<p>Comme d&rsquo;habitude, nous avons besoin d&rsquo;un include pour câbler tout ensemble.</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;common.h&quot;
 </pre><div class="source-file"><em>memory.h</em></div>
 <pre class="insert"><span class="a">#include &quot;object.h&quot;</span>
@@ -962,7 +755,7 @@ keep a running count of the number of bytes of allocated memory.</p>
 </pre></div>
 <div class="source-file-narrow"><em>memory.h</em></div>
 
-<p>Then in the implementation file:</p>
+<p>Ensuite dans le fichier d&rsquo;implémentation :</p>
 <div class="codehilite"><pre class="insert-before">#include &quot;memory.h&quot;
 </pre><div class="source-file"><em>memory.c</em></div>
 <pre class="insert"><span class="a">#include &quot;vm.h&quot;</span>
@@ -972,149 +765,66 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
 </pre></div>
 <div class="source-file-narrow"><em>memory.c</em></div>
 
-<p>With this, our VM no longer leaks memory. Like a good C program, it cleans up
-its mess before exiting. But it doesn&rsquo;t free any objects while the VM is
-running. Later, when it&rsquo;s possible to write longer-running Lox programs, the VM
-will eat more and more memory as it goes, not relinquishing a single byte until
-the entire program is done.</p>
-<p>We won&rsquo;t address that until we&rsquo;ve added <a href="garbage-collection.html">a real garbage collector</a>, but this
-is a big step. We now have the infrastructure to support a variety of different
-kinds of dynamically allocated objects. And we&rsquo;ve used that to add strings to
-clox, one of the most used types in most programming languages. Strings in turn
-enable us to build another fundamental data type, especially in dynamic
-languages: the venerable <a href="hash-tables.html">hash table</a>. But that&rsquo;s for the next chapter<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
+<p>Avec ceci, notre VM ne fuite plus de mémoire. Comme un bon programme C, elle nettoie son désordre avant de quitter. Mais elle ne libère aucuns objets pendant que la VM tourne. Plus tard, quand il sera possible d&rsquo;écrire des programmes Lox plus longs, la VM mangera de plus en plus de mémoire alors qu&rsquo;elle va, ne relâchant pas un seul octet jusqu&rsquo;à ce que le programme entier soit fini.</p>
+<p>Nous n&rsquo;adresserons pas cela jusqu&rsquo;à ce que nous ayons ajouté <a href="ramasse-miettes.html">un vrai ramasse-miettes</a>, mais c&rsquo;est une grande étape. Nous avons maintenant l&rsquo;infrastructure pour supporter une variété de différentes sortes d&rsquo;objets alloués dynamiquement. Et nous avons utilisé cela pour ajouter les chaînes à clox, l&rsquo;un des types les plus utilisés dans la plupart des langages de programmation. Les chaînes à leur tour nous permettent de construire un autre type de données fondamental, spécialement dans les langages dynamiques : la vénérable <a href="tables-de-hachage.html">table de hachage</a>. Mais c&rsquo;est pour le prochain chapitre<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
 <div class="challenges">
-<h2><a href="#challenges" id="challenges">Challenges</a></h2>
+<h2><a href="#défis" id="défis"><small>19&#8202;.&#8202;6</small>Défis</a></h2>
 <ol>
 <li>
-<p>Each string requires two separate dynamic allocations<span class="em">&mdash;</span>one for the
-ObjString and a second for the character array. Accessing the characters
-from a value requires two pointer indirections, which can be bad for
-performance. A more efficient solution relies on a technique called
-<strong><a href="https://en.wikipedia.org/wiki/Flexible_array_member">flexible array members</a></strong>. Use that to store the ObjString and its
-character array in a single contiguous allocation.</p>
+<p>Chaque chaîne exige deux allocations dynamiques séparées<span class="em">&mdash;</span>une pour l&rsquo;ObjString et une seconde pour le tableau de caractères. Accéder aux caractères depuis une valeur exige deux indirections de pointeur, ce qui peut être mauvais pour la performance. Une solution plus efficace repose sur une technique appelée <strong><a href="https://en.wikipedia.org/wiki/Flexible_array_member">membres de tableau flexibles</a></strong>. Utilisez cela pour stocker l&rsquo;ObjString et son tableau de caractères dans une allocation contiguë unique.</p>
 </li>
 <li>
-<p>When we create the ObjString for each string literal, we copy the characters
-onto the heap. That way, when the string is later freed, we know it is safe
-to free the characters too.</p>
-<p>This is a simpler approach but wastes some memory, which might be a problem
-on very constrained devices. Instead, we could keep track of which
-ObjStrings own their character array and which are &ldquo;constant strings&rdquo; that
-just point back to the original source string or some other non-freeable
-location. Add support for this.</p>
+<p>Quand nous créons l&rsquo;ObjString pour chaque littéral chaîne, nous copions les caractères sur le tas. De cette façon, quand la chaîne est plus tard libérée, nous savons qu&rsquo;il est sûr de libérer les caractères aussi.</p>
+<p>C&rsquo;est une approche plus simple mais gaspille un peu de mémoire, ce qui pourrait être un problème sur des appareils très contraints. Au lieu de cela, nous pourrions garder une trace de quels ObjStrings possèdent leur tableau de caractères et lesquels sont des &ldquo;chaînes constantes&rdquo; qui pointent juste en retour vers la chaîne source originale ou quelque autre emplacement non libérable. Ajoutez le support pour cela.</p>
 </li>
 <li>
-<p>If Lox was your language, what would you have it do when a user tries to use
-<code>+</code> with one string operand and the other some other type? Justify your
-choice. What do other languages do?</p>
+<p>Si Lox était votre langage, que lui feriez-vous faire quand un utilisateur essaie d&rsquo;utiliser <code>+</code> avec un opérande chaîne et l&rsquo;autre d&rsquo;un autre type ? Justifiez votre choix. Que font d&rsquo;autres langages ?</p>
 </li>
 </ol>
 </div>
 <div class="design-note">
-<h2><a href="#design-note" id="design-note">Design Note: String Encoding</a></h2>
-<p>In this book, I try not to shy away from the gnarly problems you&rsquo;ll run into in
-a real language implementation. We might not always use the most <em>sophisticated</em>
-solution<span class="em">&mdash;</span>it&rsquo;s an intro book after all<span class="em">&mdash;</span>but I don&rsquo;t think it&rsquo;s honest to
-pretend the problem doesn&rsquo;t exist at all. However, I did skirt around one really
-nasty conundrum: deciding how to represent strings.</p>
-<p>There are two facets to a string encoding:</p>
+<h2><a href="#note-de-conception--encodage-de-chaîne" id="note-de-conception--encodage-de-chaîne"><small>19&#8202;.&#8202;7</small>Note de Conception : Encodage de Chaîne</a></h2>
+<p>Dans ce livre, j&rsquo;essaie de ne pas fuir les problèmes gnagnus que vous rencontrerez dans une vraie implémentation de langage. Nous pourrions ne pas toujours utiliser la solution la plus <em>sophistiquée</em><span class="em">&mdash;</span>c&rsquo;est un livre d&rsquo;intro après tout<span class="em">&mdash;</span>mais je ne pense pas qu&rsquo;il soit honnête de prétendre que le problème n&rsquo;existe pas du tout. Cependant, j&rsquo;ai contourné une énigme vraiment méchante : décider comment représenter les chaînes.</p>
+<p>Il y a deux facettes à un encodage de chaîne :</p>
 <ul>
 <li>
-<p><strong>What is a single &ldquo;character&rdquo; in a string?</strong> How many different values are
-there and what do they represent? The first widely adopted standard answer
-to this was <a href="https://en.wikipedia.org/wiki/ASCII">ASCII</a>. It gave you 127 different character values and
-specified what they were. It was great<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>if you only ever cared about
-English. While it has weird, mostly forgotten characters like &ldquo;record
-separator&rdquo; and &ldquo;synchronous idle&rdquo;, it doesn&rsquo;t have a single umlaut, acute,
-or grave. It can&rsquo;t represent &ldquo;jalapeño&rdquo;, &ldquo;naïve&rdquo;, <span
-name="gruyere">&ldquo;Gruyère&rdquo;</span>, or &ldquo;Mötley Crüe&rdquo;.</p>
-<aside name="gruyere">
-<p>It goes without saying that a language that does not let one discuss Gruyère
-or Mötley Crüe is a language not worth using.</p>
-</aside>
-<p>Next came <a href="https://en.wikipedia.org/wiki/Unicode">Unicode</a>. Initially, it supported 16,384 different characters
-(<strong>code points</strong>), which fit nicely in 16 bits with a couple of bits to
-spare. Later that grew and grew, and now there are well over 100,000
-different code points including such vital instruments of human
-communication as 💩 (Unicode Character &lsquo;PILE OF POO&rsquo;, <code>U+1F4A9</code>).</p>
-<p>Even that long list of code points is not enough to represent each possible
-visible glyph a language might support. To handle that, Unicode also has
-<strong>combining characters</strong> that modify a preceding code point. For example,
-&ldquo;a&rdquo; followed by the combining character &ldquo;¨&rdquo; gives you &ldquo;ä&rdquo;. (To make things
-more confusing Unicode <em>also</em> has a single code point that looks like &ldquo;ä&rdquo;.)</p>
-<p>If a user accesses the fourth &ldquo;character&rdquo; in &ldquo;naïve&rdquo;, do they expect to get
-back &ldquo;v&rdquo; or &ldquo;¨&rdquo;? The former means they are thinking of each code
-point and its combining character as a single unit<span class="em">&mdash;</span>what Unicode calls an
-<strong>extended grapheme cluster</strong><span class="em">&mdash;</span>the latter means they are thinking in
-individual code points. Which do your users expect?</p>
+<p><strong>Qu&rsquo;est-ce qu&rsquo;un &ldquo;caractère&rdquo; unique dans une chaîne ?</strong> Combien de valeurs différentes y a-t-il et que représentent-elles ? La première réponse standard largement adoptée à cela était <a href="https://en.wikipedia.org/wiki/ASCII">ASCII</a>. Il vous donnait 127 valeurs de caractères différentes et spécifiait ce qu&rsquo;elles étaient. C&rsquo;était génial<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>si vous ne vous souciez que de l&rsquo;anglais. Bien qu&rsquo;il ait des caractères bizarres, la plupart oubliés comme &ldquo;séparateur d&rsquo;enregistrement&rdquo; et &ldquo;attente synchrone&rdquo;, il n&rsquo;a pas un seul trema, aigu, ou grave. Il ne peut pas représenter &ldquo;jalapeño&rdquo;, &ldquo;naïve&rdquo;, <span name="gruyere">&ldquo;Gruyère&rdquo;</span>, ou &ldquo;Mötley Crüe&rdquo;.</p>
+<pre><code>&lt;aside name="gruyere"&gt;
+</code></pre>
+<p>Il va sans dire qu&rsquo;un langage qui ne laisse pas discuter de Gruyère ou de Mötley Crüe est un langage qui ne vaut pas la peine d&rsquo;être utilisé.</p>
+<pre><code>&lt;/aside&gt;
+</code></pre>
+<p>Ensuite vint <a href="https://en.wikipedia.org/wiki/Unicode">Unicode</a>. Initialement, il supportait 16 384 caractères différents (<strong>points de code</strong>), qui tenaient joliment dans 16 bits avec une couple de bits à épargner. Plus tard cela a grandi et grandi, et maintenant il y a bien plus de 100 000 points de code différents incluant de tels instruments vitaux de communication humaine comme 💩 (Caractère Unicode &lsquo;TAS DE CACA&rsquo;, <code>U+1F4A9</code>).</p>
+<p>Même cette longue liste de points de code n&rsquo;est pas suffisante pour représenter chaque glyphe visible possible qu&rsquo;un langage pourrait supporter. Pour gérer cela, Unicode a aussi des <strong>caractères combinants</strong> qui modifient un point de code précédent. Par exemple, &ldquo;a&rdquo; suivi par le caractère combinant &ldquo;¨&rdquo; vous donne &ldquo;ä&rdquo;. (Pour rendre les choses plus confuses Unicode a <em>aussi</em> un point de code unique qui ressemble à &ldquo;ä&rdquo;.)</p>
+<p>Si un utilisateur accède au quatrième &ldquo;caractère&rdquo; dans &ldquo;naïve&rdquo;, s&rsquo;attend-il à récupérer &ldquo;v&rdquo; ou &ldquo;¨&rdquo; ? Le premier signifie qu&rsquo;ils pensent à chaque point de code et son caractère combinant comme une unité unique<span class="em">&mdash;</span>ce que Unicode appelle un <strong>amas de graphèmes étendu</strong><span class="em">&mdash;</span>le dernier signifie qu&rsquo;ils pensent en points de code individuels. Auquel vos utilisateurs s&rsquo;attendent-ils ?</p>
 </li>
 <li>
-<p><strong>How is a single unit represented in memory?</strong> Most systems using ASCII
-gave a single byte to each character and left the high bit unused. Unicode
-has a handful of common encodings. UTF-16 packs most code points into 16
-bits. That was great when every code point fit in that size. When that
-overflowed, they added <em>surrogate pairs</em> that use multiple 16-bit code units
-to represent a single code point. UTF-32 is the next evolution of
-UTF-16<span class="em">&mdash;</span>it gives a full 32 bits to each and every code point.</p>
-<p>UTF-8 is more complex than either of those. It uses a variable number of
-bytes to encode a code point. Lower-valued code points fit in fewer bytes.
-Since each character may occupy a different number of bytes, you can&rsquo;t
-directly index into the string to find a specific code point. If you want,
-say, the 10th code point, you don&rsquo;t know how many bytes into the string that
-is without walking and decoding all of the preceding ones.</p>
+<p><strong>Comment une unité unique est-elle représentée en mémoire ?</strong> La plupart des systèmes utilisant ASCII donnaient un octet unique à chaque caractère et laissaient le bit haut inutilisé. Unicode a une poignée d&rsquo;encodages communs. UTF-16 empaquette la plupart des points de code dans 16 bits. C&rsquo;était génial quand chaque point de code tenait dans cette taille. Quand cela a débordé, ils ont ajouté des <em>paires de substitution</em> qui utilisent de multiples unités de code de 16 bits pour représenter un point de code unique. UTF-32 est la prochaine évolution de UTF-16<span class="em">&mdash;</span>il donne un plein 32 bits à chaque point de code.</p>
+<p>UTF-8 est plus complexe que l&rsquo;un ou l&rsquo;autre de ceux-ci. Il utilise un nombre variable d&rsquo;octets pour encoder un point de code. Les points de code de valeur plus basse tiennent dans moins d&rsquo;octets. Puisque chaque caractère peut occuper un nombre différent d&rsquo;octets, vous ne pouvez pas directement indexer dans la chaîne pour trouver un point de code spécifique. Si vous voulez, disons, le 10ème point de code, vous ne savez pas à combien d&rsquo;octets dans la chaîne c&rsquo;est sans marcher et décoder tous les précédents.</p>
 </li>
 </ul>
-<p>Choosing a character representation and encoding involves fundamental
-trade-offs. Like many things in engineering, there&rsquo;s no <span
-name="python">perfect</span> solution:</p>
+<p>Choisir une représentation de caractère et un encodage implique des compromis fondamentaux. Comme beaucoup de choses en ingénierie, il n&rsquo;y a pas de solution <span name="python">parfaite</span> :</p>
 <aside name="python">
-<p>An example of how difficult this problem is comes from Python. The achingly long
-transition from Python 2 to 3 is painful mostly because of its changes around
-string encoding.</p>
+<p>Un exemple de combien ce problème est difficile vient de Python. La transition douloureusement longue de Python 2 à 3 est pénible surtout à cause de ses changements autour de l&rsquo;encodage de chaîne.</p>
 </aside>
 <ul>
 <li>
-<p>ASCII is memory efficient and fast, but it kicks non-Latin languages to the
-side.</p>
+<p>ASCII est efficace en mémoire et rapide, mais il jette les langages non-latins sur le côté.</p>
 </li>
 <li>
-<p>UTF-32 is fast and supports the whole Unicode range, but wastes a lot of
-memory given that most code points do tend to be in the lower range of
-values, where a full 32 bits aren&rsquo;t needed.</p>
+<p>UTF-32 est rapide et supporte toute la plage Unicode, mais gaspille beaucoup de mémoire étant donné que la plupart des points de code tendent à être dans la plage basse de valeurs, où un plein 32 bits n&rsquo;est pas nécessaire.</p>
 </li>
 <li>
-<p>UTF-8 is memory efficient and supports the whole Unicode range, but its
-variable-length encoding makes it slow to access arbitrary code points.</p>
+<p>UTF-8 est efficace en mémoire et supporte toute la plage Unicode, mais son encodage à longueur variable le rend lent pour accéder à des points de code arbitraires.</p>
 </li>
 <li>
-<p>UTF-16 is worse than all of them<span class="em">&mdash;</span>an ugly consequence of Unicode
-outgrowing its earlier 16-bit range. It&rsquo;s less memory efficient than UTF-8
-but is still a variable-length encoding thanks to surrogate pairs. Avoid it
-if you can. Alas, if your language needs to run on or interoperate with the
-browser, the JVM, or the CLR, you might be stuck with it, since those all
-use UTF-16 for their strings and you don&rsquo;t want to have to convert every
-time you pass a string to the underlying system.</p>
+<p>UTF-16 est pire que tous ceux-là<span class="em">&mdash;</span>une conséquence laide d&rsquo;Unicode dépassant sa plage 16-bit antérieure. Il est moins efficace en mémoire que UTF-8 mais est toujours un encodage à longueur variable grâce aux paires de substitution. Évitez-le si vous pouvez. Hélas, si votre langage a besoin de tourner sur ou d&rsquo;interopérer avec le navigateur, la JVM, ou le CLR, vous pourriez être coincé avec, puisque ceux-ci utilisent tous UTF-16 pour leurs chaînes et vous ne voulez pas avoir à convertir chaque fois que vous passez une chaîne au système sous-jacent.</p>
 </li>
 </ul>
-<p>One option is to take the maximal approach and do the &ldquo;rightest&rdquo; thing. Support
-all the Unicode code points. Internally, select an encoding for each string
-based on its contents<span class="em">&mdash;</span>use ASCII if every code point fits in a byte, UTF-16 if
-there are no surrogate pairs, etc. Provide APIs to let users iterate over both
-code points and extended grapheme clusters.</p>
-<p>This covers all your bases but is really complex. It&rsquo;s a lot to implement,
-debug, and optimize. When serializing strings or interoperating with other
-systems, you have to deal with all of the encodings. Users need to understand
-the two indexing APIs and know which to use when. This is the approach that
-newer, big languages tend to take<span class="em">&mdash;</span>like Raku and Swift.</p>
-<p>A simpler compromise is to always encode using UTF-8 and only expose an API that
-works with code points. For users that want to work with grapheme clusters, let
-them use a third-party library for that. This is less Latin-centric than ASCII
-but not much more complex. You lose fast direct indexing by code point, but you
-can usually live without that or afford to make it <em>O(n)</em> instead of <em>O(1)</em>.</p>
-<p>If I were designing a big workhorse language for people writing large
-applications, I&rsquo;d probably go with the maximal approach. For my little embedded
-scripting language <a href="http://wren.io">Wren</a>, I went with UTF-8 and code points.</p>
+<p>Une option est de prendre l&rsquo;approche maximale et de faire la chose la &ldquo;plus juste&rdquo;. Supporter tous les points de code Unicode. En interne, sélectionner un encodage pour chaque chaîne basé sur son contenu<span class="em">&mdash;</span>utiliser ASCII si chaque point de code tient dans un octet, UTF-16 s&rsquo;il n&rsquo;y a pas de paires de substitution, etc. Fournir des APIs pour laisser les utilisateurs itérer sur à la fois les points de code et les amas de graphèmes étendus.</p>
+<p>Cela couvre toutes vos bases mais est vraiment complexe. C&rsquo;est beaucoup à implémenter, déboguer, et optimiser. Quand on sérialise des chaînes ou qu&rsquo;on interopère avec d&rsquo;autres systèmes, vous avez à gérer tous les encodages. Les utilisateurs ont besoin de comprendre les deux APIs d&rsquo;indexation et savoir laquelle utiliser quand. C&rsquo;est l&rsquo;approche que les langages plus récents, gros tendent à prendre<span class="em">&mdash;</span>comme Raku et Swift.</p>
+<p>Un compromis plus simple est de toujours encoder en utilisant UTF-8 et seulement exposer une API qui travaille avec les points de code. Pour les utilisateurs qui veulent travailler avec les amas de graphèmes, laissez-les utiliser une bibliothèque tierce pour cela. C&rsquo;est moins Latin-centrique qu&rsquo;ASCII mais pas beaucoup plus complexe. Vous perdez l&rsquo;indexation directe rapide par point de code, mais vous pouvez habituellement vivre sans cela ou vous permettre de le rendre <em>O(n)</em> au lieu de <em>O(1)</em>.</p>
+<p>Si je concevais un gros langage de trait pour des gens écrivant de larges applications, j&rsquo;irais probablement avec l&rsquo;approche maximale. Pour mon petit langage de script embarqué <a href="http://wren.io">Wren</a>, je suis allé avec UTF-8 et les points de code.</p>
 </div>
 
 <footer>

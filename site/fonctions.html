@@ -37,14 +37,13 @@
 <h3><a href="#top">Fonctions<small>10</small></a></h3>
 
 <ul>
-    <li><a href="#function-calls"><small>10.1</small> Function Calls</a></li>
-    <li><a href="#native-functions"><small>10.2</small> Native Functions</a></li>
-    <li><a href="#function-declarations"><small>10.3</small> Function Declarations</a></li>
-    <li><a href="#function-objects"><small>10.4</small> Function Objects</a></li>
-    <li><a href="#return-statements"><small>10.5</small> Return Statements</a></li>
-    <li><a href="#local-functions-and-closures"><small>10.6</small> Local Functions and Closures</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
+    <li><a href="#appels-de-fonctions"><small>10.1</small> Appels de Fonctions</a></li>
+    <li><a href="#fonctions-natives"><small>10.2</small> Fonctions Natives</a></li>
+    <li><a href="#déclarations-de-fonction"><small>10.3</small> Déclarations de Fonction</a></li>
+    <li><a href="#objets-fonction"><small>10.4</small> Objets Fonction</a></li>
+    <li><a href="#instructions-return"><small>10.5</small> Instructions Return</a></li>
+    <li><a href="#fonctions-locales-et-fermetures"><small>10.6</small> Fonctions Locales et Fermetures</a></li>
+    <li><a href="#défis"><small>10.7</small> Défis</a></li>
 </ul>
 
 
@@ -69,14 +68,13 @@
 <h3><a href="#top">Fonctions<small>10</small></a></h3>
 
 <ul>
-    <li><a href="#function-calls"><small>10.1</small> Function Calls</a></li>
-    <li><a href="#native-functions"><small>10.2</small> Native Functions</a></li>
-    <li><a href="#function-declarations"><small>10.3</small> Function Declarations</a></li>
-    <li><a href="#function-objects"><small>10.4</small> Function Objects</a></li>
-    <li><a href="#return-statements"><small>10.5</small> Return Statements</a></li>
-    <li><a href="#local-functions-and-closures"><small>10.6</small> Local Functions and Closures</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
+    <li><a href="#appels-de-fonctions"><small>10.1</small> Appels de Fonctions</a></li>
+    <li><a href="#fonctions-natives"><small>10.2</small> Fonctions Natives</a></li>
+    <li><a href="#déclarations-de-fonction"><small>10.3</small> Déclarations de Fonction</a></li>
+    <li><a href="#objets-fonction"><small>10.4</small> Objets Fonction</a></li>
+    <li><a href="#instructions-return"><small>10.5</small> Instructions Return</a></li>
+    <li><a href="#fonctions-locales-et-fermetures"><small>10.6</small> Fonctions Locales et Fermetures</a></li>
+    <li><a href="#défis"><small>10.7</small> Défis</a></li>
 </ul>
 
 
@@ -95,74 +93,41 @@
   <h1>Fonctions</h1>
 
 <blockquote>
-<p>And that is also the way the human mind works<span class="em">&mdash;</span>by the compounding of old
-ideas into new structures that become new ideas that can themselves be used in
-compounds, and round and round endlessly, growing ever more remote from the
-basic earthbound imagery that is each language&rsquo;s soil.</p>
-<p><cite>Douglas R. Hofstadter, <em>I Am a Strange Loop</em></cite></p>
+<p>Et c&rsquo;est aussi ainsi que l&rsquo;esprit humain fonctionne<span class="em">&mdash;</span>par la composition de vieilles
+idées en de nouvelles structures qui deviennent de nouvelles idées qui peuvent elles-mêmes être utilisées dans
+des composés, et en rond et encore en rond sans fin, grandissant toujours plus loin de
+l&rsquo;imagerie terrestre de base qui est le sol de chaque langage.</p>
+<p><cite>Douglas R. Hofstadter, <em>Je suis une boucle étrange</em></cite></p>
 </blockquote>
-<p>This chapter marks the culmination of a lot of hard work. The previous chapters
-add useful functionality in their own right, but each also supplies a piece of a
-<span name="lambda">puzzle</span>. We&rsquo;ll take those pieces<span class="em">&mdash;</span>expressions,
-statements, variables, control flow, and lexical scope<span class="em">&mdash;</span>add a couple more, and
-assemble them all into support for real user-defined functions and function
-calls.</p>
-<aside name="lambda"><img src="image/functions/lambda.png" alt="A lambda puzzle." />
+<p>Ce chapitre marque l&rsquo;aboutissement de beaucoup de travail difficile. Les chapitres précédents ajoutent des fonctionnalités utiles de leur propre droit, mais chacun fournit aussi une pièce d&rsquo;un <span name="lambda">puzzle</span>. Nous prendrons ces pièces<span class="em">&mdash;</span>expressions, instructions, variables, contrôle de flux, et portée lexicale<span class="em">&mdash;</span>ajouterons une paire de plus, et assemblerons tout cela pour le support de de vraies fonctions définies par l&rsquo;utilisateur et des appels de fonctions.</p>
+<aside name="lambda"><img src="image/functions/lambda.png" alt="Un puzzle lambda." />
 </aside>
-<h2><a href="#function-calls" id="function-calls"><small>10&#8202;.&#8202;1</small>Function Calls</a></h2>
-<p>You&rsquo;re certainly familiar with C-style function call syntax, but the grammar is
-more subtle than you may realize. Calls are typically to named functions like:</p>
+<h2><a href="#appels-de-fonctions" id="appels-de-fonctions"><small>10&#8202;.&#8202;1</small>Appels de Fonctions</a></h2>
+<p>Vous êtes certainement familier avec la syntaxe d&rsquo;appel de fonction de style C, mais la grammaire est plus subtile que vous pouvez le réaliser. Les appels sont typiquement vers des fonctions nommées comme :</p>
 <div class="codehilite"><pre><span class="i">average</span>(<span class="n">1</span>, <span class="n">2</span>);
 </pre></div>
-<p>But the <span name="pascal">name</span> of the function being called isn&rsquo;t
-actually part of the call syntax. The thing being called<span class="em">&mdash;</span>the <strong>callee</strong><span class="em">&mdash;</span>can be any expression that evaluates to a function. (Well, it does have to be a
-pretty <em>high precedence</em> expression, but parentheses take care of that.) For
-example:</p>
+<p>Mais le <span name="pascal">nom</span> de la fonction appelée ne fait pas en fait partie de la syntaxe d&rsquo;appel. La chose appelée<span class="em">&mdash;</span>l&rsquo;<strong>appelé</strong><span class="em">&mdash;</span>peut être n&rsquo;importe quelle expression qui s&rsquo;évalue en une fonction. (Bon, elle doit être une expression à <em>haute précédence</em>, mais les parenthèses s&rsquo;occupent de ça.) Par exemple :</p>
 <aside name="pascal">
-<p>The name <em>is</em> part of the call syntax in Pascal. You can call only named
-functions or functions stored directly in variables.</p>
+<p>Le nom <em>fait</em> partie de la syntaxe d&rsquo;appel en Pascal. Vous ne pouvez appeler que des fonctions nommées ou des fonctions stockées directement dans des variables.</p>
 </aside>
 <div class="codehilite"><pre><span class="i">getCallback</span>()();
 </pre></div>
-<p>There are two call expressions here. The first pair of parentheses has
-<code>getCallback</code> as its callee. But the second call has the entire <code>getCallback()</code>
-expression as its callee. It is the parentheses following an expression that
-indicate a function call. You can think of a call as sort of like a postfix
-operator that starts with <code>(</code>.</p>
-<p>This &ldquo;operator&rdquo; has higher precedence than any other operator, even the unary
-ones. So we slot it into the grammar by having the <code>unary</code> rule bubble up to a
-new <code>call</code> rule.</p>
+<p>Il y a deux expressions d&rsquo;appel ici. La première paire de parenthèses a <code>getCallback</code> comme son appelé. Mais le second appel a l&rsquo;expression entière <code>getCallback()</code> comme son appelé. Ce sont les parenthèses suivant une expression qui indiquent un appel de fonction. Vous pouvez penser à un appel comme une sorte d&rsquo;opérateur postfixe qui commence par <code>(</code>.</p>
+<p>Cet &ldquo;opérateur&rdquo; a une plus haute précédence que n&rsquo;importe quel autre opérateur, même les unaires. Donc nous le glissons dans la grammaire en faisant remonter la règle <code>unary</code> vers une nouvelle règle <code>call</code>.</p>
 <p><span name="curry"></span></p>
 <div class="codehilite"><pre><span class="i">unary</span>          → ( <span class="s">&quot;!&quot;</span> | <span class="s">&quot;-&quot;</span> ) <span class="i">unary</span> | <span class="i">call</span> ;
 <span class="i">call</span>           → <span class="i">primary</span> ( <span class="s">&quot;(&quot;</span> <span class="i">arguments</span>? <span class="s">&quot;)&quot;</span> )* ;
 </pre></div>
-<p>This rule matches a primary expression followed by zero or more function calls.
-If there are no parentheses, this parses a bare primary expression. Otherwise,
-each call is recognized by a pair of parentheses with an optional list of
-arguments inside. The argument list grammar is:</p>
+<p>Cette règle matche une expression primaire suivie par zéro ou plusieurs appels de fonctions. S&rsquo;il n&rsquo;y a pas de parenthèses, cela parse une expression primaire nue. Sinon, chaque appel est reconnu par une paire de parenthèses avec une liste optionnelle d&rsquo;arguments à l&rsquo;intérieur. La grammaire de la liste d&rsquo;arguments est :</p>
 <aside name="curry">
-<p>The rule uses <code>*</code> to allow matching a series of calls like <code>fn(1)(2)(3)</code>. Code
-like that isn&rsquo;t common in C-style languages, but it is in the family of
-languages derived from ML. There, the normal way of defining a function that
-takes multiple arguments is as a series of nested functions. Each function takes
-one argument and returns a new function. That function consumes the next
-argument, returns yet another function, and so on. Eventually, once all of the
-arguments are consumed, the last function completes the operation.</p>
-<p>This style, called <strong>currying</strong>, after Haskell Curry (the same guy whose first
-name graces that <em>other</em> well-known functional language), is baked directly into
-the language syntax so it&rsquo;s not as weird looking as it would be here.</p>
+<p>La règle utilise <code>*</code> pour permettre de matcher une série d&rsquo;appels comme <code>fn(1)(2)(3)</code>. Le code comme ça n&rsquo;est pas courant dans les langages de style C, mais il l&rsquo;est dans la famille des langages dérivés de ML. Là, la façon normale de définir une fonction qui prend plusieurs arguments est comme une série de fonctions imbriquées. Chaque fonction prend un argument et renvoie une nouvelle fonction. Cette fonction consomme l&rsquo;argument suivant, renvoie encore une autre fonction, et ainsi de suite. Finalement, une fois tous les arguments consommés, la dernière fonction complète l&rsquo;opération.</p>
+<p>Ce style, appelé <strong>currying</strong> (curryfication), d&rsquo;après Haskell Curry (le même gars dont le prénom orne cet <em>autre</em> langage fonctionnel bien connu), est cuit directement dans la syntaxe du langage donc ce n&rsquo;est pas aussi bizarre à regarder que ce le serait ici.</p>
 </aside>
 <div class="codehilite"><pre><span class="i">arguments</span>      → <span class="i">expression</span> ( <span class="s">&quot;,&quot;</span> <span class="i">expression</span> )* ;
 </pre></div>
-<p>This rule requires at least one argument expression, followed by zero or more
-other expressions, each preceded by a comma. To handle zero-argument calls, the
-<code>call</code> rule itself considers the entire <code>arguments</code> production to be optional.</p>
-<p>I admit, this seems more grammatically awkward than you&rsquo;d expect for the
-incredibly common &ldquo;zero or more comma-separated things&rdquo; pattern. There are some
-sophisticated metasyntaxes that handle this better, but in our BNF and in many
-language specs I&rsquo;ve seen, it is this cumbersome.</p>
-<p>Over in our syntax tree generator, we add a <span name="call-ast">new
-node</span>.</p>
+<p>Cette règle exige au moins une expression d&rsquo;argument, suivie par zéro ou plusieurs autres expressions, chacune précédée par une virgule. Pour gérer les appels à zéro argument, la règle <code>call</code> elle-même considère la production <code>arguments</code> entière comme optionnelle.</p>
+<p>J&rsquo;admets, cela semble plus grammaticalement maladroit que vous ne l&rsquo;attendriez pour le motif incroyablement courant &ldquo;zéro ou plusieurs choses séparées par des virgules&rdquo;. Il y a des métasyntaxes sophistiquées qui gèrent cela mieux, mais dans notre BNF et dans beaucoup de spécifications de langages que j&rsquo;ai vues, c&rsquo;est aussi encombrant.</p>
+<p>Là-bas dans notre générateur d&rsquo;arbre syntaxique, nous ajoutons un <span name="call-ast">nouveau nœud</span>.</p>
 <div class="codehilite"><pre class="insert-before">      &quot;Binary   : Expr left, Token operator, Expr right&quot;,
 </pre><div class="source-file"><em>tool/GenerateAst.java</em><br>
 in <em>main</em>()</div>
@@ -172,13 +137,10 @@ in <em>main</em>()</div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, in <em>main</em>()</div>
 
 <aside name="call-ast">
-<p>The generated code for the new node is in <a href="appendix-ii.html#call-expression">Appendix II</a>.</p>
+<p>Le code généré pour le nouveau nœud est dans l&rsquo;<a href="appendix-ii.html#call-expression">Annexe II</a>.</p>
 </aside>
-<p>It stores the callee expression and a list of expressions for the arguments. It
-also stores the token for the closing parenthesis. We&rsquo;ll use that token&rsquo;s
-location when we report a runtime error caused by a function call.</p>
-<p>Crack open the parser. Where <code>unary()</code> used to jump straight to <code>primary()</code>,
-change it to call, well, <code>call()</code>.</p>
+<p>Il stocke l&rsquo;expression de l&rsquo;appelé et une liste d&rsquo;expressions pour les arguments. Il stocke aussi le token pour la parenthèse fermante. Nous utiliserons l&rsquo;emplacement de ce token quand nous rapporterons une erreur d&rsquo;exécution causée par un appel de fonction.</p>
+<p>Ouvrez le parseur. Là où <code>unary()</code> avait l&rsquo;habitude de sauter directement à <code>primary()</code>, changez-le pour appeler, eh bien, <code>call()</code>.</p>
 <div class="codehilite"><pre class="insert-before">      return new Expr.Unary(operator, right);
     }
 
@@ -190,7 +152,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>unary</em>(), replace 1 line</div>
 
-<p>Its definition is:</p>
+<p>Sa définition est :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Parser.java</em><br>
 add after <em>unary</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">Expr</span> <span class="i">call</span>() {
@@ -209,19 +171,11 @@ add after <em>unary</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, add after <em>unary</em>()</div>
 
-<p>The code here doesn&rsquo;t quite line up with the grammar rules. I moved a few things
-around to make the code cleaner<span class="em">&mdash;</span>one of the luxuries we have with a
-handwritten parser. But it&rsquo;s roughly similar to how we parse infix operators.
-First, we parse a primary expression, the &ldquo;left operand&rdquo; to the call. Then, each
-time we see a <code>(</code>, we call <code>finishCall()</code> to parse the call expression using the
-previously parsed expression as the callee. The returned expression becomes the
-new <code>expr</code> and we loop to see if the result is itself called.</p>
+<p>Le code ici ne s&rsquo;aligne pas tout à fait avec les règles de grammaire. J&rsquo;ai déplacé quelques choses pour rendre le code plus propre<span class="em">&mdash;</span>l&rsquo;un des luxes que nous avons avec un parseur écrit à la main. Mais c&rsquo;est grossièrement similaire à comment nous parsons les opérateurs infixes. D&rsquo;abord, nous parsons une expression primaire, l&rsquo;&ldquo;opérande gauche&rdquo; de l&rsquo;appel. Ensuite, chaque fois que nous voyons une <code>(</code>, nous appelons <code>finishCall()</code> pour parser l&rsquo;expression d&rsquo;appel en utilisant l&rsquo;expression analysée précédemment comme l&rsquo;appelé. L&rsquo;expression renvoyée devient la nouvelle <code>expr</code> et nous bouclons pour voir si le résultat est lui-même appelé.</p>
 <aside name="while-true">
-<p>This code would be simpler as <code>while (match(LEFT_PAREN))</code> instead of the silly
-<code>while (true)</code> and <code>break</code>. Don&rsquo;t worry, it will make sense when we expand the
-parser later to handle properties on objects.</p>
+<p>Ce code serait plus simple comme <code>while (match(LEFT_PAREN))</code> au lieu du stupide <code>while (true)</code> et <code>break</code>. Ne vous inquiétez pas, cela aura du sens quand nous étendrons le parseur plus tard pour gérer les propriétés sur les objets.</p>
 </aside>
-<p>The code to parse the argument list is in this helper:</p>
+<p>Le code pour parser la liste d&rsquo;arguments est dans cet assistant :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Parser.java</em><br>
 add after <em>unary</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">Expr</span> <span class="i">finishCall</span>(<span class="t">Expr</span> <span class="i">callee</span>) {
@@ -240,31 +194,15 @@ add after <em>unary</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, add after <em>unary</em>()</div>
 
-<p>This is more or less the <code>arguments</code> grammar rule translated to code, except
-that we also handle the zero-argument case. We check for that case first by
-seeing if the next token is <code>)</code>. If it is, we don&rsquo;t try to parse any arguments.</p>
-<p>Otherwise, we parse an expression, then look for a comma indicating that there
-is another argument after that. We keep doing that as long as we find commas
-after each expression. When we don&rsquo;t find a comma, then the argument list must
-be done and we consume the expected closing parenthesis. Finally, we wrap the
-callee and those arguments up into a call AST node.</p>
-<h3><a href="#maximum-argument-counts" id="maximum-argument-counts"><small>10&#8202;.&#8202;1&#8202;.&#8202;1</small>Maximum argument counts</a></h3>
-<p>Right now, the loop where we parse arguments has no bound. If you want to call a
-function and pass a million arguments to it, the parser would have no problem
-with it. Do we want to limit that?</p>
-<p>Other languages have various approaches. The C standard says a conforming
-implementation has to support <em>at least</em> 127 arguments to a function, but
-doesn&rsquo;t say there&rsquo;s any upper limit. The Java specification says a method can
-accept <em>no more than</em> <span name="254">255</span> arguments.</p>
+<p>C&rsquo;est plus ou moins la règle de grammaire <code>arguments</code> traduite en code, sauf que nous gérons aussi le cas zéro-argument. Nous vérifions ce cas d&rsquo;abord en voyant si le prochain token est <code>)</code>. Si c&rsquo;est le cas, nous n&rsquo;essayons de parser aucun argument.</p>
+<p>Sinon, nous parsons une expression, puis cherchons une virgule indiquant qu&rsquo;il y a un autre argument après cela. Nous continuons à faire cela tant que nous trouvons des virgules après chaque expression. Quand nous ne trouvons pas de virgule, alors la liste d&rsquo;arguments doit être finie et nous consommons la parenthèse fermante attendue. Finalement, nous enveloppons l&rsquo;appelé et ces arguments dans un nœud AST d&rsquo;appel.</p>
+<h3><a href="#comptes-darguments-maximum" id="comptes-darguments-maximum"><small>10&#8202;.&#8202;1&#8202;.&#8202;1</small>Comptes d&rsquo;arguments maximum</a></h3>
+<p>Pour l&rsquo;instant, la boucle où nous parsons les arguments n&rsquo;a pas de borne. Si vous voulez appeler une fonction et lui passer un million d&rsquo;arguments, le parseur n&rsquo;aurait aucun problème avec ça. Voulons-nous limiter cela ?</p>
+<p>D&rsquo;autres langages ont diverses approches. Le standard C dit qu&rsquo;une implémentation conforme doit supporter <em>au moins</em> 127 arguments à une fonction, mais ne dit pas qu&rsquo;il y a une limite supérieure. La spécification Java dit qu&rsquo;une méthode ne peut accepter <em>pas plus de</em> <span name="254">255</span> arguments.</p>
 <aside name="254">
-<p>The limit is 25<em>4</em> arguments if the method is an instance method. That&rsquo;s because
-<code>this</code><span class="em">&mdash;</span>the receiver of the method<span class="em">&mdash;</span>works like an argument that is
-implicitly passed to the method, so it claims one of the slots.</p>
+<p>La limite est 25<em>4</em> arguments si la méthode est une méthode d&rsquo;instance. C&rsquo;est parce que <code>this</code><span class="em">&mdash;</span>le receveur de la méthode<span class="em">&mdash;</span>fonctionne comme un argument qui est implicitement passé à la méthode, donc il réclame l&rsquo;un des emplacements.</p>
 </aside>
-<p>Our Java interpreter for Lox doesn&rsquo;t really need a limit, but having a maximum
-number of arguments will simplify our bytecode interpreter in <a href="a-bytecode-virtual-machine.html">Part III</a>. We
-want our two interpreters to be compatible with each other, even in weird corner
-cases like this, so we&rsquo;ll add the same limit to jlox.</p>
+<p>Notre interpréteur Java pour Lox n&rsquo;a pas vraiment besoin d&rsquo;une limite, mais avoir un nombre maximum d&rsquo;arguments simplifiera notre interpréteur bytecode dans la [Partie III][]. Nous voulons que nos deux interpréteurs soient compatibles l&rsquo;un avec l&rsquo;autre, même dans des cas limites bizarres comme celui-ci, donc nous ajouterons la même limite à jlox.</p>
 <div class="codehilite"><pre class="insert-before">      do {
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
 in <em>finishCall</em>()</div>
@@ -275,24 +213,16 @@ in <em>finishCall</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>finishCall</em>()</div>
 
-<p>Note that the code here <em>reports</em> an error if it encounters too many arguments,
-but it doesn&rsquo;t <em>throw</em> the error. Throwing is how we kick into panic mode which
-is what we want if the parser is in a confused state and doesn&rsquo;t know where it
-is in the grammar anymore. But here, the parser is still in a perfectly valid
-state<span class="em">&mdash;</span>it just found too many arguments. So it reports the error and keeps on
-keepin&rsquo; on.</p>
-<h3><a href="#interpreting-function-calls" id="interpreting-function-calls"><small>10&#8202;.&#8202;1&#8202;.&#8202;2</small>Interpreting function calls</a></h3>
-<p>We don&rsquo;t have any functions we can call, so it seems weird to start implementing
-calls first, but we&rsquo;ll worry about that when we get there. First, our
-interpreter needs a new import.</p>
+<p>Notez que le code ici <em>rapporte</em> une erreur s&rsquo;il rencontre trop d&rsquo;arguments, mais il ne <em>lance</em> pas l&rsquo;erreur. Lancer est comment nous passons en mode panique qui est ce que nous voulons si le parseur est dans un état confus et ne sait plus où il est dans la grammaire. Mais ici, le parseur est encore dans un état parfaitement valide<span class="em">&mdash;</span>il a juste trouvé trop d&rsquo;arguments. Donc il rapporte l&rsquo;erreur et continue son bonhomme de chemin.</p>
+<h3><a href="#interpréter-des-appels-de-fonction" id="interpréter-des-appels-de-fonction"><small>10&#8202;.&#8202;1&#8202;.&#8202;2</small>Interpréter des appels de fonction</a></h3>
+<p>Nous n&rsquo;avons aucune fonction que nous pouvons appeler, donc cela semble bizarre de commencer à implémenter les appels d&rsquo;abord, mais nous nous inquiéterons de cela quand nous y arriverons. D&rsquo;abord, notre interpréteur a besoin d&rsquo;un nouvel import.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em></div>
 <pre class="insert"><span class="k">import</span> <span class="i">java.util.ArrayList</span>;
 </pre><pre class="insert-after">import java.util.List;
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em></div>
 
-<p>As always, interpretation starts with a new visit method for our new call
-expression node.</p>
+<p>Comme toujours, l&rsquo;interprétation commence avec une nouvelle méthode visit pour notre nœud d&rsquo;expression d&rsquo;appel.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>visitBinaryExpr</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -310,29 +240,15 @@ add after <em>visitBinaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>visitBinaryExpr</em>()</div>
 
-<p>First, we evaluate the expression for the callee. Typically, this expression is
-just an identifier that looks up the function by its name, but it could be
-anything. Then we evaluate each of the argument expressions in order and store
-the resulting values in a list.</p>
+<p>D&rsquo;abord, nous évaluons l&rsquo;expression pour l&rsquo;appelé. Typiquement, cette expression est juste un identifieur qui cherche la fonction par son nom, mais ça pourrait être n&rsquo;importe quoi. Ensuite nous évaluons chacune des expressions d&rsquo;argument dans l&rsquo;ordre et stockons les valeurs résultantes dans une liste.</p>
 <aside name="in-order">
-<p>This is another one of those subtle semantic choices. Since argument expressions
-may have side effects, the order they are evaluated could be user visible. Even
-so, some languages like Scheme and C don&rsquo;t specify an order. This gives
-compilers freedom to reorder them for efficiency, but means users may be
-unpleasantly surprised if arguments aren&rsquo;t evaluated in the order they expect.</p>
+<p>Ceci est un autre de ces choix sémantiques subtils. Puisque les expressions d&rsquo;argument peuvent avoir des effets de bord, l&rsquo;ordre dans lequel elles sont évaluées pourrait être visible par l&rsquo;utilisateur. Même ainsi, certains langages comme Scheme et C ne spécifient pas un ordre. Cela donne aux compilateurs la liberté de les réordonner pour l&rsquo;efficacité, mais signifie que les utilisateurs peuvent être désagréablement surpris si les arguments ne sont pas évalués dans l&rsquo;ordre qu&rsquo;ils attendent.</p>
 </aside>
-<p>Once we&rsquo;ve got the callee and the arguments ready, all that remains is to
-perform the call. We do that by casting the callee to a <span
-name="callable">LoxCallable</span> and then invoking a <code>call()</code> method on it.
-The Java representation of any Lox object that can be called like a function
-will implement this interface. That includes user-defined functions, naturally,
-but also class objects since classes are &ldquo;called&rdquo; to construct new instances.
-We&rsquo;ll also use it for one more purpose shortly.</p>
+<p>Une fois que nous avons l&rsquo;appelé et les arguments prêts, tout ce qui reste est d&rsquo;effectuer l&rsquo;appel. Nous faisons cela en castant l&rsquo;appelé vers un <span name="callable">LoxCallable</span> et ensuite en invoquant une méthode <code>call()</code> dessus. La représentation Java de n&rsquo;importe quel objet Lox qui peut être appelé comme une fonction implémentera cette interface. Cela inclut les fonctions définies par l&rsquo;utilisateur, naturellement, mais aussi les objets classe puisque les classes sont &ldquo;appelées&rdquo; pour construire de nouvelles instances. Nous l&rsquo;utiliserons aussi pour un autre but bientôt.</p>
 <aside name="callable">
-<p>I stuck &ldquo;Lox&rdquo; before the name to distinguish it from the Java standard library&rsquo;s
-own Callable interface. Alas, all the good simple names are already taken.</p>
+<p>J&rsquo;ai collé &ldquo;Lox&rdquo; devant le nom pour le distinguer de l&rsquo;interface Callable propre à la bibliothèque standard Java. Hélas, tous les bons noms simples sont déjà pris.</p>
 </aside>
-<p>There isn&rsquo;t too much to this new interface.</p>
+<p>Il n&rsquo;y a pas grand-chose dans cette nouvelle interface.</p>
 <div class="codehilite"><div class="source-file"><em>lox/LoxCallable.java</em><br>
 create new file</div>
 <pre><span class="k">package</span> <span class="i">com.craftinginterpreters.lox</span>;
@@ -345,20 +261,12 @@ create new file</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/LoxCallable.java</em>, create new file</div>
 
-<p>We pass in the interpreter in case the class implementing <code>call()</code> needs it. We
-also give it the list of evaluated argument values. The implementer&rsquo;s job is
-then to return the value that the call expression produces.</p>
-<h3><a href="#call-type-errors" id="call-type-errors"><small>10&#8202;.&#8202;1&#8202;.&#8202;3</small>Call type errors</a></h3>
-<p>Before we get to implementing LoxCallable, we need to make the visit method a
-little more robust. It currently ignores a couple of failure modes that we can&rsquo;t
-pretend won&rsquo;t occur. First, what happens if the callee isn&rsquo;t actually something
-you can call? What if you try to do this:</p>
-<div class="codehilite"><pre><span class="s">&quot;totally not a function&quot;</span>();
+<p>Nous passons l&rsquo;interpréteur au cas où la classe implémentant <code>call()</code> en a besoin. Nous lui donnons aussi la liste des valeurs d&rsquo;argument évaluées. Le travail de l&rsquo;implémenteur est alors de renvoyer la valeur que l&rsquo;expression d&rsquo;appel produit.</p>
+<h3><a href="#erreurs-de-type-dappel" id="erreurs-de-type-dappel"><small>10&#8202;.&#8202;1&#8202;.&#8202;3</small>Erreurs de type d&rsquo;appel</a></h3>
+<p>Avant que nous arrivions à implémenter LoxCallable, nous avons besoin de rendre la méthode visit un peu plus robuste. Elle ignore actuellement une paire de modes d&rsquo;échec dont nous ne pouvons pas prétendre qu&rsquo;ils ne se produiront pas. D&rsquo;abord, qu&rsquo;arrive-t-il si l&rsquo;appelé n&rsquo;est pas réellement quelque chose que vous pouvez appeler ? Et si vous essayez de faire ceci :</p>
+<div class="codehilite"><pre><span class="s">&quot;totalement pas une fonction&quot;</span>();
 </pre></div>
-<p>Strings aren&rsquo;t callable in Lox. The runtime representation of a Lox string is a
-Java string, so when we cast that to LoxCallable, the JVM will throw a
-ClassCastException. We don&rsquo;t want our interpreter to vomit out some nasty Java
-stack trace and die. Instead, we need to check the type ourselves first.</p>
+<p>Les chaînes ne sont pas appelables dans Lox. La représentation à l&rsquo;exécution d&rsquo;une chaîne Lox est une chaîne Java, donc quand nous castons cela vers LoxCallable, la JVM lancera une ClassCastException. Nous ne voulons pas que notre interpréteur vomisse une méchante trace de pile Java et meure. Au lieu de cela, nous avons besoin de vérifier le type nous-mêmes d&rsquo;abord.</p>
 <div class="codehilite"><pre class="insert-before">    }
 
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
@@ -372,34 +280,19 @@ in <em>visitCallExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitCallExpr</em>()</div>
 
-<p>We still throw an exception, but now we&rsquo;re throwing our own exception type, one
-that the interpreter knows to catch and report gracefully.</p>
-<h3><a href="#checking-arity" id="checking-arity"><small>10&#8202;.&#8202;1&#8202;.&#8202;4</small>Checking arity</a></h3>
-<p>The other problem relates to the function&rsquo;s <strong>arity</strong>. Arity is the fancy term
-for the number of arguments a function or operation expects. Unary operators
-have arity one, binary operators two, etc. With functions, the arity is
-determined by the number of parameters it declares.</p>
+<p>Nous lançons toujours une exception, mais maintenant nous lançons notre propre type d&rsquo;exception, un que l&rsquo;interpréteur sait attraper et rapporter gracieusement.</p>
+<h3><a href="#vérifier-larité" id="vérifier-larité"><small>10&#8202;.&#8202;1&#8202;.&#8202;4</small>Vérifier l&rsquo;arité</a></h3>
+<p>L&rsquo;autre problème se rapporte à l&rsquo;<strong>arité</strong> de la fonction. Arité est le terme fantaisie pour le nombre d&rsquo;arguments qu&rsquo;une fonction ou opération attend. Les opérateurs unaires ont une arité de un, les opérateurs binaires deux, etc. Avec les fonctions, l&rsquo;arité est déterminée par le nombre de paramètres qu&rsquo;elle déclare.</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">add</span>(<span class="i">a</span>, <span class="i">b</span>, <span class="i">c</span>) {
   <span class="k">print</span> <span class="i">a</span> + <span class="i">b</span> + <span class="i">c</span>;
 }
 </pre></div>
-<p>This function defines three parameters, <code>a</code>, <code>b</code>, and <code>c</code>, so its arity is
-three and it expects three arguments. So what if you try to call it like this:</p>
-<div class="codehilite"><pre><span class="i">add</span>(<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>, <span class="n">4</span>); <span class="c">// Too many.</span>
-<span class="i">add</span>(<span class="n">1</span>, <span class="n">2</span>);       <span class="c">// Too few.</span>
+<p>Cette fonction définit trois paramètres, <code>a</code>, <code>b</code>, et <code>c</code>, donc son arité est trois et elle attend trois arguments. Donc et si vous essayez de l&rsquo;appeler comme ceci :</p>
+<div class="codehilite"><pre><span class="i">add</span>(<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>, <span class="n">4</span>); <span class="c">// Trop.</span>
+<span class="i">add</span>(<span class="n">1</span>, <span class="n">2</span>);       <span class="c">// Trop peu.</span>
 </pre></div>
-<p>Different languages take different approaches to this problem. Of course, most
-statically typed languages check this at compile time and refuse to compile the
-code if the argument count doesn&rsquo;t match the function&rsquo;s arity. JavaScript
-discards any extra arguments you pass. If you don&rsquo;t pass enough, it fills in the
-missing parameters with the magic sort-of-like-null-but-not-really value
-<code>undefined</code>. Python is stricter. It raises a runtime error if the argument list
-is too short or too long.</p>
-<p>I think the latter is a better approach. Passing the wrong number of arguments
-is almost always a bug, and it&rsquo;s a mistake I do make in practice. Given that,
-the sooner the implementation draws my attention to it, the better. So for Lox,
-we&rsquo;ll take Python&rsquo;s approach. Before invoking the callable, we check to see if
-the argument list&rsquo;s length matches the callable&rsquo;s arity.</p>
+<p>Différents langages prennent différentes approches à ce problème. Bien sûr, la plupart des langages typés statiquement vérifient cela au temps de compilation et refusent de compiler le code si le compte d&rsquo;arguments ne correspond pas à l&rsquo;arité de la fonction. JavaScript rejette tous les arguments supplémentaires que vous passez. Si vous n&rsquo;en passez pas assez, il remplit les paramètres manquants avec la valeur magique <code>undefined</code> sorte-de-comme-null-mais-pas-vraiment. Python est plus strict. Il lève une erreur d&rsquo;exécution si la liste d&rsquo;arguments est trop courte ou trop longue.</p>
+<p>Je pense que cette dernière est une meilleure approche. Passer le mauvais nombre d&rsquo;arguments est presque toujours un bug, et c&rsquo;est une erreur que je fais en pratique. Étant donné cela, le plus tôt l&rsquo;implémentation atire mon attention dessus, le mieux. Donc pour Lox, nous prendrons l&rsquo;approche de Python. Avant d&rsquo;invoquer l&rsquo;appelable, nous vérifions pour voir si la longueur de la liste d&rsquo;arguments correspond à l&rsquo;arité de l&rsquo;appelable.</p>
 <div class="codehilite"><pre class="insert-before">    LoxCallable function = (LoxCallable)callee;
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
 in <em>visitCallExpr</em>()</div>
@@ -413,7 +306,7 @@ in <em>visitCallExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitCallExpr</em>()</div>
 
-<p>That requires a new method on the LoxCallable interface to ask it its arity.</p>
+<p>Cela exige une nouvelle méthode sur l&rsquo;interface LoxCallable pour lui demander son arité.</p>
 <div class="codehilite"><pre class="insert-before">interface LoxCallable {
 </pre><div class="source-file"><em>lox/LoxCallable.java</em><br>
 in interface <em>LoxCallable</em></div>
@@ -422,77 +315,26 @@ in interface <em>LoxCallable</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/LoxCallable.java</em>, in interface <em>LoxCallable</em></div>
 
-<p>We <em>could</em> push the arity checking into the concrete implementation of <code>call()</code>.
-But, since we&rsquo;ll have multiple classes implementing LoxCallable, that would end
-up with redundant validation spread across a few classes. Hoisting it up into
-the visit method lets us do it in one place.</p>
-<h2><a href="#native-functions" id="native-functions"><small>10&#8202;.&#8202;2</small>Native Functions</a></h2>
-<p>We can theoretically call functions, but we have no functions to call yet.
-Before we get to user-defined functions, now is a good time to introduce a vital
-but often overlooked facet of language implementations<span class="em">&mdash;</span><span
-name="native"><strong>native functions</strong></span>. These are functions that the
-interpreter exposes to user code but that are implemented in the host language
-(in our case Java), not the language being implemented (Lox).</p>
-<p>Sometimes these are called <strong>primitives</strong>, <strong>external functions</strong>, or <strong>foreign
-functions</strong>. Since these functions can be called while the user&rsquo;s program is
-running, they form part of the implementation&rsquo;s runtime. A lot of programming
-language books gloss over these because they aren&rsquo;t conceptually interesting.
-They&rsquo;re mostly grunt work.</p>
+<p>Nous <em>pourrions</em> pousser la vérification d&rsquo;arité dans l&rsquo;implémentation concrète de <code>call()</code>. Mais, puisque nous aurons plusieurs classes implémentant LoxCallable, cela finirait avec une validation redondante étalée à travers quelques classes. Le hisser dans la méthode visit nous laisse le faire à un seul endroit.</p>
+<h2><a href="#fonctions-natives" id="fonctions-natives"><small>10&#8202;.&#8202;2</small>Fonctions Natives</a></h2>
+<p>Nous pouvons théoriquement appeler des fonctions, mais nous n&rsquo;avons aucune fonction à appeler encore. Avant que nous arrivions aux fonctions définies par l&rsquo;utilisateur, maintenant est un bon moment pour introduire une facette vitale mais souvent négligée des implémentations de langage<span class="em">&mdash;</span>les <span name="native"><strong>fonctions natives</strong></span>. Ce sont des fonctions que l&rsquo;interpréteur expose au code utilisateur mais qui sont implémentées dans le langage hôte (dans notre cas Java), pas le langage étant implémenté (Lox).</p>
+<p>Parfois celles-ci sont appelées <strong>primitives</strong>, <strong>fonctions externes</strong>, ou <strong>foreign functions</strong> (fonctions étrangères). Puisque ces fonctions peuvent être appelées pendant que le programme de l&rsquo;utilisateur tourne, elles font partie de l&rsquo;exécution de l&rsquo;implémentation. Beaucoup de livres de langages de programmation glissent sur celles-ci parce qu&rsquo;elles ne sont pas conceptuellement intéressantes. C&rsquo;est surtout du gros œuvre.</p>
 <aside name="native">
-<p>Curiously, two names for these functions<span class="em">&mdash;</span>&ldquo;native&rdquo; and &ldquo;foreign&rdquo;<span class="em">&mdash;</span>are
-antonyms. Maybe it depends on the perspective of the person choosing the term.
-If you think of yourself as &ldquo;living&rdquo; within the runtime&rsquo;s implementation (in our
-case, Java) then functions written in that are &ldquo;native&rdquo;. But if you have the
-mindset of a <em>user</em> of your language, then the runtime is implemented in some
-other &ldquo;foreign&rdquo; language.</p>
-<p>Or it may be that &ldquo;native&rdquo; refers to the machine code language of the underlying
-hardware. In Java, &ldquo;native&rdquo; methods are ones implemented in C or C++ and
-compiled to native machine code.</p><img src="image/functions/foreign.png" class="above" alt="All a matter of perspective." />
+<p>Curieusement, deux noms pour ces fonctions<span class="em">&mdash;</span>&ldquo;native&rdquo; et &ldquo;foreign&rdquo;<span class="em">&mdash;</span>sont des antonymes. Peut-être que cela dépend de la perspective de la personne choisissant le terme. Si vous pensez à vous-même comme &ldquo;vivant&rdquo; à l&rsquo;intérieur de l&rsquo;implémentation de l&rsquo;exécution (dans notre cas, Java) alors les fonctions écrites là-dedans sont &ldquo;natives&rdquo;. Mais si vous avez l&rsquo;état d&rsquo;esprit d&rsquo;un <em>utilisateur</em> de votre langage, alors l&rsquo;exécution est implémentée dans un certain autre langage &ldquo;étranger&rdquo;.</p>
+<p>Ou il se peut que &ldquo;native&rdquo; fasse référence au langage code machine du matériel sous-jacent. En Java, les méthodes &ldquo;natives&rdquo; sont celles implémentées en C ou C++ et compilées en code machine natif.</p><img src="image/functions/foreign.png" class="above" alt="Tout est une question de perspective." />
 </aside>
-<p>But when it comes to making your language actually good at doing useful stuff,
-the native functions your implementation provides are key. They provide access
-to the fundamental services that all programs are defined in terms of. If you
-don&rsquo;t provide native functions to access the file system, a user&rsquo;s going to have
-a hell of a time writing a program that reads and <span
-name="print">displays</span> a file.</p>
+<p>Mais quand il s&rsquo;agit de rendre votre langage réellement bon à faire des trucs utiles, les fonctions natives que votre implémentation fournit sont clés. Elles fournissent l&rsquo;accès aux services fondamentaux en termes desquels tous les programmes sont définis. Si vous ne fournissez pas de fonctions natives pour accéder au système de fichiers, un utilisateur va avoir un mal de chien à écrire un programme qui lit et <span name="print">affiche</span> un fichier.</p>
 <aside name="print">
-<p>A classic native function almost every language provides is one to print text to
-stdout. In Lox, I made <code>print</code> a built-in statement so that we could get stuff
-on screen in the chapters before this one.</p>
-<p>Once we have functions, we could simplify the language by tearing out the old
-print syntax and replacing it with a native function. But that would mean that
-examples early in the book wouldn&rsquo;t run on the interpreter from later chapters
-and vice versa. So, for the book, I&rsquo;ll leave it alone.</p>
-<p>If you&rsquo;re building an interpreter for your <em>own</em> language, though, you may want
-to consider it.</p>
+<p>Une fonction native classique que presque chaque langage fournit est une pour imprimer du texte vers stdout. Dans Lox, j&rsquo;ai fait de <code>print</code> une instruction intégrée pour que nous puissions obtenir des trucs à l&rsquo;écran dans les chapitres avant celui-ci.</p>
+<p>Une fois que nous avons des fonctions, nous pourrions simplifier le langage en arrachant la vieille syntaxe print et en la remplaçant par une fonction native. Mais cela signifierait que les exemples tôt dans le livre ne tourneraient pas sur l&rsquo;interpréteur de plus tard et vice versa. Donc, pour le livre, je vais laisser ça tranquille.</p>
+<p>Si vous construisez un interpréteur pour votre <em>propre</em> langage, cependant, vous pourriez vouloir le considérer.</p>
 </aside>
-<p>Many languages also allow users to provide their own native functions. The
-mechanism for doing so is called a <strong>foreign function interface</strong> (<strong>FFI</strong>),
-<strong>native extension</strong>, <strong>native interface</strong>, or something along those lines.
-These are nice because they free the language implementer from providing access
-to every single capability the underlying platform supports. We won&rsquo;t define an
-FFI for jlox, but we will add one native function to give you an idea of what it
-looks like.</p>
-<h3><a href="#telling-time" id="telling-time"><small>10&#8202;.&#8202;2&#8202;.&#8202;1</small>Telling time</a></h3>
-<p>When we get to <a href="a-bytecode-virtual-machine.html">Part III</a> and start working on a much more efficient
-implementation of Lox, we&rsquo;re going to care deeply about performance. Performance
-work requires measurement, and that in turn means <strong>benchmarks</strong>. These are
-programs that measure the time it takes to exercise some corner of the
-interpreter.</p>
-<p>We could measure the time it takes to start up the interpreter, run the
-benchmark, and exit, but that adds a lot of overhead<span class="em">&mdash;</span>JVM startup time, OS
-shenanigans, etc. That stuff does matter, of course, but if you&rsquo;re just trying
-to validate an optimization to some piece of the interpreter, you don&rsquo;t want
-that overhead obscuring your results.</p>
-<p>A nicer solution is to have the benchmark script itself measure the time elapsed
-between two points in the code. To do that, a Lox program needs to be able to
-tell time. There&rsquo;s no way to do that now<span class="em">&mdash;</span>you can&rsquo;t implement a useful clock
-&ldquo;from scratch&rdquo; without access to the underlying clock on the computer.</p>
-<p>So we&rsquo;ll add <code>clock()</code>, a native function that returns the number of seconds
-that have passed since some fixed point in time. The difference between two
-successive invocations tells you how much time elapsed between the two calls.
-This function is defined in the global scope, so let&rsquo;s ensure the interpreter
-has access to that.</p>
+<p>Beaucoup de langages permettent aussi aux utilisateurs de fournir leurs propres fonctions natives. Le mécanisme pour faire cela est appelé une <strong>interface de fonction étrangère</strong> (<strong>FFI</strong>), <strong>extension native</strong>, <strong>interface native</strong>, ou quelque chose dans ces lignes. Celles-ci sont sympas parce qu&rsquo;elles libèrent l&rsquo;implémenteur du langage de fournir l&rsquo;accès à chaque capacité unique que la plateforme sous-jacente supporte. Nous ne définirons pas une FFI pour jlox, mais nous ajouterons une fonction native pour vous donner une idée de quoi cela a l&rsquo;air.</p>
+<h3><a href="#dire-lheure" id="dire-lheure"><small>10&#8202;.&#8202;2&#8202;.&#8202;1</small>Dire l&rsquo;heure</a></h3>
+<p>Quand nous arriverons à la [Partie III][] et commencerons à travailler sur une implémentation beaucoup plus efficace de Lox, nous allons nous soucier profondément de la performance. Le travail de performance exige de la mesure, et cela à son tour signifie des <strong>benchmarks</strong>. Ce sont des programmes qui mesurent le temps que cela prend pour exercer un certain coin de l&rsquo;interpréteur.</p>
+<p>Nous pourrions mesurer le temps que cela prend pour démarrer l&rsquo;interpréteur, exécuter le benchmark, et sortir, mais cela ajoute beaucoup de surcharge<span class="em">&mdash;</span>temps de démarrage de la JVM, manigances de l&rsquo;OS, etc. Ce truc compte, bien sûr, mais si vous essayez juste de valider une optimisation sur une certaine pièce de l&rsquo;interpréteur, vous ne voulez pas que cette surcharge obscurcisse vos résultats.</p>
+<p>Une solution plus jolie est d&rsquo;avoir le script de benchmark lui-même mesurer le temps écoulé entre deux points dans le code. Pour faire cela, un programme Lox a besoin d&rsquo;être capable de dire l&rsquo;heure. Il n&rsquo;y a aucun moyen de faire cela maintenant<span class="em">&mdash;</span>vous ne pouvez pas implémenter une horloge utile &ldquo;from scratch&rdquo; sans accès à l&rsquo;horloge sous-jacente sur l&rsquo;ordinateur.</p>
+<p>Donc nous ajouterons <code>clock()</code>, une fonction native qui renvoie le nombre de secondes qui sont passées depuis un certain point fixe dans le temps. La différence entre deux invocations successives vous dit combien de temps s&rsquo;est écoulé entre les deux appels. Cette fonction est définie dans la portée globale, donc assurons-nous que l&rsquo;interpréteur a accès à cela.</p>
 <div class="codehilite"><pre class="insert-before">class Interpreter implements Expr.Visitor&lt;Object&gt;,
                              Stmt.Visitor&lt;Void&gt; {
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
@@ -506,11 +348,8 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in class <em>Interpreter</em>, replace 1 line</div>
 
-<p>The <code>environment</code> field in the interpreter changes as we enter and exit local
-scopes. It tracks the <em>current</em> environment. This new <code>globals</code> field holds a
-fixed reference to the outermost global environment.</p>
-<p>When we instantiate an Interpreter, we stuff the native function in that global
-scope.</p>
+<p>Le champ <code>environment</code> dans l&rsquo;interpréteur change quand nous entrons et sortons des portées locales. Il suit l&rsquo;environnement <em>courant</em>. Ce nouveau champ <code>globals</code> détient une référence fixe vers l&rsquo;environnement global le plus externe.</p>
+<p>Quand nous instancions un Interpreter, nous bourrons la fonction native dans cette portée globale.</p>
 <div class="codehilite"><pre class="insert-before">  private Environment environment = globals;
 
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
@@ -535,68 +374,39 @@ in class <em>Interpreter</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in class <em>Interpreter</em></div>
 
-<p>This defines a <span name="lisp-1">variable</span> named &ldquo;clock&rdquo;. Its value is a
-Java anonymous class that implements LoxCallable. The <code>clock()</code> function takes
-no arguments, so its arity is zero. The implementation of <code>call()</code> calls the
-corresponding Java function and converts the result to a double value in
-seconds.</p>
+<p>Ceci définit une <span name="lisp-1">variable</span> nommée &ldquo;clock&rdquo;. Sa valeur est une classe anonyme Java qui implémente LoxCallable. La fonction <code>clock()</code> ne prend pas d&rsquo;arguments, donc son arité est zéro. L&rsquo;implémentation de <code>call()</code> appelle la fonction Java correspondante et convertit le résultat en une valeur double en secondes.</p>
 <aside name="lisp-1">
-<p>In Lox, functions and variables occupy the same namespace. In Common Lisp, the
-two live in their own worlds. A function and variable with the same name don&rsquo;t
-collide. If you call the name, it looks up the function. If you refer to it, it
-looks up the variable. This does require jumping through some hoops when you do
-want to refer to a function as a first-class value.</p>
-<p>Richard P. Gabriel and Kent Pitman coined the terms &ldquo;Lisp-1&rdquo; to refer to
-languages like Scheme that put functions and variables in the same namespace,
-and &ldquo;Lisp-2&rdquo; for languages like Common Lisp that partition them. Despite being
-totally opaque, those names have since stuck. Lox is a Lisp-1.</p>
+<p>Dans Lox, les fonctions et variables occupent le même espace de noms. En Common Lisp, les deux vivent dans leurs propres mondes. Une fonction et une variable avec le même nom n&rsquo;entrent pas en collision. Si vous appelez le nom, il cherche la fonction. Si vous y faites référence, il cherche la variable. Cela exige effectivement de sauter à travers quelques cerceaux quand vous voulez faire référence à une fonction comme une valeur de première classe.</p>
+<p>Richard P. Gabriel et Kent Pitman ont inventé les termes &ldquo;Lisp-1&rdquo; par référence aux langages comme Scheme qui mettent fonctions et variables dans le même espace de noms, et &ldquo;Lisp-2&rdquo; pour les langages comme Common Lisp qui les partitionnent. Bien qu&rsquo;étant totalement opaques, ces noms sont restés depuis. Lox est un Lisp-1.</p>
 </aside>
-<p>If we wanted to add other native functions<span class="em">&mdash;</span>reading input from the user,
-working with files, etc.<span class="em">&mdash;</span>we could add them each as their own anonymous class
-that implements LoxCallable. But for the book, this one is really all we need.</p>
-<p>Let&rsquo;s get ourselves out of the function-defining business and let our users
-take over<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
-<h2><a href="#function-declarations" id="function-declarations"><small>10&#8202;.&#8202;3</small>Function Declarations</a></h2>
-<p>We finally get to add a new production to the <code>declaration</code> rule we introduced
-back when we added variables. Function declarations, like variables, bind a new
-<span name="name">name</span>. That means they are allowed only in places where
-a declaration is permitted.</p>
+<p>Si nous voulions ajouter d&rsquo;autres fonctions natives<span class="em">&mdash;</span>lire l&rsquo;entrée de l&rsquo;utilisateur, travailler avec des fichiers, etc.<span class="em">&mdash;</span>nous pourrions les ajouter chacune comme leur propre classe anonyme qui implémente LoxCallable. Mais pour le livre, celle-ci est vraiment tout ce dont nous avons besoin.</p>
+<p>Sortons-nous du business de définir des fonctions et laissons nos utilisateurs prendre le relais<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
+<h2><a href="#déclarations-de-fonction" id="déclarations-de-fonction"><small>10&#8202;.&#8202;3</small>Déclarations de Fonction</a></h2>
+<p>Nous arrivons enfin à ajouter une nouvelle production à la règle <code>declaration</code> que nous avons introduite au moment où nous avons ajouté les variables. Les déclarations de fonction, comme les variables, lient un nouveau <span name="name">nom</span>. Cela signifie qu&rsquo;elles sont autorisées uniquement aux endroits où une déclaration est permise.</p>
 <aside name="name">
-<p>A named function declaration isn&rsquo;t really a single primitive operation. It&rsquo;s
-syntactic sugar for two distinct steps: (1) creating a new function object, and
-(2) binding a new variable to it. If Lox had syntax for anonymous functions, we
-wouldn&rsquo;t need function declaration statements. You could just do:</p>
+<p>Une déclaration de fonction nommée n&rsquo;est pas vraiment une opération primitive unique. C&rsquo;est du sucre syntaxique pour deux étapes distinctes : (1) créer un nouvel objet fonction, et (2) lier une nouvelle variable à celui-ci. Si Lox avait une syntaxe pour les fonctions anonymes, nous n&rsquo;aurions pas besoin d&rsquo;instructions de déclaration de fonction. Vous pourriez juste faire :</p>
 <div class="codehilite"><pre><span class="k">var</span> <span class="i">add</span> = <span class="k">fun</span> (<span class="i">a</span>, <span class="i">b</span>) {
   <span class="k">print</span> <span class="i">a</span> + <span class="i">b</span>;
 };
 </pre></div>
-<p>However, since named functions are the common case, I went ahead and gave Lox
-nice syntax for them.</p>
+<p>Cependant, puisque les fonctions nommées sont le cas courant, je suis allé de l&rsquo;avant et ai donné à Lox une syntaxe agréable pour elles.</p>
 </aside>
 <div class="codehilite"><pre><span class="i">declaration</span>    → <span class="i">funDecl</span>
                | <span class="i">varDecl</span>
                | <span class="i">statement</span> ;
 </pre></div>
-<p>The updated <code>declaration</code> rule references this new rule:</p>
+<p>La règle <code>declaration</code> mise à jour fait référence à cette nouvelle règle :</p>
 <div class="codehilite"><pre><span class="i">funDecl</span>        → <span class="s">&quot;fun&quot;</span> <span class="i">function</span> ;
 <span class="i">function</span>       → <span class="t">IDENTIFIER</span> <span class="s">&quot;(&quot;</span> <span class="i">parameters</span>? <span class="s">&quot;)&quot;</span> <span class="i">block</span> ;
 </pre></div>
-<p>The main <code>funDecl</code> rule uses a separate helper rule <code>function</code>. A function
-<em>declaration statement</em> is the <code>fun</code> keyword followed by the actual function-y
-stuff. When we get to classes, we&rsquo;ll reuse that <code>function</code> rule for declaring
-methods. Those look similar to function declarations, but aren&rsquo;t preceded by
-<span name="fun"><code>fun</code></span>.</p>
+<p>La règle principale <code>funDecl</code> utilise une règle assistante séparée <code>function</code>. Une <em>instruction de déclaration</em> de fonction est le mot-clé <code>fun</code> suivi par le truc fonction-nesque réel. Quand nous arriverons aux classes, nous réutiliserons cette règle <code>function</code> pour déclarer des méthodes. Celles-ci ressemblent aux déclarations de fonction, mais ne sont pas précédées par <span name="fun"><code>fun</code></span>.</p>
 <aside name="fun">
-<p>Methods are too classy to have fun.</p>
+<p>Les méthodes sont trop classes pour avoir du fun/s&rsquo;amuser.</p>
 </aside>
-<p>The function itself is a name followed by the parenthesized parameter list and
-the body. The body is always a braced block, using the same grammar rule that
-block statements use. The parameter list uses this rule:</p>
+<p>La fonction elle-même est un nom suivi par la liste de paramètres parenthésée et le corps. Le corps est toujours un bloc entre accolades, utilisant la même règle de grammaire que les instructions de bloc utilisent. La liste de paramètres utilise cette règle :</p>
 <div class="codehilite"><pre><span class="i">parameters</span>     → <span class="t">IDENTIFIER</span> ( <span class="s">&quot;,&quot;</span> <span class="t">IDENTIFIER</span> )* ;
 </pre></div>
-<p>It&rsquo;s like the earlier <code>arguments</code> rule, except that each parameter is an
-identifier, not an expression. That&rsquo;s a lot of new syntax for the parser to chew
-through, but the resulting AST <span name="fun-ast">node</span> isn&rsquo;t too bad.</p>
+<p>C&rsquo;est comme la règle <code>arguments</code> antérieure, sauf que chaque paramètre est un identifieur, pas une expression. C&rsquo;est beaucoup de nouvelle syntaxe à mâcher pour le parseur, mais le <span name="fun-ast">nœud</span> AST résultant n&rsquo;est pas trop mauvais.</p>
 <div class="codehilite"><pre class="insert-before">      &quot;Expression : Expr expression&quot;,
 </pre><div class="source-file"><em>tool/GenerateAst.java</em><br>
 in <em>main</em>()</div>
@@ -607,12 +417,10 @@ in <em>main</em>()</div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, in <em>main</em>()</div>
 
 <aside name="fun-ast">
-<p>The generated code for the new node is in <a href="appendix-ii.html#function-statement">Appendix II</a>.</p>
+<p>Le code généré pour le nouveau nœud est dans l&rsquo;<a href="appendix-ii.html#function-statement">Annexe II</a>.</p>
 </aside>
-<p>A function node has a name, a list of parameters (their names), and then the
-body. We store the body as the list of statements contained inside the curly
-braces.</p>
-<p>Over in the parser, we weave in the new declaration.</p>
+<p>Un nœud de fonction a un nom, une liste de paramètres (leurs noms), et ensuite le corps. Nous stockons le corps comme la liste d&rsquo;instructions contenues à l&rsquo;intérieur des accolades.</p>
+<p>Là-bas dans le parseur, nous tissons la nouvelle déclaration.</p>
 <div class="codehilite"><pre class="insert-before">    try {
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
 in <em>declaration</em>()</div>
@@ -621,10 +429,7 @@ in <em>declaration</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>declaration</em>()</div>
 
-<p>Like other statements, a function is recognized by the leading keyword. When we
-encounter <code>fun</code>, we call <code>function</code>. That corresponds to the <code>function</code> grammar
-rule since we already matched and consumed the <code>fun</code> keyword. We&rsquo;ll build the
-method up a piece at a time, starting with this:</p>
+<p>Comme d&rsquo;autres instructions, une fonction est reconnue par le mot-clé de tête. Quand nous rencontrons <code>fun</code>, nous appelons <code>function</code>. Cela correspond à la règle de grammaire <code>function</code> puisque nous avons déjà matché et consommé le mot-clé <code>fun</code>. Nous construirons la méthode un morceau à la fois, en commençant par ceci :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Parser.java</em><br>
 add after <em>expressionStatement</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">Stmt</span>.<span class="t">Function</span> <span class="i">function</span>(<span class="t">String</span> <span class="i">kind</span>) {
@@ -633,12 +438,8 @@ add after <em>expressionStatement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, add after <em>expressionStatement</em>()</div>
 
-<p>Right now, it only consumes the identifier token for the function&rsquo;s name. You
-might be wondering about that funny little <code>kind</code> parameter. Just like we reuse
-the grammar rule, we&rsquo;ll reuse the <code>function()</code> method later to parse methods
-inside classes. When we do that, we&rsquo;ll pass in &ldquo;method&rdquo; for <code>kind</code> so that the
-error messages are specific to the kind of declaration being parsed.</p>
-<p>Next, we parse the parameter list and the pair of parentheses wrapped around it.</p>
+<p>Pour l&rsquo;instant, cela consomme uniquement le token identifieur pour le nom de la fonction. Vous pourriez vous demander à propos de ce petit paramètre drôle <code>kind</code>. Tout comme nous réutilisons la règle de grammaire, nous réutiliserons la méthode <code>function()</code> plus tard pour parser les méthodes à l&rsquo;intérieur des classes. Quand nous ferons cela, nous passerons &ldquo;method&rdquo; pour <code>kind</code> pour que les messages d&rsquo;erreur soient spécifiques au type de déclaration étant parsée.</p>
+<p>Ensuite, nous parsons la liste de paramètres et la paire de parenthèses enveloppée autour.</p>
 <div class="codehilite"><pre class="insert-before">    Token name = consume(IDENTIFIER, &quot;Expect &quot; + kind + &quot; name.&quot;);
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
 in <em>function</em>()</div>
@@ -659,14 +460,9 @@ in <em>function</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>function</em>()</div>
 
-<p>This is like the code for handling arguments in a call, except not split out
-into a helper method. The outer <code>if</code> statement handles the zero parameter case,
-and the inner <code>while</code> loop parses parameters as long as we find commas to
-separate them. The result is the list of tokens for each parameter&rsquo;s name.</p>
-<p>Just like we do with arguments to function calls, we validate at parse time
-that you don&rsquo;t exceed the maximum number of parameters a function is allowed to
-have.</p>
-<p>Finally, we parse the body and wrap it all up in a function node.</p>
+<p>C&rsquo;est comme le code pour gérer les arguments dans un appel, sauf non séparé dans une méthode assistante. L&rsquo;instruction <code>if</code> externe gère le cas zéro paramètre, et la boucle <code>while</code> interne parse les paramètres tant que nous trouvons des virgules pour les séparer. Le résultat est la liste de tokens pour le nom de chaque paramètre.</p>
+<p>Tout comme nous faisons avec les arguments aux appels de fonction, nous validons au moment du parsing que vous n&rsquo;excédez pas le nombre maximum de paramètres qu&rsquo;une fonction est autorisée à avoir.</p>
+<p>Finalement, nous parsons le corps et enveloppons tout cela dans un nœud de fonction.</p>
 <div class="codehilite"><pre class="insert-before">    consume(RIGHT_PAREN, &quot;Expect ')' after parameters.&quot;);
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
 in <em>function</em>()</div>
@@ -679,21 +475,10 @@ in <em>function</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>function</em>()</div>
 
-<p>Note that we consume the <code>{</code> at the beginning of the body here before calling
-<code>block()</code>. That&rsquo;s because <code>block()</code> assumes the brace token has already been
-matched. Consuming it here lets us report a more precise error message if the
-<code>{</code> isn&rsquo;t found since we know it&rsquo;s in the context of a function declaration.</p>
-<h2><a href="#function-objects" id="function-objects"><small>10&#8202;.&#8202;4</small>Function Objects</a></h2>
-<p>We&rsquo;ve got some syntax parsed so usually we&rsquo;re ready to interpret, but first we
-need to think about how to represent a Lox function in Java. We need to keep
-track of the parameters so that we can bind them to argument values when the
-function is called. And, of course, we need to keep the code for the body of the
-function so that we can execute it.</p>
-<p>That&rsquo;s basically what the Stmt.Function class is. Could we just use that?
-Almost, but not quite. We also need a class that implements LoxCallable so that
-we can call it. We don&rsquo;t want the runtime phase of the interpreter to bleed into
-the front end&rsquo;s syntax classes so we don&rsquo;t want Stmt.Function itself to
-implement that. Instead, we wrap it in a new class.</p>
+<p>Notez que nous consommons le <code>{</code> au début du corps ici avant d&rsquo;appeler <code>block()</code>. C&rsquo;est parce que <code>block()</code> suppose que le token accolade a déjà été matché. Le consommer ici nous laisse rapporter un message d&rsquo;erreur plus précis si le <code>{</code> n&rsquo;est pas trouvé puisque nous savons que c&rsquo;est dans le contexte d&rsquo;une déclaration de fonction.</p>
+<h2><a href="#objets-fonction" id="objets-fonction"><small>10&#8202;.&#8202;4</small>Objets Fonction</a></h2>
+<p>Nous avons une certaine syntaxe parsée donc nous sommes habituellement prêts à interpréter, mais d&rsquo;abord nous avons besoin de penser à comment représenter une fonction Lox en Java. Nous avons besoin de garder une trace des paramètres pour que nous puissions les lier aux valeurs d&rsquo;argument quand la fonction est appelée. Et, bien sûr, nous avons besoin de garder le code pour le corps de la fonction pour que nous puissions l&rsquo;exécuter.</p>
+<p>C&rsquo;est fondamentalement ce qu&rsquo;est la classe Stmt.Function. Pourrions-nous juste utiliser celle-là ? Presque, mais pas tout à fait. Nous avons aussi besoin d&rsquo;une classe qui implémente LoxCallable pour que nous puissions l&rsquo;appeler. Nous ne voulons pas que la phase d&rsquo;exécution de l&rsquo;interpréteur saigne dans les classes de syntaxe du front end donc nous ne voulons pas que Stmt.Function elle-même implémente cela. Au lieu de cela, nous l&rsquo;enveloppons dans une nouvelle classe.</p>
 <div class="codehilite"><div class="source-file"><em>lox/LoxFunction.java</em><br>
 create new file</div>
 <pre><span class="k">package</span> <span class="i">com.craftinginterpreters.lox</span>;
@@ -709,7 +494,7 @@ create new file</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/LoxFunction.java</em>, create new file</div>
 
-<p>We implement the <code>call()</code> of LoxCallable like so:</p>
+<p>Nous implémentons le <code>call()</code> de LoxCallable comme ceci :</p>
 <div class="codehilite"><div class="source-file"><em>lox/LoxFunction.java</em><br>
 add after <em>LoxFunction</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -727,22 +512,13 @@ add after <em>LoxFunction</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/LoxFunction.java</em>, add after <em>LoxFunction</em>()</div>
 
-<p>This handful of lines of code is one of the most fundamental, powerful pieces of
-our interpreter. As we saw in <a href="statements-and-state.html">the chapter on statements and <span
-name="env">state</span></a>, managing name environments is a core part
-of a language implementation. Functions are deeply tied to that.</p>
+<p>Cette poignée de lignes de code est une des pièces les plus fondamentales, puissantes de notre interpréteur. Comme nous avons vu dans <a href="statements-and-state.html">le chapitre sur les instructions et l&rsquo;<span name="env">état</span></a>, gérer les environnements de noms est une partie centrale d&rsquo;une implémentation de langage. Les fonctions sont profondément liées à cela.</p>
 <aside name="env">
-<p>We&rsquo;ll dig even deeper into environments in the <a href="resolving-and-binding.html">next chapter</a>.</p>
+<p>Nous creuserons encore plus profond dans les environnements dans le [prochain chapitre][].</p>
 </aside>
-<p>Parameters are core to functions, especially the fact that a function
-<em>encapsulates</em> its parameters<span class="em">&mdash;</span>no other code outside of the function can see
-them. This means each function gets its own environment where it stores those
-variables.</p>
-<p>Further, this environment must be created dynamically. Each function <em>call</em> gets
-its own environment. Otherwise, recursion would break. If there are multiple
-calls to the same function in play at the same time, each needs its <em>own</em>
-environment, even though they are all calls to the same function.</p>
-<p>For example, here&rsquo;s a convoluted way to count to three:</p>
+<p>Les paramètres sont centraux aux fonctions, particulièrement le fait qu&rsquo;une fonction <em>encapsule</em> ses paramètres<span class="em">&mdash;</span>aucun autre code en dehors de la fonction ne peut les voir. Cela signifie que chaque fonction obtient son propre environnement où elle stocke ces variables.</p>
+<p>De plus, cet environnement doit être créé dynamiquement. Chaque <em>appel</em> de fonction obtient son propre environnement. Sinon, la récursion casserait. S&rsquo;il y a plusieurs appels à la même fonction en jeu en même temps, chacun a besoin de son <em>propre</em> environnement, même s&rsquo;ils sont tous des appels à la même fonction.</p>
+<p>Par exemple, voici une façon alambiquée de compter jusqu&rsquo;à trois :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">count</span>(<span class="i">n</span>) {
   <span class="k">if</span> (<span class="i">n</span> &gt; <span class="n">1</span>) <span class="i">count</span>(<span class="i">n</span> - <span class="n">1</span>);
   <span class="k">print</span> <span class="i">n</span>;
@@ -750,45 +526,21 @@ environment, even though they are all calls to the same function.</p>
 
 <span class="i">count</span>(<span class="n">3</span>);
 </pre></div>
-<p>Imagine we pause the interpreter right at the point where it&rsquo;s about to print 1
-in the innermost nested call. The outer calls to print 2 and 3 haven&rsquo;t printed
-their values yet, so there must be environments somewhere in memory that still
-store the fact that <code>n</code> is bound to 3 in one context, 2 in another, and 1 in the
-innermost, like:</p><img src="image/functions/recursion.png" alt="A separate environment for each recursive call." />
-<p>That&rsquo;s why we create a new environment at each <em>call</em>, not at the function
-<em>declaration</em>. The <code>call()</code> method we saw earlier does that. At the beginning of
-the call, it creates a new environment. Then it walks the parameter and argument
-lists in lockstep. For each pair, it creates a new variable with the parameter&rsquo;s
-name and binds it to the argument&rsquo;s value.</p>
-<p>So, for a program like this:</p>
+<p>Imaginez que nous mettons en pause l&rsquo;interpréteur juste au point main où il est sur le point d&rsquo;imprimer 1 dans l&rsquo;appel imbriqué le plus interne. Les appels externes pour imprimer 2 et 3 n&rsquo;ont pas encore imprimé leurs valeurs, donc il doit y avoir des environnements quelque part en mémoire qui stockent encore le fait que <code>n</code> est lié à 3 dans un contexte, 2 dans un autre, et 1 dans le plus interne, comme :</p><img src="image/functions/recursion.png" alt="Un environnement séparé pour chaque appel récursif." />
+<p>C&rsquo;est pourquoi nous créons un nouvel environnement à chaque <em>appel</em>, pas à la <em>déclaration</em> de fonction. La méthode <code>call()</code> que nous avons vue plus tôt fait cela. Au début de l&rsquo;appel, elle crée un nouvel environnement. Ensuite elle parcourt les listes de paramètre et d&rsquo;argument au pas. Pour chaque paire, elle crée une nouvelle variable avec le nom du paramètre et la lie à la valeur de l&rsquo;argument.</p>
+<p>Donc, pour un programme comme celui-ci :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">add</span>(<span class="i">a</span>, <span class="i">b</span>, <span class="i">c</span>) {
   <span class="k">print</span> <span class="i">a</span> + <span class="i">b</span> + <span class="i">c</span>;
 }
 
 <span class="i">add</span>(<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>);
 </pre></div>
-<p>At the point of the call to <code>add()</code>, the interpreter creates something like
-this:</p><img src="image/functions/binding.png" alt="Binding arguments to their parameters." />
-<p>Then <code>call()</code> tells the interpreter to execute the body of the function in this
-new function-local environment. Up until now, the current environment was the
-environment where the function was being called. Now, we teleport from there
-inside the new parameter space we&rsquo;ve created for the function.</p>
-<p>This is all that&rsquo;s required to pass data into the function. By using different
-environments when we execute the body, calls to the same function with the
-same code can produce different results.</p>
-<p>Once the body of the function has finished executing, <code>executeBlock()</code> discards
-that function-local environment and restores the previous one that was active
-back at the callsite. Finally, <code>call()</code> returns <code>null</code>, which returns <code>nil</code> to
-the caller. (We&rsquo;ll add return values later.)</p>
-<p>Mechanically, the code is pretty simple. Walk a couple of lists. Bind some new
-variables. Call a method. But this is where the crystalline <em>code</em> of the
-function declaration becomes a living, breathing <em>invocation</em>. This is one of my
-favorite snippets in this entire book. Feel free to take a moment to meditate on
-it if you&rsquo;re so inclined.</p>
-<p>Done? OK. Note when we bind the parameters, we assume the parameter and argument
-lists have the same length. This is safe because <code>visitCallExpr()</code> checks the
-arity before calling <code>call()</code>. It relies on the function reporting its arity to
-do that.</p>
+<p>Au point de l&rsquo;appel à <code>add()</code>, l&rsquo;interpréteur crée quelque chose comme ceci :</p><img src="image/functions/binding.png" alt="Lier des arguments à leurs paramètres." />
+<p>Ensuite <code>call()</code> dit à l&rsquo;interpréteur d&rsquo;exécuter le corps de la fonction dans ce nouvel environnement local à la fonction. Jusqu&rsquo;à maintenant, l&rsquo;environnement courant était l&rsquo;environnement où la fonction était appelée. Maintenant, nous nous téléportons de là à l&rsquo;intérieur du nouvel espace de paramètre que nous avons créé pour la fonction.</p>
+<p>C&rsquo;est tout ce qui est requis pour passer des données dans la fonction. En utilisant différents environnements quand nous exécutons le corps, les appels à la même fonction avec le même code peuvent produire différents résultats.</p>
+<p>Une fois que le corps de la fonction a fini d&rsquo;exécuter, <code>executeBlock()</code> jette cet environnement local à la fonction et restaure le précédent qui était actif à l&rsquo;appel. Finalement, <code>call()</code> renvoie <code>null</code>, ce qui renvoie <code>nil</code> à l&rsquo;appelant. (Nous ajouterons les valeurs de retour plus tard.)</p>
+<p>Mécaniquement, le code est assez simple. Parcourir une paire de listes. Lier quelques nouvelles variables. Appeler une méthode. Mais c&rsquo;est là où le <em>code</em> cristallin de la déclaration de fonction devient une <em>invocation</em> vivante, qui respire. C&rsquo;est l&rsquo;un de mes snippets favoris dans ce livre entier. Sentez-vous libre de prendre un moment pour méditer dessus si vous êtes ainsi incliné.</p>
+<p>Fini ? OK. Notez quand nous lions les paramètres, nous supposons que les listes de paramètre et d&rsquo;argument ont la même longueur. C&rsquo;est sûr parce que <code>visitCallExpr()</code> vérifie l&rsquo;arité avant d&rsquo;appeler <code>call()</code>. Il compte sur la fonction rapportant son arité pour faire cela.</p>
 <div class="codehilite"><div class="source-file"><em>lox/LoxFunction.java</em><br>
 add after <em>LoxFunction</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -798,8 +550,7 @@ add after <em>LoxFunction</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/LoxFunction.java</em>, add after <em>LoxFunction</em>()</div>
 
-<p>That&rsquo;s most of our object representation. While we&rsquo;re in here, we may as well
-implement <code>toString()</code>.</p>
+<p>C&rsquo;est la majeure partie de notre représentation objet. Pendant que nous sommes ici, nous pourrions aussi bien implémenter <code>toString()</code>.</p>
 <div class="codehilite"><div class="source-file"><em>lox/LoxFunction.java</em><br>
 add after <em>LoxFunction</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -809,16 +560,15 @@ add after <em>LoxFunction</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/LoxFunction.java</em>, add after <em>LoxFunction</em>()</div>
 
-<p>This gives nicer output if a user decides to print a function value.</p>
+<p>Cela donne une sortie plus jolie si un utilisateur décide d&rsquo;imprimer une valeur de fonction.</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">add</span>(<span class="i">a</span>, <span class="i">b</span>) {
   <span class="k">print</span> <span class="i">a</span> + <span class="i">b</span>;
 }
 
 <span class="k">print</span> <span class="i">add</span>; <span class="c">// &quot;&lt;fn add&gt;&quot;.</span>
 </pre></div>
-<h3><a href="#interpreting-function-declarations" id="interpreting-function-declarations"><small>10&#8202;.&#8202;4&#8202;.&#8202;1</small>Interpreting function declarations</a></h3>
-<p>We&rsquo;ll come back and refine LoxFunction soon, but that&rsquo;s enough to get started.
-Now we can visit a function declaration.</p>
+<h3><a href="#interpréter-des-déclarations-de-fonction" id="interpréter-des-déclarations-de-fonction"><small>10&#8202;.&#8202;4&#8202;.&#8202;1</small>Interpréter des déclarations de fonction</a></h3>
+<p>Nous reviendrons et raffinerons LoxFunction bientôt, mais c&rsquo;est assez pour commencer. Maintenant nous pouvons visiter une déclaration de fonction.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>visitExpressionStmt</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -830,34 +580,20 @@ add after <em>visitExpressionStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>visitExpressionStmt</em>()</div>
 
-<p>This is similar to how we interpret other literal expressions. We take a
-function <em>syntax node</em><span class="em">&mdash;</span>a compile-time representation of the function<span class="em">&mdash;</span>and
-convert it to its runtime representation. Here, that&rsquo;s a LoxFunction that wraps
-the syntax node.</p>
-<p>Function declarations are different from other literal nodes in that the
-declaration <em>also</em> binds the resulting object to a new variable. So, after
-creating the LoxFunction, we create a new binding in the current environment and
-store a reference to it there.</p>
-<p>With that, we can define and call our own functions all within Lox. Give it a
-try:</p>
+<p>C&rsquo;est similaire à comment nous interprétons d&rsquo;autres expressions littérales. Nous prenons un <em>nœud de syntaxe</em> de fonction<span class="em">&mdash;</span>une représentation compilation-time de la fonction<span class="em">&mdash;</span>et le convertissons en sa représentation exécution. Ici, c&rsquo;est une LoxFunction qui enveloppe le nœud de syntaxe.</p>
+<p>Les déclarations de fonction sont différentes des autres nœuds littéraux en cela que la déclaration lie <em>aussi</em> l&rsquo;objet résultant à une nouvelle variable. Donc, après avoir créé la LoxFunction, nous créons une nouvelle liaison dans l&rsquo;environnement courant et stockons une référence à celui-ci là.</p>
+<p>Avec cela, nous pouvons définir et appeler nos propres fonctions tout à l&rsquo;intérieur de Lox. Essayez :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">sayHi</span>(<span class="i">first</span>, <span class="i">last</span>) {
-  <span class="k">print</span> <span class="s">&quot;Hi, &quot;</span> + <span class="i">first</span> + <span class="s">&quot; &quot;</span> + <span class="i">last</span> + <span class="s">&quot;!&quot;</span>;
+  <span class="k">print</span> <span class="s">&quot;Salut, &quot;</span> + <span class="i">first</span> + <span class="s">&quot; &quot;</span> + <span class="i">last</span> + <span class="s">&quot; !&quot;</span>;
 }
 
-<span class="i">sayHi</span>(<span class="s">&quot;Dear&quot;</span>, <span class="s">&quot;Reader&quot;</span>);
+<span class="i">sayHi</span>(<span class="s">&quot;Cher&quot;</span>, <span class="s">&quot;Lecteur&quot;</span>);
 </pre></div>
-<p>I don&rsquo;t know about you, but that looks like an honest-to-God programming
-language to me.</p>
-<h2><a href="#return-statements" id="return-statements"><small>10&#8202;.&#8202;5</small>Return Statements</a></h2>
-<p>We can get data into functions by passing parameters, but we&rsquo;ve got no way to
-get results back <span name="hotel"><em>out</em></span>. If Lox were an
-expression-oriented language like Ruby or Scheme, the body would be an
-expression whose value is implicitly the function&rsquo;s result. But in Lox, the body
-of a function is a list of statements which don&rsquo;t produce values, so we need
-dedicated syntax for emitting a result. In other words, <code>return</code> statements. I&rsquo;m
-sure you can guess the grammar already.</p>
+<p>Je ne sais pas pour vous, mais cela ressemble à un langage de programmation honnête pour moi.</p>
+<h2><a href="#instructions-return" id="instructions-return"><small>10&#8202;.&#8202;5</small>Instructions Return</a></h2>
+<p>Nous pouvons obtenir des données dans les fonctions en passant des paramètres, mais nous n&rsquo;avons aucun moyen d&rsquo;obtenir des résultats en <span name="hotel"><em>sortie</em></span>. Si Lox était un langage orienté expression comme Ruby ou Scheme, le corps serait une expression dont la valeur est implicitement le résultat de la fonction. Mais dans Lox, le corps d&rsquo;une fonction est une liste d&rsquo;instructions qui ne produisent pas de valeurs, donc nous avons besoin d&rsquo;une syntaxe dédiée pour émettre un résultat. En d&rsquo;autres termes, des instructions <code>return</code>. Je suis sûr que vous pouvez deviner la grammaire déjà.</p>
 <aside name="hotel">
-<p>The Hotel California of data.</p>
+<p>L&rsquo;Hôtel California des données.</p>
 </aside>
 <div class="codehilite"><pre><span class="i">statement</span>      → <span class="i">exprStmt</span>
                | <span class="i">forStmt</span>
@@ -869,29 +605,19 @@ sure you can guess the grammar already.</p>
 
 <span class="i">returnStmt</span>     → <span class="s">&quot;return&quot;</span> <span class="i">expression</span>? <span class="s">&quot;;&quot;</span> ;
 </pre></div>
-<p>We&rsquo;ve got one more<span class="em">&mdash;</span>the final, in fact<span class="em">&mdash;</span>production under the venerable
-<code>statement</code> rule. A <code>return</code> statement is the <code>return</code> keyword followed by an
-optional expression and terminated with a semicolon.</p>
-<p>The return value is optional to support exiting early from a function that
-doesn&rsquo;t return a useful value. In statically typed languages, &ldquo;void&rdquo; functions
-don&rsquo;t return a value and non-void ones do. Since Lox is dynamically typed, there
-are no true void functions. The compiler has no way of preventing you from
-taking the result value of a call to a function that doesn&rsquo;t contain a <code>return</code>
-statement.</p>
+<p>Nous en avons une de plus<span class="em">&mdash;</span>la finale, en fait<span class="em">&mdash;</span>production sous la vénérable règle <code>statement</code>. Une instruction <code>return</code> est le mot-clé <code>return</code> suivi par une expression optionnelle et terminé avec un point-virgule.</p>
+<p>La valeur de retour est optionnelle pour supporter de sortir tôt d&rsquo;une fonction qui ne renvoie pas une valeur utile. Dans les langages typés statiquement, les fonctions &ldquo;void&rdquo; ne renvoient pas une valeur et les non-void le font. Puisque Lox est typé dynamiquement, il n&rsquo;y a pas de vraies fonctions void. Le compilateur n&rsquo;a aucun moyen de vous empêcher de prendre la valeur résultat d&rsquo;un appel à une fonction qui ne contient pas d&rsquo;instruction <code>return</code>.</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">procedure</span>() {
-  <span class="k">print</span> <span class="s">&quot;don&#39;t return anything&quot;</span>;
+  <span class="k">print</span> <span class="s">&quot;ne renvoie rien&quot;</span>;
 }
 
 <span class="k">var</span> <span class="i">result</span> = <span class="i">procedure</span>();
 <span class="k">print</span> <span class="i">result</span>; <span class="c">// ?</span>
 </pre></div>
-<p>This means every Lox function must return <em>something</em>, even if it contains no
-<code>return</code> statements at all. We use <code>nil</code> for this, which is why LoxFunction&rsquo;s
-implementation of <code>call()</code> returns <code>null</code> at the end. In that same vein, if you
-omit the value in a <code>return</code> statement, we simply treat it as equivalent to:</p>
+<p>Cela signifie que chaque fonction Lox doit renvoyer <em>quelque chose</em>, même si elle ne contient aucune instruction <code>return</code> du tout. Nous utilisons <code>nil</code> pour cela, ce qui est pourquoi l&rsquo;implémentation de <code>call()</code> de LoxFunction renvoie <code>null</code> à la fin. Dans la même veine, si vous omettez la valeur dans une instruction <code>return</code>, nous la traitons simplement comme équivalente à :</p>
 <div class="codehilite"><pre><span class="k">return</span> <span class="k">nil</span>;
 </pre></div>
-<p>Over in our AST generator, we add a <span name="return-ast">new node</span>.</p>
+<p>Là-bas dans notre générateur AST, nous ajoutons un <span name="return-ast">nouveau nœud</span>.</p>
 <div class="codehilite"><pre class="insert-before">      &quot;Print      : Expr expression&quot;,
 </pre><div class="source-file"><em>tool/GenerateAst.java</em><br>
 in <em>main</em>()</div>
@@ -901,11 +627,9 @@ in <em>main</em>()</div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, in <em>main</em>()</div>
 
 <aside name="return-ast">
-<p>The generated code for the new node is in <a href="appendix-ii.html#return-statement">Appendix II</a>.</p>
+<p>Le code généré pour le nouveau nœud est dans l&rsquo;<a href="appendix-ii.html#return-statement">Annexe II</a>.</p>
 </aside>
-<p>It keeps the <code>return</code> keyword token so we can use its location for error
-reporting, and the value being returned, if any. We parse it like other
-statements, first by recognizing the initial keyword.</p>
+<p>Il garde le token de mot-clé <code>return</code> pour que nous puissions utiliser son emplacement pour le rapport d&rsquo;erreur, et la valeur étant renvoyée, s&rsquo;il y en a. Nous le parsons comme d&rsquo;autres instructions, d&rsquo;abord en reconnaissant le mot-clé initial.</p>
 <div class="codehilite"><pre class="insert-before">    if (match(PRINT)) return printStatement();
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
 in <em>statement</em>()</div>
@@ -914,7 +638,7 @@ in <em>statement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>statement</em>()</div>
 
-<p>That branches out to:</p>
+<p>Cela branche vers :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Parser.java</em><br>
 add after <em>printStatement</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">Stmt</span> <span class="i">returnStatement</span>() {
@@ -930,19 +654,10 @@ add after <em>printStatement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, add after <em>printStatement</em>()</div>
 
-<p>After snagging the previously consumed <code>return</code> keyword, we look for a value
-expression. Since many different tokens can potentially start an expression,
-it&rsquo;s hard to tell if a return value is <em>present</em>. Instead, we check if it&rsquo;s
-<em>absent</em>. Since a semicolon can&rsquo;t begin an expression, if the next token is
-that, we know there must not be a value.</p>
-<h3><a href="#returning-from-calls" id="returning-from-calls"><small>10&#8202;.&#8202;5&#8202;.&#8202;1</small>Returning from calls</a></h3>
-<p>Interpreting a <code>return</code> statement is tricky. You can return from anywhere within
-the body of a function, even deeply nested inside other statements. When the
-return is executed, the interpreter needs to jump all the way out of whatever
-context it&rsquo;s currently in and cause the function call to complete, like some
-kind of jacked up control flow construct.</p>
-<p>For example, say we&rsquo;re running this program and we&rsquo;re about to execute the
-<code>return</code> statement:</p>
+<p>Après avoir attrapé le mot-clé <code>return</code> consommé précédemment, nous cherchons une expression de valeur. Puisque beaucoup de tokens différents peuvent potentiellement commencer une expression, il est difficile de dire si une valeur de retour est <em>présente</em>. Au lieu de cela, nous vérifions si elle est <em>absente</em>. Puisqu&rsquo;un point-virgule ne peut pas commencer une expression, si le prochain token est celui-là, nous savons qu&rsquo;il ne doit pas y avoir une valeur.</p>
+<h3><a href="#revenir-des-appels" id="revenir-des-appels"><small>10&#8202;.&#8202;5&#8202;.&#8202;1</small>Revenir des appels</a></h3>
+<p>Interpréter une instruction <code>return</code> est délicat. Vous pouvez retourner de n&rsquo;importe où à l&rsquo;intérieur du corps d&rsquo;une fonction, même profondément imbriqué à l&rsquo;intérieur d&rsquo;autres instructions. Quand le return est exécuté, l&rsquo;interpréteur a besoin de sauter tout le chemin hors de n&rsquo;importe quel contexte dans lequel il est actuellement et causer la complétion de l&rsquo;appel de fonction, comme une sorte de construction de contrôle de flux dopée.</p>
+<p>Par exemple, disons que nous exécutons ce programme et nous sommes sur le point d&rsquo;exécuter l&rsquo;instruction <code>return</code> :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">count</span>(<span class="i">n</span>) {
   <span class="k">while</span> (<span class="i">n</span> &lt; <span class="n">100</span>) {
     <span class="k">if</span> (<span class="i">n</span> == <span class="n">3</span>) <span class="k">return</span> <span class="i">n</span>; <span class="c">// &lt;--</span>
@@ -953,7 +668,7 @@ kind of jacked up control flow construct.</p>
 
 <span class="i">count</span>(<span class="n">1</span>);
 </pre></div>
-<p>The Java call stack currently looks roughly like this:</p>
+<p>La pile d&rsquo;appels Java ressemble actuellement grossièrement à ceci :</p>
 <div class="codehilite"><pre>Interpreter.visitReturnStmt()
 Interpreter.visitIfStmt()
 Interpreter.executeBlock()
@@ -963,12 +678,8 @@ Interpreter.executeBlock()
 LoxFunction.call()
 Interpreter.visitCallExpr()
 </pre></div>
-<p>We need to get from the top of the stack all the way back to <code>call()</code>. I don&rsquo;t
-know about you, but to me that sounds like exceptions. When we execute a
-<code>return</code> statement, we&rsquo;ll use an exception to unwind the interpreter past the
-visit methods of all of the containing statements back to the code that began
-executing the body.</p>
-<p>The visit method for our new AST node looks like this:</p>
+<p>Nous avons besoin d&rsquo;aller du haut de la pile tout le chemin en arrière à <code>call()</code>. Je ne sais pas pour vous, mais pour moi ça sonne comme des exceptions. Quand nous exécutons une instruction <code>return</code>, nous utiliserons une exception pour dérouler l&rsquo;interpréteur au-delà des méthodes visit de toutes les instructions contenantes jusqu&rsquo;au code qui a commencé à exécuter le corps.</p>
+<p>La méthode visit pour notre nouveau nœud AST ressemble à ceci :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>visitPrintStmt</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -981,8 +692,7 @@ add after <em>visitPrintStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>visitPrintStmt</em>()</div>
 
-<p>If we have a return value, we evaluate it, otherwise, we use <code>nil</code>. Then we take
-that value and wrap it in a custom exception class and throw it.</p>
+<p>Si nous avons une valeur de retour, nous l&rsquo;évaluons, sinon, nous utilisons <code>nil</code>. Ensuite nous prenons cette valeur et l&rsquo;enveloppons dans une classe d&rsquo;exception personnalisée et la lançons.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Return.java</em><br>
 create new file</div>
 <pre><span class="k">package</span> <span class="i">com.craftinginterpreters.lox</span>;
@@ -998,20 +708,11 @@ create new file</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Return.java</em>, create new file</div>
 
-<p>This class wraps the return value with the accoutrements Java requires for a
-runtime exception class. The weird super constructor call with those <code>null</code> and
-<code>false</code> arguments disables some JVM machinery that we don&rsquo;t need. Since we&rsquo;re
-using our exception class for <span name="exception">control flow</span> and not
-actual error handling, we don&rsquo;t need overhead like stack traces.</p>
+<p>Cette classe enveloppe la valeur de retour avec les accessoires que Java exige pour une classe d&rsquo;exception runtime. L&rsquo;appel bizarre au constructeur super avec ces arguments <code>null</code> et <code>false</code> désactive une certaine machinerie JVM dont nous n&rsquo;avons pas besoin. Puisque nous utilisons notre classe d&rsquo;exception pour le <span name="exception">contrôle de flux</span> et pas la gestion d&rsquo;erreur réelle, nous n&rsquo;avons pas besoin de surcharge comme les traces de pile.</p>
 <aside name="exception">
-<p>For the record, I&rsquo;m not generally a fan of using exceptions for control flow.
-But inside a heavily recursive tree-walk interpreter, it&rsquo;s the way to go. Since
-our own syntax tree evaluation is so heavily tied to the Java call stack, we&rsquo;re
-pressed to do some heavyweight call stack manipulation occasionally, and
-exceptions are a handy tool for that.</p>
+<p>Pour mémoire, je ne suis généralement pas un fan d&rsquo;utiliser des exceptions pour le contrôle de flux. Mais à l&rsquo;intérieur d&rsquo;un interpréteur à parcours d&rsquo;arbre lourdement récursif, c&rsquo;est la voie à suivre. Puisque notre propre évaluation d&rsquo;arbre syntaxique est si lourdement liée à la pile d&rsquo;appels Java, nous sommes pressés de faire une certaine manipulation de pile d&rsquo;appels poids lourd occasionnellement, et les exceptions sont un outil pratique pour cela.</p>
 </aside>
-<p>We want this to unwind all the way to where the function call began, the
-<code>call()</code> method in LoxFunction.</p>
+<p>Nous voulons que cela déroule tout le chemin jusqu&rsquo;à où l&rsquo;appel de fonction a commencé, la méthode <code>call()</code> dans LoxFunction.</p>
 <div class="codehilite"><pre class="insert-before">          arguments.get(i));
     }
 
@@ -1027,13 +728,8 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/LoxFunction.java</em>, in <em>call</em>(), replace 1 line</div>
 
-<p>We wrap the call to <code>executeBlock()</code> in a try-catch block. When it catches a
-return exception, it pulls out the value and makes that the return value from
-<code>call()</code>. If it never catches one of these exceptions, it means the function
-reached the end of its body without hitting a <code>return</code> statement. In that case,
-it implicitly returns <code>nil</code>.</p>
-<p>Let&rsquo;s try it out. We finally have enough power to support this classic
-example<span class="em">&mdash;</span>a recursive function to calculate Fibonacci numbers:</p>
+<p>Nous enveloppons l&rsquo;appel à <code>executeBlock()</code> dans un bloc try-catch. Quand il attrape une exception de retour, il sort la valeur et en fait la valeur de retour de <code>call()</code>. S&rsquo;il n&rsquo;attrape jamais une de ces exceptions, cela signifie que la fonction a atteint la fin de son corps sans frapper une instruction <code>return</code>. Dans ce cas, elle renvoie implicitement <code>nil</code>.</p>
+<p>Essayons-le. Nous avons enfin assez de puissance pour supporter cet exemple classique<span class="em">&mdash;</span>une fonction récursive pour calculer les nombres de Fibonacci :</p>
 <p><span name="slow"></span></p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">fib</span>(<span class="i">n</span>) {
   <span class="k">if</span> (<span class="i">n</span> &lt;= <span class="n">1</span>) <span class="k">return</span> <span class="i">n</span>;
@@ -1044,33 +740,17 @@ example<span class="em">&mdash;</span>a recursive function to calculate Fibonacc
   <span class="k">print</span> <span class="i">fib</span>(<span class="i">i</span>);
 }
 </pre></div>
-<p>This tiny program exercises almost every language feature we have spent the past
-several chapters implementing<span class="em">&mdash;</span>expressions, arithmetic, branching, looping,
-variables, functions, function calls, parameter binding, and returns.</p>
+<p>Ce programme minuscule exerce presque chaque fonctionnalité de langage que nous avons passé les nombreux derniers chapitres à implémenter<span class="em">&mdash;</span>expressions, arithmétique, branchement, bouclage, variables, fonctions, appels de fonction, liaison de paramètre, et retours.</p>
 <aside name="slow">
-<p>You might notice this is pretty slow. Obviously, recursion isn&rsquo;t the most
-efficient way to calculate Fibonacci numbers, but as a microbenchmark, it does
-a good job of stress testing how fast our interpreter implements function calls.</p>
-<p>As you can see, the answer is &ldquo;not very fast&rdquo;. That&rsquo;s OK. Our C interpreter will
-be faster.</p>
+<p>Vous pourriez remarquer que c&rsquo;est assez lent. Évidemment, la récursion n&rsquo;est pas le moyen le plus efficace de calculer les nombres de Fibonacci, mais comme microbenchmark, cela fait un bon travail de stress test de combien vite notre interpréteur implémente les appels de fonction.</p>
+<p>Comme vous pouvez le voir, la réponse est &ldquo;pas très vite&rdquo;. C&rsquo;est OK. Notre interpréteur C sera plus rapide.</p>
 </aside>
-<h2><a href="#local-functions-and-closures" id="local-functions-and-closures"><small>10&#8202;.&#8202;6</small>Local Functions and Closures</a></h2>
-<p>Our functions are pretty full featured, but there is one hole to patch. In fact,
-it&rsquo;s a big enough gap that we&rsquo;ll spend most of the <a href="resolving-and-binding.html">next chapter</a> sealing it
-up, but we can get started here.</p>
-<p>LoxFunction&rsquo;s implementation of <code>call()</code> creates a new environment where it
-binds the function&rsquo;s parameters. When I showed you that code, I glossed over one
-important point: What is the <em>parent</em> of that environment?</p>
-<p>Right now, it is always <code>globals</code>, the top-level global environment. That way,
-if an identifier isn&rsquo;t defined inside the function body itself, the interpreter
-can look outside the function in the global scope to find it. In the Fibonacci
-example, that&rsquo;s how the interpreter is able to look up the recursive call to
-<code>fib</code> inside the function&rsquo;s own body<span class="em">&mdash;</span><code>fib</code> is a global variable.</p>
-<p>But recall that in Lox, function declarations are allowed <em>anywhere</em> a name can
-be bound. That includes the top level of a Lox script, but also the inside of
-blocks or other functions. Lox supports <strong>local functions</strong> that are defined
-inside another function, or nested inside a block.</p>
-<p>Consider this classic example:</p>
+<h2><a href="#fonctions-locales-et-fermetures" id="fonctions-locales-et-fermetures"><small>10&#8202;.&#8202;6</small>Fonctions Locales et Fermetures</a></h2>
+<p>Nos fonctions sont assez complètes en fonctionnalités, mais il y a un trou à combler. En fait, c&rsquo;est un écart assez grand pour que nous passions la plupart du [prochain chapitre][] à le sceller, mais nous pouvons commencer ici.</p>
+<p>L&rsquo;implémentation de <code>call()</code> de LoxFunction crée un nouvel environnement où elle lie les paramètres de la fonction. Quand je vous ai montré ce code, j&rsquo;ai glissé sur un point important : Quel est le <em>parent</em> de cet environnement ?</p>
+<p>Pour l&rsquo;instant, c&rsquo;est toujours <code>globals</code>, l&rsquo;environnement global de niveau supérieur. De cette façon, si un identifieur n&rsquo;est pas défini à l&rsquo;intérieur du corps de la fonction lui-même, l&rsquo;interpréteur peut regarder à l&rsquo;extérieur de la fonction dans la portée globale pour le trouver. Dans l&rsquo;exemple Fibonacci, c&rsquo;est comment l&rsquo;interpréteur est capable de chercher l&rsquo;appel récursif à <code>fib</code> à l&rsquo;intérieur du propre corps de la fonction<span class="em">&mdash;</span><code>fib</code> est une variable globale.</p>
+<p>Mais rappelez-vous que dans Lox, les déclarations de fonction sont autorisées <em>n&rsquo;importe où</em> un nom peut être lié. Cela inclut le niveau supérieur d&rsquo;un script Lox, mais aussi l&rsquo;intérieur de blocs ou d&rsquo;autres fonctions. Lox supporte les <strong>fonctions locales</strong> qui sont définies à l&rsquo;intérieur d&rsquo;une autre fonction, ou imbriquées à l&rsquo;intérieur d&rsquo;un bloc.</p>
+<p>Considérez cet exemple classique :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">makeCounter</span>() {
   <span class="k">var</span> <span class="i">i</span> = <span class="n">0</span>;
   <span class="k">fun</span> <span class="i">count</span>() {
@@ -1085,37 +765,15 @@ inside another function, or nested inside a block.</p>
 <span class="i">counter</span>(); <span class="c">// &quot;1&quot;.</span>
 <span class="i">counter</span>(); <span class="c">// &quot;2&quot;.</span>
 </pre></div>
-<p>Here, <code>count()</code> uses <code>i</code>, which is declared outside of itself in the containing
-function <code>makeCounter()</code>. <code>makeCounter()</code> returns a reference to the <code>count()</code>
-function and then its own body finishes executing completely.</p>
-<p>Meanwhile, the top-level code invokes the returned <code>count()</code> function. That
-executes the body of <code>count()</code>, which assigns to and reads <code>i</code>, even though the
-function where <code>i</code> was defined has already exited.</p>
-<p>If you&rsquo;ve never encountered a language with nested functions before, this might
-seem crazy, but users do expect it to work. Alas, if you run it now, you get an
-undefined variable error in the call to <code>counter()</code> when the body of <code>count()</code>
-tries to look up <code>i</code>. That&rsquo;s because the environment chain in effect looks like
-this:</p><img src="image/functions/global.png" alt="The environment chain from count()'s body to the global scope." />
-<p>When we call <code>count()</code> (through the reference to it stored in <code>counter</code>), we
-create a new empty environment for the function body. The parent of that is the
-global environment. We lost the environment for <code>makeCounter()</code> where <code>i</code> is
-bound.</p>
-<p>Let&rsquo;s go back in time a bit. Here&rsquo;s what the environment chain looked like right
-when we declared <code>count()</code> inside the body of <code>makeCounter()</code>:</p><img src="image/functions/body.png" alt="The environment chain inside the body of makeCounter()." />
-<p>So at the point where the function is declared, we can see <code>i</code>. But when we
-return from <code>makeCounter()</code> and exit its body, the interpreter discards that
-environment. Since the interpreter doesn&rsquo;t keep the environment surrounding
-<code>count()</code> around, it&rsquo;s up to the function object itself to hang on to it.</p>
-<p>This data structure is called a <span name="closure"><strong>closure</strong></span> because
-it &ldquo;closes over&rdquo; and holds on to the surrounding variables where the function is
-declared. Closures have been around since the early Lisp days, and language
-hackers have come up with all manner of ways to implement them. For jlox, we&rsquo;ll
-do the simplest thing that works. In LoxFunction, we add a field to store an
-environment.</p>
+<p>Ici, <code>count()</code> utilise <code>i</code>, qui est déclaré à l&rsquo;extérieur d&rsquo;elle-même dans la fonction contenante <code>makeCounter()</code>. <code>makeCounter()</code> renvoie une référence à la fonction <code>count()</code> et ensuite son propre corps finit d&rsquo;exécuter complètement.</p>
+<p>Pendant ce temps, le code de niveau supérieur invoque la fonction <code>count()</code> renvoyée. Cela exécute le corps de <code>count()</code>, qui assigne à et lit <code>i</code>, même si la fonction où <code>i</code> était définie est déjà sortie.</p>
+<p>Si vous n&rsquo;avez jamais rencontré un langage avec des fonctions imbriquées avant, cela pourrait sembler fou, mais les utilisateurs s&rsquo;attendent bien à ce que ça marche. Hélas, si vous le lancez maintenant, vous obtenez une erreur de variable indéfinie dans l&rsquo;appel à <code>counter()</code> quand le corps de <code>count()</code> essaie de chercher <code>i</code>. C&rsquo;est parce que la chaîne d&rsquo;environnement en effet ressemble à ceci :</p><img src="image/functions/global.png" alt="La chaîne d'environnement du corps de count() à la portée globale." />
+<p>Quand nous appelons <code>count()</code> (à travers la référence à celle-ci stockée dans <code>counter</code>), nous créons un nouvel environnement vide pour le corps de la fonction. Le parent de celui-ci est l&rsquo;environnement global. Nous avons perdu l&rsquo;environnement pour <code>makeCounter()</code> où <code>i</code> est lié.</p>
+<p>Retournons en arrière dans le temps un peu. Voici à quoi ressemblait la chaîne d&rsquo;environnement juste au moment où nous déclarions <code>count()</code> à l&rsquo;intérieur du corps de <code>makeCounter()</code> :</p><img src="image/functions/body.png" alt="La chaîne d'environnement à l'intérieur du corps de makeCounter()." />
+<p>Donc au point où la fonction est déclarée, nous pouvons voir <code>i</code>. Mais quand nous revenons de <code>makeCounter()</code> et sortons de son corps, l&rsquo;interpréteur jette cet environnement. Puisque l&rsquo;interpréteur ne garde pas l&rsquo;environnement entourant <code>count()</code> dans les parages, c&rsquo;est à l&rsquo;objet fonction lui-même de s&rsquo;y accrocher.</p>
+<p>Cette structure de données est appelée une <span name="closure"><strong>fermeture</strong></span> (closure) parce qu&rsquo;elle &ldquo;ferme sur&rdquo; et s&rsquo;accroche aux variables environnantes où la fonction est déclarée. Les fermetures existent depuis les premiers jours de Lisp, et les hackers de langage sont arrivés avec toutes sortes de façons de les implémenter. Pour jlox, nous ferons la chose la plus simple qui marche. Dans LoxFunction, nous ajoutons un champ pour stocker un environnement.</p>
 <aside name="closure">
-<p>&ldquo;Closure&rdquo; is yet another term coined by Peter J. Landin. I assume before he came
-along that computer scientists communicated with each other using only primitive
-grunts and pawing hand gestures.</p>
+<p>&ldquo;Closure&rdquo; est encore un autre terme inventé par Peter J. Landin. Je suppose qu&rsquo;avant qu&rsquo;il n&rsquo;arrive les informaticiens communiquaient les uns avec les autres en utilisant seulement des grognements primitifs et des gestes de la main.</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">  private final Stmt.Function declaration;
 </pre><div class="source-file"><em>lox/LoxFunction.java</em><br>
@@ -1126,7 +784,7 @@ in class <em>LoxFunction</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/LoxFunction.java</em>, in class <em>LoxFunction</em></div>
 
-<p>We initialize that in the constructor.</p>
+<p>Nous initialisons cela dans le constructeur.</p>
 <div class="codehilite"><div class="source-file"><em>lox/LoxFunction.java</em><br>
 constructor <em>LoxFunction</em>()<br>
 replace 1 line</div>
@@ -1136,7 +794,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/LoxFunction.java</em>, constructor <em>LoxFunction</em>(), replace 1 line</div>
 
-<p>When we create a LoxFunction, we capture the current environment.</p>
+<p>Quand nous créons une LoxFunction, nous capturons l&rsquo;environnement courant.</p>
 <div class="codehilite"><pre class="insert-before">  public Void visitFunctionStmt(Stmt.Function stmt) {
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
 in <em>visitFunctionStmt</em>()<br>
@@ -1146,10 +804,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitFunctionStmt</em>(), replace 1 line</div>
 
-<p>This is the environment that is active when the function is <em>declared</em> not when
-it&rsquo;s <em>called</em>, which is what we want. It represents the lexical scope
-surrounding the function declaration. Finally, when we call the function, we use
-that environment as the call&rsquo;s parent instead of going straight to <code>globals</code>.</p>
+<p>C&rsquo;est l&rsquo;environnement qui est actif quand la fonction est <em>déclarée</em> pas quand elle est <em>appelée</em>, qui est ce que nous voulons. Il représente la portée lexicale entourant la déclaration de fonction. Finalement, quand nous appelons la fonction, nous utilisons cet environnement comme parent de l&rsquo;appel au lieu d&rsquo;aller directement à <code>globals</code>.</p>
 <div class="codehilite"><pre class="insert-before">                     List&lt;Object&gt; arguments) {
 </pre><div class="source-file"><em>lox/LoxFunction.java</em><br>
 in <em>call</em>()<br>
@@ -1159,38 +814,18 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/LoxFunction.java</em>, in <em>call</em>(), replace 1 line</div>
 
-<p>This creates an environment chain that goes from the function&rsquo;s body out through
-the environments where the function is declared, all the way out to the global
-scope. The runtime environment chain matches the textual nesting of the source
-code like we want. The end result when we call that function looks like this:</p><img src="image/functions/closure.png" alt="The environment chain with the closure." />
-<p>Now, as you can see, the interpreter can still find <code>i</code> when it needs to because
-it&rsquo;s in the middle of the environment chain. Try running that <code>makeCounter()</code>
-example now. It works!</p>
-<p>Functions let us abstract over, reuse, and compose code. Lox is much more
-powerful than the rudimentary arithmetic calculator it used to be. Alas, in our
-rush to cram closures in, we have let a tiny bit of dynamic scoping leak into
-the interpreter. In the <a href="resolving-and-binding.html">next chapter</a>, we will explore deeper into lexical
-scope and close that hole.</p>
+<p>Cela crée une chaîne d&rsquo;environnement qui va du corps de la fonction vers l&rsquo;extérieur à travers les environnements où la fonction est déclarée, tout le chemin vers l&rsquo;extérieur jusqu&rsquo;à la portée globale. La chaîne d&rsquo;environnement d&rsquo;exécution correspond à l&rsquo;imbrication textuelle du code source comme nous voulons. Le résultat final quand nous appelons cette fonction ressemble à ceci :</p><img src="image/functions/closure.png" alt="La chaîne d'environnement avec la fermeture." />
+<p>Maintenant, comme vous pouvez le voir, l&rsquo;interpréteur peut encore trouver <code>i</code> quand il en a besoin parce qu&rsquo;il est au milieu de la chaîne d&rsquo;environnement. Essayez de lancer cet exemple <code>makeCounter()</code> maintenant. Ça marche !</p>
+<p>Les fonctions nous permettent d&rsquo;abstraire, réutiliser, et composer du code. Lox est beaucoup plus puissant que la calculatrice arithmétique rudimentaire qu&rsquo;il était. Hélas, dans notre hâte de bourrer les fermetures dedans, nous avons laissé un tout petit peu de portée dynamique fuiter dans l&rsquo;interpréteur. Dans le [prochain chapitre][], nous explorerons plus profondément dans la portée lexicale et fermerons ce trou.</p>
 <div class="challenges">
-<h2><a href="#challenges" id="challenges">Challenges</a></h2>
+<h2><a href="#défis" id="défis"><small>10&#8202;.&#8202;7</small>Défis</a></h2>
 <ol>
 <li>
-<p>Our interpreter carefully checks that the number of arguments passed to a
-function matches the number of parameters it expects. Since this check is
-done at runtime on every call, it has a performance cost. Smalltalk
-implementations don&rsquo;t have that problem. Why not?</p>
+<p>Notre interpréteur vérifie soigneusement que le nombre d&rsquo;arguments passés à une fonction correspond au nombre de paramètres qu&rsquo;elle attend. Puisque cette vérification est faite à l&rsquo;exécution sur chaque appel, elle a un coût de performance. Les implémentations Smalltalk n&rsquo;ont pas ce problème. Pourquoi pas ?</p>
 </li>
 <li>
-<p>Lox&rsquo;s function declaration syntax performs two independent operations. It
-creates a function and also binds it to a name. This improves usability for
-the common case where you do want to associate a name with the function.
-But in functional-styled code, you often want to create a function to
-immediately pass it to some other function or return it. In that case, it
-doesn&rsquo;t need a name.</p>
-<p>Languages that encourage a functional style usually support <strong>anonymous
-functions</strong> or <strong>lambdas</strong><span class="em">&mdash;</span>an expression syntax that creates a function
-without binding it to a name. Add anonymous function syntax to Lox so that
-this works:</p>
+<p>La syntaxe de déclaration de fonction de Lox effectue deux opérations indépendantes. Elle crée une fonction et la lie aussi à un nom. Cela améliore l&rsquo;utilisabilité pour le cas courant où vous voulez associer un nom à la fonction. Mais dans le code de style fonctionnel, vous voulez souvent créer une fonction pour la passer immédiatement à une autre fonction ou la renvoyer. Dans ce cas, elle n&rsquo;a pas besoin d&rsquo;un nom.</p>
+<p>Les langages qui encouragent un style fonctionnel supportent habituellement les <strong>fonctions anonymes</strong> ou <strong>lambdas</strong><span class="em">&mdash;</span>une syntaxe d&rsquo;expression qui crée une fonction sans la lier à un nom. Ajoutez la syntaxe de fonction anonyme à Lox pour que cela marche :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">thrice</span>(<span class="i">fn</span>) {
   <span class="k">for</span> (<span class="k">var</span> <span class="i">i</span> = <span class="n">1</span>; <span class="i">i</span> &lt;= <span class="n">3</span>; <span class="i">i</span> = <span class="i">i</span> + <span class="n">1</span>) {
     <span class="i">fn</span>(<span class="i">i</span>);
@@ -1204,20 +839,17 @@ this works:</p>
 <span class="c">// &quot;2&quot;.</span>
 <span class="c">// &quot;3&quot;.</span>
 </pre></div>
-<p>How do you handle the tricky case of an anonymous function expression
-occurring in an expression statement:</p>
+<p>Comment gérez-vous le cas délicat d&rsquo;une expression de fonction anonyme se produisant dans une instruction d&rsquo;expression :</p>
 <div class="codehilite"><pre><span class="k">fun</span> () {};
 </pre></div>
 </li>
 <li>
-<p>Is this program valid?</p>
+<p>Est-ce que ce programme est valide ?</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">scope</span>(<span class="i">a</span>) {
   <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;local&quot;</span>;
 }
 </pre></div>
-<p>In other words, are a function&rsquo;s parameters in the <em>same</em> scope as its local
-variables, or in an outer scope? What does Lox do? What about other
-languages you are familiar with? What do you think a language <em>should</em> do?</p>
+<p>En d&rsquo;autres termes, est-ce que les paramètres d&rsquo;une fonction sont dans la <em>même</em> portée que ses variables locales, ou dans une portée externe ? Que fait Lox ? Et à propos d&rsquo;autres langages avec lesquels vous êtes familier ? Que pensez-vous qu&rsquo;un langage <em>devrait</em> faire ?</p>
 </li>
 </ol>
 </div>

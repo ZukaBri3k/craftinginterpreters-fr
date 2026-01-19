@@ -1,1094 +1,601 @@
-> Hash, x. There is no definition for this word -- nobody knows what hash is.
+> Hash, x. Il n'y a pas de définition pour ce mot -- personne ne sait ce que le hachage est.
 >
 > <cite>Ambrose Bierce, <em>The Unabridged Devil's Dictionary</em></cite>
 
-Before we can add variables to our burgeoning virtual machine, we need some way
-to look up a value given a variable's name. Later, when we add classes, we'll
-also need a way to store fields on instances. The perfect data structure for
-these problems and others is a hash table.
+Avant que nous puissions ajouter des variables à notre machine virtuelle bourgeonnante, nous avons besoin d'un moyen de chercher une valeur étant donné un nom de variable. Plus tard, quand nous ajouterons les classes, nous aurons aussi besoin d'un moyen de stocker des champs sur les instances. La structure de données parfaite pour ces problèmes et d'autres est une table de hachage.
 
-You probably already know what a hash table is, even if you don't know it by
-that name. If you're a Java programmer, you call them "HashMaps". C# and Python
-users call them "dictionaries". In C++, it's an "unordered map". "Objects" in
-JavaScript and "tables" in Lua are hash tables under the hood, which is what
-gives them their flexibility.
+Vous savez probablement déjà ce qu'est une table de hachage, même si vous ne la connaissez pas sous ce nom. Si vous êtes un programmeur Java, vous les appelez "HashMaps". Les utilisateurs C# et Python les appellent "dictionnaires". En C++, c'est une "unordered map". Les "objets" en JavaScript et les "tables" en Lua sont des tables de hachage sous le capot, ce qui est ce qui leur donne leur flexibilité.
 
-A hash table, whatever your language calls it, associates a set of **keys** with
-a set of **values**. Each key/value pair is an **entry** in the table. Given a
-key, you can look up its corresponding value. You can add new key/value pairs
-and remove entries by key. If you add a new value for an existing key, it
-replaces the previous entry.
+Une table de hachage, peu importe comment votre langage l'appelle, associe un ensemble de **clés** avec un ensemble de **valeurs**. Chaque paire clé/valeur est une **entrée** dans la table. Étant donné une clé, vous pouvez chercher sa valeur correspondante. Vous pouvez ajouter de nouvelles paires clé/valeur et supprimer des entrées par clé. Si vous ajoutez une nouvelle valeur pour une clé existante, elle remplace l'entrée précédente.
 
-Hash tables appear in so many languages because they are incredibly powerful.
-Much of this power comes from one metric: given a key, a hash table returns the
-corresponding value in <span name="constant">constant time</span>, *regardless
-of how many keys are in the hash table*.
+Les tables de hachage apparaissent dans tellement de langages parce qu'elles sont incroyablement puissantes. Beaucoup de ce pouvoir vient d'une métrique : étant donné une clé, une table de hachage renvoie la valeur correspondante en <span name="constant">temps constant</span>, _indépendamment de combien de clés sont dans la table de hachage_.
 
 <aside name="constant">
 
-More specifically, the *average-case* lookup time is constant. Worst-case
-performance can be, well, worse. In practice, it's easy to avoid degenerate
-behavior and stay on the happy path.
+Plus spécifiquement, le temps de recherche dans le _cas moyen_ est constant. La performance dans le pire cas peut être, eh bien, pire. En pratique, il est facile d'éviter le comportement dégénéré et de rester sur le chemin heureux.
 
 </aside>
 
-That's pretty remarkable when you think about it. Imagine you've got a big stack
-of business cards and I ask you to find a certain person. The bigger the pile
-is, the longer it will take. Even if the pile is nicely sorted and you've got
-the manual dexterity to do a binary search by hand, you're still talking
-*O(log n)*. But with a <span name="rolodex">hash table</span>, it takes the
-same time to find that business card when the stack has ten cards as when it has
-a million.
+C'est assez remarquable quand vous y pensez. Imaginez que vous avez une grosse pile de cartes de visite et que je vous demande de trouver une certaine personne. Plus la pile est grosse, plus ça prendra de temps. Même si la pile est joliment triée et que vous avez la dextérité manuelle pour faire une recherche binaire à la main, vous parlez toujours de _O(log n)_. Mais avec une <span name="rolodex">table de hachage</span>, cela prend le même temps pour trouver cette carte de visite quand la pile a dix cartes que quand elle en a un million.
 
 <aside name="rolodex">
 
-Stuff all those cards in a Rolodex -- does anyone even remember those things
-anymore? -- with dividers for each letter, and you improve your speed
-dramatically. As we'll see, that's not too far from the trick a hash table uses.
+Fourrez toutes ces cartes dans un Rolodex -- est-ce que quelqu'un se souvient même de ces choses ? -- avec des diviseurs pour chaque lettre, et vous améliorez votre vitesse dramatiquement. Comme nous le verrons, ce n'est pas trop loin du truc qu'une table de hachage utilise.
 
 </aside>
 
-## An Array of Buckets
+## Un Tableau de Seaux
 
-A complete, fast hash table has a couple of moving parts. I'll introduce them
-one at a time by working through a couple of toy problems and their solutions.
-Eventually, we'll build up to a data structure that can associate any set of
-names with their values.
+Une table de hachage complète et rapide a une couple de parties mobiles. Je les introduirai une à la fois en travaillant à travers une couple de problèmes jouets et leurs solutions. Éventuellement, nous construirons jusqu'à une structure de données qui peut associer n'importe quel ensemble de noms avec leurs valeurs.
 
-For now, imagine if Lox was a *lot* more restricted in variable names. What if a
-variable's name could only be a <span name="basic">single</span> lowercase
-letter. How could we very efficiently represent a set of variable names and
-their values?
+Pour l'instant, imaginez si Lox était _beaucoup_ plus restreint dans les noms de variable. Et si le nom d'une variable pouvait seulement être une <span name="basic">lettre unique</span> minuscule. Comment pourrions-nous représenter très efficacement un ensemble de noms de variable et leurs valeurs ?
 
 <aside name="basic">
 
-This limitation isn't *too* far-fetched. The initial versions of BASIC out of
-Dartmouth allowed variable names to be only a single letter followed by one
-optional digit.
+Cette limitation n'est pas _trop_ tirée par les cheveux. Les versions initiales de BASIC venant de Dartmouth permettaient aux noms de variable d'être seulement une lettre unique suivie par un chiffre optionnel.
 
 </aside>
 
-With only 26 possible variables (27 if you consider underscore a "letter", I
-guess), the answer is easy. Declare a fixed-size array with 26 elements. We'll
-follow tradition and call each element a **bucket**. Each represents a variable
-with `a` starting at index zero. If there's a value in the array at some
-letter's index, then that key is present with that value. Otherwise, the bucket
-is empty and that key/value pair isn't in the data structure.
+Avec seulement 26 variables possibles (27 si vous considérez le trait de soulignement comme une "lettre", je suppose), la réponse est facile. Déclarez un tableau de taille fixe avec 26 éléments. Nous suivrons la tradition et appellerons chaque élément un **seau**. Chacun représente une variable avec `a` commençant à l'index zéro. S'il y a une valeur dans le tableau à l'index d'une certaine lettre, alors cette clé est présente avec cette valeur. Sinon, le seau est vide et cette paire clé/valeur n'est pas dans la structure de données.
 
 <aside name="bucket">
 
-<img src="image/hash-tables/bucket-array.png" alt="A row of buckets, each
-labeled with a letter of the alphabet." />
+<img src="image/hash-tables/bucket-array.png" alt="Une rangée de seaux, chacun étiqueté avec une lettre de l'alphabet." />
 
 </aside>
 
-Memory usage is great -- just a single, reasonably sized <span
-name="bucket">array</span>. There's some waste from the empty buckets, but it's
-not huge. There's no overhead for node pointers, padding, or other stuff you'd
-get with something like a linked list or tree.
+L'utilisation mémoire est super -- juste un unique <span name="bucket">tableau</span> de taille raisonnable. Il y a un peu de gaspillage venant des seaux vides, mais ce n'est pas énorme. Il n'y a pas de surcharge pour les pointeurs de nœud, le remplissage, ou d'autres trucs que vous obtiendriez avec quelque chose comme une liste chaînée ou un arbre.
 
-Performance is even better. Given a variable name -- its character -- you can
-subtract the ASCII value of `a` and use the result to index directly into the
-array. Then you can either look up the existing value or store a new value
-directly into that slot. It doesn't get much faster than that.
+La performance est encore meilleure. Étant donné un nom de variable -- son caractère -- vous pouvez soustraire la valeur ASCII de `a` et utiliser le résultat pour indexer directement dans le tableau. Ensuite vous pouvez soit chercher la valeur existante ou stocker une nouvelle valeur directement dans cet emplacement. Ça ne devient pas beaucoup plus rapide que ça.
 
-This is sort of our Platonic ideal data structure. Lightning fast, dead simple,
-and compact in memory. As we add support for more complex keys, we'll have to
-make some concessions, but this is what we're aiming for. Even once you add in
-hash functions, dynamic resizing, and collision resolution, this is still the
-core of every hash table out there -- a contiguous array of buckets that you
-index directly into.
+C'est une sorte de notre structure de données idéale Platonicienne. Rapide comme l'éclair, simple à mourir, et compacte en mémoire. Alors que nous ajoutons le support pour des clés plus complexes, nous devrons faire quelques concessions, mais c'est ce que nous visons. Même une fois que vous ajoutez les fonctions de hachage, le redimensionnement dynamique, et la résolution de collision, c'est toujours le cœur de chaque table de hachage là-dehors -- un tableau contigu de seaux dans lequel vous indexez directement.
 
-### Load factor and wrapped keys
+### Facteur de charge et clés enveloppées
 
-Confining Lox to single-letter variables would make our job as implementers
-easier, but it's probably no fun programming in a language that gives you only
-26 storage locations. What if we loosened it a little and allowed variables up
-to <span name="six">eight</span> characters long?
+Confiner Lox à des variables d'une seule lettre rendrait notre travail d'implémenteurs plus facile, mais ce n'est probablement pas amusant de programmer dans un langage qui vous donne seulement 26 emplacements de stockage. Et si nous le relâchions un peu et permettions des variables jusqu'à <span name="six">huit</span> caractères de long ?
 
 <aside name="six">
 
-Again, this restriction isn't so crazy. Early linkers for C treated only the
-first six characters of external identifiers as meaningful. Everything after
-that was ignored. If you've ever wondered why the C standard library is so
-enamored of abbreviation -- looking at you, `strncmp()` -- it turns out it
-wasn't entirely because of the small screens (or teletypes!) of the day.
+Encore une fois, cette restriction n'est pas si folle. Les premiers éditeurs de liens pour C traitaient seulement les six premiers caractères des identifiants externes comme significatifs. Tout après cela était ignoré. Si vous vous êtes jamais demandé pourquoi la bibliothèque standard C est si éprise d'abréviation -- je vous regarde, `strncmp()` -- il s'avère que n'était pas entièrement à cause des petits écrans (ou télétypes !) de l'époque.
 
 </aside>
 
-That's small enough that we can pack all eight characters into a 64-bit integer
-and easily turn the string into a number. We can then use it as an array index.
-Or, at least, we could if we could somehow allocate a 295,148 *petabyte* array.
-Memory's gotten cheaper over time, but not quite *that* cheap. Even if we could
-make an array that big, it would be heinously wasteful. Almost every bucket
-would be empty unless users started writing way bigger Lox programs than we've
-anticipated.
+C'est assez petit pour que nous puissions empaqueter tous les huit caractères dans un entier de 64 bits et tourner facilement la chaîne en un nombre. Nous pouvons ensuite l'utiliser comme un index de tableau. Ou, au moins, nous pourrions si nous pouvions d'une manière ou d'une autre allouer un tableau de 295 148 _pétaoctets_. La mémoire est devenue moins chère avec le temps, mais pas tout à fait _aussi_ bon marché. Même si nous pouvions faire un tableau aussi gros, ce serait atrocement gaspilleur. Presque chaque seau serait vide à moins que les utilisateurs commencent à écrire des programmes Lox bien plus gros que nous l'avons anticipé.
 
-Even though our variable keys cover the full 64-bit numeric range, we clearly
-don't need an array that large. Instead, we allocate an array with more than
-enough capacity for the entries we need, but not unreasonably large. We map the
-full 64-bit keys down to that smaller range by taking the value modulo the size
-of the array. Doing that essentially folds the larger numeric range onto itself
-until it fits the smaller range of array elements.
+Même si nos clés de variable couvrent la plage numérique complète de 64 bits, nous n'avons clairement pas besoin d'un tableau aussi large. Au lieu de cela, nous allouons un tableau avec plus d'assez de capacité pour les entrées dont nous avons besoin, mais pas déraisonnablement large. Nous mappons les clés complètes de 64 bits vers cette plage plus petite en prenant la valeur modulo la taille du tableau. Faire cela plie essentiellement la plage numérique plus large sur elle-même jusqu'à ce qu'elle tienne dans la plage plus petite des éléments du tableau.
 
-For example, say we want to store "bagel". We allocate an array with eight
-elements, plenty enough to store it and more later. We treat the key string as a
-64-bit integer. On a little-endian machine like Intel, packing those characters
-into a 64-bit word puts the first letter, "b" (ASCII value 98), in the
-least-significant byte. We take that integer modulo the array size (<span
-name="power-of-two">8</span>) to fit it in the bounds and get a bucket index, 2.
-Then we store the value there as usual.
+Par exemple, disons que nous voulons stocker "bagel". Nous allouons un tableau avec huit éléments, plein assez pour le stocker et plus plus tard. Nous traitons la chaîne clé comme un entier de 64 bits. Sur une machine little-endian comme Intel, empaqueter ces caractères dans un mot de 64 bits met la première lettre, "b" (valeur ASCII 98), dans l'octet de poids faible. Nous prenons cet entier modulo la taille du tableau (<span name="power-of-two">8</span>) pour le faire tenir dans les bornes et obtenir un index de seau, 2. Ensuite nous stockons la valeur là comme d'habitude.
 
 <aside name="power-of-two">
 
-I'm using powers of two for the array sizes here, but they don't need to be.
-Some styles of hash tables work best with powers of two, including the one we'll
-build in this book. Others prefer prime number array sizes or have other rules.
+J'utilise des puissances de deux pour les tailles de tableau ici, mais elles n'ont pas besoin de l'être. Certains styles de tables de hachage fonctionnent mieux avec des puissances de deux, incluant celle que nous construirons dans ce livre. D'autres préfèrent des tailles de tableau nombres premiers ou ont d'autres règles.
 
 </aside>
 
-Using the array size as a modulus lets us map the key's numeric range down to
-fit an array of any size. We can thus control the number of buckets
-independently of the key range. That solves our waste problem, but introduces a
-new one. Any two variables whose key number has the same remainder when divided
-by the array size will end up in the same bucket. Keys can **collide**. For
-example, if we try to add "jam", it also ends up in bucket 2.
+Utiliser la taille du tableau comme un module nous laisse mapper la plage numérique de la clé pour tenir dans un tableau de n'importe quelle taille. Nous pouvons ainsi contrôler le nombre de seaux indépendamment de la plage de clé. Cela résout notre problème de gaspillage, mais en introduit un nouveau. Deux variables quelconques dont le nombre clé a le même reste quand divisé par la taille du tableau finiront dans le même seau. Les clés peuvent entrer en **collision**. Par exemple, si nous essayons d'ajouter "jam", il finit aussi dans le seau 2.
 
-<img src="image/hash-tables/collision.png" alt="'Bagel' and 'jam' both end up in bucket index 2." />
+<img src="image/hash-tables/collision.png" alt="'Bagel' et 'jam' finissent tous deux dans l'index de seau 2." />
 
-We have some control over this by tuning the array size. The bigger the array,
-the fewer the indexes that get mapped to the same bucket and the fewer the
-collisions that are likely to occur. Hash table implementers track this
-collision likelihood by measuring the table's **load factor**. It's defined as
-the number of entries divided by the number of buckets. So a hash table with
-five entries and an array of 16 elements has a load factor of 0.3125. The higher
-the load factor, the greater the chance of collisions.
+Nous avons un peu de contrôle sur cela en réglant la taille du tableau. Plus le tableau est grand, moins il y a d'index qui sont mappés vers le même seau et moins il y a de collisions qui sont susceptibles de se produire. Les implémenteurs de table de hachage suivent cette probabilité de collision en mesurant le **facteur de charge** de la table. Il est défini comme le nombre d'entrées divisé par le nombre de seaux. Donc une table de hachage avec cinq entrées et un tableau de 16 éléments a un facteur de charge de 0,3125. Plus le facteur de charge est élevé, plus la chance de collisions est grande.
 
-One way we mitigate collisions is by resizing the array. Just like the dynamic
-arrays we implemented earlier, we reallocate and grow the hash table's array as
-it fills up. Unlike a regular dynamic array, though, we won't wait until the
-array is *full*. Instead, we pick a desired load factor and grow the array when
-it goes over that.
+Une façon dont nous atténuons les collisions est en redimensionnant le tableau. Juste comme les tableaux dynamiques que nous avons implémentés plus tôt, nous réallouons et grandissons le tableau de la table de hachage alors qu'il se remplit. Contrairement à un tableau dynamique régulier, cependant, nous n'attendrons pas jusqu'à ce que le tableau soit _plein_. Au lieu de cela, nous choisissons un facteur de charge désiré et grandissons le tableau quand il dépasse cela.
 
-## Collision Resolution
+## Résolution de Collision
 
-Even with a very low load factor, collisions can still occur. The [*birthday
-paradox*][birthday] tells us that as the number of entries in the hash table
-increases, the chance of collision increases very quickly. We can pick a large
-array size to reduce that, but it's a losing game. Say we wanted to store a
-hundred items in a hash table. To keep the chance of collision below a
-still-pretty-high 10%, we need an array with at least 47,015 elements. To get
-the chance below 1% requires an array with 492,555 elements, over 4,000 empty
-buckets for each one in use.
+Même avec un facteur de charge très bas, les collisions peuvent toujours se produire. Le [_paradoxe des anniversaires_][birthday] nous dit que comme le nombre d'entrées dans la table de hachage augmente, la chance de collision augmente très rapidement. Nous pouvons choisir une grande taille de tableau pour réduire cela, mais c'est un jeu perdant. Disons que nous voulions stocker une centaine d'éléments dans une table de hachage. Pour garder la chance de collision en dessous d'un toujours-assez-haut 10%, nous avons besoin d'un tableau avec au moins 47 015 éléments. Pour obtenir la chance en dessous de 1% exige un tableau avec 492 555 éléments, plus de 4 000 seaux vides pour chaque utilisé.
 
 [birthday]: https://en.wikipedia.org/wiki/Birthday_problem
 
-A low load factor can make collisions <span name="pigeon">rarer</span>, but the
-[*pigeonhole principle*][pigeon] tells us we can never eliminate them entirely.
-If you've got five pet pigeons and four holes to put them in, at least one hole
-is going to end up with more than one pigeon. With 18,446,744,073,709,551,616
-different variable names, any reasonably sized array can potentially end up with
-multiple keys in the same bucket.
+Un facteur de charge bas peut rendre les collisions <span name="pigeon">plus rares</span>, mais le [_principe des tiroirs_][pigeon] nous dit que nous ne pouvons jamais les éliminer entièrement. Si vous avez cinq pigeons de compagnie et quatre trous pour les mettre dedans, au moins un trou va finir avec plus d'un pigeon. Avec 18 446 744 073 709 551 616 noms de variable différents, n'importe quel tableau de taille raisonnable peut potentiellement finir avec de multiples clés dans le même seau.
 
 [pigeon]: https://en.wikipedia.org/wiki/Pigeonhole_principle
 
-Thus we still have to handle collisions gracefully when they occur. Users don't
-like it when their programming language can look up variables correctly only
-*most* of the time.
+Ainsi nous devons toujours gérer les collisions gracieusement quand elles se produisent. Les utilisateurs n'aiment pas quand leur langage de programmation peut chercher des variables correctement seulement la _plupart_ du temps.
 
 <aside name="pigeon">
 
-Put these two funny-named mathematical rules together and you get this
-observation: Take a birdhouse containing 365 pigeonholes, and use each pigeon's
-birthday to assign it to a pigeonhole. You'll need only about 26 randomly chosen
-pigeons before you get a greater than 50% chance of two pigeons in the same box.
+Mettez ces deux règles mathématiques aux noms drôles ensemble et vous obtenez cette observation : Prenez un nichoir contenant 365 trous de pigeon, et utilisez l'anniversaire de chaque pigeon pour l'assigner à un trou. Vous aurez besoin seulement d'environ 26 pigeons choisis aléatoirement avant que vous obteniez une chance supérieure à 50% de deux pigeons dans la même boîte.
 
-<img src="image/hash-tables/pigeons.png" alt="Two pigeons in the same hole." />
+<img src="image/hash-tables/pigeons.png" alt="Deux pigeons dans le même trou." />
 
 </aside>
 
-### Separate chaining
+### Chaînage séparé
 
-Techniques for resolving collisions fall into two broad categories. The first is
-**separate chaining**. Instead of each bucket containing a single entry, we let
-it contain a collection of them. In the classic implementation, each bucket
-points to a linked list of entries. To look up an entry, you find its bucket and
-then walk the list until you find an entry with the matching key.
+Les techniques pour résoudre les collisions tombent dans deux larges catégories. La première est le **chaînage séparé**. Au lieu que chaque seau contienne une entrée unique, nous le laissons en contenir une collection. Dans l'implémentation classique, chaque seau pointe vers une liste chaînée d'entrées. Pour chercher une entrée, vous trouvez son seau et ensuite marchez la liste jusqu'à ce que vous trouviez une entrée avec la clé correspondante.
 
-<img src="image/hash-tables/chaining.png" alt="An array with eight buckets. Bucket 2 links to a chain of two nodes. Bucket 5 links to a single node." />
+<img src="image/hash-tables/chaining.png" alt="Un tableau avec huit seaux. Le seau 2 lie vers une chaîne de deux nœuds. Le seau 5 lie vers un nœud unique." />
 
-In catastrophically bad cases where every entry collides in the same bucket, the
-data structure degrades into a single unsorted linked list with *O(n)* lookup.
-In practice, it's easy to avoid that by controlling the load factor and how
-entries get scattered across buckets. In typical separate-chained hash tables,
-it's rare for a bucket to have more than one or two entries.
+Dans les cas catastrophiquement mauvais où chaque entrée entre en collision dans le même seau, la structure de données se dégrade en une liste chaînée non triée unique avec une recherche en _O(n)_. En pratique, il est facile d'éviter cela en contrôlant le facteur de charge et comment les entrées sont éparpillées à travers les seaux. Dans les tables de hachage à chaînage séparé typiques, il est rare pour un seau d'avoir plus d'une ou deux entrées.
 
-Separate chaining is conceptually simple -- it's literally an array of linked
-lists. Most operations are straightforward to implement, even deletion which, as
-we'll see, can be a pain. But it's not a great fit for modern CPUs. It has a lot
-of overhead from pointers and tends to scatter little linked list <span
-name="node">nodes</span> around in memory which isn't great for cache usage.
+Le chaînage séparé est conceptuellement simple -- c'est littéralement un tableau de listes chaînées. La plupart des opérations sont directes à implémenter, même la suppression qui, comme nous le verrons, peut être une douleur. Mais ce n'est pas un bon ajustement pour les CPUs modernes. Il a beaucoup de surcharge venant des pointeurs et tend à éparpiller de petits <span name="node">nœuds</span> de liste chaînée autour en mémoire ce qui n'est pas génial pour l'utilisation du cache.
 
 <aside name="node">
 
-There are a few tricks to optimize this. Many implementations store the first
-entry right in the bucket so that in the common case where there's only one, no
-extra pointer indirection is needed. You can also make each linked list node
-store a few entries to reduce the pointer overhead.
+Il y a quelques trucs pour optimiser cela. Beaucoup d'implémentations stockent la première entrée juste dans le seau pour que dans le cas commun où il n'y en a qu'une, aucune indirection de pointeur supplémentaire n'est nécessaire. Vous pouvez aussi faire que chaque nœud de liste chaînée stocke quelques entrées pour réduire la surcharge de pointeur.
 
 </aside>
 
-### Open addressing
+### Adressage ouvert
 
-The other technique is <span name="open">called</span> **open addressing** or
-(confusingly) **closed hashing**. With this technique, all entries live directly
-in the bucket array, with one entry per bucket. If two entries collide in the
-same bucket, we find a different empty bucket to use instead.
+L'autre technique est <span name="open">appelée</span> **adressage ouvert** ou (confusément) **hachage fermé**. Avec cette technique, toutes les entrées vivent directement dans le tableau de seaux, avec une entrée par seau. Si deux entrées entrent en collision dans le même seau, nous trouvons un scau vide différent à utiliser au lieu de cela.
 
 <aside name="open">
 
-It's called "open" addressing because the entry may end up at an address
-(bucket) outside of its preferred one. It's called "closed" hashing because all
-of the entries stay inside the array of buckets.
+C'est appelé "ouvert" parce que l'entrée peut finir à une adresse (seau) en dehors de celle préférée. C'est appelé hachage "fermé" parce que toutes les entrées restent à l'intérieur du tableau de seaux.
 
 </aside>
 
-Storing all entries in a single, big, contiguous array is great for keeping the
-memory representation simple and fast. But it makes all of the operations on the
-hash table more complex. When inserting an entry, its bucket may be full,
-sending us to look at another bucket. That bucket itself may be occupied and so
-on. This process of finding an available bucket is called **probing**, and the
-order that you examine buckets is a **probe sequence**.
+Stocker toutes les entrées dans un tableau unique, gros, contigu est génial pour garder la représentation mémoire simple et rapide. Mais cela rend toutes les opérations sur la table de hachage plus complexes. Quand on insère une entrée, son seau peut être plein, nous envoyant regarder un autre seau. Ce seau lui-même peut être occupé et ainsi de suite. Ce processus de trouver un seau disponible est appelé **sondage** (probing), et l'ordre dans lequel vous examinez les seaux est une **séquence de sondage**.
 
-There are a <span name="probe">number</span> of algorithms for determining
-which buckets to probe and how to decide which entry goes in which bucket.
-There's been a ton of research here because even slight tweaks can have a large
-performance impact. And, on a data structure as heavily used as hash tables,
-that performance impact touches a very large number of real-world programs
-across a range of hardware capabilities.
+Il y a un <span name="probe">nombre</span> d'algorithmes pour déterminer quels seaux sonder et comment décider quelle entrée va dans quel seau. Il y a eu une tonne de recherche ici parce que même de légers ajustements peuvent avoir un grand impact sur la performance. Et, sur une structure de données aussi lourdement utilisée que les tables de hachage, cet impact de performance touche un très grand nombre de programmes du monde réel à travers une plage de capacités matérielles.
 
 <aside name="probe">
 
-If you'd like to learn more (and you should, because some of these are really
-cool), look into "double hashing", "cuckoo hashing", "Robin Hood hashing", and
-anything those lead you to.
+Si vous aimeriez en apprendre plus (et vous devriez, parce que certains de ceux-là sont vraiment cool), regardez dans "double hachage", "hachage coucou", "hachage Robin des Bois", et tout ce à quoi ceux-là vous mènent.
 
 </aside>
 
-As usual in this book, we'll pick the simplest one that gets the job done
-efficiently. That's good old **linear probing**. When looking for an entry, we
-look in the first bucket its key maps to. If it's not in there, we look in the
-very next element in the array, and so on. If we reach the end, we wrap back
-around to the beginning.
+Comme d'habitude dans ce livre, nous choisirons le plus simple qui fait le travail efficacement. C'est le bon vieux **sondage linéaire**. Quand on cherche une entrée, nous regardons dans le premier seau auquel sa clé mappe. S'il n'est pas là, nous regardons dans l'élément juste suivant dans le tableau, et ainsi de suite. Si nous atteignons la fin, nous enveloppons en retour au début.
 
-The good thing about linear probing is that it's cache friendly. Since you walk
-the array directly in memory order, it keeps the CPU's cache lines full and
-happy. The bad thing is that it's prone to **clustering**. If you have a lot of
-entries with numerically similar key values, you can end up with a lot of
-colliding, overflowing buckets right next to each other.
+La bonne chose à propos du sondage linéaire est qu'il est ami du cache. Puisque vous marchez le tableau directement dans l'ordre de la mémoire, il garde les lignes de cache du CPU pleines et heureuses. La mauvaise chose est qu'il est sujet au **regroupement** (clustering). Si vous avez beaucoup d'entrées avec des valeurs de clé numériquement similaires, vous pouvez finir avec beaucoup de seaux entrant en collision, débordant juste les uns à côté des autres.
 
-Compared to separate chaining, open addressing can be harder to wrap your head
-around. I think of open addressing as similar to separate chaining except that
-the "list" of nodes is threaded through the bucket array itself. Instead of
-storing the links between them in pointers, the connections are calculated
-implicitly by the order that you look through the buckets.
+Comparé au chaînage séparé, l'adressage ouvert peut être plus dur à comprendre. Je pense à l'adressage ouvert comme similaire au chaînage séparé sauf que la "liste" des nœuds est enfilée à travers le tableau de seaux lui-même. Au lieu de stocker les liens entre eux dans des pointeurs, les connexions sont calculées implicitement par l'ordre que vous regardez à travers les seaux.
 
-The tricky part is that more than one of these implicit lists may be interleaved
-together. Let's walk through an example that covers all the interesting cases.
-We'll ignore values for now and just worry about a set of keys. We start with an
-empty array of 8 buckets.
+La partie délicate est que plus d'une de ces listes implicites peuvent être entrelacées ensemble. Marchons à travers un exemple qui couvre tous les cas intéressants. Nous ignorerons les valeurs pour l'instant et nous inquiéterons juste d'un ensemble de clés. Nous commençons avec un tableau vide de 8 seaux.
 
-<img src="image/hash-tables/insert-1.png" alt="An array with eight empty buckets." class="wide" />
+<img src="image/hash-tables/insert-1.png" alt="Un tableau avec huit seaux vides." class="wide" />
 
-We decide to insert "bagel". The first letter, "b" (ASCII value 98), modulo the
-array size (8) puts it in bucket 2.
+Nous décidons d'insérer "bagel". La première lettre, "b" (valeur ASCII 98), modulo la taille du tableau (8) le met dans le seau 2.
 
-<img src="image/hash-tables/insert-2.png" alt="Bagel goes into bucket 2." class="wide" />
+<img src="image/hash-tables/insert-2.png" alt="Bagel va dans le seau 2." class="wide" />
 
-Next, we insert "jam". That also wants to go in bucket 2 (106 mod 8 = 2), but
-that bucket's taken. We keep probing to the next bucket. It's empty, so we put
-it there.
+Ensuite, nous insérons "jam". Cela veut aussi aller dans le seau 2 (106 mod 8 = 2), mais ce seau est pris. Nous continuons de sonder vers le seau suivant. Il est vide, donc nous le mettons là.
 
-<img src="image/hash-tables/insert-3.png" alt="Jam goes into bucket 3, since 2 is full." class="wide" />
+<img src="image/hash-tables/insert-3.png" alt="Jam va dans le seau 3, puisque 2 est plein." class="wide" />
 
-We insert "fruit", which happily lands in bucket 6.
+Nous insérons "fruit", qui atterrit joyeusement dans le seau 6.
 
-<img src="image/hash-tables/insert-4.png" alt="Fruit goes into bucket 6." class="wide" />
+<img src="image/hash-tables/insert-4.png" alt="Fruit va dans le seau 6." class="wide" />
 
-Likewise, "migas" can go in its preferred bucket 5.
+De même, "migas" peut aller dans son seau préféré 5.
 
-<img src="image/hash-tables/insert-5.png" alt="Migas goes into bucket 5." class="wide" />
+<img src="image/hash-tables/insert-5.png" alt="Migas va dans le seau 5." class="wide" />
 
-When we try to insert "eggs", it also wants to be in bucket 5. That's full, so we
-skip to 6. Bucket 6 is also full. Note that the entry in there is *not* part of
-the same probe sequence. "Fruit" is in its preferred bucket, 6. So the 5 and 6
-sequences have collided and are interleaved. We skip over that and finally put
-"eggs" in bucket 7.
+Quand nous essayons d'insérer "eggs", il veut aussi être dans le seau 5. C'est plein, donc nous sautons à 6. Le seau 6 est aussi plein. Notez que l'entrée dedans n'est _pas_ partie de la même séquence de sondage. "Fruit" est dans son seau préféré, 6. Donc les séquences 5 et 6 sont entrées en collision et sont entrelacées. Nous sautons par-dessus cela et mettons finalement "eggs" dans le seau 7.
 
-<img src="image/hash-tables/insert-6.png" alt="Eggs goes into bucket 7 because 5 and 6 are full." class="wide" />
+<img src="image/hash-tables/insert-6.png" alt="Eggs va dans le seau 7 parce que 5 et 6 sont pleins." class="wide" />
 
-We run into a similar problem with "nuts". It can't land in 6 like it wants to.
-Nor can it go into 7. So we keep going. But we've reached the end of the array,
-so we wrap back around to 0 and put it there.
+Nous rencontrons un problème similaire avec "nuts". Il ne peut pas atterrir dans 6 comme il le veut. Ni ne peut-il aller dans 7. Donc nous continuons d'aller. Mais nous avons atteint la fin du tableau, donc nous enveloppons en retour à 0 et le mettons là.
 
-<img src="image/hash-tables/insert-7.png" alt="Nuts wraps around to bucket 0 because 6 and 7 are full." class="wide" />
+<img src="image/hash-tables/insert-7.png" alt="Nuts enveloppe autour au seau 0 parce que 6 et 7 sont pleins." class="wide" />
 
-In practice, the interleaving turns out to not be much of a problem. Even in
-separate chaining, we need to walk the list to check each entry's key because
-multiple keys can reduce to the same bucket. With open addressing, we need to do
-that same check, and that also covers the case where you are stepping over
-entries that "belong" to a different original bucket.
+En pratique, l'entrelacement s'avère ne pas être tellement un problème. Même dans le chaînage séparé, nous avons besoin de marcher la liste pour vérifier la clé de chaque entrée parce que de multiples clés peuvent réduire au même seau. Avec l'adressage ouvert, nous avons besoin de faire cette même vérification, et cela couvre aussi le cas où vous marchez par-dessus des entrées qui "appartiennent" à un seau original différent.
 
-## Hash Functions
+## Fonctions de Hachage
 
-We can now build ourselves a reasonably efficient table for storing variable
-names up to eight characters long, but that limitation is still annoying. In
-order to relax the last constraint, we need a way to take a string of any length
-and convert it to a fixed-size integer.
+Nous pouvons maintenant nous construire une table raisonnablement efficace pour stocker des noms de variable jusqu'à huit caractères de long, mais cette limitation est toujours ennuyeuse. Afin de relâcher la dernière contrainte, nous avons besoin d'un moyen de prendre une chaîne de n'importe quelle longueur et de la convertir en un entier de taille fixe.
 
-Finally, we get to the "hash" part of "hash table". A **hash function** takes
-some larger blob of data and "hashes" it to produce a fixed-size integer **hash
-code** whose value depends on all of the bits of the original data. A <span
-name="crypto">good</span> hash function has three main goals:
+Finalement, nous arrivons à la partie "hachage" de "table de hachage". Une **fonction de hachage** prend un plus gros blob de données et le "hache" pour produire un entier de taille fixe **code de hachage** dont la valeur dépend de tous les bits des données originales. Une <span name="crypto">bonne</span> fonction de hachage a trois buts principaux :
 
 <aside name="crypto">
 
-Hash functions are also used for cryptography. In that domain, "good" has a
-*much* more stringent definition to avoid exposing details about the data being
-hashed. We, thankfully, don't need to worry about those concerns for this book.
+Les fonctions de hachage sont aussi utilisées pour la cryptographie. Dans ce domaine, "bonne" a une définition _bien_ plus stricte pour éviter d'exposer des détails à propos des données étant hachées. Nous, heureusement, n'avons pas besoin de nous inquiéter à propos de ces préoccupations pour ce livre.
 
 </aside>
 
-*   **It must be *deterministic*.** The same input must always hash to the same
-    number. If the same variable ends up in different buckets at different
-    points in time, it's gonna get really hard to find it.
+- **Elle doit être _déterministe_.** La même entrée doit toujours hacher vers le même nombre. Si la même variable finit dans différents seaux à différents points dans le temps, ça va devenir vraiment dur de la trouver.
 
-*   **It must be *uniform*.** Given a typical set of inputs, it should produce a
-    wide and evenly distributed range of output numbers, with as few clumps or
-    patterns as possible. We want it to <span name="scatter">scatter</span>
-    values across the whole numeric range to minimize collisions and clustering.
+- **Elle doit être _uniforme_.** Étant donné un ensemble typique d'entrées, elle devrait produire une plage large et distribuée également de nombres de sortie, avec aussi peu d'amas ou de motifs que possible. Nous voulons qu'elle <span name="scatter">éparpille</span> les valeurs à travers la plage numérique entière pour minimiser les collisions et le regroupement.
 
-*   **It must be *fast*.** Every operation on the hash table requires us to hash
-    the key first. If hashing is slow, it can potentially cancel out the speed
-    of the underlying array storage.
+- **Elle doit être _rapide_.** Chaque opération sur la table de hachage nous demande de hacher la clé d'abord. Si le hachage est lent, cela peut potentiellement annuler la vitesse du stockage tableau sous-jacent.
 
 <aside name="scatter">
 
-One of the original names for a hash table was "scatter table" because it takes
-the entries and scatters them throughout the array. The word "hash" came from
-the idea that a hash function takes the input data, chops it up, and tosses it
-all together into a pile to come up with a single number from all of those bits.
+Un des noms originaux pour une table de hachage était "table d'éparpillement" (scatter table) parce qu'elle prend les entrées et les éparpille à travers le tableau. Le mot "hachage" est venu de l'idée qu'une fonction de hachage prend les données d'entrée, les coupe, et jette tout ensemble dans une pile pour arriver avec un nombre unique depuis tous ces bits.
 
 </aside>
 
-There is a veritable pile of hash functions out there. Some are old and
-optimized for architectures no one uses anymore. Some are designed to be fast,
-others cryptographically secure. Some take advantage of vector instructions and
-cache sizes for specific chips, others aim to maximize portability.
+Il y a une véritable pile de fonctions de hachage là-dehors. Certaines sont vieilles et optimisées pour des architectures que personne n'utilise plus. Certaines sont conçues pour être rapides, d'autres cryptographiquement sûres. Certaines tirent avantage des instructions vectorielles et des tailles de cache pour des puces spécifiques, d'autres visent à maximiser la portabilité.
 
-There are people out there for whom designing and evaluating hash functions is,
-like, their *jam*. I admire them, but I'm not mathematically astute enough to
-*be* one. So for clox, I picked a simple, well-worn hash function called
-[FNV-1a][] that's served me fine over the years. Consider <span
-name="thing">trying</span> out different ones in your code and see if they make
-a difference.
+Il y a des gens là-dehors pour qui concevoir et évaluer des fonctions de hachage est, genre, leur _truc_. Je les admire, mais je ne suis pas assez astucieux mathématiquement pour en _être_ un. Donc pour clox, j'ai choisi une fonction de hachage simple, bien usée appelée [FNV-1a][] qui m'a bien servi au fil des années. Considérez d'<span name="thing">essayer</span> différentes autres dans votre code et voyez si elles font une différence.
 
 [fnv-1a]: http://www.isthe.com/chongo/tech/comp/fnv/
 
 <aside name="thing">
 
-Who knows, maybe hash functions could turn out to be your thing too?
+Qui sait, peut-être que les fonctions de hachage pourraient s'avérer être votre truc aussi ?
 
 </aside>
 
-OK, that's a quick run through of buckets, load factors, open addressing,
-collision resolution, and hash functions. That's an awful lot of text and not a
-lot of real code. Don't worry if it still seems vague. Once we're done coding it
-up, it will all click into place.
+OK, c'est un parcours rapide de seaux, facteurs de charge, adressage ouvert, résolution de collision, et fonctions de hachage. C'est terriblement beaucoup de texte et pas beaucoup de vrai code. Ne vous inquiétez pas si cela semble encore vague. Une fois que nous aurons fini de coder ça, tout s'emboîtera en place.
 
-## Building a Hash Table
+## Construire une Table de Hachage
 
-The great thing about hash tables compared to other classic techniques like
-balanced search trees is that the actual data structure is so simple. Ours goes
-into a new module.
+La grande chose à propos des tables de hachage comparé à d'autres techniques classiques comme les arbres de recherche équilibrés est que la structure de données réelle est si simple. La nôtre va dans un nouveau module.
 
 ^code table-h
 
-A hash table is an array of entries. As in our dynamic array earlier, we keep
-track of both the allocated size of the array (`capacity`) and the number of
-key/value pairs currently stored in it (`count`). The ratio of count to capacity
-is exactly the load factor of the hash table.
+Une table de hachage est un tableau d'entrées. Comme dans notre tableau dynamique plus tôt, nous gardons une trace à la fois de la taille allouée du tableau (`capacity`) et du nombre de paires clé/valeur actuellement stockées dedans (`count`). Le ratio de compte sur capacité est exactement le facteur de charge de la table de hachage.
 
-Each entry is one of these:
+Chaque entrée est une de celles-ci :
 
 ^code entry (1 before, 2 after)
 
-It's a simple key/value pair. Since the key is always a <span
-name="string">string</span>, we store the ObjString pointer directly instead of
-wrapping it in a Value. It's a little faster and smaller this way.
+C'est une simple paire clé/valeur. Puisque la clé est toujours une <span name="string">chaîne</span>, nous stockons le pointeur ObjString directement au lieu de l'envelopper dans une Value. C'est un peu plus rapide et plus petit de cette façon.
 
 <aside name="string">
 
-In clox, we only need to support keys that are strings. Handling other types of
-keys doesn't add much complexity. As long as you can compare two objects for
-equality and reduce them to sequences of bits, it's easy to use them as hash
-keys.
+Dans clox, nous avons seulement besoin de supporter des clés qui sont des chaînes. Gérer d'autres types de clés n'ajoute pas beaucoup de complexité. Tant que vous pouvez comparer deux objets pour l'égalité et les réduire à des séquences de bits, il est facile de les utiliser comme clés de hachage.
 
 </aside>
 
-To create a new, empty hash table, we declare a constructor-like function.
+Pour créer une nouvelle table de hachage vide, nous déclarons une fonction semblable à un constructeur.
 
 ^code init-table-h (2 before, 2 after)
 
-We need a new implementation file to define that. While we're at it, let's get
-all of the pesky includes out of the way.
+Nous avons besoin d'un nouveau fichier d'implémentation pour définir cela. Pendant que nous y sommes, sortons tous les includes embêtants du chemin.
 
 ^code table-c
 
-As in our dynamic value array type, a hash table initially starts with zero
-capacity and a `NULL` array. We don't allocate anything until needed. Assuming
-we do eventually allocate something, we need to be able to free it too.
+Comme dans notre tableau de valeurs dynamique, une table de hachage commence initialement avec une capacité zéro et un tableau `NULL`. Nous n'allouons rien jusqu'à ce que ce soit nécessaire. En supposant que nous allouons éventuellement quelque chose, nous avons besoin d'être capables de le libérer aussi.
 
 ^code free-table-h (1 before, 2 after)
 
-And its glorious implementation:
+Et sa glorieuse implémentation :
 
 ^code free-table
 
-Again, it looks just like a dynamic array. In fact, you can think of a hash
-table as basically a dynamic array with a really strange policy for inserting
-items. We don't need to check for `NULL` here since `FREE_ARRAY()` already
-handles that gracefully.
+Encore une fois, cela ressemble juste à un tableau dynamique. En fait, vous pouvez penser à une table de hachage comme basiquement un tableau dynamique avec une politique vraiment étrange pour insérer des éléments. Nous n'avons pas besoin de vérifier pour `NULL` ici puisque `FREE_ARRAY()` gère déjà cela gracieusement.
 
-### Hashing strings
+### Hacher les chaînes
 
-Before we can start putting entries in the table, we need to, well, hash them.
-To ensure that the entries get distributed uniformly throughout the array, we
-want a good hash function that looks at all of the bits of the key string. If it
-looked at, say, only the first few characters, then a series of strings that all
-shared the same prefix would end up colliding in the same bucket.
+Avant que nous puissions commencer à mettre des entrées dans la table, nous avons besoin de, eh bien, les hacher. Pour assurer que les entrées soient distribuées uniformément à travers le tableau, nous voulons une bonne fonction de hachage qui regarde tous les bits de la chaîne clé. Si elle regardait, disons, seulement les quelques premiers caractères, alors une série de chaînes qui partageaient toutes le même préfixe finiraient par entrer en collision dans le même seau.
 
-On the other hand, walking the entire string to calculate the hash is kind of
-slow. We'd lose some of the performance benefit of the hash table if we had to
-walk the string every time we looked for a key in the table. So we'll do the
-obvious thing: cache it.
+D'un autre côté, marcher la chaîne entière pour calculer le hachage est assez lent. Nous perdrions une partie du bénéfice de performance de la table de hachage si nous devions marcher la chaîne chaque fois que nous cherchions une clé dans la table. Donc nous ferons la chose évidente : le cacher.
 
-Over in the "object" module in ObjString, we add:
+Là-bas dans le module "object" dans ObjString, nous ajoutons :
 
 ^code obj-string-hash (1 before, 1 after)
 
-Each ObjString stores the hash code for its string. Since strings are immutable
-in Lox, we can calculate the hash code once up front and be certain that it will
-never get invalidated. Caching it eagerly makes a kind of sense: allocating the
-string and copying its characters over is already an *O(n)* operation, so it's a
-good time to also do the *O(n)* calculation of the string's hash.
+Chaque ObjString stocke le code de hachage pour sa chaîne. Puisque les chaînes sont immuables dans Lox, nous pouvons calculer le code de hachage une fois au départ et être certain qu'il ne sera jamais invalidé. Le cacher avec empressement a une sorte de sens : allouer la chaîne et copier ses caractères par-dessus est déjà une opération en _O(n)_, donc c'est un bon moment pour faire aussi le calcul en _O(n)_ du hachage de la chaîne.
 
-Whenever we call the internal function to allocate a string, we pass in its
-hash code.
+Chaque fois que nous appelons la fonction interne pour allouer une chaîne, nous passons son code de hachage.
 
 ^code allocate-string (1 after)
 
-That function simply stores the hash in the struct.
+Cette fonction stocke simplement le hachage dans la struct.
 
 ^code allocate-store-hash (1 before, 2 after)
 
-The fun happens over at the callers. `allocateString()` is called from two
-places: the function that copies a string and the one that takes ownership of an
-existing dynamically allocated string. We'll start with the first.
+Le fun se passe là-bas chez les appelants. `allocateString()` est appelée depuis deux endroits : la fonction qui copie une chaîne et celle qui prend la propriété d'une chaîne allouée dynamiquement existante. Nous commencerons avec la première.
 
 ^code copy-string-hash (1 before, 1 after)
 
-No magic here. We calculate the hash code and then pass it along.
+Pas de magie ici. Nous calculons le code de hachage et ensuite le passons.
 
 ^code copy-string-allocate (2 before, 1 after)
 
-The other string function is similar.
+L'autre fonction chaîne est similaire.
 
 ^code take-string-hash (1 before, 1 after)
 
-The interesting code is over here:
+Le code intéressant est ici :
 
 ^code hash-string
 
-This is the actual bona fide "hash function" in clox. The algorithm is called
-"FNV-1a", and is the shortest decent hash function I know. Brevity is certainly
-a virtue in a book that aims to show you every line of code.
+C'est la vraie fonction de hachage bona fide dans clox. L'algorithme est appelé "FNV-1a", et est la fonction de hachage décente la plus courte que je connaisse. La brièveté est certainement une vertu dans un livre qui vise à vous montrer chaque ligne de code.
 
-The basic idea is pretty simple, and many hash functions follow the same
-pattern. You start with some initial hash value, usually a constant with certain
-carefully chosen mathematical properties. Then you walk the data to be hashed.
-For each byte (or sometimes word), you mix the bits into the hash value somehow,
-and then scramble the resulting bits around some.
+L'idée de base est assez simple, et beaucoup de fonctions de hachage suivent le même modèle. Vous commencez avec une valeur de hachage initiale, habituellement une constante avec certaines propriétés mathématiques choisies soigneusement. Ensuite vous marchez les données à hacher. Pour chaque octet (ou parfois mot), vous mélangez les bits dans la valeur de hachage d'une manière ou d'une autre, et ensuite brouillez les bits résultants un peu.
 
-What it means to "mix" and "scramble" can get pretty sophisticated. Ultimately,
-though, the basic goal is *uniformity* -- we want the resulting hash values to
-be as widely scattered around the numeric range as possible to avoid collisions
-and clustering.
+Ce que cela signifie de "mélanger" et "brouiller" peut devenir assez sophistiqué. Ultimement, cependant, le but de base est l'_uniformité_ -- nous voulons que les valeurs de hachage résultantes soient aussi largement éparpillées autour de la plage numérique que possible pour éviter les collisions et le regroupement.
 
-### Inserting entries
+### Insérer des entrées
 
-Now that string objects know their hash code, we can start putting them into
-hash tables.
+Maintenant que les objets chaîne connaissent leur code de hachage, nous pouvons commencer à les mettre dans des tables de hachage.
 
 ^code table-set-h (1 before, 2 after)
 
-This function adds the given key/value pair to the given hash table. If an entry
-for that key is already present, the new value overwrites the old value. The
-function returns `true` if a new entry was added. Here's the implementation:
+Cette fonction ajoute la paire clé/valeur donnée à la table de hachage donnée. Si une entrée pour cette clé est déjà présente, la nouvelle valeur écrase l'ancienne valeur. La fonction renvoie `true` si une nouvelle entrée a été ajoutée. Voici l'implémentation :
 
 ^code table-set
 
-Most of the interesting logic is in `findEntry()` which we'll get to soon. That
-function's job is to take a key and figure out which bucket in the array it
-should go in. It returns a pointer to that bucket -- the address of the Entry in
-the array.
+La plupart de la logique intéressante est dans `findEntry()` à laquelle nous arriverons bientôt. Le travail de cette fonction est de prendre une clé et de déterminer dans quel seau dans le tableau elle devrait aller. Elle renvoie un pointeur vers ce seau -- l'adresse de l'Entry dans le tableau.
 
-Once we have a bucket, inserting is straightforward. We update the hash table's
-size, taking care to not increase the count if we overwrote the value for an
-already-present key. Then we copy the key and value into the corresponding
-fields in the Entry.
+Une fois que nous avons un seau, insérer est direct. Nous mettons à jour la taille de la table de hachage, prenant soin de ne pas augmenter le compte si nous avons écrasé la valeur pour une clé déjà présente. Ensuite nous copions la clé et la valeur dans les champs correspondants dans l'Entry.
 
-We're missing a little something here, though. We haven't actually allocated the
-Entry array yet. Oops! Before we can insert anything, we need to make sure we
-have an array, and that it's big enough.
+Nous manquons un petit quelque chose ici, cependant. Nous n'avons pas en fait alloué le tableau d'Entry encore. Oups ! Avant que nous puissions insérer quoi que ce soit, nous avons besoin de nous assurer que nous avons un tableau, et qu'il est assez grand.
 
 ^code table-set-grow (1 before, 1 after)
 
-This is similar to the code we wrote a while back for growing a dynamic array.
-If we don't have enough capacity to insert an item, we reallocate and grow the
-array. The `GROW_CAPACITY()` macro takes an existing capacity and grows it by
-a multiple to ensure that we get amortized constant performance over a series
-of inserts.
+C'est similaire au code que nous avons écrit il y a un moment pour grandir un tableau dynamique. Si nous n'avons pas assez de capacité pour insérer un élément, nous réallouons et grandissons le tableau. La macro `GROW_CAPACITY()` prend une capacité existante et la grandit par un multiple pour assurer que nous obtenons une performance constante amortie sur une série d'insertions.
 
-The interesting difference here is that `TABLE_MAX_LOAD` constant.
+La différence intéressante ici est cette constante `TABLE_MAX_LOAD`.
 
 ^code max-load (2 before, 1 after)
 
-This is how we manage the table's <span name="75">load</span> factor. We don't
-grow when the capacity is completely full. Instead, we grow the array before
-then, when the array becomes at least 75% full.
+C'est comment nous gérons le facteur de <span name="75">charge</span> de la table. Nous ne grandissons pas quand la capacité est complètement pleine. Au lieu de cela, nous grandissons le tableau avant cela, quand le tableau devient au moins 75% plein.
 
 <aside name="75">
 
-Ideal max load factor varies based on the hash function, collision-handling
-strategy, and typical keysets you'll see. Since a toy language like Lox doesn't
-have "real world" data sets, it's hard to optimize this, and I picked 75%
-somewhat arbitrarily. When you build your own hash tables, benchmark and tune
-this.
+Le facteur de charge max idéal varie basé sur la fonction de hachage, la stratégie de gestion de collision, et les ensembles de clés typiques que vous verrez. Puisque un langage jouet comme Lox n'a pas d'ensembles de données "monde réel", il est dur d'optimiser cela, et j'ai choisi 75% quelque peu arbitrairement. Quand vous construisez vos propres tables de hachage, benchmarkez et réglez ceci.
 
 </aside>
 
-We'll get to the implementation of `adjustCapacity()` soon. First, let's look
-at that `findEntry()` function you've been wondering about.
+Nous arriverons à l'implémentation de `adjustCapacity()` bientôt. D'abord, regardons cette fonction `findEntry()` à propos de laquelle vous vous êtes posé des questions.
 
 ^code find-entry
 
-This function is the real core of the hash table. It's responsible for taking a
-key and an array of buckets, and figuring out which bucket the entry belongs in.
-This function is also where linear probing and collision handling come into
-play. We'll use `findEntry()` both to look up existing entries in the hash
-table and to decide where to insert new ones.
+Cette fonction est le vrai cœur de la table de hachage. Elle est responsable de prendre une clé et un tableau de seaux, et de déterminer dans quel seau l'entrée appartient. Cette fonction est aussi là où le sondage linéaire et la gestion de collision entrent en jeu. Nous utiliserons `findEntry()` à la fois pour chercher des entrées existantes dans la table de hachage et pour décider où en insérer de nouvelles.
 
-For all that, there isn't much to it. First, we use modulo to map the key's hash
-code to an index within the array's bounds. That gives us a bucket index where,
-ideally, we'll be able to find or place the entry.
+Pour tout cela, il n'y a pas grand-chose. D'abord, nous utilisons le modulo pour mapper le code de hachage de la clé vers un index à l'intérieur des bornes du tableau. Cela nous donne un index de seau où, idéalement, nous serons capables de trouver ou placer l'entrée.
 
-There are a few cases to check for:
+Il y a quelques cas à vérifier :
 
-*   If the key for the Entry at that array index is `NULL`, then the bucket is
-    empty. If we're using `findEntry()` to look up something in the hash table,
-    this means it isn't there. If we're using it to insert, it means we've found
-    a place to add the new entry.
+- Si la clé pour l'Entry à cet index de tableau est `NULL`, alors le seau est vide. Si nous utilisons `findEntry()` pour chercher quelque chose dans la table de hachage, cela signifie que ce n'est pas là. Si nous l'utilisons pour insérer, cela signifie que nous avons trouvé un endroit pour ajouter la nouvelle entrée.
 
-*   If the key in the bucket is <span name="equal">equal</span> to the key we're
-    looking for, then that key is already present in the table. If we're doing a
-    lookup, that's good -- we've found the key we seek. If we're doing an insert,
-    this means we'll be replacing the value for that key instead of adding a new
-    entry.
+- Si la clé dans le seau est <span name="equal">égale</span> à la clé que nous cherchons, alors cette clé est déjà présente dans la table. Si nous faisons une recherche, c'est bon -- nous avons trouvé la clé que nous cherchons. Si nous faisons une insertion, cela signifie que nous remplacerons la valeur pour cette clé au lieu d'ajouter une nouvelle entrée.
 
 <aside name="equal">
 
-It looks like we're using `==` to see if two strings are equal. That doesn't
-work, does it? There could be two copies of the same string at different places
-in memory. Fear not, astute reader. We'll solve this further on. And, strangely
-enough, it's a hash table that provides the tool we need.
+On dirait que nous utilisons `==` pour voir si deux chaînes sont égales. Cela ne marche pas, n'est-ce pas ? Il pourrait y avoir deux copies de la même chaîne à différents endroits en mémoire. Ne craignez rien, lecteur astucieux. Nous résoudrons cela plus loin. Et, assez étrangement, c'est une table de hachage qui fournit l'outil dont nous avons besoin.
 
 </aside>
 
-*   Otherwise, the bucket has an entry in it, but with a different key. This is
-    a collision. In that case, we start probing. That's what that `for` loop
-    does. We start at the bucket where the entry would ideally go. If that
-    bucket is empty or has the same key, we're done. Otherwise, we advance to
-    the next element -- this is the *linear* part of "linear probing" -- and
-    check there. If we go past the end of the array, that second modulo operator
-    wraps us back around to the beginning.
+- Sinon, le seau a une entrée dedans, mais avec une clé différente. C'est une collision. Dans ce cas, nous commençons à sonder. C'est ce que cette boucle `for` fait. Nous commençons au seau où l'entrée irait idéalement. Si ce seau est vide ou a la même clé, nous avons fini. Sinon, nous avançons à l'élément suivant -- c'est la partie _linéaire_ de "sondage linéaire" -- et vérifions là. Si nous allons au-delà de la fin du tableau, ce second opérateur modulo nous enveloppe en retour au début.
 
-We exit the loop when we find either an empty bucket or a bucket with the same
-key as the one we're looking for. You might be wondering about an infinite loop.
-What if we collide with *every* bucket? Fortunately, that can't happen thanks to
-our load factor. Because we grow the array as soon as it gets close to being
-full, we know there will always be empty buckets.
+Nous sortons de la boucle quand nous trouvons soit un seau vide ou un seau avec la même clé que celle que nous cherchons. Vous pourriez vous demander à propos d'une boucle infinie. Et si nous entrions en collision avec _chaque_ seau ? Heureusement, cela ne peut pas arriver grâce à notre facteur de charge. Parce que nous grandissons le tableau dès qu'il devient proche d'être plein, nous savons qu'il y aura toujours des seaux vides.
 
-We return directly from within the loop, yielding a pointer to the found Entry
-so the caller can either insert something into it or read from it. Way back in
-`tableSet()`, the function that first kicked this off, we store the new entry in
-that returned bucket and we're done.
+Nous renvoyons directement depuis l'intérieur de la boucle, donnant un pointeur vers l'Entry trouvée pour que l'appelant puisse soit insérer quelque chose dedans ou lire depuis elle. Tout là-bas dans `tableSet()`, la fonction qui a d'abord lancé tout ça, nous stockons la nouvelle entrée dans ce seau retourné et nous avons fini.
 
-### Allocating and resizing
+### Allouer et redimensionner
 
-Before we can put entries in the hash table, we do need a place to actually
-store them. We need to allocate an array of buckets. That happens in this
-function:
+Avant que nous puissions mettre des entrées dans la table de hachage, nous avons besoin d'un endroit pour les stocker réellement. Nous avons besoin d'allouer un tableau de seaux. Cela arrive dans cette fonction :
 
 ^code table-adjust-capacity
 
-We create a bucket array with `capacity` entries. After we allocate the array,
-we initialize every element to be an empty bucket and then store the array (and
-its capacity) in the hash table's main struct. This code is fine for when we
-insert the very first entry into the table, and we require the first allocation
-of the array. But what about when we already have one and we need to grow it?
+Nous créons un tableau de seaux avec `capacity` entrées. Après que nous ayons alloué le tableau, nous initialisons chaque élément pour être un seau vide et ensuite stockons le tableau (et sa capacité) dans la struct principale de la table de hachage. Ce code est bien pour quand nous insérons la toute première entrée dans la table, et nous exigeons la première allocation du tableau. Mais quoi à propos de quand nous en avons déjà un et que nous avons besoin de le grandir ?
 
-Back when we were doing a dynamic array, we could just use `realloc()` and let
-the C standard library copy everything over. That doesn't work for a hash table.
-Remember that to choose the bucket for each entry, we take its hash key *modulo
-the array size*. That means that when the array size changes, entries may end up
-in different buckets.
+Quand nous faisions un tableau dynamique, nous pouvions juste utiliser `realloc()` et laisser la bibliothèque standard C copier tout par-dessus. Cela ne marche pas pour une table de hachage. Rappelez-vous que pour choisir le seau pour chaque entrée, nous prenons sa clé de hachage _modulo la taille du tableau_. Cela signifie que quand la taille du tableau change, les entrées peuvent finir dans des seaux différents.
 
-Those new buckets may have new collisions that we need to deal with. So the
-simplest way to get every entry where it belongs is to rebuild the table from
-scratch by re-inserting every entry into the new empty array.
+Ces nouveaux seaux peuvent avoir de nouvelles collisions que nous avons besoin de gérer. Donc la façon la plus simple de mettre chaque entrée où elle appartient est de reconstruire la table depuis zéro en réinsérant chaque entrée dans le nouveau tableau vide.
 
 ^code re-hash (2 before, 2 after)
 
-We walk through the old array front to back. Any time we find a non-empty
-bucket, we insert that entry into the new array. We use `findEntry()`, passing
-in the *new* array instead of the one currently stored in the Table. (This is
-why `findEntry()` takes a pointer directly to an Entry array and not the whole
-`Table` struct. That way, we can pass the new array and capacity before we've
-stored those in the struct.)
+Nous marchons à travers le vieux tableau du début à la fin. Chaque fois que nous trouvons un seau non vide, nous insérons cette entrée dans le nouveau tableau. Nous utilisons `findEntry()`, passant le _nouveau_ tableau au lieu de celui actuellement stocké dans la Table. (C'est pourquoi `findEntry()` prend un pointeur directement vers un tableau d'Entry et pas la struct `Table` entière. De cette façon, nous pouvons passer le nouveau tableau et la capacité avant que nous ayons stocké ceux-là dans la struct.)
 
-After that's done, we can release the memory for the old array.
+Après que c'est fait, nous pouvons relâcher la mémoire pour le vieux tableau.
 
 ^code free-old-array (3 before, 1 after)
 
-With that, we have a hash table that we can stuff as many entries into as we
-like. It handles overwriting existing keys and growing itself as needed to
-maintain the desired load capacity.
+Avec cela, nous avons une table de hachage dans laquelle nous pouvons bourrer autant d'entrées que nous voulons. Elle gère l'écrasement de clés existantes et se grandit elle-même au besoin pour maintenir la capacité de charge désirée.
 
-While we're at it, let's also define a helper function for copying all of the
-entries of one hash table into another.
+Pendant que nous y sommes, définissons aussi une fonction aide pour copier toutes les entrées d'une table de hachage dans une autre.
 
 ^code table-add-all-h (1 before, 2 after)
 
-We won't need this until much later when we support method inheritance, but we
-may as well implement it now while we've got all the hash table stuff fresh in
-our minds.
+Nous n'aurons pas besoin de ceci avant bien plus tard quand nous supporterons l'héritage de méthode, mais nous pouvons aussi bien l'implémenter maintenant pendant que nous avons tous les trucs de table de hachage frais dans nos esprits.
 
 ^code table-add-all
 
-There's not much to say about this. It walks the bucket array of the source hash
-table. Whenever it finds a non-empty bucket, it adds the entry to the
-destination hash table using the `tableSet()` function we recently defined.
+Il n'y a pas grand-chose à dire à propos de ceci. Elle marche le tableau de seaux de la table de hachage source. Chaque fois qu'elle trouve un seau non vide, elle ajoute l'entrée à la table de hachage destination utilisant la fonction `tableSet()` que nous avons récemment définie.
 
-### Retrieving values
+### Récupérer les valeurs
 
-Now that our hash table contains some stuff, let's start pulling things back
-out. Given a key, we can look up the corresponding value, if there is one, with
-this function:
+Maintenant que notre table de hachage contient des trucs, commençons à tirer des choses en retour. Étant donné une clé, nous pouvons chercher la valeur correspondante, s'il y en a une, avec cette fonction :
 
 ^code table-get-h (1 before, 1 after)
 
-You pass in a table and a key. If it finds an entry with that key, it returns
-`true`, otherwise it returns `false`. If the entry exists, the `value` output
-parameter points to the resulting value.
+Vous passez une table et une clé. Si elle trouve une entrée avec cette clé, elle renvoie `true`, sinon elle renvoie `false`. Si l'entrée existe, le paramètre de sortie `value` pointe vers la valeur résultante.
 
-Since `findEntry()` already does the hard work, the implementation isn't bad.
+Puisque `findEntry()` fait déjà le travail dur, l'implémentation n'est pas mauvaise.
 
 ^code table-get
 
-If the table is completely empty, we definitely won't find the entry, so we
-check for that first. This isn't just an optimization -- it also ensures that we
-don't try to access the bucket array when the array is `NULL`. Otherwise, we let
-`findEntry()` work its magic. That returns a pointer to a bucket. If the bucket
-is empty, which we detect by seeing if the key is `NULL`, then we didn't find an
-Entry with our key. If `findEntry()` does return a non-empty Entry, then that's
-our match. We take the Entry's value and copy it to the output parameter so the
-caller can get it. Piece of cake.
+Si la table est complètement vide, nous ne trouverons définitivement pas l'entrée, donc nous vérifions cela d'abord. Ce n'est pas juste une optimisation -- cela assure aussi que nous n'essayons pas d'accéder au tableau de seaux quand le tableau est `NULL`. Sinon, nous laissons `findEntry()` travailler sa magie. Cela renvoie un pointeur vers un seau. Si le seau est vide, ce que nous détectons en voyant si la clé est `NULL`, alors nous n'avons pas trouvé une Entry avec notre clé. Si `findEntry()` renvoie bien une Entry non vide, alors c'est notre correspondance. Nous prenons la valeur de l'Entry et la copions vers le paramètre de sortie pour que l'appelant puisse l'obtenir. De la tarte.
 
-### Deleting entries
+### Supprimer les entrées
 
-There is one more fundamental operation a full-featured hash table needs to
-support: removing an entry. This seems pretty obvious, if you can add things,
-you should be able to *un*-add them, right? But you'd be surprised how many
-tutorials on hash tables omit this.
+Il y a une opération fondamentale de plus qu'une table de hachage complète a besoin de supporter : supprimer une entrée. Cela semble assez évident, si vous pouvez ajouter des choses, vous devriez être capable de les _dés_-ajouter, pas vrai ? Mais vous seriez surpris combien de tutoriels sur les tables de hachage omettent ça.
 
-I could have taken that route too. In fact, we use deletion in clox only in a
-tiny edge case in the VM. But if you want to actually understand how to
-completely implement a hash table, this feels important. I can sympathize with
-their desire to overlook it. As we'll see, deleting from a hash table that uses
-<span name="delete">open</span> addressing is tricky.
+J'aurais pu prendre cette route aussi. En fait, nous utilisons la suppression dans clox seulement dans un minuscule cas limite dans la VM. Mais si vous voulez réellement comprendre comment implémenter complètement une table de hachage, cela semble important. Je peux sympathiser avec leur désir de négliger ça. Comme nous le verrons, supprimer d'une table de hachage qui utilise l'adressage <span name="delete">ouvert</span> est délicat.
 
 <aside name="delete">
 
-With separate chaining, deleting is as easy as removing a node from a linked
-list.
+Avec le chaînage séparé, supprimer est aussi facile que retirer un nœud d'une liste chaînée.
 
 </aside>
 
-At least the declaration is simple.
+Au moins la déclaration est simple.
 
 ^code table-delete-h (1 before, 1 after)
 
-The obvious approach is to mirror insertion. Use `findEntry()` to look up the
-entry's bucket. Then clear out the bucket. Done!
+L'approche évidente est de refléter l'insertion. Utilisez `findEntry()` pour chercher le seau de l'entrée. Ensuite videz le seau. Fini !
 
-In cases where there are no collisions, that works fine. But if a collision has
-occurred, then the bucket where the entry lives may be part of one or more
-implicit probe sequences. For example, here's a hash table containing three keys
-all with the same preferred bucket, 2:
+Dans les cas où il n'y a pas de collisions, cela marche très bien. Mais si une collision s'est produite, alors le seau où l'entrée vit peut faire partie d'une ou plus séquences de sondage implicites. Par exemple, voici une table de hachage contenant trois clés toutes avec le même seau préféré, 2 :
 
-<img src="image/hash-tables/delete-1.png" alt="A hash table containing 'bagel' in bucket 2, 'biscuit' in bucket 3, and 'jam' in bucket 4." />
+<img src="image/hash-tables/delete-1.png" alt="Une table de hachage contenant 'bagel' dans le seau 2, 'biscuit' dans le seau 3, et 'jam' dans le seau 4." />
 
-Remember that when we're walking a probe sequence to find an entry, we know
-we've reached the end of a sequence and that the entry isn't present when we hit
-an empty bucket. It's like the probe sequence is a list of entries and an empty
-entry terminates that list.
+Rappelez-vous que quand nous marchons une séquence de sondage pour trouver une entrée, nous savons que nous avons atteint la fin d'une séquence et que l'entrée n'est pas présente quand nous touchons un seau vide. C'est comme si la séquence de sondage était une liste d'entrées et une entrée vide termine cette liste.
 
-If we delete "biscuit" by simply clearing the Entry, then we break that probe
-sequence in the middle, leaving the trailing entries orphaned and unreachable.
-Sort of like removing a node from a linked list without relinking the pointer
-from the previous node to the next one.
+Si nous supprimons "biscuit" en vidant simplement l'Entry, alors nous cassons cette séquence de sondage au milieu, laissant les entrées traînantes orphelines et inatteignables. Un peu comme retirer un nœud d'une liste chaînée sans relier le pointeur du nœud précédent au suivant.
 
-If we later try to look for "jam", we'd start at "bagel", stop at the next
-empty Entry, and never find it.
+Si nous essayons plus tard de chercher "jam", nous commencerions à "bagel", arrêterions à la prochaine Entry vide, et ne le trouverions jamais.
 
-<img src="image/hash-tables/delete-2.png" alt="The 'biscuit' entry has been deleted from the hash table, breaking the chain." />
+<img src="image/hash-tables/delete-2.png" alt="L'entrée 'biscuit' a été supprimée de la table de hachage, cassant la chaîne." />
 
-To solve this, most implementations use a trick called <span
-name="tombstone">**tombstones**</span>. Instead of clearing the entry on
-deletion, we replace it with a special sentinel entry called a "tombstone". When
-we are following a probe sequence during a lookup, and we hit a tombstone, we
-*don't* treat it like an empty slot and stop iterating. Instead, we keep going
-so that deleting an entry doesn't break any implicit collision chains and we can
-still find entries after it.
+Pour résoudre cela, la plupart des implémentations utilisent un truc appelé <span name="tombstone">**pierres tombales**</span> (tombstones). Au lieu de vider l'entrée à la suppression, nous la remplaçons par une entrée sentinelle spéciale appelée une "pierre tombale". Quand nous suivons une séquence de sondage pendant une recherche, et que nous touchons une pierre tombale, nous ne la traitons _pas_ comme un emplacement vide et n'arrêtons pas d'itérer. Au lieu de cela, nous continuons d'aller pour que supprimer une entrée ne casse aucune chaîne de collision implicite et que nous puissions toujours trouver les entrées après elle.
 
-<img src="image/hash-tables/delete-3.png" alt="Instead of deleting 'biscuit', it's replaced with a tombstone." />
+<img src="image/hash-tables/delete-3.png" alt="Au lieu de supprimer 'biscuit', il est remplacé par une pierre tombale." />
 
-The code looks like this:
+Le code ressemble à ceci :
 
 ^code table-delete
 
-First, we find the bucket containing the entry we want to delete. (If we don't
-find it, there's nothing to delete, so we bail out.) We replace the entry with a
-tombstone. In clox, we use a `NULL` key and a `true` value to represent that,
-but any representation that can't be confused with an empty bucket or a valid
-entry works.
+D'abord, nous trouvons le seau contenant l'entrée que nous voulons supprimer. (Si nous ne la trouvons pas, il n'y a rien à supprimer, donc nous abandonnons.) Nous remplaçons l'entrée par une pierre tombale. Dans clox, nous utilisons une clé `NULL` et une valeur `true` pour représenter cela, mais n'importe quelle représentation qui ne peut pas être confondue avec un seau vide ou une entrée valide marche.
 
 <aside name="tombstone">
 
-<img src="image/hash-tables/tombstone.png" alt="A tombstone enscribed 'Here lies entry biscuit &rarr; 3.75, gone but not deleted'." />
+<img src="image/hash-tables/tombstone.png" alt="Une pierre tombale inscrite 'Ci-gît l'entrée biscuit &rarr; 3.75, partie mais pas supprimée'." />
 
 </aside>
 
-That's all we need to do to delete an entry. Simple and fast. But all of the
-other operations need to correctly handle tombstones too. A tombstone is a sort
-of "half" entry. It has some of the characteristics of a present entry, and some
-of the characteristics of an empty one.
+C'est tout ce que nous avons besoin de faire pour supprimer une entrée. Simple et rapide. Mais toutes les autres opérations ont besoin de gérer correctement les pierres tombales aussi. Une pierre tombale est une sorte de "demi" entrée. Elle a certaines des caractéristiques d'une entrée présente, et certaines des caractéristiques d'une vide.
 
-When we are following a probe sequence during a lookup, and we hit a tombstone,
-we note it and keep going.
+Quand nous suivons une séquence de sondage pendant une recherche, et que nous touchons une pierre tombale, nous la notons et continuons.
 
 ^code find-tombstone (2 before, 2 after)
 
-The first time we pass a tombstone, we store it in this local variable:
+La première fois que nous passons une pierre tombale, nous la stockons dans cette variable locale :
 
 ^code find-entry-tombstone (1 before, 1 after)
 
-If we reach a truly empty entry, then the key isn't present. In that case, if we
-have passed a tombstone, we return its bucket instead of the later empty one. If
-we're calling `findEntry()` in order to insert a node, that lets us treat the
-tombstone bucket as empty and reuse it for the new entry.
+Si nous atteignons une entrée vraiment vide, alors la clé n'est pas présente. Dans ce cas, si nous avons passé une pierre tombale, nous renvoyons son seau au lieu de celui vide ultérieur. Si nous appelons `findEntry()` afin d'insérer un nœud, cela nous laisse traiter le seau pierre tombale comme vide et le réutiliser pour la nouvelle entrée.
 
-Reusing tombstone slots automatically like this helps reduce the number of
-tombstones wasting space in the bucket array. In typical use cases where there
-is a mixture of insertions and deletions, the number of tombstones grows for a
-while and then tends to stabilize.
+Réutiliser les emplacements pierre tombale automatiquement comme ceci aide à réduire le nombre de pierres tombales gaspillant de l'espace dans le tableau de seaux. Dans les cas d'utilisation typiques où il y a un mélange d'insertions et de suppressions, le nombre de pierres tombales grandit pendant un moment et ensuite tend à se stabiliser.
 
-Even so, there's no guarantee that a large number of deletes won't cause the
-array to be full of tombstones. In the very worst case, we could end up with
-*no* empty buckets. That would be bad because, remember, the only thing
-preventing an infinite loop in `findEntry()` is the assumption that we'll
-eventually hit an empty bucket.
+Même ainsi, il n'y a aucune garantie qu'un grand nombre de suppressions ne causera pas que le tableau soit plein de pierres tombales. Dans le pire des cas, nous pourrions finir avec _aucun_ seau vide. Ce serait mauvais parce que, rappelez-vous, la seule chose empêchant une boucle infinie dans `findEntry()` est la supposition que nous toucherons éventuellement un seau vide.
 
-So we need to be thoughtful about how tombstones interact with the table's load
-factor and resizing. The key question is, when calculating the load factor,
-should we treat tombstones like full buckets or empty ones?
+Donc nous devons être réfléchis sur comment les pierres tombales interagissent avec le facteur de charge de la table et le redimensionnement. La question clé est, quand nous calculons le facteur de charge, devrions-nous traiter les pierres tombales comme des seaux pleins ou vides ?
 
-### Counting tombstones
+### Compter les pierres tombales
 
-If we treat tombstones like full buckets, then we may end up with a bigger array
-than we probably need because it artificially inflates the load factor. There
-are tombstones we could reuse, but they aren't treated as unused so we end up
-growing the array prematurely.
+Si nous traitons les pierres tombales comme des seaux pleins, alors nous pouvons finir avec un tableau plus gros que ce dont nous avons probablement besoin parce qu'il gonfle artificiellement le facteur de charge. Il y a des pierres tombales que nous pourrions réutiliser, mais elles ne sont pas traitées comme inutilisées donc nous finissons par grandir le tableau prématurément.
 
-But if we treat tombstones like empty buckets and *don't* include them in the
-load factor, then we run the risk of ending up with *no* actual empty buckets to
-terminate a lookup. An infinite loop is a much worse problem than a few extra
-array slots, so for load factor, we consider tombstones to be full buckets.
+Mais si nous traitons les pierres tombales comme des seaux vides et ne les incluons _pas_ dans le facteur de charge, alors nous courons le risque de finir avec _aucun_ vrai seau vide pour terminer une recherche. Une boucle infinie est un problème bien pire que quelques emplacements de tableau supplémentaires, donc pour le facteur de charge, nous considérons les pierres tombales comme étant des seaux pleins.
 
-That's why we don't reduce the count when deleting an entry in the previous
-code. The count is no longer the number of entries in the hash table, it's the
-number of entries plus tombstones. That implies that we increment the count
-during insertion only if the new entry goes into an entirely empty bucket.
+C'est pourquoi nous ne réduisons pas le compte quand nous supprimons une entrée dans le code précédent. Le compte n'est plus le nombre d'entrées dans la table de hachage, c'est le nombre d'entrées plus les pierres tombales. Cela implique que nous incrémentons le compte pendant l'insertion seulement si la nouvelle entrée va dans un seau entièrement vide.
 
 ^code set-increment-count (1 before, 2 after)
 
-If we are replacing a tombstone with a new entry, the bucket has already been
-accounted for and the count doesn't change.
+Si nous remplaçons une pierre tombale par une nouvelle entrée, le seau a déjà été comptabilisé et le compte ne change pas.
 
-When we resize the array, we allocate a new array and re-insert all of the
-existing entries into it. During that process, we *don't* copy the tombstones
-over. They don't add any value since we're rebuilding the probe sequences
-anyway, and would just slow down lookups. That means we need to recalculate the
-count since it may change during a resize. So we clear it out:
+Quand nous redimensionnons le tableau, nous allouons un nouveau tableau et réinsérons toutes les entrées existantes dedans. Pendant ce processus, nous ne copions _pas_ les pierres tombales. Elles n'ajoutent aucune valeur puisque nous reconstruisons les séquences de sondage de toute façon, et ralentiraient juste les recherches. Cela signifie que nous avons besoin de recalculer le compte puisqu'il peut changer pendant un redimensionnement. Donc nous le vidons :
 
 ^code resize-init-count (2 before, 1 after)
 
-Then each time we find a non-tombstone entry, we increment it.
+Ensuite chaque fois que nous trouvons une entrée non-pierre tombale, nous l'incrémentons.
 
 ^code resize-increment-count (1 before, 1 after)
 
-This means that when we grow the capacity, we may end up with *fewer* entries in
-the resulting larger array because all of the tombstones get discarded. That's a
-little wasteful, but not a huge practical problem.
+Cela signifie que quand nous grandissons la capacité, nous pouvons finir avec _moins_ d'entrées dans le tableau résultant plus grand parce que toutes les pierres tombales sont jetées. C'est un peu gaspilleur, mais pas un énorme problème pratique.
 
-I find it interesting that much of the work to support deleting entries is in
-`findEntry()` and `adjustCapacity()`. The actual delete logic is quite simple
-and fast. In practice, deletions tend to be rare, so you'd expect a hash table
-to do as much work as it can in the delete function and leave the other
-functions alone to keep them faster. With our tombstone approach, deletes are
-fast, but lookups get penalized.
+Je trouve intéressant que beaucoup du travail pour supporter la suppression d'entrées est dans `findEntry()` et `adjustCapacity()`. La logique de suppression réelle est assez simple et rapide. En pratique, les suppressions tendent à être rares, donc vous vous attendriez à ce qu'une table de hachage fasse autant de travail qu'elle peut dans la fonction de suppression et laisse les autres fonctions tranquilles pour les garder plus rapides. Avec notre approche pierre tombale, les suppressions sont rapides, mais les recherches sont pénalisées.
 
-I did a little benchmarking to test this out in a few different deletion
-scenarios. I was surprised to discover that tombstones did end up being faster
-overall compared to doing all the work during deletion to reinsert the affected
-entries.
+J'ai fait un peu de benchmarking pour tester cela dans quelques scénarios de suppression différents. J'ai été surpris de découvrir que les pierres tombales finissaient par être plus rapides globalement comparé à faire tout le travail pendant la suppression pour réinsérer les entrées affectées.
 
-But if you think about it, it's not that the tombstone approach pushes the work
-of fully deleting an entry to other operations, it's more that it makes deleting
-*lazy*. At first, it does the minimal work to turn the entry into a tombstone.
-That can cause a penalty when later lookups have to skip over it. But it also
-allows that tombstone bucket to be reused by a later insert too. That reuse is a
-very efficient way to avoid the cost of rearranging all of the following
-affected entries. You basically recycle a node in the chain of probed entries.
-It's a neat trick.
+Mais si vous y pensez, ce n'est pas que l'approche pierre tombale pousse le travail de supprimer entièrement une entrée vers d'autres opérations, c'est plus qu'elle rend la suppression _paresseuse_. Au début, elle fait le travail minimal pour transformer l'entrée en une pierre tombale. Cela peut causer une pénalité quand des recherches ultérieures doivent sauter par-dessus. Mais cela permet aussi à ce seau pierre tombale d'être réutilisé par une insertion ultérieure aussi. Cette réutilisation est un moyen très efficace d'éviter le coût de réarranger toutes les entrées affectées suivantes. Vous recyclez basiquement un nœud dans la chaîne d'entrées sondées. C'est un truc net.
 
-## String Interning
+## Internalisation de Chaîne
 
-We've got ourselves a hash table that mostly works, though it has a critical
-flaw in its center. Also, we aren't using it for anything yet. It's time to
-address both of those and, in the process, learn a classic technique used by
-interpreters.
+Nous avons nous-mêmes une table de hachage qui marche la plupart du temps, bien qu'elle ait un défaut critique en son centre. Aussi, nous ne l'utilisons pour rien encore. Il est temps d'adresser ces deux choses et, dans le processus, d'apprendre une technique classique utilisée par les interpréteurs.
 
-The reason the hash table doesn't totally work is that when `findEntry()` checks
-to see if an existing key matches the one it's looking for, it uses `==` to
-compare two strings for equality. That only returns true if the two keys are the
-exact same string in memory. Two separate strings with the same characters
-should be considered equal, but aren't.
+La raison pour laquelle la table de hachage ne marche pas totalement est que quand `findEntry()` vérifie pour voir si une clé existante correspond à celle qu'elle cherche, elle utilise `==` pour comparer deux chaînes pour l'égalité. Cela renvoie vrai seulement si les deux clés sont exactement la même chaîne en mémoire. Deux chaînes séparées avec les mêmes caractères devraient être considérées égales, mais ne le sont pas.
 
-Remember, back when we added strings in the last chapter, we added [explicit
-support to compare the strings character-by-character][equals] in order to get
-true value equality. We could do that in `findEntry()`, but that's <span
-name="hash-collision">slow</span>.
+Rappelez-vous, il y a un moment quand nous avons ajouté les chaînes dans le dernier chapitre, nous avons ajouté un [support explicite pour comparer les chaînes caractère-par-caractère][equals] afin d'obtenir une vraie égalité de valeur. Nous pourrions faire cela dans `findEntry()`, mais c'est <span name="hash-collision">lent</span>.
 
-[equals]: strings.html#operations-on-strings
+[equals]: chaînes-de-caractères.html#opérations-sur-les-chaînes
 
 <aside name="hash-collision">
 
-In practice, we would first compare the hash codes of the two strings. That
-quickly detects almost all different strings -- it wouldn't be a very good hash
-function if it didn't. But when the two hashes are the same, we still have to
-compare characters to make sure we didn't have a hash collision on different
-strings.
+En pratique, nous comparerions d'abord les codes de hachage des deux chaînes. Cela détecte rapidement presque toutes les chaînes différentes -- ce ne serait pas une très bonne fonction de hachage si elle ne le faisait pas. Mais quand les deux hachages sont les mêmes, nous devons toujours comparer les caractères pour nous assurer que nous n'avons pas eu de collision de hachage sur des chaînes différentes.
 
 </aside>
 
-Instead, we'll use a technique called **string interning**. The core problem is
-that it's possible to have different strings in memory with the same characters.
-Those need to behave like equivalent values even though they are distinct
-objects. They're essentially duplicates, and we have to compare all of their
-bytes to detect that.
+Au lieu de cela, nous utiliserons une technique appelée **internalisation de chaîne** (string interning). Le problème central est qu'il est possible d'avoir des chaînes différentes en mémoire avec les mêmes caractères. Celles-ci ont besoin de se comporter comme des valeurs équivalentes même bien qu'elles soient des objets distincts. Elles sont essentiellement des doublons, et nous devons comparer tous leurs octets pour détecter cela.
 
-<span name="intern">String interning</span> is a process of deduplication. We
-create a collection of "interned" strings. Any string in that collection is
-guaranteed to be textually distinct from all others. When you intern a string,
-you look for a matching string in the collection. If found, you use that
-original one. Otherwise, the string you have is unique, so you add it to the
-collection.
+L'<span name="intern">internalisation de chaîne</span> est un processus de déduplication. Nous créons une collection de chaînes "internalisées". N'importe quelle chaîne dans cette collection est garantie d'être textuellement distincte de toutes les autres. Quand vous internalisez une chaîne, vous cherchez une chaîne correspondante dans la collection. Si trouvée, vous utilisez l'originale. Sinon, la chaîne que vous avez est unique, donc vous l'ajoutez à la collection.
 
 <aside name="intern">
 
-I'm guessing "intern" is short for "internal". I think the idea is that the
-language's runtime keeps its own "internal" collection of these strings, whereas
-other strings could be user created and floating around in memory. When you
-intern a string, you ask the runtime to add the string to that internal
-collection and return a pointer to it.
+Je devine que "intern" est court pour "internal" (interne). Je pense que l'idée est que le runtime du langage garde sa propre collection "interne" de ces chaînes, alors que d'autres chaînes pourraient être créées par l'utilisateur et flotter autour en mémoire. Quand vous internalisez une chaîne, vous demandez au runtime d'ajouter la chaîne à cette collection interne et de renvoyer un pointeur vers elle.
 
-Languages vary in how much string interning they do and how it's exposed to the
-user. Lua interns *all* strings, which is what clox will do too. Lisp, Scheme,
-Smalltalk, Ruby and others have a separate string-like type called "symbol" that
-is implicitly interned. (This is why they say symbols are "faster" in Ruby.)
-Java interns constant strings by default, and provides an API to let you
-explicitly intern any string you give it.
+Les langages varient dans combien d'internalisation de chaîne ils font et comment c'est exposé à l'utilisateur. Lua internalise _toutes_ les chaînes, ce qui est ce que clox fera aussi. Lisp, Scheme, Smalltalk, Ruby et d'autres ont un type semblable à une chaîne séparé appelé "symbole" qui est implicitement internalisé. (C'est pourquoi ils disent que les symboles sont "plus rapides" en Ruby.) Java internalise les chaînes constantes par défaut, et fournit une API pour vous laisser internaliser explicitement n'importe quelle chaîne que vous lui donnez.
 
 </aside>
 
-In this way, you know that each sequence of characters is represented by only
-one string in memory. This makes value equality trivial. If two strings point
-to the same address in memory, they are obviously the same string and must be
-equal. And, because we know strings are unique, if two strings point to
-different addresses, they must be distinct strings.
+De cette façon, vous savez que chaque séquence de caractères est représentée par seulement une chaîne en mémoire. Cela rend l'égalité de valeur triviale. Si deux chaînes pointent vers la même adresse en mémoire, elles sont évidemment la même chaîne et doivent être égales. Et, parce que nous savons que les chaînes sont uniques, si deux chaînes pointent vers des adresses différentes, elles doivent être des chaînes distinctes.
 
-Thus, pointer equality exactly matches value equality. Which in turn means that
-our existing `==` in `findEntry()` does the right thing. Or, at least, it will
-once we intern all the strings. In order to reliably deduplicate all strings,
-the VM needs to be able to find every string that's created. We do that by
-giving it a hash table to store them all.
+Ainsi, l'égalité de pointeur correspond exactement à l'égalité de valeur. Ce qui à son tour signifie que notre `==` existant dans `findEntry()` fait la bonne chose. Ou, au moins, il le fera une fois que nous aurons internalisé toutes les chaînes. Afin de dédupliquer de manière fiable toutes les chaînes, la VM a besoin d'être capable de trouver chaque chaîne qui est créée. Nous faisons cela en lui donnant une table de hachage pour les stocker toutes.
 
 ^code vm-strings (1 before, 1 after)
 
-As usual, we need an include.
+Comme d'habitude, nous avons besoin d'un include.
 
 ^code vm-include-table (1 before, 1 after)
 
-When we spin up a new VM, the string table is empty.
+Quand nous démarrons une nouvelle VM, la table des chaînes est vide.
 
 ^code init-strings (1 before, 1 after)
 
-And when we shut down the VM, we clean up any resources used by the table.
+Et quand nous éteignons la VM, nous nettoyons toutes les ressources utilisées par la table.
 
 ^code free-strings (1 before, 1 after)
 
-Some languages have a separate type or an explicit step to intern a string. For
-clox, we'll automatically intern every one. That means whenever we create a new
-unique string, we add it to the table.
+Certains langages ont un type séparé ou une étape explicite pour internaliser une chaîne. Pour clox, nous internaliserons automatiquement chacune d'elles. Cela signifie que chaque fois que nous créons une nouvelle chaîne unique, nous l'ajoutons à la table.
 
 ^code allocate-store-string (1 before, 1 after)
 
-We're using the table more like a hash *set* than a hash *table*. The keys are
-the strings and those are all we care about, so we just use `nil` for the
-values.
+Nous utilisons la table plus comme un _ensemble_ de hachage que comme une _table_ de hachage. Les clés sont les chaînes et ce sont toutes celles dont nous nous soucions, donc nous utilisons juste `nil` pour les valeurs.
 
-This gets a string into the table assuming that it's unique, but we need to
-actually check for duplication before we get here. We do that in the two
-higher-level functions that call `allocateString()`. Here's one:
+Ceci met une chaîne dans la table en supposant qu'elle est unique, mais nous avons besoin de vérifier réellement la duplication avant d'arriver ici. Nous faisons cela dans les deux fonctions de plus haut niveau qui appellent `allocateString()`. En voici une :
 
 ^code copy-string-intern (1 before, 1 after)
 
-When copying a string into a new LoxString, we look it up in the string table
-first. If we find it, instead of "copying", we just return a reference to that
-string. Otherwise, we fall through, allocate a new string, and store it in the
-string table.
+Quand nous copions une chaîne dans une nouvelle LoxString, nous la cherchons dans la table des chaînes d'abord. Si nous la trouvons, au lieu de "copier", nous renvoyons juste une référence vers cette chaîne. Sinon, nous tombons à travers, allouons une nouvelle chaîne, et la stockons dans la table des chaînes.
 
-Taking ownership of a string is a little different.
+Prendre la propriété d'une chaîne est un peu différent.
 
 ^code take-string-intern (1 before, 1 after)
 
-Again, we look up the string in the string table first. If we find it, before we
-return it, we free the memory for the string that was passed in. Since ownership
-is being passed to this function and we no longer need the duplicate string,
-it's up to us to free it.
+Encore une fois, nous cherchons la chaîne dans la table des chaînes d'abord. Si nous la trouvons, avant de la renvoyer, nous libérons la mémoire pour la chaîne qui a été passée dedans. Puisque la propriété est passée à cette fonction et que nous n'avons plus besoin de la chaîne dupliquée, c'est à nous de la libérer.
 
-Before we get to the new function we need to write, there's one more include.
+Avant que nous arrivions à la nouvelle fonction que nous avons besoin d'écrire, il y a un include de plus.
 
 ^code object-include-table (1 before, 1 after)
 
-To look for a string in the table, we can't use the normal `tableGet()` function
-because that calls `findEntry()`, which has the exact problem with duplicate
-strings that we're trying to fix right now. Instead, we use this new function:
+Pour chercher une chaîne dans la table, nous ne pouvons pas utiliser la fonction `tableGet()` normale parce qu'elle appelle `findEntry()`, qui a le problème exact avec les chaînes dupliquées que nous essayons de fixer en ce moment. Au lieu de cela, nous utilisons cette nouvelle fonction :
 
 ^code table-find-string-h (1 before, 2 after)
 
-The implementation looks like so:
+L'implémentation ressemble à ceci :
 
 ^code table-find-string
 
-It appears we have copy-pasted `findEntry()`. There is a lot of redundancy, but
-also a couple of key differences. First, we pass in the raw character array of
-the key we're looking for instead of an ObjString. At the point that we call
-this, we haven't created an ObjString yet.
+Il apparaît que nous avons copié-collé `findEntry()`. Il y a beaucoup de redondance, mais aussi une couple de différences clés. D'abord, nous passons le tableau de caractères brut de la clé que nous cherchons au lieu d'un ObjString. Au point où nous appelons ceci, nous n'avons pas créé d'ObjString encore.
 
-Second, when checking to see if we found the key, we look at the actual strings.
-We first see if they have matching lengths and hashes. Those are quick to check
-and if they aren't equal, the strings definitely aren't the same.
+Deuxièmement, quand nous vérifions pour voir si nous avons trouvé la clé, nous regardons les chaînes réelles. Nous voyons d'abord si elles ont des longueurs et des hachages correspondants. Ceux-ci sont rapides à vérifier et s'ils ne sont pas égaux, les chaînes ne sont définitivement pas les mêmes.
 
-If there is a hash collision, we do an actual character-by-character string
-comparison. This is the one place in the VM where we actually test strings for
-textual equality. We do it here to deduplicate strings and then the rest of the
-VM can take for granted that any two strings at different addresses in memory
-must have different contents.
+S'il y a une collision de hachage, nous faisons une comparaison de chaîne caractère-par-caractère réelle. C'est le seul endroit dans la VM où nous testons réellement les chaînes pour l'égalité textuelle. Nous le faisons ici pour dédupliquer les chaînes et ensuite le reste de la VM peut prendre pour acquis que deux chaînes quelconques à des adresses différentes en mémoire doivent avoir des contenus différents.
 
-In fact, now that we've interned all the strings, we can take advantage of it in
-the bytecode interpreter. When a user does `==` on two objects that happen to be
-strings, we don't need to test the characters any more.
+En fait, maintenant que nous avons internalisé toutes les chaînes, nous pouvons tirer avantage de cela dans l'interpréteur bytecode. Quand un utilisateur fait `==` sur deux objets qui se trouvent être des chaînes, nous n'avons pas besoin de tester les caractères plus longtemps.
 
 ^code equal (1 before, 1 after)
 
-We've added a little overhead when creating strings to intern them. But in
-return, at runtime, the equality operator on strings is much faster. With that,
-we have a full-featured hash table ready for us to use for tracking variables,
-instances, or any other key-value pairs that might show up.
+Nous avons ajouté un peu de surcharge lors de la création de chaînes pour les internaliser. Mais en retour, à l'exécution, l'opérateur d'égalité sur les chaînes est bien plus rapide. Avec cela, nous avons une table de hachage complète prête à être utilisée pour suivre les variables, instances, ou toutes autres paires clé-valeur qui pourraient se montrer.
 
-We also sped up testing strings for equality. This is nice for when the user
-does `==` on strings. But it's even more critical in a dynamically typed
-language like Lox where method calls and instance fields are looked up by name
-at runtime. If testing a string for equality is slow, then that means looking up
-a method by name is slow. And if *that's* slow in your object-oriented language,
-then *everything* is slow.
+Nous avons aussi accéléré le test d'égalité des chaînes. C'est sympa pour quand l'utilisateur fait `==` sur des chaînes. Mais c'est encore plus critique dans un langage dynamiquement typé comme Lox où les appels de méthode et les champs d'instance sont cherchés par nom à l'exécution. Si tester une chaîne pour l'égalité est lent, alors cela signifie que chercher une méthode par nom est lent. Et si _ça_ c'est lent dans votre langage orienté objet, alors _tout_ est lent.
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  In clox, we happen to only need keys that are strings, so the hash table we
-    built is hardcoded for that key type. If we exposed hash tables to Lox users
-    as a first-class collection, it would be useful to support different kinds
-    of keys.
+1.  Dans clox, il se trouve que nous avons seulement besoin de clés qui sont des chaînes, donc la table de hachage que nous avons construite est codée en dur pour ce type de clé. Si nous exposions les tables de hachage aux utilisateurs Lox comme une collection de première classe, il serait utile de supporter différentes sortes de clés.
 
-    Add support for keys of the other primitive types: numbers, Booleans, and
-    `nil`. Later, clox will support user-defined classes. If we want to support
-    keys that are instances of those classes, what kind of complexity does that
-    add?
+    Ajoutez le support pour des clés des autres types primitifs : nombres, Booléens, et `nil`. Plus tard, clox supportera les classes définies par l'utilisateur. Si nous voulons supporter des clés qui sont des instances de ces classes, quelle sorte de complexité cela ajoute-t-il ?
 
-1.  Hash tables have a lot of knobs you can tweak that affect their performance.
-    You decide whether to use separate chaining or open addressing. Depending on
-    which fork in that road you take, you can tune how many entries are stored
-    in each node, or the probing strategy you use. You control the hash
-    function, load factor, and growth rate.
+1.  Les tables de hachage ont beaucoup de boutons que vous pouvez régler qui affectent leur performance. Vous décidez d'utiliser le chaînage séparé ou l'adressage ouvert. Selon quelle fourche dans cette route vous prenez, vous pouvez régler combien d'entrées sont stockées dans chaque nœud, ou la stratégie de sondage que vous utilisez. Vous contrôlez la fonction de hachage, le facteur de charge, et le taux de croissance.
 
-    All of this variety wasn't created just to give CS doctoral candidates
-    something to <span name="publish">publish</span> theses on: each has its
-    uses in the many varied domains and hardware scenarios where hashing comes
-    into play. Look up a few hash table implementations in different open source
-    systems, research the choices they made, and try to figure out why they did
-    things that way.
+    Toute cette variété n'a pas été créée juste pour donner aux candidats doctorants en CS quelque chose sur quoi <span name="publish">publier</span> des thèses : chacune a ses utilisations dans les nombreux domaines variés et scénarios matériels où le hachage entre en jeu. Cherchez quelques implémentations de table de hachage dans différents systèmes open source, recherchez les choix qu'ils ont faits, et essayez de comprendre pourquoi ils ont fait les choses de cette façon.
 
     <aside name="publish">
 
-    Well, at least that wasn't the *only* reason they were created. Whether that
-    was the *main* reason is up for debate.
+    Eh bien, au moins ce n'était pas la _seule_ raison pour laquelle elles ont été créées. Que ce soit la _principale_ raison est sujet à débat.
 
     </aside>
 
-1.  Benchmarking a hash table is notoriously difficult. A hash table
-    implementation may perform well with some keysets and poorly with others. It
-    may work well at small sizes but degrade as it grows, or vice versa. It may
-    choke when deletions are common, but fly when they aren't. Creating
-    benchmarks that accurately represent how your users will use the hash table
-    is a challenge.
+1.  Benchmarker une table de hachage est notoirement difficile. Une implémentation de table de hachage peut bien performer avec certains ensembles de clés et pauvrement avec d'autres. Elle peut marcher bien à de petites tailles mais se dégrader alors qu'elle grandit, ou vice versa. Elle peut s'étouffer quand les suppressions sont communes, mais voler quand elles ne le sont pas. Créer des benchmarks qui représentent précisément comment vos utilisateurs utiliseront la table de hachage est un défi.
 
-    Write a handful of different benchmark programs to validate our hash table
-    implementation. How does the performance vary between them? Why did you
-    choose the specific test cases you chose?
+    Écrivez une poignée de programmes de benchmark différents pour valider notre implémentation de table de hachage. Comment la performance varie-t-elle entre eux ? Pourquoi avez-vous choisi les cas de test spécifiques que vous avez choisis ?
 
 </div>

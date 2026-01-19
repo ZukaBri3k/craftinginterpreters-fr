@@ -1,85 +1,45 @@
-> Grammar, which knows how to control even kings.
+> La grammaire, qui sait régenter jusqu'aux rois.
 > <cite>Molière</cite>
 
-<span name="parse">This</span> chapter marks the first major milestone of the
-book. Many of us have cobbled together a mishmash of regular expressions and
-substring operations to extract some sense out of a pile of text. The code was
-probably riddled with bugs and a beast to maintain. Writing a *real* parser --
-one with decent error handling, a coherent internal structure, and the ability
-to robustly chew through a sophisticated syntax -- is considered a rare,
-impressive skill. In this chapter, you will <span name="attain">attain</span>
-it.
+<span name="parse">Ce</span> chapitre marque la première étape majeure du livre. Beaucoup d'entre nous ont bricolé un mélange d'expressions régulières et d'opérations sur les sous-chaînes pour extraire un peu de sens d'un tas de texte. Le code était probablement criblé de bugs et une bête à maintenir. Écrire un _vrai_ parseur -- un avec une gestion d'erreurs décente, une structure interne cohérente, et la capacité de mâcher robustement une syntaxe sophistiquée -- est considéré comme une compétence rare et impressionnante. Dans ce chapitre, vous l'<span name="attain">atteindrez</span>.
 
 <aside name="parse">
 
-"Parse" comes to English from the Old French "pars" for "part of speech". It
-means to take a text and map each word to the grammar of the language. We use it
-here in the same sense, except that our language is a little more modern than
-Old French.
+"Parse" (parser/analyser) vient en anglais du vieux français "pars" pour "partie du discours". Cela signifie prendre un texte et mapper chaque mot à la grammaire du langage. Nous l'utilisons ici dans le même sens, sauf que notre langage est un peu plus moderne que le vieux français.
 
 </aside>
 
 <aside name="attain">
 
-Like many rites of passage, you'll probably find it looks a little smaller, a
-little less daunting when it's behind you than when it loomed ahead.
+Comme beaucoup de rites de passage, vous trouverez probablement que cela semble un peu plus petit, un peu moins intimidant quand c'est derrière vous que quand cela se dressait devant.
 
 </aside>
 
-It's easier than you think, partially because we front-loaded a lot of the hard
-work in the [last chapter][]. You already know your way around a formal grammar.
-You're familiar with syntax trees, and we have some Java classes to represent
-them. The only remaining piece is parsing -- transmogrifying a sequence of
-tokens into one of those syntax trees.
+C'est plus facile que vous ne le pensez, en partie parce que nous avons fait une grande partie du travail difficile en amont dans le [dernier chapitre][last chapter]. Vous connaissez déjà le chemin autour d'une grammaire formelle. Vous êtes familier avec les arbres syntaxiques, et nous avons quelques classes Java pour les représenter. La seule pièce restante est le parsing -- la transmogrification d'une séquence de tokens en l'un de ces arbres syntaxiques.
 
 [last chapter]: representing-code.html
 
-Some CS textbooks make a big deal out of parsers. In the '60s, computer
-scientists -- understandably tired of programming in assembly language --
-started designing more sophisticated, <span name="human">human</span>-friendly
-languages like Fortran and ALGOL. Alas, they weren't very *machine*-friendly
-for the primitive computers of the time.
+Certains manuels d'informatique font tout un plat des parseurs. Dans les années 60, les informaticiens -- compréhensiblement fatigués de programmer en langage assembleur -- ont commencé à concevoir des langages plus sophistiqués, conviviaux pour les <span name="human">humains</span> comme Fortran et ALGOL. Hélas, ils n'étaient pas très conviviaux pour la _machine_ pour les ordinateurs primitifs de l'époque.
 
 <aside name="human">
 
-Imagine how harrowing assembly programming on those old machines must have been
-that they considered *Fortran* to be an improvement.
+Imaginez à quel point la programmation en assembleur sur ces vieilles machines devait être pénible pour qu'ils considèrent _Fortran_ comme une amélioration.
 
 </aside>
 
-These pioneers designed languages that they honestly weren't even sure how to
-write compilers for, and then did groundbreaking work inventing parsing and
-compiling techniques that could handle these new, big languages on those old, tiny
-machines.
+Ces pionniers ont conçu des langages pour lesquels ils n'étaient honnêtement même pas sûrs de savoir comment écrire des compilateurs, et ont ensuite fait un travail révolutionnaire en inventant des techniques de parsing et de compilation qui pouvaient gérer ces nouveaux gros langages sur ces vieilles minuscules machines.
 
-Classic compiler books read like fawning hagiographies of these heroes and their
-tools. The cover of *Compilers: Principles, Techniques, and Tools* literally has
-a dragon labeled "complexity of compiler design" being slain by a knight bearing
-a sword and shield branded "LALR parser generator" and "syntax directed
-translation". They laid it on thick.
+Les livres de compilation classiques se lisent comme des hagiographies flagorneuses de ces héros et de leurs outils. La couverture de _Compilers: Principles, Techniques, and Tools_ a littéralement un dragon étiqueté "complexité de la conception de compilateur" étant occis par un chevalier portant une épée et un bouclier marqués "générateur de parseur LALR" et "traduction dirigée par la syntaxe". Ils en ont rajouté une couche.
 
-A little self-congratulation is well-deserved, but the truth is you don't need
-to know most of that stuff to bang out a high quality parser for a modern
-machine. As always, I encourage you to broaden your education and take it in
-later, but this book omits the trophy case.
+Un peu d'auto-félicitation est bien mérité, mais la vérité est que vous n'avez pas besoin de savoir la plupart de ces trucs pour sortir un parseur de haute qualité pour une machine moderne. Comme toujours, je vous encourage à élargir votre éducation et à l'assimiler plus tard, mais ce livre omet la vitrine de trophées.
 
-## Ambiguity and the Parsing Game
+## L'Ambiguïté et le Jeu du Parsing
 
-In the last chapter, I said you can "play" a context-free grammar like a game in
-order to *generate* strings. Parsers play that game in reverse. Given a string
--- a series of tokens -- we map those tokens to terminals in the grammar to
-figure out which rules could have generated that string.
+Dans le dernier chapitre, j'ai dit que vous pouvez "jouer" une grammaire non contextuelle comme un jeu afin de _générer_ des chaînes. Les parseurs jouent à ce jeu à l'envers. Étant donné une chaîne -- une série de tokens -- nous mappons ces tokens aux terminaux dans la grammaire pour comprendre quelles règles auraient pu générer cette chaîne.
 
-The "could have" part is interesting. It's entirely possible to create a grammar
-that is *ambiguous*, where different choices of productions can lead to the same
-string. When you're using the grammar to *generate* strings, that doesn't matter
-much. Once you have the string, who cares how you got to it?
+La partie "auraient pu" est intéressante. Il est tout à fait possible de créer une grammaire qui est _ambiguë_, où différents choix de productions peuvent mener à la même chaîne. Quand vous utilisez la grammaire pour _générer_ des chaînes, cela n'importe pas beaucoup. Une fois que vous avez la chaîne, qui se soucie de comment vous y êtes arrivé ?
 
-When parsing, ambiguity means the parser may misunderstand the user's code. As
-we parse, we aren't just determining if the string is valid Lox code, we're
-also tracking which rules match which parts of it so that we know what part of
-the language each token belongs to. Here's the Lox expression grammar we put
-together in the last chapter:
+Lors du parsing, l'ambiguïté signifie que le parseur peut mal comprendre le code de l'utilisateur. En parsant, nous ne déterminons pas seulement si la chaîne est du code Lox valide, nous suivons aussi quelles règles matchent quelles parties de celui-ci afin de savoir à quelle partie du langage chaque token appartient. Voici la grammaire d'expression Lox que nous avons assemblée dans le dernier chapitre :
 
 ```ebnf
 expression     → literal
@@ -95,65 +55,53 @@ operator       → "==" | "!=" | "<" | "<=" | ">" | ">="
                | "+"  | "-"  | "*" | "/" ;
 ```
 
-This is a valid string in that grammar:
+Ceci est une chaîne valide dans cette grammaire :
 
 <img src="image/parsing-expressions/tokens.png" alt="6 / 3 - 1" />
 
-But there are two ways we could have generated it. One way is:
+Mais il y a deux façons dont nous aurions pu la générer. Une façon est :
 
-1. Starting at `expression`, pick `binary`.
-2. For the left-hand `expression`, pick `NUMBER`, and use `6`.
-3. For the operator, pick `"/"`.
-4. For the right-hand `expression`, pick `binary` again.
-5. In that nested `binary` expression, pick `3 - 1`.
+1. En commençant à `expression`, choisissez `binary`.
+2. Pour l'`expression` de gauche, choisissez `NUMBER`, et utilisez `6`.
+3. Pour l'opérateur, choisissez `"/"`.
+4. Pour l'`expression` de droite, choisissez `binary` à nouveau.
+5. Dans cette expression `binary` imbriquée, choisissez `3 - 1`.
 
-Another is:
+Une autre est :
 
-1. Starting at `expression`, pick `binary`.
-2. For the left-hand `expression`, pick `binary` again.
-3. In that nested `binary` expression, pick `6 / 3`.
-4. Back at the outer `binary`, for the operator, pick `"-"`.
-5. For the right-hand `expression`, pick `NUMBER`, and use `1`.
+1. En commençant à `expression`, choisissez `binary`.
+2. Pour l'`expression` de gauche, choisissez `binary` à nouveau.
+3. Dans cette expression `binary` imbriquée, choisissez `6 / 3`.
+4. De retour au `binary` extérieur, pour l'opérateur, choisissez `"-"`.
+5. Pour l'`expression` de droite, choisissez `NUMBER`, et utilisez `1`.
 
-Those produce the same *strings*, but not the same *syntax trees*:
+Celles-ci produisent les mêmes _chaînes_, mais pas les mêmes _arbres syntaxiques_ :
 
-<img src="image/parsing-expressions/syntax-trees.png" alt="Two valid syntax trees: (6 / 3) - 1 and 6 / (3 - 1)" />
+<img src="image/parsing-expressions/syntax-trees.png" alt="Deux arbres syntaxiques valides : (6 / 3) - 1 et 6 / (3 - 1)" />
 
-In other words, the grammar allows seeing the expression as `(6 / 3) - 1` or `6
-/ (3 - 1)`. The `binary` rule lets operands nest any which way you want. That in
-turn affects the result of evaluating the parsed tree. The way mathematicians
-have addressed this ambiguity since blackboards were first invented is by
-defining rules for precedence and associativity.
+En d'autres termes, la grammaire permet de voir l'expression comme `(6 / 3) - 1` ou `6 / (3 - 1)`. La règle `binary` laisse les opérandes s'imbriquer n'importe comment. Cela affecte à son tour le résultat de l'évaluation de l'arbre parsé. La façon dont les mathématiciens ont adressé cette ambiguïté depuis que les tableaux noirs ont été inventés est en définissant des règles pour la précédence et l'associativité.
 
-*   <span name="nonassociative">**Precedence**</span> determines which operator
-    is evaluated first in an expression containing a mixture of different
-    operators. Precedence rules tell us that we evaluate the `/` before the `-`
-    in the above example. Operators with higher precedence are evaluated
-    before operators with lower precedence. Equivalently, higher precedence
-    operators are said to "bind tighter".
+- La <span name="nonassociative">**précédence**</span> détermine quel opérateur est évalué en premier dans une expression contenant un mélange de différents opérateurs. Les règles de précédence nous disent que nous évaluons le `/` avant le `-` dans l'exemple ci-dessus. Les opérateurs avec une plus haute précédence sont évalués avant les opérateurs avec une plus basse précédence. De manière équivalente, les opérateurs à plus haute précédence sont dits "liant plus fort".
 
-*   **Associativity** determines which operator is evaluated first in a series
-    of the *same* operator. When an operator is **left-associative** (think
-    "left-to-right"), operators on the left evaluate before those on the right.
-    Since `-` is left-associative, this expression:
+- L'**associativité** détermine quel opérateur est évalué en premier dans une série du _même_ opérateur. Quand un opérateur est **associatif à gauche** (pensez "de gauche à droite"), les opérateurs sur la gauche s'évaluent avant ceux sur la droite. Puisque `-` est associatif à gauche, cette expression :
 
     ```lox
     5 - 3 - 1
     ```
 
-    is equivalent to:
+    est équivalente à :
 
     ```lox
     (5 - 3) - 1
     ```
 
-    Assignment, on the other hand, is **right-associative**. This:
+    L'affectation, d'autre part, est **associative à droite**. Ceci :
 
     ```lox
     a = b = c
     ```
 
-    is equivalent to:
+    est équivalent à :
 
     ```lox
     a = (b = c)
@@ -161,66 +109,55 @@ defining rules for precedence and associativity.
 
 <aside name="nonassociative">
 
-While not common these days, some languages specify that certain pairs of
-operators have *no* relative precedence. That makes it a syntax error to mix
-those operators in an expression without using explicit grouping.
+Bien que peu courants de nos jours, certains langages spécifient que certaines paires d'opérateurs n'ont _aucune_ précédence relative. Cela rend une erreur de syntaxe le fait de mélanger ces opérateurs dans une expression sans utiliser de groupement explicite.
 
-Likewise, some operators are **non-associative**. That means it's an error to
-use that operator more than once in a sequence. For example, Perl's range
-operator isn't associative, so `a .. b` is OK, but `a .. b .. c` is an error.
+De même, certains opérateurs sont **non-associatifs**. Cela signifie que c'est une erreur d'utiliser cet opérateur plus d'une fois dans une séquence. Par exemple, l'opérateur de plage de Perl n'est pas associatif, donc `a .. b` est OK, mais `a .. b .. c` est une erreur.
 
 </aside>
 
-Without well-defined precedence and associativity, an expression that uses
-multiple operators is ambiguous -- it can be parsed into different syntax trees,
-which could in turn evaluate to different results. We'll fix that in Lox by
-applying the same precedence rules as C, going from lowest to highest.
+Sans précédence et associativité bien définies, une expression qui utilise plusieurs opérateurs est ambiguë -- elle peut être parsée en différents arbres syntaxiques, qui pourraient à leur tour s'évaluer en différents résultats. Nous corrigerons cela dans Lox en appliquant les mêmes règles de précédence que le C, en allant du plus bas au plus haut.
 
 <table>
 <thead>
 <tr>
-  <td>Name</td>
-  <td>Operators</td>
-  <td>Associates</td>
+  <td>Nom</td>
+  <td>Opérateurs</td>
+  <td>Associe</td>
 </tr>
 </thead>
 <tbody>
 <tr>
-  <td>Equality</td>
+  <td>Égalité</td>
   <td><code>==</code> <code>!=</code></td>
-  <td>Left</td>
+  <td>Gauche</td>
 </tr>
 <tr>
-  <td>Comparison</td>
+  <td>Comparaison</td>
   <td><code>&gt;</code> <code>&gt;=</code>
       <code>&lt;</code> <code>&lt;=</code></td>
-  <td>Left</td>
+  <td>Gauche</td>
 </tr>
 <tr>
-  <td>Term</td>
+  <td>Terme</td>
   <td><code>-</code> <code>+</code></td>
-  <td>Left</td>
+  <td>Gauche</td>
 </tr>
 <tr>
-  <td>Factor</td>
+  <td>Facteur</td>
   <td><code>/</code> <code>*</code></td>
-  <td>Left</td>
+  <td>Gauche</td>
 </tr>
 <tr>
-  <td>Unary</td>
+  <td>Unaire</td>
   <td><code>!</code> <code>-</code></td>
-  <td>Right</td>
+  <td>Droite</td>
 </tr>
 </tbody>
 </table>
 
-Right now, the grammar stuffs all expression types into a single `expression`
-rule. That same rule is used as the non-terminal for operands, which lets the
-grammar accept any kind of expression as a subexpression, regardless of whether
-the precedence rules allow it.
+Pour l'instant, la grammaire fourre tous les types d'expression dans une seule règle `expression`. Cette même règle est utilisée comme non-terminal pour les opérandes, ce qui laisse la grammaire accepter n'importe quel type d'expression comme sous-expression, peu importe si les règles de précédence l'autorisent.
 
-We fix that by <span name="massage">stratifying</span> the grammar. We define a
-separate rule for each precedence level.
+Nous corrigeons cela en <span name="massage">stratifiant</span> la grammaire. Nous définissons une règle séparée pour chaque niveau de précédence.
 
 ```ebnf
 expression     → ...
@@ -234,33 +171,19 @@ primary        → ...
 
 <aside name="massage">
 
-Instead of baking precedence right into the grammar rules, some parser
-generators let you keep the same ambiguous-but-simple grammar and then add in a
-little explicit operator precedence metadata on the side in order to
-disambiguate.
+Au lieu de cuire la précédence directement dans les règles de grammaire, certains générateurs de parseurs vous laissent garder la même grammaire ambiguë-mais-simple et ajouter ensuite un peu de métadonnées de précédence d'opérateur explicite sur le côté afin de désambiguïser.
 
 </aside>
 
-Each rule here only matches expressions at its precedence level or higher. For
-example, `unary` matches a unary expression like `!negated` or a primary
-expression like `1234`. And `term` can match `1 + 2` but also `3 * 4 / 5`. The
-final `primary` rule covers the highest-precedence forms -- literals and
-parenthesized expressions.
+Chaque règle ici matche seulement les expressions à son niveau de précédence ou plus haut. Par exemple, `unary` matche une expression unaire comme `!negated` ou une expression primaire comme `1234`. Et `term` peut matcher `1 + 2` mais aussi `3 * 4 / 5`. La règle `primary` finale couvre les formes de plus haute précédence -- les littéraux et les expressions parenthésées.
 
-We just need to fill in the productions for each of those rules. We'll do the
-easy ones first. The top `expression` rule matches any expression at any
-precedence level. Since <span name="equality">`equality`</span> has the lowest
-precedence, if we match that, then it covers everything.
+Nous avons juste besoin de remplir les productions pour chacune de ces règles. Nous ferons les faciles en premier. La règle `expression` du haut matche n'importe quelle expression à n'importe quel niveau de précédence. Puisque <span name="equality">`equality`</span> a la précédence la plus basse, si nous matchons cela, alors cela couvre tout.
 
 <aside name="equality">
 
-We could eliminate `expression` and simply use `equality` in the other rules
-that contain expressions, but using `expression` makes those other rules read a
-little better.
+Nous pourrions éliminer `expression` et utiliser simplement `equality` dans les autres règles qui contiennent des expressions, mais utiliser `expression` rend ces autres règles un peu plus lisibles.
 
-Also, in later chapters when we expand the grammar to include assignment and
-logical operators, we'll only need to change the production for `expression`
-instead of touching every rule that contains an expression.
+Aussi, dans les chapitres ultérieurs quand nous étendrons la grammaire pour inclure l'affectation et les opérateurs logiques, nous aurons seulement besoin de changer la production pour `expression` au lieu de toucher chaque règle qui contient une expression.
 
 </aside>
 
@@ -268,89 +191,64 @@ instead of touching every rule that contains an expression.
 expression     → equality
 ```
 
-Over at the other end of the precedence table, a primary expression contains
-all the literals and grouping expressions.
+Tout à l'autre bout de la table de précédence, une expression primaire contient tous les littéraux et expressions de groupement.
 
 ```ebnf
 primary        → NUMBER | STRING | "true" | "false" | "nil"
                | "(" expression ")" ;
 ```
 
-A unary expression starts with a unary operator followed by the operand. Since
-unary operators can nest -- `!!true` is a valid if weird expression -- the
-operand can itself be a unary operator. A recursive rule handles that nicely.
+Une expression unaire commence par un opérateur unaire suivi par l'opérande. Puisque les opérateurs unaires peuvent s'imbriquer -- `!!true` est une expression valide bien que bizarre -- l'opérande peut lui-même être un opérateur unaire. Une règle récursive gère cela joliment.
 
 ```ebnf
 unary          → ( "!" | "-" ) unary ;
 ```
 
-But this rule has a problem. It never terminates.
+Mais cette règle a un problème. Elle ne termine jamais.
 
-Remember, each rule needs to match expressions at that precedence level *or
-higher*, so we also need to let this match a primary expression.
+Rappelez-vous, chaque règle doit matcher les expressions à ce niveau de précédence _ou plus haut_, donc nous devons aussi laisser ceci matcher une expression primaire.
 
 ```ebnf
 unary          → ( "!" | "-" ) unary
                | primary ;
 ```
 
-That works.
+Ça marche.
 
-The remaining rules are all binary operators. We'll start with the rule for
-multiplication and division. Here's a first try:
+Les règles restantes sont toutes des opérateurs binaires. Nous commencerons avec la règle pour la multiplication et la division. Voici un premier essai :
 
 ```ebnf
 factor         → factor ( "/" | "*" ) unary
                | unary ;
 ```
 
-The rule recurses to match the left operand. That enables the rule to match a
-series of multiplication and division expressions like `1 * 2 / 3`. Putting the
-recursive production on the left side and `unary` on the right makes the rule
-<span name="mult">left-associative</span> and unambiguous.
+La règle récurse pour matcher l'opérande gauche. Cela permet à la règle de matcher une série d'expressions de multiplication et de division comme `1 * 2 / 3`. Mettre la production récursive sur le côté gauche et `unary` sur la droite rend la règle <span name="mult">associative à gauche</span> et non ambiguë.
 
 <aside name="mult">
 
-In principle, it doesn't matter whether you treat multiplication as left- or
-right-associative -- you get the same result either way. Alas, in the real world
-with limited precision, roundoff and overflow mean that associativity can affect
-the result of a sequence of multiplications. Consider:
+En principe, peu importe que vous traitiez la multiplication comme associative à gauche ou à droite -- vous obtenez le même résultat de toute façon. Hélas, dans le monde réel avec une précision limitée, l'arrondi et le dépassement signifient que l'associativité peut affecter le résultat d'une séquence de multiplications. Considérez :
 
 ```lox
 print 0.1 * (0.2 * 0.3);
 print (0.1 * 0.2) * 0.3;
 ```
 
-In languages like Lox that use [IEEE 754][754] double-precision floating-point
-numbers, the first evaluates to `0.006`, while the second yields
-`0.006000000000000001`. Sometimes that tiny difference matters.
-[This][float] is a good place to learn more.
+Dans les langages comme Lox qui utilisent des nombres à virgule flottante double précision [IEEE 754][754], le premier s'évalue à `0.006`, tandis que le second donne `0.006000000000000001`. Parfois cette minuscule différence compte. [Ceci][float] est un bon endroit pour en apprendre plus.
 
 [754]: https://en.wikipedia.org/wiki/Double-precision_floating-point_format
 [float]: https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html
 
 </aside>
 
-All of this is correct, but the fact that the first symbol in the body of the
-rule is the same as the head of the rule means this production is
-**left-recursive**. Some parsing techniques, including the one we're going to
-use, have trouble with left recursion. (Recursion elsewhere, like we have in
-`unary` and the indirect recursion for grouping in `primary` are not a problem.)
+Tout ceci est correct, mais le fait que le premier symbole dans le corps de la règle est le même que la tête de la règle signifie que cette production est **récursive à gauche**. Certaines techniques de parsing, y compris celle que nous allons utiliser, ont du mal avec la récursion gauche. (La récursion ailleurs, comme nous l'avons dans `unary` et la récursion indirecte pour le groupement dans `primary` n'est pas un problème.)
 
-There are many grammars you can define that match the same language. The choice
-for how to model a particular language is partially a matter of taste and
-partially a pragmatic one. This rule is correct, but not optimal for how we
-intend to parse it. Instead of a left recursive rule, we'll use a different one.
+Il y a beaucoup de grammaires que vous pouvez définir qui matchent le même langage. Le choix de comment modéliser un langage particulier est partiellement une question de goût et partiellement une question pragmatique. Cette règle est correcte, mais pas optimale pour la façon dont nous avons l'intention de la parser. Au lieu d'une règle récursive à gauche, nous en utiliserons une différente.
 
 ```ebnf
 factor         → unary ( ( "/" | "*" ) unary )* ;
 ```
 
-We define a factor expression as a flat *sequence* of multiplications
-and divisions. This matches the same syntax as the previous rule, but better
-mirrors the code we'll write to parse Lox. We use the same structure for all of
-the other binary operator precedence levels, giving us this complete expression
-grammar:
+Nous définissons une expression facteur comme une _séquence_ plate de multiplications et de divisions. Cela matche la même syntaxe que la règle précédente, mais reflète mieux le code que nous écrirons pour parser Lox. Nous utilisons la même structure pour tous les autres niveaux de précédence d'opérateur binaire, nous donnant cette grammaire d'expression complète :
 
 ```ebnf
 expression     → equality ;
@@ -364,17 +262,11 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
                | "(" expression ")" ;
 ```
 
-This grammar is more complex than the one we had before, but in return we have
-eliminated the previous one's ambiguity. It's just what we need to make a
-parser.
+Cette grammaire est plus complexe que celle que nous avions avant, mais en retour nous avons éliminé l'ambiguïté de la précédente. C'est juste ce dont nous avons besoin pour faire un parseur.
 
-## Recursive Descent Parsing
+## Analyse Récursive Descendante
 
-There is a whole pack of parsing techniques whose names are mostly combinations
-of "L" and "R" -- [LL(k)][], [LR(1)][lr], [LALR][] -- along with more exotic
-beasts like [parser combinators][], [Earley parsers][], [the shunting yard
-algorithm][yard], and [packrat parsing][]. For our first interpreter, one
-technique is more than sufficient: **recursive descent**.
+Il y a tout un paquet de techniques de parsing dont les noms sont principalement des combinaisons de "L" et de "R" -- [LL(k)][], [LR(1)][lr], [LALR][] -- avec des bêtes plus exotiques comme les [combinateurs de parseur][parser combinators], les [parseurs Earley][earley parsers], l'[algorithme shunting-yard][yard], et le [parsing packrat][packrat parsing]. Pour notre premier interpréteur, une technique est plus que suffisante : **l'analyse récursive descendante** (recursive descent).
 
 [ll(k)]: https://en.wikipedia.org/wiki/LL_parser
 [lr]: https://en.wikipedia.org/wiki/LR_parser
@@ -384,558 +276,342 @@ technique is more than sufficient: **recursive descent**.
 [yard]: https://en.wikipedia.org/wiki/Shunting-yard_algorithm
 [packrat parsing]: https://en.wikipedia.org/wiki/Parsing_expression_grammar
 
-Recursive descent is the simplest way to build a parser, and doesn't require
-using complex parser generator tools like Yacc, Bison or ANTLR. All you need is
-straightforward handwritten code. Don't be fooled by its simplicity, though.
-Recursive descent parsers are fast, robust, and can support sophisticated
-error handling. In fact, GCC, V8 (the JavaScript VM in Chrome), Roslyn (the C#
-compiler written in C#) and many other heavyweight production language
-implementations use recursive descent. It rocks.
+L'analyse récursive descendante est la façon la plus simple de construire un parseur, et ne nécessite pas l'utilisation d'outils générateurs de parseur complexes comme Yacc, Bison ou ANTLR. Tout ce dont vous avez besoin est du code écrit à la main simple. Ne soyez pas dupé par sa simplicité, cependant. Les parseurs récursifs descendants sont rapides, robustes, et peuvent supporter une gestion d'erreurs sophistiquée. En fait, GCC, V8 (la VM JavaScript dans Chrome), Roslyn (le compilateur C# écrit en C#) et beaucoup d'autres implémentations de langage de production poids lourds utilisent la descente récursive. Ça déchire.
 
-Recursive descent is considered a **top-down parser** because it starts from the
-top or outermost grammar rule (here `expression`) and works its way <span
-name="descent">down</span> into the nested subexpressions before finally
-reaching the leaves of the syntax tree. This is in contrast with bottom-up
-parsers like LR that start with primary expressions and compose them into larger
-and larger chunks of syntax.
+L'analyse récursive descendante est considérée comme un **parseur top-down** (descendant) parce qu'elle commence par la règle de grammaire la plus haute ou la plus externe (ici `expression`) et fait son chemin en <span name="descent">descendant</span> dans les sous-expressions imbriquées avant d'atteindre finalement les feuilles de l'arbre syntaxique. C'est en contraste avec les parseurs bottom-up (ascendants) comme LR qui commencent avec les expressions primaires et les composent en morceaux de syntaxe de plus en plus grands.
 
 <aside name="descent">
 
-It's called "recursive *descent*" because it walks *down* the grammar.
-Confusingly, we also use direction metaphorically when talking about "high" and
-"low" precedence, but the orientation is reversed. In a top-down parser, you
-reach the lowest-precedence expressions first because they may in turn contain
-subexpressions of higher precedence.
+C'est appelé "_descente_ récursive" parce que ça marche _vers le bas_ de la grammaire. De manière confuse, nous utilisons aussi la direction métaphoriquement quand nous parlons de "haute" et "basse" précédence, mais l'orientation est inversée. Dans un parseur top-down, vous atteignez les expressions de plus basse précédence en premier parce qu'elles peuvent à leur tour contenir des sous-expressions de plus haute précédence.
 
-<img src="image/parsing-expressions/direction.png" alt="Top-down grammar rules in order of increasing precedence." />
+<img src="image/parsing-expressions/direction.png" alt="Règles de grammaire top-down par ordre de précédence croissante." />
 
-CS people really need to get together and straighten out their metaphors. Don't
-even get me started on which direction a stack grows or why trees have their
-roots on top.
+Les gens de l'informatique ont vraiment besoin de se réunir et de mettre leurs métaphores au clair. Ne me lancez même pas sur dans quelle direction une pile grandit ou pourquoi les arbres ont leurs racines en haut.
 
 </aside>
 
-A recursive descent parser is a literal translation of the grammar's rules
-straight into imperative code. Each rule becomes a function. The body of the
-rule translates to code roughly like:
+Un parseur récursif descendant est une traduction littérale des règles de la grammaire directement en code impératif. Chaque règle devient une fonction. Le corps de la règle se traduit en code à peu près comme :
 
 <table>
 <thead>
 <tr>
-  <td>Grammar notation</td>
-  <td>Code representation</td>
+  <td>Notation de grammaire</td>
+  <td>Représentation en code</td>
 </tr>
 </thead>
 <tbody>
-  <tr><td>Terminal</td><td>Code to match and consume a token</td></tr>
-  <tr><td>Nonterminal</td><td>Call to that rule&rsquo;s function</td></tr>
-  <tr><td><code>|</code></td><td><code>if</code> or <code>switch</code> statement</td></tr>
-  <tr><td><code>*</code> or <code>+</code></td><td><code>while</code> or <code>for</code> loop</td></tr>
-  <tr><td><code>?</code></td><td><code>if</code> statement</td></tr>
+<tr><td>Terminal</td><td>Code pour matcher et consommer un token</td></tr>
+<tr><td>Non-terminal</td><td>Appel à la fonction de cette règle</td></tr>
+<tr><td><code>|</code></td><td>Instruction <code>if</code> ou <code>switch</code></td></tr>
+<tr><td><code>*</code> ou <code>+</code></td><td>Boucle <code>while</code> ou <code>for</code></td></tr>
+<tr><td><code>?</code></td><td>Instruction <code>if</code></td></tr>
 </tbody>
 </table>
 
-The descent is described as "recursive" because when a grammar rule refers to
-itself -- directly or indirectly -- that translates to a recursive function
-call.
+La descente est décrite comme "récursive" parce que quand une règle de grammaire se réfère à elle-même -- directement ou indirectement -- cela se traduit par un appel de fonction récursif.
 
-### The parser class
+### La classe parseur
 
-Each grammar rule becomes a method inside this new class:
+Chaque règle de grammaire devient une méthode à l'intérieur de cette nouvelle classe :
 
 ^code parser
 
-Like the scanner, the parser consumes a flat input sequence, only now we're
-reading tokens instead of characters. We store the list of tokens and use
-`current` to point to the next token eagerly waiting to be parsed.
+Comme le scanner, le parseur consomme une séquence d'entrée plate, seulement maintenant nous lisons des tokens au lieu de caractères. Nous stockons la liste des tokens et utilisons `current` pour pointer vers le prochain token attendant avidement d'être parsé.
 
-We're going to run straight through the expression grammar now and translate
-each rule to Java code. The first rule, `expression`, simply expands to the
-`equality` rule, so that's straightforward.
+Nous allons parcourir tout droit la grammaire d'expression maintenant et traduire chaque règle en code Java. La première règle, `expression`, s'étend simplement en la règle `equality`, donc c'est direct.
 
 ^code expression
 
-Each method for parsing a grammar rule produces a syntax tree for that rule and
-returns it to the caller. When the body of the rule contains a nonterminal -- a
-reference to another rule -- we <span name="left">call</span> that other rule's
-method.
+Chaque méthode pour parser une règle de grammaire produit un arbre syntaxique pour cette règle et le renvoie à l'appelant. Quand le corps de la règle contient un non-terminal -- une référence à une autre règle -- nous <span name="left">appelons</span> la méthode de cette autre règle.
 
 <aside name="left">
 
-This is why left recursion is problematic for recursive descent. The function
-for a left-recursive rule immediately calls itself, which calls itself again,
-and so on, until the parser hits a stack overflow and dies.
+C'est pourquoi la récursion gauche est problématique pour la descente récursive. La fonction pour une règle récursive à gauche s'appelle immédiatement elle-même, qui s'appelle elle-même à nouveau, et ainsi de suite, jusqu'à ce que le parseur frappe un débordement de pile (stack overflow) et meure.
 
 </aside>
 
-The rule for equality is a little more complex.
+La règle pour l'égalité est un peu plus complexe.
 
 ```ebnf
 equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 ```
 
-In Java, that becomes:
+En Java, cela devient :
 
 ^code equality
 
-Let's step through it. The first `comparison` nonterminal in the body translates
-to the first call to `comparison()` in the method. We take that result and store
-it in a local variable.
+Parcourons-le. Le premier non-terminal `comparison` dans le corps se traduit par le premier appel à `comparison()` dans la méthode. Nous prenons ce résultat et le stockons dans une variable locale.
 
-Then, the `( ... )*` loop in the rule maps to a `while` loop. We need to know
-when to exit that loop. We can see that inside the rule, we must first find
-either a `!=` or `==` token. So, if we *don't* see one of those, we must be done
-with the sequence of equality operators. We express that check using a handy
-`match()` method.
+Ensuite, la boucle `( ... )*` dans la règle mappe vers une boucle `while`. Nous avons besoin de savoir quand sortir de cette boucle. Nous pouvons voir qu'à l'intérieur de la règle, nous devons d'abord trouver un token soit `!=` soit `==`. Donc, si nous _ne voyons pas_ l'un de ceux-là, nous devons avoir fini avec la séquence d'opérateurs d'égalité. Nous exprimons cette vérification en utilisant une méthode pratique `match()`.
 
 ^code match
 
-This checks to see if the current token has any of the given types. If so, it
-consumes the token and returns `true`. Otherwise, it returns `false` and leaves
-the current token alone. The `match()` method is defined in terms of two more
-fundamental operations.
+Ceci vérifie pour voir si le token courant a l'un des types donnés. Si oui, il consomme le token et renvoie `true`. Sinon, il renvoie `false` et laisse le token courant tranquille. La méthode `match()` est définie en termes de deux opérations plus fondamentales.
 
-The `check()` method returns `true` if the current token is of the given type.
-Unlike `match()`, it never consumes the token, it only looks at it.
+La méthode `check()` renvoie `true` si le token courant est du type donné. Contrairement à `match()`, elle ne consomme jamais le token, elle le regarde seulement.
 
 ^code check
 
-The `advance()` method consumes the current token and returns it, similar to how
-our scanner's corresponding method crawled through characters.
+La méthode `advance()` consomme le token courant et le renvoie, similaire à la façon dont la méthode correspondante de notre scanner parcourait les caractères.
 
 ^code advance
 
-These methods bottom out on the last handful of primitive operations.
+Ces méthodes reposent sur la dernière poignée d'opérations primitives.
 
 ^code utils
 
-`isAtEnd()` checks if we've run out of tokens to parse. `peek()` returns the
-current token we have yet to consume, and `previous()` returns the most recently
-consumed token. The latter makes it easier to use `match()` and then access the
-just-matched token.
+`isAtEnd()` vérifie si nous sommes à court de tokens à parser. `peek()` renvoie le token courant que nous avons encore à consommer, et `previous()` renvoie le token le plus récemment consommé. Ce dernier rend plus facile l'utilisation de `match()` et ensuite l'accès au token juste matché.
 
-That's most of the parsing infrastructure we need. Where were we? Right, so if
-we are inside the `while` loop in `equality()`, then we know we have found a
-`!=` or `==` operator and must be parsing an equality expression.
+C'est la majeure partie de l'infrastructure de parsing dont nous avons besoin. Où en étions-nous ? Ah oui, donc si nous sommes à l'intérieur de la boucle `while` dans `equality()`, alors nous savons que nous avons trouvé un opérateur `!=` ou `==` et devons être en train de parser une expression d'égalité.
 
-We grab the matched operator token so we can track which kind of equality
-expression we have. Then we call `comparison()` again to parse the right-hand
-operand. We combine the operator and its two operands into a new `Expr.Binary`
-syntax tree node, and then loop around. For each iteration, we store the
-resulting expression back in the same `expr` local variable. As we zip through a
-sequence of equality expressions, that creates a left-associative nested tree of
-binary operator nodes.
+Nous saisissons le token opérateur matché pour pouvoir suivre quel genre d'expression d'égalité nous avons. Puis nous appelons `comparison()` à nouveau pour parser l'opérande de droite. Nous combinons l'opérateur et ses deux opérandes dans un nouveau nœud d'arbre syntaxique `Expr.Binary`, et puis nous bouclons. Pour chaque itération, nous stockons l'expression résultante de nouveau dans la même variable locale `expr`. Alors que nous zippons à travers une séquence d'expressions d'égalité, cela crée un arbre imbriqué associatif à gauche de nœuds opérateurs binaires.
 
 <span name="sequence"></span>
 
-<img src="image/parsing-expressions/sequence.png" alt="The syntax tree created by parsing 'a == b == c == d == e'" />
+<img src="image/parsing-expressions/sequence.png" alt="L'arbre syntaxique créé en parsant 'a == b == c == d == e'" />
 
 <aside name="sequence">
 
-Parsing `a == b == c == d == e`. For each iteration, we create a new binary
-expression using the previous one as the left operand.
+Parsage de `a == b == c == d == e`. Pour chaque itération, nous créons une nouvelle expression binaire utilisant la précédente comme opérande gauche.
 
 </aside>
 
-The parser falls out of the loop once it hits a token that's not an equality
-operator. Finally, it returns the expression. Note that if the parser never
-encounters an equality operator, then it never enters the loop. In that case,
-the `equality()` method effectively calls and returns `comparison()`. In that
-way, this method matches an equality operator *or anything of higher
-precedence*.
+Le parseur tombe hors de la boucle une fois qu'il frappe un token qui n'est pas un opérateur d'égalité. Finalement, il renvoie l'expression. Notez que si le parseur ne rencontre jamais un opérateur d'égalité, alors il n'entre jamais dans la boucle. Dans ce cas, la méthode `equality()` appelle et renvoie effectivement `comparison()`. De cette façon, cette méthode matche un opérateur d'égalité _ou quoi que ce soit de plus haute précédence_.
 
-Moving on to the next rule...
+Passons à la règle suivante...
 
 ```ebnf
 comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 ```
 
-Translated to Java:
+Traduit en Java :
 
 ^code comparison
 
-The grammar rule is virtually <span name="handle">identical</span> to `equality`
-and so is the corresponding code. The only differences are the token types for
-the operators we match, and the method we call for the operands -- now
-`term()` instead of `comparison()`. The remaining two binary operator rules
-follow the same pattern.
+La règle de grammaire est virtuellement <span name="handle">identique</span> à `equality` et le code correspondant l'est aussi. Les seules différences sont les types de token pour les opérateurs que nous matchons, et la méthode que nous appelons pour les opérandes -- maintenant `term()` au lieu de `comparison()`. Les deux règles d'opérateur binaire restantes suivent le même patron.
 
-In order of precedence, first addition and subtraction:
+Par ordre de précédence, d'abord l'addition et la soustraction :
 
 <aside name="handle">
 
-If you wanted to do some clever Java 8, you could create a helper method for
-parsing a left-associative series of binary operators given a list of token
-types, and an operand method handle to simplify this redundant code.
+Si vous vouliez faire du Java 8 intelligent, vous pourriez créer une méthode d'aide pour parser une série associative à gauche d'opérateurs binaires étant donné une liste de types de token, et un handle de méthode d'opérande pour simplifier ce code redondant.
 
 </aside>
 
 ^code term
 
-And finally, multiplication and division:
+Et enfin, multiplication et division :
 
 ^code factor
 
-That's all of the binary operators, parsed with the correct precedence and
-associativity. We're crawling up the precedence hierarchy and now we've reached
-the unary operators.
+C'est tous les opérateurs binaires, parsés avec la précédence et l'associativité correctes. Nous grimpons la hiérarchie de précédence et maintenant nous avons atteint les opérateurs unaires.
 
 ```ebnf
 unary          → ( "!" | "-" ) unary
                | primary ;
 ```
 
-The code for this is a little different.
+Le code pour ceci est un peu différent.
 
 ^code unary
 
-Again, we look at the <span name="current">current</span> token to see how to
-parse. If it's a `!` or `-`, we must have a unary expression. In that case, we
-grab the token and then recursively call `unary()` again to parse the operand.
-Wrap that all up in a unary expression syntax tree and we're done.
+Encore une fois, nous regardons le token <span name="current">courant</span> pour voir comment parser. Si c'est un `!` ou `-`, nous devons avoir une expression unaire. Dans ce cas, nous saisissons le token et ensuite appelons récursivement `unary()` à nouveau pour parser l'opérande. Enveloppez tout cela dans un arbre syntaxique d'expression unaire et nous avons fini.
 
 <aside name="current">
 
-The fact that the parser looks ahead at upcoming tokens to decide how to parse
-puts recursive descent into the category of **predictive parsers**.
+Le fait que le parseur regarde en avant les tokens à venir pour décider comment parser met la descente récursive dans la catégorie des **parseurs prédictifs**.
 
 </aside>
 
-Otherwise, we must have reached the highest level of precedence, primary
-expressions.
+Sinon, nous devons avoir atteint le plus haut niveau de précédence, les expressions primaires.
 
 ```ebnf
 primary        → NUMBER | STRING | "true" | "false" | "nil"
                | "(" expression ")" ;
 ```
 
-Most of the cases for the rule are single terminals, so parsing is
-straightforward.
+La plupart des cas pour la règle sont des terminaux uniques, donc le parsing est direct.
 
 ^code primary
 
-The interesting branch is the one for handling parentheses. After we match an
-opening `(` and parse the expression inside it, we *must* find a `)` token. If
-we don't, that's an error.
+La branche intéressante est celle pour gérer les parenthèses. Après avoir matché un `(` ouvrant et parsé l'expression à l'intérieur, nous _devons_ trouver un token `)`. Si nous ne le trouvons pas, c'est une erreur.
 
-## Syntax Errors
+## Erreurs de Syntaxe
 
-A parser really has two jobs:
+Un parseur a vraiment deux boulots :
 
-1.  Given a valid sequence of tokens, produce a corresponding syntax tree.
+1.  Étant donné une séquence valide de tokens, produire un arbre syntaxique correspondant.
 
-2.  Given an *invalid* sequence of tokens, detect any errors and tell the
-    user about their mistakes.
+2.  Étant donné une séquence _invalide_ de tokens, détecter toute erreur et dire à l'utilisateur ses erreurs.
 
-Don't underestimate how important the second job is! In modern IDEs and editors,
-the parser is constantly reparsing code -- often while the user is still editing
-it -- in order to syntax highlight and support things like auto-complete. That
-means it will encounter code in incomplete, half-wrong states *all the time.*
+Ne sous-estimez pas à quel point le second boulot est important ! Dans les IDE et éditeurs modernes, le parseur re-parse constamment le code -- souvent pendant que l'utilisateur est encore en train de l'éditer -- afin de faire la coloration syntaxique et de supporter des choses comme l'auto-complétion. Cela signifie qu'il rencontrera du code dans des états incomplets et à moitié faux _tout le temps_.
 
-When the user doesn't realize the syntax is wrong, it is up to the parser to
-help guide them back onto the right path. The way it reports errors is a large
-part of your language's user interface. Good syntax error handling is hard. By
-definition, the code isn't in a well-defined state, so there's no infallible way
-to know what the user *meant* to write. The parser can't read your <span
-name="telepathy">mind</span>.
+Quand l'utilisateur ne réalise pas que la syntaxe est fausse, c'est au parseur de l'aider à le guider de retour sur le droit chemin. La façon dont il rapporte les erreurs est une grande partie de l'interface utilisateur de votre langage. Une bonne gestion d'erreur de syntaxe est difficile. Par définition, le code n'est pas dans un état bien défini, donc il n'y a pas de moyen infaillible de savoir ce que l'utilisateur _voulait_ écrire. Le parseur ne peut pas lire dans vos <span name="telepathy">pensées</span>.
 
 <aside name="telepathy">
 
-Not yet at least. With the way things are going in machine learning these days,
-who knows what the future will bring?
+Pas encore du moins. Avec la tournure que prennent les choses en apprentissage automatique ces jours-ci, qui sait ce que l'avenir apportera ?
 
 </aside>
 
-There are a couple of hard requirements for when the parser runs into a syntax
-error. A parser must:
+Il y a quelques exigences dures pour quand le parseur tombe sur une erreur de syntaxe. Un parseur doit :
 
-*   **Detect and report the error.** If it doesn't detect the <span
-    name="error">error</span> and passes the resulting malformed syntax tree on
-    to the interpreter, all manner of horrors may be summoned.
+- **Détecter et rapporter l'erreur.** S'il ne détecte pas l'<span name="error">erreur</span> et passe l'arbre syntaxique malformé résultant à l'interpréteur, toute sorte d'horreurs peuvent être invoquées.
 
-    <aside name="error">
+      <aside name="error">
 
-    Philosophically speaking, if an error isn't detected and the interpreter
-    runs the code, is it *really* an error?
+    Philosophiquement parlant, si une erreur n'est pas détectée et que l'interpréteur exécute le code, est-ce _vraiment_ une erreur ?
 
-    </aside>
+      </aside>
 
-*   **Avoid crashing or hanging.** Syntax errors are a fact of life, and
-    language tools have to be robust in the face of them. Segfaulting or getting
-    stuck in an infinite loop isn't allowed. While the source may not be valid
-    *code*, it's still a valid *input to the parser* because users use the
-    parser to learn what syntax is allowed.
+- **Éviter de planter ou de geler.** Les erreurs de syntaxe sont une réalité de la vie, et les outils de langage doivent être robustes face à elles. Faire un Segfault ou rester coincé dans une boucle infinie n'est pas autorisé. Bien que la source ne soit peut-être pas du _code_ valide, c'est toujours une _entrée valide pour le parseur_ parce que les utilisateurs utilisent le parseur pour apprendre quelle syntaxe est autorisée.
 
-Those are the table stakes if you want to get in the parser game at all, but you
-really want to raise the ante beyond that. A decent parser should:
+Ce sont les mises de départ si vous voulez entrer dans le jeu du parseur tout court, mais vous voulez vraiment monter la mise au-delà de ça. Un parseur décent devrait :
 
-*   **Be fast.** Computers are thousands of times faster than they were when
-    parser technology was first invented. The days of needing to optimize your
-    parser so that it could get through an entire source file during a coffee
-    break are over. But programmer expectations have risen as quickly, if not
-    faster. They expect their editors to reparse files in milliseconds after
-    every keystroke.
+- **Être rapide.** Les ordinateurs sont des milliers de fois plus rapides qu'ils ne l'étaient quand la technologie de parseur a été inventée. Les jours où il fallait optimiser votre parseur pour qu'il puisse traverser un fichier source entier pendant une pause café sont finis. Mais les attentes des programmeurs ont augmenté aussi vite, sinon plus vite. Ils attendent de leurs éditeurs qu'ils re-parsent les fichiers en millisecondes après chaque frappe.
 
-*   **Report as many distinct errors as there are.** Aborting after the first
-    error is easy to implement, but it's annoying for users if every time they
-    fix what they think is the one error in a file, a new one appears. They
-    want to see them all.
+- **Rapporter autant d'erreurs distinctes qu'il y en a.** Avorter après la première erreur est facile à implémenter, mais c'est ennuyeux pour les utilisateurs si chaque fois qu'ils corrigent ce qu'ils pensent être la seule erreur dans un fichier, une nouvelle apparaît. Ils veulent toutes les voir.
 
-*   **Minimize *cascaded* errors.** Once a single error is found, the parser no
-    longer really knows what's going on. It tries to get itself back on track
-    and keep going, but if it gets confused, it may report a slew of ghost
-    errors that don't indicate other real problems in the code. When the first
-    error is fixed, those phantoms disappear, because they reflect only the
-    parser's own confusion. Cascaded errors are annoying because they can scare
-    the user into thinking their code is in a worse state than it is.
+- **Minimiser les erreurs _en cascade_.** Une fois qu'une seule erreur est trouvée, le parseur ne sait plus vraiment ce qui se passe. Il essaie de se remettre sur les rails et de continuer, mais s'il est confus, il peut rapporter une flopée d'erreurs fantômes qui n'indiquent pas d'autres vrais problèmes dans le code. Quand la première erreur est corrigée, ces fantômes disparaissent, parce qu'ils reflètent seulement la propre confusion du parseur. Les erreurs en cascade sont ennuyeuses parce qu'elles peuvent effrayer l'utilisateur en lui faisant penser que son code est dans un pire état qu'il ne l'est.
 
-The last two points are in tension. We want to report as many separate errors as
-we can, but we don't want to report ones that are merely side effects of an
-earlier one.
+Les deux derniers points sont en tension. Nous voulons rapporter autant d'erreurs séparées que nous pouvons, mais nous ne voulons pas rapporter celles qui sont simplement des effets secondaires d'une précédente.
 
-The way a parser responds to an error and keeps going to look for later errors
-is called **error recovery**. This was a hot research topic in the '60s. Back
-then, you'd hand a stack of punch cards to the secretary and come back the next
-day to see if the compiler succeeded. With an iteration loop that slow, you
-*really* wanted to find every single error in your code in one pass.
+La façon dont un parseur répond à une erreur et continue pour chercher des erreurs ultérieures s'appelle la **récupération d'erreur**. C'était un sujet de recherche chaud dans les années 60. À l'époque, vous donniez une pile de cartes perforées à la secrétaire et reveniez le jour suivant pour voir si le compilateur avait réussi. Avec une boucle d'itération aussi lente, vous vouliez _vraiment_ trouver chaque erreur dans votre code en une seule passe.
 
-Today, when parsers complete before you've even finished typing, it's less of an
-issue. Simple, fast error recovery is fine.
+Aujourd'hui, quand les parseurs terminent avant même que vous ayez fini de taper, c'est moins un problème. Une récupération d'erreur simple et rapide est très bien.
 
-### Panic mode error recovery
+### Récupération d'erreur en mode panique
 
 <aside name="panic">
 
-You know you want to push it.
+Vous savez que vous voulez appuyer dessus.
 
-<img src="image/parsing-expressions/panic.png" alt="A big shiny 'PANIC' button." />
+<img src="image/parsing-expressions/panic.png" alt="Un gros bouton brillant 'PANIC'." />
 
 </aside>
 
-Of all the recovery techniques devised in yesteryear, the one that best stood
-the test of time is called -- somewhat alarmingly -- <span name="panic">**panic
-mode**</span>. As soon as the parser detects an error, it enters panic mode. It
-knows at least one token doesn't make sense given its current state in the
-middle of some stack of grammar productions.
+De toutes les techniques de récupération imaginées autrefois, celle qui a le mieux résisté à l'épreuve du temps est appelée -- de manière quelque peu alarmante -- <span name="panic">**mode panique**</span>. Dès que le parseur détecte une erreur, il entre en mode panique. Il sait qu'au moins un token n'a pas de sens étant donné son état actuel au milieu d'une pile de productions de grammaire.
 
-Before it can get back to parsing, it needs to get its state and the sequence of
-forthcoming tokens aligned such that the next token does match the rule being
-parsed. This process is called **synchronization**.
+Avant de pouvoir retourner au parsing, il a besoin d'aligner son état et la séquence de tokens à venir de telle sorte que le prochain token matche la règle en cours de parsing. Ce processus est appelé **synchronisation**.
 
-To do that, we select some rule in the grammar that will mark the
-synchronization point. The parser fixes its parsing state by jumping out of any
-nested productions until it gets back to that rule. Then it synchronizes the
-token stream by discarding tokens until it reaches one that can appear at that
-point in the rule.
+Pour faire cela, nous sélectionnons une règle dans la grammaire qui marquera le point de synchronisation. Le parseur corrige son état de parsing en sautant hors de toutes les productions imbriquées jusqu'à ce qu'il revienne à cette règle. Ensuite, il synchronise le flux de tokens en rejetant des tokens jusqu'à ce qu'il en atteigne un qui peut apparaître à ce point dans la règle.
 
-Any additional real syntax errors hiding in those discarded tokens aren't
-reported, but it also means that any mistaken cascaded errors that are side
-effects of the initial error aren't *falsely* reported either, which is a decent
-trade-off.
+Toutes les erreurs de syntaxe réelles supplémentaires se cachant dans ces tokens rejetés ne sont pas rapportées, mais cela signifie aussi que toutes les erreurs en cascade erronées qui sont des effets secondaires de l'erreur initiale ne sont pas non plus _faussement_ rapportées, ce qui est un compromis décent.
 
-The traditional place in the grammar to synchronize is between statements. We
-don't have those yet, so we won't actually synchronize in this chapter, but
-we'll get the machinery in place for later.
+L'endroit traditionnel dans la grammaire pour synchroniser est entre les instructions. Nous n'en avons pas encore, donc nous ne synchroniserons pas réellement dans ce chapitre, mais nous mettrons la machinerie en place pour plus tard.
 
-### Entering panic mode
+### Entrer en mode panique
 
-Back before we went on this side trip around error recovery, we were writing the
-code to parse a parenthesized expression. After parsing the expression, the
-parser looks for the closing `)` by calling `consume()`. Here, finally, is that
-method:
+Avant de partir pour cette petite excursion autour de la récupération d'erreur, nous écrivions le code pour parser une expression parenthésée. Après avoir parsé l'expression, le parseur cherche le `)` fermant en appelant `consume()`. Voici, enfin, cette méthode :
 
 ^code consume
 
-It's similar to `match()` in that it checks to see if the next token is of the
-expected type. If so, it consumes the token and everything is groovy. If some
-other token is there, then we've hit an error. We report it by calling this:
+C'est similaire à `match()` en ce qu'elle vérifie pour voir si le prochain token est du type attendu. Si oui, elle consomme le token et tout baigne. Si un autre token est là, alors nous avons frappé une erreur. Nous la rapportons en appelant ceci :
 
 ^code error
 
-First, that shows the error to the user by calling:
+D'abord, cela montre l'erreur à l'utilisateur en appelant :
 
 ^code token-error
 
-This reports an error at a given token. It shows the token's location and the
-token itself. This will come in handy later since we use tokens throughout the
-interpreter to track locations in code.
+Ceci rapporte une erreur à un token donné. Cela montre l'emplacement du token et le token lui-même. Cela sera utile plus tard puisque nous utilisons des tokens tout au long de l'interpréteur pour suivre les emplacements dans le code.
 
-After we report the error, the user knows about their mistake, but what does the
-*parser* do next? Back in `error()`, we create and return a ParseError, an
-instance of this new class:
+Après avoir rapporté l'erreur, l'utilisateur est au courant de son erreur, mais que fait le _parseur_ ensuite ? De retour dans `error()`, nous créons et renvoyons une ParseError, une instance de cette nouvelle classe :
 
 ^code parse-error (1 before, 1 after)
 
-This is a simple sentinel class we use to unwind the parser. The `error()`
-method *returns* the error instead of *throwing* it because we want to let the
-calling method inside the parser decide whether to unwind or not. Some parse
-errors occur in places where the parser isn't likely to get into a weird state
-and we don't need to <span name="production">synchronize</span>. In those
-places, we simply report the error and keep on truckin'.
+C'est une simple classe sentinelle que nous utilisons pour dérouler le parseur. La méthode `error()` _renvoie_ l'erreur au lieu de la _lancer_ parce que nous voulons laisser la méthode appelante à l'intérieur du parseur décider si elle doit dérouler ou non. Certaines erreurs de parsing se produisent dans des endroits où le parseur n'est pas susceptible d'entrer dans un état bizarre et nous n'avons pas besoin de <span name="production">synchroniser</span>. Dans ces endroits, nous rapportons simplement l'erreur et continuons notre route.
 
-For example, Lox limits the number of arguments you can pass to a function. If
-you pass too many, the parser needs to report that error, but it can and should
-simply keep on parsing the extra arguments instead of freaking out and going
-into panic mode.
+Par exemple, Lox limite le nombre d'arguments que vous pouvez passer à une fonction. Si vous en passez trop, le parseur doit rapporter cette erreur, mais il peut et devrait simplement continuer à parser les arguments supplémentaires au lieu de paniquer et d'entrer en mode panique.
 
 <aside name="production">
 
-Another way to handle common syntax errors is with **error productions**. You
-augment the grammar with a rule that *successfully* matches the *erroneous*
-syntax. The parser safely parses it but then reports it as an error instead of
-producing a syntax tree.
+Une autre façon de gérer les erreurs de syntaxe courantes est avec des **productions d'erreur**. Vous augmentez la grammaire avec une règle qui matche _avec succès_ la syntaxe _erronée_. Le parseur la parse en toute sécurité mais la rapporte ensuite comme une erreur au lieu de produire un arbre syntaxique.
 
-For example, some languages have a unary `+` operator, like `+123`, but Lox does
-not. Instead of getting confused when the parser stumbles onto a `+` at the
-beginning of an expression, we could extend the unary rule to allow it.
+Par exemple, certains langages ont un opérateur `+` unaire, comme `+123`, mais Lox n'en a pas. Au lieu d'être confus quand le parseur trébuche sur un `+` au début d'une expression, nous pourrions étendre la règle unaire pour l'autoriser.
 
 ```ebnf
 unary → ( "!" | "-" | "+" ) unary
       | primary ;
 ```
 
-This lets the parser consume `+` without going into panic mode or leaving the
-parser in a weird state.
+Cela laisse le parseur consommer `+` sans entrer en mode panique ou laisser le parseur dans un état bizarre.
 
-Error productions work well because you, the parser author, know *how* the code
-is wrong and what the user was likely trying to do. That means you can give a
-more helpful message to get the user back on track, like, "Unary '+' expressions
-are not supported." Mature parsers tend to accumulate error productions like
-barnacles since they help users fix common mistakes.
+Les productions d'erreur fonctionnent bien parce que vous, l'auteur du parseur, savez _comment_ le code est faux et ce que l'utilisateur essayait probablement de faire. Cela signifie que vous pouvez donner un message plus utile pour remettre l'utilisateur sur la bonne voie, comme, "Les expressions '+' unaires ne sont pas supportées." Les parseurs matures ont tendance à accumuler des productions d'erreur comme des bernacles puisqu'elles aident les utilisateurs à corriger des erreurs courantes.
 
 </aside>
 
-In our case, though, the syntax error is nasty enough that we want to panic and
-synchronize. Discarding tokens is pretty easy, but how do we synchronize the
-parser's own state?
+Dans notre cas, cependant, l'erreur de syntaxe est assez méchante pour que nous voulions paniquer et synchroniser. Rejeter des tokens est assez facile, mais comment synchronisons-nous le propre état du parseur ?
 
-### Synchronizing a recursive descent parser
+### Synchroniser un parseur récursif descendant
 
-With recursive descent, the parser's state -- which rules it is in the middle of
-recognizing -- is not stored explicitly in fields. Instead, we use Java's
-own call stack to track what the parser is doing. Each rule in the middle of
-being parsed is a call frame on the stack. In order to reset that state, we need
-to clear out those call frames.
+Avec la descente récursive, l'état du parseur -- quelles règles il est au milieu de reconnaître -- n'est pas stocké explicitement dans des champs. Au lieu de cela, nous utilisons la propre pile d'appels de Java pour suivre ce que le parseur fait. Chaque règle au milieu d'être parsée est un cadre d'appel sur la pile. Pour réinitialiser cet état, nous devons vider ces cadres d'appel.
 
-The natural way to do that in Java is exceptions. When we want to synchronize,
-we *throw* that ParseError object. Higher up in the method for the grammar rule
-we are synchronizing to, we'll catch it. Since we synchronize on statement
-boundaries, we'll catch the exception there. After the exception is caught, the
-parser is in the right state. All that's left is to synchronize the tokens.
+La façon naturelle de faire cela en Java est les exceptions. Quand nous voulons synchroniser, nous _lançons_ cet objet ParseError. Plus haut dans la méthode pour la règle de grammaire sur laquelle nous synchronisons, nous l'attraperons. Puisque nous synchronisons sur les limites d'instruction, nous attraperons l'exception là. Après que l'exception soit attrapée, le parseur est dans le bon état. Tout ce qui reste est de synchroniser les tokens.
 
-We want to discard tokens until we're right at the beginning of the next
-statement. That boundary is pretty easy to spot -- it's one of the main reasons
-we picked it. *After* a semicolon, we're <span name="semicolon">probably</span>
-finished with a statement. Most statements start with a keyword -- `for`, `if`,
-`return`, `var`, etc. When the *next* token is any of those, we're probably
-about to start a statement.
+Nous voulons rejeter des tokens jusqu'à ce que nous soyons juste au début de l'instruction suivante. Cette frontière est assez facile à repérer -- c'est l'une des raisons principales pour lesquelles nous l'avons choisie. _Après_ un point-virgule, nous avons <span name="semicolon">probablement</span> fini avec une instruction. La plupart des instructions commencent par un mot-clé -- `for`, `if`, `return`, `var`, etc. Quand le _prochain_ token est n'importe lequel de ceux-là, nous sommes probablement sur le point de commencer une instruction.
 
 <aside name="semicolon">
 
-I say "probably" because we could hit a semicolon separating clauses in a `for`
-loop. Our synchronization isn't perfect, but that's OK. We've already reported
-the first error precisely, so everything after that is kind of "best effort".
+Je dis "probablement" parce que nous pourrions frapper un point-virgule séparant des clauses dans une boucle `for`. Notre synchronisation n'est pas parfaite, mais c'est OK. Nous avons déjà rapporté la première erreur précisément, donc tout après ça est une sorte de "meilleur effort".
 
 </aside>
 
-This method encapsulates that logic:
+Cette méthode encapsule cette logique :
 
 ^code synchronize
 
-It discards tokens until it thinks it has found a statement boundary. After
-catching a ParseError, we'll call this and then we are hopefully back in sync.
-When it works well, we have discarded tokens that would have likely caused
-cascaded errors anyway, and now we can parse the rest of the file starting at
-the next statement.
+Elle rejette des tokens jusqu'à ce qu'elle pense avoir trouvé une limite d'instruction. Après avoir attrapé une ParseError, nous appellerons ceci et ensuite nous sommes, espérons-le, de retour synchro. Quand cela fonctionne bien, nous avons rejeté des tokens qui auraient probablement causé des erreurs en cascade de toute façon, et maintenant nous pouvons parser le reste du fichier en commençant à l'instruction suivante.
 
-Alas, we don't get to see this method in action, since we don't have statements
-yet. We'll get to that [in a couple of chapters][statements]. For now, if an
-error occurs, we'll panic and unwind all the way to the top and stop parsing.
-Since we can parse only a single expression anyway, that's no big loss.
+Hélas, nous ne voyons pas cette méthode en action, puisque nous n'avons pas encore d'instructions. Nous y arriverons [dans quelques chapitres][statements]. Pour l'instant, si une erreur se produit, nous paniquerons et déroulerons tout le chemin jusqu'en haut et arrêterons de parser. Puisque nous ne pouvons parser qu'une seule expression de toute façon, ce n'est pas une grosse perte.
 
 [statements]: statements-and-state.html
 
-## Wiring up the Parser
+## Brancher le Parseur
 
-We are mostly done parsing expressions now. There is one other place where we
-need to add a little error handling. As the parser descends through the parsing
-methods for each grammar rule, it eventually hits `primary()`. If none of the
-cases in there match, it means we are sitting on a token that can't start an
-expression. We need to handle that error too.
+Nous avons presque fini de parser les expressions maintenant. Il y a un autre endroit où nous avons besoin d'ajouter un peu de gestion d'erreur. Alors que le parseur descend à travers les méthodes de parsing pour chaque règle de grammaire, il finit par frapper `primary()`. Si aucun des cas là-dedans ne matche, cela signifie que nous sommes assis sur un token qui ne peut pas commencer une expression. Nous devons gérer cette erreur aussi.
 
 ^code primary-error (5 before, 1 after)
 
-With that, all that remains in the parser is to define an initial method to kick
-it off. That method is called, naturally enough, `parse()`.
+Avec cela, tout ce qu'il reste dans le parseur est de définir une méthode initiale pour le lancer. Cette méthode est appelée, assez naturellement, `parse()`.
 
 ^code parse
 
-We'll revisit this method later when we add statements to the language. For now,
-it parses a single expression and returns it. We also have some temporary code
-to exit out of panic mode. Syntax error recovery is the parser's job, so we
-don't want the ParseError exception to escape into the rest of the interpreter.
+Nous revisiterons cette méthode plus tard quand nous ajouterons des instructions au langage. Pour l'instant, elle parse une seule expression et la renvoie. Nous avons aussi du code temporaire pour sortir du mode panique. La récupération d'erreur de syntaxe est le boulot du parseur, donc nous ne voulons pas que l'exception ParseError s'échappe dans le reste de l'interpréteur.
 
-When a syntax error does occur, this method returns `null`. That's OK. The
-parser promises not to crash or hang on invalid syntax, but it doesn't promise
-to return a *usable syntax tree* if an error is found. As soon as the parser
-reports an error, `hadError` gets set, and subsequent phases are skipped.
+Quand une erreur de syntaxe se produit, cette méthode renvoie `null`. C'est OK. Le parseur promet de ne pas planter ou geler sur une syntaxe invalide, mais il ne promet pas de renvoyer un _arbre syntaxique utilisable_ si une erreur est trouvée. Dès que le parseur rapporte une erreur, `hadError` est défini, et les phases suivantes sont sautées.
 
-Finally, we can hook up our brand new parser to the main Lox class and try it
-out. We still don't have an interpreter, so for now, we'll parse to a syntax
-tree and then use the AstPrinter class from the [last chapter][ast-printer] to
-display it.
+Finalement, nous pouvons connecter notre tout nouveau parseur à la classe Lox principale et l'essayer. Nous n'avons toujours pas d'interpréteur, donc pour l'instant, nous parserons vers un arbre syntaxique et utiliserons ensuite la classe AstPrinter du [dernier chapitre][ast-printer] pour l'afficher.
 
 [ast-printer]: representing-code.html#a-not-very-pretty-printer
 
-Delete the old code to print the scanned tokens and replace it with this:
+Supprimez l'ancien code pour afficher les tokens scannés et remplacez-le par ceci :
 
 ^code print-ast (1 before, 1 after)
 
-Congratulations, you have crossed the <span name="harder">threshold</span>! That
-really is all there is to handwriting a parser. We'll extend the grammar in
-later chapters with assignment, statements, and other stuff, but none of that is
-any more complex than the binary operators we tackled here.
+Félicitations, vous avez franchi le <span name="harder">seuil</span> ! C'est vraiment tout ce qu'il y a à écrire un parseur à la main. Nous étendrons la grammaire dans les chapitres ultérieurs avec l'affectation, les instructions, et d'autres trucs, mais rien de tout cela n'est plus complexe que les opérateurs binaires que nous avons taclés ici.
 
 <aside name="harder">
 
-It is possible to define a more complex grammar than Lox's that's difficult to
-parse using recursive descent. Predictive parsing gets tricky when you may need
-to look ahead a large number of tokens to figure out what you're sitting on.
+Il est possible de définir une grammaire plus complexe que celle de Lox qui est difficile à parser en utilisant la descente récursive. Le parsing prédictif devient délicat quand vous pouvez avoir besoin de regarder en avant un grand nombre de tokens pour comprendre sur quoi vous êtes assis.
 
-In practice, most languages are designed to avoid that. Even in cases where they
-aren't, you can usually hack around it without too much pain. If you can parse
-C++ using recursive descent -- which many C++ compilers do -- you can parse
-anything.
+En pratique, la plupart des langages sont conçus pour éviter ça. Même dans les cas où ils ne le sont pas, vous pouvez généralement bricoler autour sans trop de douleur. Si vous pouvez parser C++ en utilisant la descente récursive -- ce que font beaucoup de compilateurs C++ -- vous pouvez parser n'importe quoi.
 
 </aside>
 
-Fire up the interpreter and type in some expressions. See how it handles
-precedence and associativity correctly? Not bad for less than 200 lines of code.
+Démarrez l'interpréteur et tapez quelques expressions. Vous voyez comment il gère la précédence et l'associativité correctement ? Pas mal pour moins de 200 lignes de code.
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  In C, a block is a statement form that allows you to pack a series of
-    statements where a single one is expected. The [comma operator][] is an
-    analogous syntax for expressions. A comma-separated series of expressions
-    can be given where a single expression is expected (except inside a function
-    call's argument list). At runtime, the comma operator evaluates the left
-    operand and discards the result. Then it evaluates and returns the right
-    operand.
+1.  En C, un bloc est une forme d'instruction qui vous permet d'emballer une série d'instructions là où une seule est attendue. L'[opérateur virgule][comma operator] est une syntaxe analogue pour les expressions. Une série d'expressions séparées par des virgules peut être donnée là où une seule expression est attendue (sauf à l'intérieur de la liste d'arguments d'un appel de fonction). À l'exécution, l'opérateur virgule évalue l'opérande gauche et rejette le résultat. Puis il évalue et renvoie l'opérande droit.
 
-    Add support for comma expressions. Give them the same precedence and
-    associativity as in C. Write the grammar, and then implement the necessary
-    parsing code.
+    Ajoutez le support pour les expressions virgule. Donnez-leur la même précédence et associativité qu'en C. Écrivez la grammaire, et ensuite implémentez le code de parsing nécessaire.
 
-2.  Likewise, add support for the C-style conditional or "ternary" operator
-    `?:`. What precedence level is allowed between the `?` and `:`? Is the whole
-    operator left-associative or right-associative?
+2.  De même, ajoutez le support pour l'opérateur conditionnel ou "ternaire" de style C `?:`. Quel niveau de précédence est autorisé entre le `?` et le `:` ? L'opérateur entier est-il associatif à gauche ou à droite ?
 
-3.  Add error productions to handle each binary operator appearing without a
-    left-hand operand. In other words, detect a binary operator appearing at the
-    beginning of an expression. Report that as an error, but also parse and
-    discard a right-hand operand with the appropriate precedence.
+3.  Ajoutez des productions d'erreur pour gérer chaque opérateur binaire apparaissant sans opérande de gauche. En d'autres termes, détectez un opérateur binaire apparaissant au début d'une expression. Rapportez cela comme une erreur, mais parsez aussi et rejetez un opérande de droite avec la précédence appropriée.
 
 [comma operator]: https://en.wikipedia.org/wiki/Comma_operator
 
@@ -943,64 +619,31 @@ precedence and associativity correctly? Not bad for less than 200 lines of code.
 
 <div class="design-note">
 
-## Design Note: Logic Versus History
+## Note de Conception : Logique Versus Histoire
 
-Let's say we decide to add bitwise `&` and `|` operators to Lox. Where should we
-put them in the precedence hierarchy? C -- and most languages that follow in C's
-footsteps -- place them below `==`. This is widely considered a mistake because
-it means common operations like testing a flag require parentheses.
+Disons que nous décidons d'ajouter des opérateurs bit à bit `&` et `|` à Lox. Où devrions-nous les mettre dans la hiérarchie de précédence ? C -- et la plupart des langages qui suivent les traces de C -- les place sous `==`. C'est largement considéré comme une erreur parce que cela signifie que des opérations courantes comme tester un drapeau nécessitent des parenthèses.
 
 ```c
-if (flags & FLAG_MASK == SOME_FLAG) { ... } // Wrong.
-if ((flags & FLAG_MASK) == SOME_FLAG) { ... } // Right.
+if (flags & FLAG_MASK == SOME_FLAG) { ... } // Faux.
+if ((flags & FLAG_MASK) == SOME_FLAG) { ... } // Vrai.
 ```
 
-Should we fix this for Lox and put bitwise operators higher up the precedence
-table than C does? There are two strategies we can take.
+Devrions-nous corriger cela pour Lox et mettre les opérateurs bit à bit plus haut dans la table de précédence que C ne le fait ? Il y a deux stratégies que nous pouvons prendre.
 
-You almost never want to use the result of an `==` expression as the operand to
-a bitwise operator. By making bitwise bind tighter, users don't need to
-parenthesize as often. So if we do that, and users assume the precedence is
-chosen logically to minimize parentheses, they're likely to infer it correctly.
+Vous ne voulez presque jamais utiliser le résultat d'une expression `==` comme opérande d'un opérateur bit à bit. En faisant lier plus fort les opérateurs bit à bit, les utilisateurs n'ont pas besoin de parenthéser aussi souvent. Donc si nous faisons cela, et que les utilisateurs supposent que la précédence est choisie logiquement pour minimiser les parenthèses, ils sont susceptibles de l'inférer correctement.
 
-This kind of internal consistency makes the language easier to learn because
-there are fewer edge cases and exceptions users have to stumble into and then
-correct. That's good, because before users can use our language, they have to
-load all of that syntax and semantics into their heads. A simpler, more rational
-language *makes sense*.
+Ce genre de cohérence interne rend le langage plus facile à apprendre parce qu'il y a moins de cas limites et d'exceptions dans lesquels les utilisateurs doivent trébucher et ensuite corriger. C'est bien, parce qu'avant que les utilisateurs puissent utiliser notre langage, ils doivent charger toute cette syntaxe et sémantique dans leurs têtes. Un langage plus simple, plus rationnel _a du sens_.
 
-But, for many users there is an even faster shortcut to getting our language's
-ideas into their wetware -- *use concepts they already know*. Many newcomers to
-our language will be coming from some other language or languages. If our
-language uses some of the same syntax or semantics as those, there is much less
-for the user to learn (and *unlearn*).
+Mais, pour beaucoup d'utilisateurs il y a un raccourci encore plus rapide pour mettre les idées de notre langage dans leur cerveau -- _utiliser des concepts qu'ils connaissent déjà_. Beaucoup de nouveaux venus à notre langage viendront de quelque autre langage ou langages. Si notre langage utilise une partie de la même syntaxe ou sémantique que ceux-là, il y a beaucoup moins à apprendre (et à _désapprendre_) pour l'utilisateur.
 
-This is particularly helpful with syntax. You may not remember it well today,
-but way back when you learned your very first programming language, code
-probably looked alien and unapproachable. Only through painstaking effort did
-you learn to read and accept it. If you design a novel syntax for your new
-language, you force users to start that process all over again.
+C'est particulièrement utile avec la syntaxe. Vous ne vous en souvenez peut-être pas bien aujourd'hui, mais il y a longtemps quand vous avez appris votre tout premier langage de programmation, le code semblait probablement étranger et inabordable. Ce n'est que par un effort minutieux que vous avez appris à le lire et à l'accepter. Si vous concevez une syntaxe nouvelle pour votre nouveau langage, vous forcez les utilisateurs à recommencer ce processus à zéro.
 
-Taking advantage of what users already know is one of the most powerful tools
-you can use to ease adoption of your language. It's almost impossible to
-overestimate how valuable this is. But it faces you with a nasty problem: What
-happens when the thing the users all know *kind of sucks*? C's bitwise operator
-precedence is a mistake that doesn't make sense. But it's a *familiar* mistake
-that millions have already gotten used to and learned to live with.
+Tirer parti de ce que les utilisateurs savent déjà est l'un des outils les plus puissants que vous pouvez utiliser pour faciliter l'adoption de votre langage. Il est presque impossible de surestimer à quel point c'est précieux. Mais cela vous confronte à un problème méchant : Que se passe-t-il quand la chose que les utilisateurs connaissent tous _craint un peu_ ? La précédence des opérateurs bit à bit du C est une erreur qui n'a pas de sens. Mais c'est une erreur _familière_ à laquelle des millions se sont déjà habitués et avec laquelle ils ont appris à vivre.
 
-Do you stay true to your language's own internal logic and ignore history? Do
-you start from a blank slate and first principles? Or do you weave your language
-into the rich tapestry of programming history and give your users a leg up by
-starting from something they already know?
+Restez-vous fidèle à la propre logique interne de votre langage et ignorez-vous l'histoire ? Partez-vous d'une ardoise vierge et des premiers principes ? Ou tissez-vous votre langage dans la riche tapisserie de l'histoire de la programmation et donnez-vous un coup de pouce à vos utilisateurs en partant de quelque chose qu'ils connaissent déjà ?
 
-There is no perfect answer here, only trade-offs. You and I are obviously biased
-towards liking novel languages, so our natural inclination is to burn the
-history books and start our own story.
+Il n'y a pas de réponse parfaite ici, seulement des compromis. Vous et moi sommes évidemment biaisés vers le fait d'aimer les langages nouveaux, donc notre inclination naturelle est de brûler les livres d'histoire et de commencer notre propre histoire.
 
-In practice, it's often better to make the most of what users already know.
-Getting them to come to your language requires a big leap. The smaller you can
-make that chasm, the more people will be willing to cross it. But you can't
-*always* stick to history, or your language won't have anything new and
-compelling to give people a *reason* to jump over.
+En pratique, il est souvent mieux de tirer le meilleur parti de ce que les utilisateurs savent déjà. Les amener à venir à votre langage nécessite un grand saut. Plus vous pouvez réduire ce gouffre, plus les gens seront prêts à le traverser. Mais vous ne pouvez pas _toujours_ coller à l'histoire, ou votre langage n'aura rien de nouveau et d'impérieux pour donner aux gens une _raison_ de sauter par-dessus.
 
 </div>

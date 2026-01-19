@@ -32,7 +32,7 @@ const _tableOfContents = {
     'Classes',
     'Héritage',
   ],
-  'A Bytecode Virtual Machine': [
+  'Une machine virtuelle à bytecode': [
     'Morceaux de bytecode',
     'Machine virtuelle',
     'Analyse à la demande',
@@ -48,7 +48,7 @@ const _tableOfContents = {
     'Ramasse-miettes',
     'Classes et instances',
     'Méthodes et initialisateurs',
-    'Superclasses',
+    'Super-classes',
     'Optimisation',
   ],
   'Backmatter': [
@@ -131,7 +131,7 @@ const _titleMapping = {
   'Garbage Collection': 'Ramasse-miettes',
   'Classes and Instances': 'Classes et instances',
   'Methods and Initializers': 'Méthodes et initialisateurs',
-  'Superclasses': 'Superclasses',
+  'Superclasses': 'Super-classes',
   'Optimization': 'Optimisation',
   'Appendix I': 'Annexe I',
   'Appendix II': 'Annexe II',

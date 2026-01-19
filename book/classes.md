@@ -1,55 +1,34 @@
-> One has no right to love or hate anything if one has not acquired a thorough
-> knowledge of its nature. Great love springs from great knowledge of the
-> beloved object, and if you know it but little you will be able to love it only
-> a little or not at all.
+> On n'a le droit ni d'aimer ni de haïr quoi que ce soit si l'on n'a pas acquis une connaissance
+> approfondie de sa nature. Le grand amour naît de la grande connaissance de l'objet
+> aimé, et si vous ne le connaissez que peu vous serez capable de l'aimer seulement
+> un peu ou pas du tout.
 >
-> <cite>Leonardo da Vinci</cite>
+> <cite>Léonard de Vinci</cite>
 
-We're eleven chapters in, and the interpreter sitting on your machine is nearly
-a complete scripting language. It could use a couple of built-in data structures
-like lists and maps, and it certainly needs a core library for file I/O, user
-input, etc. But the language itself is sufficient. We've got a little procedural
-language in the same vein as BASIC, Tcl, Scheme (minus macros), and early
-versions of Python and Lua.
+Nous sommes à onze chapitres, et l'interpréteur assis sur votre machine est presque un langage de script complet. Il pourrait utiliser quelques structures de données intégrées comme des listes et des maps, et il a certainement besoin d'une bibliothèque centrale pour les E/S de fichier, l'entrée utilisateur, etc. Mais le langage lui-même est suffisant. Nous avons un petit langage procédural dans la même veine que BASIC, Tcl, Scheme (moins les macros), et les premières versions de Python et Lua.
 
-If this were the '80s, we'd stop here. But today, many popular languages support
-"object-oriented programming". Adding that to Lox will give users a familiar set
-of tools for writing larger programs. Even if you personally don't <span
-name="hate">like</span> OOP, this chapter and [the next][inheritance] will help
-you understand how others design and build object systems.
+Si nous étions dans les années 80, nous nous arrêterions là. Mais aujourd'hui, beaucoup de langages populaires supportent la "programmation orientée objet". Ajouter cela à Lox donnera aux utilisateurs un ensemble familier d'outils pour écrire des programmes plus grands. Même si vous personnellement n'aimez <span name="hate">pas</span> la POO, ce chapitre et [le suivant][inheritance] vous aideront à comprendre comment d'autres conçoivent et construisent des systèmes d'objets.
 
 [inheritance]: inheritance.html
 
 <aside name="hate">
 
-If you *really* hate classes, though, you can skip these two chapters. They are
-fairly isolated from the rest of the book. Personally, I find it's good to learn
-more about the things I dislike. Things look simple at a distance, but as I get
-closer, details emerge and I gain a more nuanced perspective.
+Si vous détestez _vraiment_ les classes, cependant, vous pouvez sauter ces deux chapitres. Ils sont assez isolés du reste du livre. Personnellement, je trouve qu'il est bon d'en apprendre plus sur les choses que je n'aime pas. Les choses semblent simples à distance, mais à mesure que je me rapproche, les détails émergent et je gagne une perspective plus nuancée.
 
 </aside>
 
-## OOP and Classes
+## POO et Classes
 
-There are three broad paths to object-oriented programming: classes,
-[prototypes][], and <span name="multimethods">[multimethods][]</span>. Classes
-came first and are the most popular style. With the rise of JavaScript (and to a
-lesser extent [Lua][]), prototypes are more widely known than they used to be.
-I'll talk more about those [later][]. For Lox, we're taking the, ahem, classic
-approach.
+Il y a trois grandes voies vers la programmation orientée objet : les classes, les [prototypes][], et les <span name="multimethods">[multiméthodes][]</span>. Les classes sont venues en premier et sont le style le plus populaire. Avec la montée de JavaScript (et dans une moindre mesure [Lua][]), les prototypes sont plus largement connus qu'ils ne l'étaient. Je parlerai plus de ceux-ci [plus tard][later]. Pour Lox, nous prenons l'approche, ahem, classique.
 
 [prototypes]: http://gameprogrammingpatterns.com/prototype.html
-[multimethods]: https://en.wikipedia.org/wiki/Multiple_dispatch
+[multiméthodes]: https://en.wikipedia.org/wiki/Multiple_dispatch
 [lua]: https://www.lua.org/pil/13.4.1.html
 [later]: #design-note
 
 <aside name="multimethods">
 
-Multimethods are the approach you're least likely to be familiar with. I'd love
-to talk more about them -- I designed [a hobby language][magpie] around them
-once and they are *super rad* -- but there are only so many pages I can fit in.
-If you'd like to learn more, take a look at [CLOS][] (the object system in
-Common Lisp), [Dylan][], [Julia][], or [Raku][].
+Les multiméthodes sont l'approche avec laquelle vous êtes le moins susceptible d'être familier. J'adorerais parler plus d'elles -- j'ai conçu [un langage hobby][magpie] autour d'elles une fois et elles sont _super cool_ -- mais il n'y a qu'un nombre limité de pages que je peux caser. Si vous aimeriez en apprendre plus, jetez un œil à [CLOS][] (le système d'objet en Common Lisp), [Dylan][], [Julia][], ou [Raku][].
 
 [clos]: https://en.wikipedia.org/wiki/Common_Lisp_Object_System
 [magpie]: http://magpie-lang.org/
@@ -59,41 +38,29 @@ Common Lisp), [Dylan][], [Julia][], or [Raku][].
 
 </aside>
 
-Since you've written about a thousand lines of Java code with me already, I'm
-assuming you don't need a detailed introduction to object orientation. The main
-goal is to bundle data with the code that acts on it. Users do that by declaring
-a *class* that:
+Puisque vous avez écrit environ mille lignes de code Java avec moi déjà, je suppose que vous n'avez pas besoin d'une introduction détaillée à l'orientation objet. Le but principal est d'empaqueter des données avec le code qui agit dessus. Les utilisateurs font cela en déclarant une _classe_ qui :
 
 <span name="circle"></span>
 
-1. Exposes a *constructor* to create and initialize new *instances* of the
-   class
+1. Expose un _constructeur_ pour créer et initialiser de nouvelles _instances_ de la classe
 
-1. Provides a way to store and access *fields* on instances
+1. Fournit un moyen de stocker et d'accéder à des _champs_ sur les instances
 
-1. Defines a set of *methods* shared by all instances of the class that
-   operate on each instances' state.
+1. Définit un ensemble de _méthodes_ partagées par toutes les instances de la classe qui opèrent sur l'état de chaque instance.
 
-That's about as minimal as it gets. Most object-oriented languages, all the way
-back to Simula, also do inheritance to reuse behavior across classes. We'll add
-that in the [next chapter][inheritance]. Even kicking that out, we still have a
-lot to get through. This is a big chapter and everything doesn't quite come
-together until we have all of the above pieces, so gather your stamina.
+C'est à peu près aussi minimal que possible. La plupart des langages orientés objet, tout le chemin en arrière jusqu'à Simula, font aussi de l'héritage pour réutiliser le comportement à travers les classes. Nous ajouterons cela dans le [prochain chapitre][inheritance]. Même en virant cela, nous avons encore beaucoup à traverser. C'est un gros chapitre et tout ne s'assemble pas tout à fait jusqu'à ce que nous ayons toutes les pièces ci-dessus, donc rassemblez votre endurance.
 
 <aside name="circle">
 
-<img src="image/classes/circle.png" alt="The relationships between classes, methods, instances, constructors, and fields." />
+<img src="image/classes/circle.png" alt="Les relations entre classes, méthodes, instances, constructeurs, et champs." />
 
-It's like the circle of life, *sans* Sir Elton John.
+C'est comme le cycle de la vie, _sans_ Sir Elton John.
 
 </aside>
 
-[inheritance]: inheritance.html
+## Déclarations de Classe
 
-## Class Declarations
-
-Like we do, we're gonna start with syntax. A `class` statement introduces a new
-name, so it lives in the `declaration` grammar rule.
+Comme nous faisons, nous allons commencer avec la syntaxe. Une instruction `class` introduit un nouveau nom, donc elle vit dans la règle de grammaire `declaration`.
 
 ```ebnf
 declaration    → classDecl
@@ -104,8 +71,7 @@ declaration    → classDecl
 classDecl      → "class" IDENTIFIER "{" function* "}" ;
 ```
 
-The new `classDecl` rule relies on the `function` rule we defined
-[earlier][function rule]. To refresh your memory:
+La nouvelle règle `classDecl` repose sur la règle `function` que nous avons définie [plus tôt][function rule]. Pour rafraîchir votre mémoire :
 
 [function rule]: functions.html#function-declarations
 
@@ -114,15 +80,11 @@ function       → IDENTIFIER "(" parameters? ")" block ;
 parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
 ```
 
-In plain English, a class declaration is the `class` keyword, followed by the
-class's name, then a curly-braced body. Inside that body is a list of method
-declarations. Unlike function declarations, methods don't have a leading <span
-name="fun">`fun`</span> keyword. Each method is a name, parameter list, and
-body. Here's an example:
+En français clair, une déclaration de classe est le mot-clé `class`, suivi par le nom de la classe, puis un corps entre accolades. À l'intérieur de ce corps est une liste de déclarations de méthode. Contrairement aux déclarations de fonction, les méthodes n'ont pas de mot-clé <span name="fun">`fun`</span> en tête. Chaque méthode est un nom, une liste de paramètres, et un corps. Voici un exemple :
 
 <aside name="fun">
 
-Not that I'm trying to say methods aren't fun or anything.
+Pas que j'essaie de dire que les méthodes ne sont pas fun ou quoi que ce soit.
 
 </aside>
 
@@ -138,81 +100,53 @@ class Breakfast {
 }
 ```
 
-Like most dynamically typed languages, fields are not explicitly listed in the
-class declaration. Instances are loose bags of data and you can freely add
-fields to them as you see fit using normal imperative code.
+Comme la plupart des langages typés dynamiquement, les champs ne sont pas explicitement listés dans la déclaration de classe. Les instances sont des sacs lâches de données et vous pouvez librement leur ajouter des champs comme bon vous semble en utilisant du code impératif normal.
 
-Over in our AST generator, the `classDecl` grammar rule gets its own statement
-<span name="class-ast">node</span>.
+Là-bas dans notre générateur AST, la règle de grammaire `classDecl` obtient son propre <span name="class-ast">nœud</span> d'instruction.
 
 ^code class-ast (1 before, 1 after)
 
 <aside name="class-ast">
 
-The generated code for the new node is in [Appendix II][appendix-class].
+Le code généré pour le nouveau nœud est dans l'[Annexe II][appendix-class].
 
 [appendix-class]: appendix-ii.html#class-statement
 
 </aside>
 
-It stores the class's name and the methods inside its body. Methods are
-represented by the existing Stmt.Function class that we use for function
-declaration AST nodes. That gives us all the bits of state that we need for a
-method: name, parameter list, and body.
+Il stocke le nom de la classe et les méthodes à l'intérieur de son corps. Les méthodes sont représentées par la classe Stmt.Function existante que nous utilisons pour les nœuds AST de déclaration de fonction. Cela nous donne tous les bouts d'état dont nous avons besoin pour une méthode : nom, liste de paramètres, et corps.
 
-A class can appear anywhere a named declaration is allowed, triggered by the
-leading `class` keyword.
+Une classe peut apparaître n'importe où une déclaration nommée est autorisée, déclenchée par le mot-clé `class` en tête.
 
 ^code match-class (1 before, 1 after)
 
-That calls out to:
+Cela appelle vers :
 
 ^code parse-class-declaration
 
-There's more meat to this than most of the other parsing methods, but it roughly
-follows the grammar. We've already consumed the `class` keyword, so we look for
-the expected class name next, followed by the opening curly brace. Once inside
-the body, we keep parsing method declarations until we hit the closing brace.
-Each method declaration is parsed by a call to `function()`, which we defined
-back in the [chapter where functions were introduced][functions].
+Il y a plus de viande ici que dans la plupart des autres méthodes de parsing, mais cela suit grossièrement la grammaire. Nous avons déjà consommé le mot-clé `class`, donc nous cherchons le nom de classe attendu ensuite, suivi par l'accolade ouvrante. Une fois à l'intérieur du corps, nous continuons à parser des déclarations de méthode jusqu'à ce que nous frappions l'accolade fermante. Chaque déclaration de méthode est parsée par un appel à `function()`, que nous avons défini là-bas dans le [chapitre où les fonctions ont été introduites][functions].
 
 [functions]: functions.html
 
-Like we do in any open-ended loop in the parser, we also check for hitting the
-end of the file. That won't happen in correct code since a class should have a
-closing brace at the end, but it ensures the parser doesn't get stuck in an
-infinite loop if the user has a syntax error and forgets to correctly end the
-class body.
+Comme nous le faisons dans toute boucle ouverte dans le parseur, nous vérifions aussi si nous frappons la fin du fichier. Cela n'arrivera pas dans le code correct puisqu'une classe devrait avoir une accolade fermante à la fin, mais cela assure que le parseur ne reste pas coincé dans une boucle infinie si l'utilisateur a une erreur de syntaxe et oublie de finir correctement le corps de la classe.
 
-We wrap the name and list of methods into a Stmt.Class node and we're done.
-Previously, we would jump straight into the interpreter, but now we need to
-plumb the node through the resolver first.
+Nous enveloppons le nom et la liste de méthodes dans un nœud Stmt.Class et nous avons fini. Précédemment, nous aurions sauté directement dans l'interpréteur, mais maintenant nous devons d'abord passer le nœud à travers le résolveur.
 
 ^code resolver-visit-class
 
-We aren't going to worry about resolving the methods themselves yet, so for now
-all we need to do is declare the class using its name. It's not common to
-declare a class as a local variable, but Lox permits it, so we need to handle it
-correctly.
+Nous n'allons pas nous inquiéter de résoudre les méthodes elles-mêmes encore, donc pour l'instant tout ce que nous avons besoin de faire est de déclarer la classe en utilisant son nom. Ce n'est pas courant de déclarer une classe comme une variable locale, mais Lox le permet, donc nous devons le gérer correctement.
 
-Now we interpret the class declaration.
+Maintenant nous interprétons la déclaration de classe.
 
 ^code interpreter-visit-class
 
-This looks similar to how we execute function declarations. We declare the
-class's name in the current environment. Then we turn the class *syntax node*
-into a LoxClass, the *runtime* representation of a class. We circle back and
-store the class object in the variable we previously declared. That two-stage
-variable binding process allows references to the class inside its own methods.
+Cela ressemble à comment nous exécutons les déclarations de fonction. Nous déclarons le nom de la classe dans l'environnement courant. Ensuite nous transformons le _nœud de syntaxe_ de classe en une LoxClass, la représentation à l'_exécution_ d'une classe. Nous revenons en arrière et stockons l'objet classe dans la variable que nous avons précédemment déclarée. Ce processus de liaison de variable en deux étapes permet des références à la classe à l'intérieur de ses propres méthodes.
 
-We will refine it throughout the chapter, but the first draft of LoxClass looks
-like this:
+Nous allons la raffiner tout au long du chapitre, mais le premier brouillon de LoxClass ressemble à ceci :
 
 ^code lox-class
 
-Literally a wrapper around a name. We don't even store the methods yet. Not
-super useful, but it does have a `toString()` method so we can write a trivial
-script and test that class objects are actually being parsed and executed.
+Littéralement une enveloppe autour d'un nom. Nous ne stockons même pas les méthodes encore. Pas super utile, mais elle a une méthode `toString()` pour que nous puissions écrire un script trivial et tester que les objets classe sont réellement parsés et exécutés.
 
 ```lox
 class DevonshireCream {
@@ -221,344 +155,239 @@ class DevonshireCream {
   }
 }
 
-print DevonshireCream; // Prints "DevonshireCream".
+print DevonshireCream; // Imprime "DevonshireCream".
 ```
 
-## Creating Instances
+## Créer des Instances
 
-We have classes, but they don't do anything yet. Lox doesn't have "static"
-methods that you can call right on the class itself, so without actual
-instances, classes are useless. Thus instances are the next step.
+Nous avons des classes, mais elles ne font rien encore. Lox n'a pas de méthodes "statiques" que vous pouvez appeler directement sur la classe elle-même, donc sans instances réelles, les classes sont inutiles. Ainsi les instances sont la prochaine étape.
 
-While some syntax and semantics are fairly standard across OOP languages, the
-way you create new instances isn't. Ruby, following Smalltalk, creates instances
-by calling a method on the class object itself, a <span
-name="turtles">recursively</span> graceful approach. Some, like C++ and Java,
-have a `new` keyword dedicated to birthing a new object. Python has you "call"
-the class itself like a function. (JavaScript, ever weird, sort of does both.)
+Bien que certaines syntaxes et sémantiques soient assez standard à travers les langages POO, la façon dont vous créez de nouvelles instances ne l'est pas. Ruby, suivant Smalltalk, crée des instances en appelant une méthode sur l'objet classe lui-même, une approche <span name="turtles">récursivement</span> gracieuse. Certains, comme C++ et Java, ont un mot-clé `new` dédié à donner naissance à un nouvel objet. Python vous fait "appeler" la classe elle-même comme une fonction. (JavaScript, toujours bizarre, fait en quelque sorte les deux.)
 
 <aside name="turtles">
 
-In Smalltalk, even *classes* are created by calling methods on an existing
-object, usually the desired superclass. It's sort of a turtles-all-the-way-down
-thing. It ultimately bottoms out on a few magical classes like Object and
-Metaclass that the runtime conjures into being *ex nihilo*.
+En Smalltalk, même les _classes_ sont créées en appelant des méthodes sur un objet existant, habituellement la superclasse désirée. C'est en quelque sorte une chose où il y a des tortues tout le long vers le bas. Cela touche finalement le fond sur quelques classes magiques comme Object et Metaclass que le runtime conjure dans l'être _ex nihilo_.
 
 </aside>
 
-I took a minimal approach with Lox. We already have class objects, and we
-already have function calls, so we'll use call expressions on class objects to
-create new instances. It's as if a class is a factory function that generates
-instances of itself. This feels elegant to me, and also spares us the need to
-introduce syntax like `new`. Therefore, we can skip past the front end straight
-into the runtime.
+J'ai pris une approche minimale avec Lox. Nous avons déjà des objets classe, et nous avons déjà des appels de fonction, donc nous utiliserons des expressions d'appel sur des objets classe pour créer de nouvelles instances. C'est comme si une classe était une fonction usine qui génère des instances d'elle-même. Cela semble élégant pour moi, et nous épargne aussi le besoin d'introduire une syntaxe comme `new`. Par conséquent, nous pouvons passer outre le front end directement dans le runtime.
 
-Right now, if you try this:
+Tout de suite, si vous essayez ceci :
 
 ```lox
 class Bagel {}
 Bagel();
 ```
 
-You get a runtime error. `visitCallExpr()` checks to see if the called object
-implements `LoxCallable` and reports an error since LoxClass doesn't. Not *yet*,
-that is.
+Vous obtenez une erreur d'exécution. `visitCallExpr()` vérifie pour voir si l'objet appelé implémente `LoxCallable` et rapporte une erreur puisque LoxClass ne le fait pas. Pas _encore_, c'est-à-dire.
 
 ^code lox-class-callable (2 before, 1 after)
 
-Implementing that interface requires two methods.
+Implémenter cette interface exige deux méthodes.
 
 ^code lox-class-call-arity
 
-The interesting one is `call()`. When you "call" a class, it instantiates a new
-LoxInstance for the called class and returns it. The `arity()` method is how the
-interpreter validates that you passed the right number of arguments to a
-callable. For now, we'll say you can't pass any. When we get to user-defined
-constructors, we'll revisit this.
+Celle intéressante est `call()`. Quand vous "appelez" une classe, elle instancie une nouvelle LoxInstance pour la classe appelée et la renvoie. La méthode `arity()` est comment l'interpréteur valide que vous avez passé le bon nombre d'arguments à un appelable. Pour l'instant, nous dirons que vous ne pouvez en passer aucun. Quand nous arriverons aux constructeurs définis par l'utilisateur, nous revisiterons cela.
 
-That leads us to LoxInstance, the runtime representation of an instance of a Lox
-class. Again, our first implementation starts small.
+Cela nous mène à LoxInstance, la représentation exécution d'une instance d'une classe Lox. Encore une fois, notre première implémentation commence petit.
 
 ^code lox-instance
 
-Like LoxClass, it's pretty bare bones, but we're only getting started. If you
-want to give it a try, here's a script to run:
+Comme LoxClass, c'est assez squelettique, mais nous ne faisons que commencer. Si vous voulez lui donner un essai, voici un script à lancer :
 
 ```lox
 class Bagel {}
 var bagel = Bagel();
-print bagel; // Prints "Bagel instance".
+print bagel; // Imprime "Bagel instance".
 ```
 
-This program doesn't do much, but it's starting to do *something*.
+Ce programme ne fait pas grand-chose, mais il commence à faire _quelque chose_.
 
-## Properties on Instances
+## Propriétés sur les Instances
 
-We have instances, so we should make them useful. We're at a fork in the road.
-We could add behavior first -- methods -- or we could start with state --
-properties. We're going to take the latter because, as we'll see, the two get
-entangled in an interesting way and it will be easier to make sense of them if
-we get properties working first.
+Nous avons des instances, donc nous devrions les rendre utiles. Nous sommes à un embranchement sur la route. Nous pourrions ajouter du comportement d'abord -- des méthodes -- ou nous pourrions commencer avec l'état -- des propriétés. Nous allons prendre ce dernier car, comme nous le verrons, les deux deviennent intriqués d'une façon intéressante et il sera plus facile de leur donner du sens si nous faisons fonctionner les propriétés d'abord.
 
-Lox follows JavaScript and Python in how it handles state. Every instance is an
-open collection of named values. Methods on the instance's class can access and
-modify properties, but so can <span name="outside">outside</span> code.
-Properties are accessed using a `.` syntax.
+Lox suit JavaScript et Python dans comment il gère l'état. Chaque instance est une collection ouverte de valeurs nommées. Les méthodes sur la classe de l'instance peuvent accéder et modifier les propriétés, mais le code <span name="outside">externe</span> le peut aussi. Les propriétés sont accédées en utilisant une syntaxe `.`.
 
 <aside name="outside">
 
-Allowing code outside of the class to directly modify an object's fields goes
-against the object-oriented credo that a class *encapsulates* state. Some
-languages take a more principled stance. In Smalltalk, fields are accessed using
-simple identifiers -- essentially, variables that are only in scope inside a
-class's methods. Ruby uses `@` followed by a name to access a field in an
-object. That syntax is only meaningful inside a method and always accesses state
-on the current object.
+Permettre au code en dehors de la classe de modifier directement les champs d'un objet va à l'encontre du credo orienté objet qu'une classe _encapsule_ l'état. Certains langages prennent une position plus fondée sur des principes. En Smalltalk, les champs sont accédés en utilisant des identifieurs simples -- essentiellement, des variables qui sont seulement dans la portée à l'intérieur des méthodes d'une classe. Ruby utilise `@` suivi par un nom pour accéder à un champ dans un objet. Cette syntaxe est seulement significative à l'intérieur d'une méthode et accède toujours à l'état sur l'objet courant.
 
-Lox, for better or worse, isn't quite so pious about its OOP faith.
+Lox, pour le meilleur ou pour le pire, n'est pas tout à fait si pieux à propos de sa foi POO.
 
 </aside>
 
 ```lox
-someObject.someProperty
+objet.propriete
 ```
 
-An expression followed by `.` and an identifier reads the property with that
-name from the object the expression evaluates to. That dot has the same
-precedence as the parentheses in a function call expression, so we slot it into
-the grammar by replacing the existing `call` rule with:
+Une expression suivie par `.` et un identifieur lit la propriété avec ce nom depuis l'objet en lequel l'expression s'évalue. Ce point a la même précédence que les parenthèses dans une expression d'appel de fonction, donc nous le glissons dans la grammaire en remplaçant la règle `call` existante par :
 
 ```ebnf
 call           → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
 ```
 
-After a primary expression, we allow a series of any mixture of parenthesized
-calls and dotted property accesses. "Property access" is a mouthful, so from
-here on out, we'll call these "get expressions".
+Après une expression primaire, nous permettons une série de n'importe quel mélange d'appels parenthésés et d'accès aux propriétés avec point. "Accès aux propriétés" est une bouchée, donc d'ici là, nous appellerons ceux-ci des "expressions d'accès" (get expressions).
 
-### Get expressions
+### Expressions d'accès
 
-The <span name="get-ast">syntax tree node</span> is:
+Le <span name="get-ast">nœud d'arbre syntaxique</span> est :
 
 ^code get-ast (1 before, 1 after)
 
 <aside name="get-ast">
 
-The generated code for the new node is in [Appendix II][appendix-get].
+Le code généré pour le nouveau nœud est dans l'[Annexe II][appendix-get].
 
 [appendix-get]: appendix-ii.html#get-expression
 
 </aside>
 
-Following the grammar, the new parsing code goes in our existing `call()`
-method.
+Suivant la grammaire, le nouveau code de parsing va dans notre méthode `call()` existante.
 
 ^code parse-property (3 before, 4 after)
 
-The outer `while` loop there corresponds to the `*` in the grammar rule. We zip
-along the tokens building up a chain of calls and gets as we find parentheses
-and dots, like so:
+La boucle `while` externe là correspond au `*` dans la règle de grammaire. Nous zippons le long des tokens construisant une chaîne d'appels et d'accès alors que nous trouvons des parenthèses et des points, comme ceci :
 
-<img src="image/classes/zip.png" alt="Parsing a series of '.' and '()' expressions to an AST." />
+<img src="image/classes/zip.png" alt="Parser une série d'expressions '.' et '()' en un AST." />
 
-Instances of the new Expr.Get node feed into the resolver.
+Les instances du nouveau nœud Expr.Get alimentent le résolveur.
 
 ^code resolver-visit-get
 
-OK, not much to that. Since properties are looked up <span
-name="dispatch">dynamically</span>, they don't get resolved. During resolution,
-we recurse only into the expression to the left of the dot. The actual property
-access happens in the interpreter.
+OK, pas grand chose à cela. Puisque les propriétés sont cherchées <span name="dispatch">dynamiquement</span>, elles ne sont pas résolues. Pendant la résolution, nous récursons seulement dans l'expression à la gauche du point. L'accès réel à la propriété se produit dans l'interpréteur.
 
 <aside name="dispatch">
 
-You can literally see that property dispatch in Lox is dynamic since we don't
-process the property name during the static resolution pass.
+Vous pouvez littéralement voir que le dispatch de propriété dans Lox est dynamique puisque nous ne traitons pas le nom de propriété pendant la passe de résolution statique.
 
 </aside>
 
 ^code interpreter-visit-get
 
-First, we evaluate the expression whose property is being accessed. In Lox, only
-instances of classes have properties. If the object is some other type like a
-number, invoking a getter on it is a runtime error.
+D'abord, nous évaluons l'expression dont la propriété est accédée. Dans Lox, seules les instances de classes ont des propriétés. Si l'objet est un autre type comme un nombre, invoquer un getter dessus est une erreur d'exécution.
 
-If the object is a LoxInstance, then we ask it to look up the property. It must
-be time to give LoxInstance some actual state. A map will do fine.
+Si l'objet est une LoxInstance, alors nous lui demandons de chercher la propriété. Il doit être temps de donner à LoxInstance un état réel. Une map fera l'affaire.
 
 ^code lox-instance-fields (1 before, 2 after)
 
-Each key in the map is a property name and the corresponding value is the
-property's value. To look up a property on an instance:
+Chaque clé dans la map est un nom de propriété et la valeur correspondante est la valeur de la propriété. Pour chercher une propriété sur une instance :
 
 ^code lox-instance-get-property
 
 <aside name="hidden">
 
-Doing a hash table lookup for every field access is fast enough for many
-language implementations, but not ideal. High performance VMs for languages like
-JavaScript use sophisticated optimizations like "[hidden classes][]" to avoid
-that overhead.
+Faire une recherche dans une table de hachage pour chaque accès de champ est assez rapide pour beaucoup d'implémentations de langage, mais pas idéal. Les VMs haute performance pour des langages comme JavaScript utilisent des optimisations sophistiquées comme les "[classes cachées][]" pour éviter cette surcharge.
 
-Paradoxically, many of the optimizations invented to make dynamic languages fast
-rest on the observation that -- even in those languages -- most code is fairly
-static in terms of the types of objects it works with and their fields.
+Paradoxalement, beaucoup des optimisations inventées pour rendre les langages dynamiques rapides reposent sur l'observation que -- même dans ces langages -- la plupart du code est assez statique en termes des types d'objets avec lesquels il travaille et de leurs champs.
 
-[hidden classes]: http://richardartoul.github.io/jekyll/update/2015/04/26/hidden-classes.html
+[classes cachées]: http://richardartoul.github.io/jekyll/update/2015/04/26/hidden-classes.html
 
 </aside>
 
-An interesting edge case we need to handle is what happens if the instance
-doesn't *have* a property with the given name. We could silently return some
-dummy value like `nil`, but my experience with languages like JavaScript is that
-this behavior masks bugs more often than it does anything useful. Instead, we'll
-make it a runtime error.
+Un cas limite intéressant que nous devons gérer est ce qui arrive si l'instance n'a _pas_ une propriété avec le nom donné. Nous pourrions silencieusement renvoyer une certaine valeur factice comme `nil`, mais mon expérience avec des langages comme JavaScript est que ce comportement masque des bugs plus souvent qu'il ne fait quoi que ce soit d'utile. Au lieu de cela, nous en ferons une erreur d'exécution.
 
-So the first thing we do is see if the instance actually has a field with the
-given name. Only then do we return it. Otherwise, we raise an error.
+Donc la première chose que nous faisons est de voir si l'instance a réellement un champ avec le nom donné. Seulement alors nous le renvoyons. Sinon, nous levons une erreur.
 
-Note how I switched from talking about "properties" to "fields". There is a
-subtle difference between the two. Fields are named bits of state stored
-directly in an instance. Properties are the named, uh, *things*, that a get
-expression may return. Every field is a property, but as we'll see <span
-name="foreshadowing">later</span>, not every property is a field.
+Notez comment j'ai changé de parler de "propriétés" à "champs". Il y a une différence subtile entre les deux. Les champs sont des bits d'état nommés stockés directement dans une instance. Les propriétés sont les _choses_ nommées, uh, qu'une expression d'accès peut renvoyer. Chaque champ est une propriété, mais comme nous le verrons <span name="foreshadowing">plus tard</span>, pas chaque propriété est un champ.
 
 <aside name="foreshadowing">
 
-Ooh, foreshadowing. Spooky!
+Ooh, préfiguration. Effrayant !
 
 </aside>
 
-In theory, we can now read properties on objects. But since there's no way to
-actually stuff any state into an instance, there are no fields to access. Before
-we can test out reading, we must support writing.
+En théorie, nous pouvons maintenant lire des propriétés sur des objets. Mais puisqu'il n'y a aucun moyen de bourrer réellement un état dans une instance, il n'y a pas de champs auxquels accéder. Avant que nous puissions tester la lecture, nous devons supporter l'écriture.
 
-### Set expressions
+### Expressions d'affectation
 
-Setters use the same syntax as getters, except they appear on the left side of
-an assignment.
+Les setters utilisent la même syntaxe que les getters, sauf qu'ils apparaissent du côté gauche d'une assignation.
 
 ```lox
-someObject.someProperty = value;
+objet.propriete = valeur;
 ```
 
-In grammar land, we extend the rule for assignment to allow dotted identifiers
-on the left-hand side.
+Au pays de la grammaire, nous étendons la règle pour l'assignation pour permettre des identifieurs pointés sur le côté gauche.
 
 ```ebnf
 assignment     → ( call "." )? IDENTIFIER "=" assignment
                | logic_or ;
 ```
 
-Unlike getters, setters don't chain. However, the reference to `call` allows any
-high-precedence expression before the last dot, including any number of
-*getters*, as in:
+Contrairement aux getters, les setters ne s'enchaînent pas. Cependant, la référence à `call` permet n'importe quelle expression à haute précédence avant le dernier point, incluant n'importe quel nombre de _getters_, comme dans :
 
 <img src="image/classes/setter.png" alt="breakfast.omelette.filling.meat = ham" />
 
-Note here that only the *last* part, the `.meat` is the *setter*. The
-`.omelette` and `.filling` parts are both *get* expressions.
+Notez ici que seulement la _dernière_ partie, le `.meat` est le _setter_. Les parties `.omelette` et `.filling` sont tous les deux des expressions _get_.
 
-Just as we have two separate AST nodes for variable access and variable
-assignment, we need a <span name="set-ast">second setter node</span> to
-complement our getter node.
+Tout comme nous avons deux nœuds AST séparés pour l'accès de variable et l'assignation de variable, nous avons besoin d'un <span name="set-ast">second nœud setter</span> pour compléter notre nœud getter.
 
 ^code set-ast (1 before, 1 after)
 
 <aside name="set-ast">
 
-The generated code for the new node is in [Appendix II][appendix-set].
+Le code généré pour le nouveau nœud est dans l'[Annexe II][appendix-set].
 
 [appendix-set]: appendix-ii.html#set-expression
 
 </aside>
 
-In case you don't remember, the way we handle assignment in the parser is a
-little funny. We can't easily tell that a series of tokens is the left-hand side
-of an assignment until we reach the `=`. Now that our assignment grammar rule
-has `call` on the left side, which can expand to arbitrarily large expressions,
-that final `=` may be many tokens away from the point where we need to know
-we're parsing an assignment.
+Au cas où vous ne vous souvenez pas, la façon dont nous gérons l'assignation dans le parseur est un peu drôle. Nous ne pouvons pas facilement dire qu'une série de tokens est le côté gauche d'une assignation jusqu'à ce que nous atteignions le `=`. Maintenant que notre règle de grammaire d'assignation a `call` sur le côté gauche, qui peut s'étendre en expressions arbitrairement grandes, ce `=` final peut être à beaucoup de tokens de distance du point où nous avons besoin de savoir que nous parsons une assignation.
 
-Instead, the trick we do is parse the left-hand side as a normal expression.
-Then, when we stumble onto the equal sign after it, we take the expression we
-already parsed and transform it into the correct syntax tree node for the
-assignment.
+Au lieu de cela, l'astuce que nous faisons est de parser le côté gauche comme une expression normale. Ensuite, quand nous trébuchons sur le signe égal après, nous prenons l'expression que nous avons déjà parsée et la transformons en le nœud d'arbre syntaxique correct pour l'assignation.
 
-We add another clause to that transformation to handle turning an Expr.Get
-expression on the left into the corresponding Expr.Set.
+Nous ajoutons une autre clause à cette transformation pour gérer la transformation d'une expression Expr.Get sur la gauche en l'Expr.Set correspondante.
 
 ^code assign-set (1 before, 1 after)
 
-That's parsing our syntax. We push that node through into the resolver.
+C'est le parsing de notre syntaxe. Nous poussons ce nœud à travers le résolveur.
 
 ^code resolver-visit-set
 
-Again, like Expr.Get, the property itself is dynamically evaluated, so there's
-nothing to resolve there. All we need to do is recurse into the two
-subexpressions of Expr.Set, the object whose property is being set, and the
-value it's being set to.
+Encore une fois, comme Expr.Get, la propriété elle-même est évaluée dynamiquement, donc il n'y a rien à résoudre là. Tout ce que nous avons besoin de faire est de récurser dans les deux sous-expressions d'Expr.Set, l'objet dont la propriété est définie, et la valeur à laquelle elle est définie.
 
-That leads us to the interpreter.
+Cela nous mène à l'interpréteur.
 
 ^code interpreter-visit-set
 
-We evaluate the object whose property is being set and check to see if it's a
-LoxInstance. If not, that's a runtime error. Otherwise, we evaluate the value
-being set and store it on the instance. That relies on a new method in
-LoxInstance.
+Nous évaluons l'objet dont la propriété est définie et vérifions pour voir s'il est une LoxInstance. Sinon, c'est une erreur d'exécution. Autrement, nous évaluons la valeur étant définie et la stockons sur l'instance. Cela repose sur une nouvelle méthode dans LoxInstance.
 
 <aside name="order">
 
-This is another semantic edge case. There are three distinct operations:
+Ceci est un autre cas limite sémantique. Il y a trois opérations distinctes :
 
-1. Evaluate the object.
+1. Évaluer l'objet.
 
-2. Raise a runtime error if it's not an instance of a class.
+2. Lever une erreur d'exécution s'il n'est pas une instance d'une classe.
 
-3. Evaluate the value.
+3. Évaluer la valeur.
 
-The order that those are performed in could be user visible, which means we need
-to carefully specify it and ensure our implementations do these in the same
-order.
+L'ordre dans lequel celles-ci sont effectuées pourrait être visible par l'utilisateur, ce qui signifie que nous avons besoin de le spécifier soigneusement et de nous assurer que nos implémentations font celles-ci dans le même ordre.
 
 </aside>
 
 ^code lox-instance-set-property
 
-No real magic here. We stuff the values straight into the Java map where fields
-live. Since Lox allows freely creating new fields on instances, there's no need
-to see if the key is already present.
+Pas de vraie magie ici. Nous bourrons les valeurs directement dans la map Java où les champs vivent. Puisque Lox permet de créer librement de nouveaux champs sur les instances, il n'y a pas besoin de voir si la clé est déjà présente.
 
-## Methods on Classes
+## Méthodes sur les Classes
 
-You can create instances of classes and stuff data into them, but the class
-itself doesn't really *do* anything. Instances are just maps and all instances
-are more or less the same. To make them feel like instances *of classes*, we
-need behavior -- methods.
+Vous pouvez créer des instances de classes et bourrer des données dedans, mais la classe elle-même ne _fait_ pas vraiment quelque chose. Les instances sont juste des maps et toutes les instances sont plus ou moins les mêmes. Pour les faire se sentir comme des instances _de classes_, nous avons besoin de comportement -- des méthodes.
 
-Our helpful parser already parses method declarations, so we're good there. We
-also don't need to add any new parser support for method *calls*. We already
-have `.` (getters) and `()` (function calls). A "method call" simply chains
-those together.
+Notre parseur serviable parse déjà les déclarations de méthode, donc nous sommes bons là. Nous n'avons aussi pas besoin d'ajouter de support parseur pour les _appels_ de méthode. Nous avons déjà `.` (getters) et `()` (appels de fonction). Un "appel de méthode" enchaîne simplement ceux-ci ensemble.
 
-<img src="image/classes/method.png" alt="The syntax tree for 'object.method(argument)" />
+<img src="image/classes/method.png" alt="L'arbre syntaxique pour 'objet.methode(argument)" />
 
-That raises an interesting question. What happens when those two expressions are
-pulled apart? Assuming that `method` in this example is a method on the class of
-`object` and not a field on the instance, what should the following piece of
-code do?
+Cela soulève une question intéressante. Qu'arrive-t-il quand ces deux expressions sont séparées ? En supposant que `methode` dans cet exemple est une méthode sur la classe de `objet` et pas un champ sur l'instance, que devrait faire le morceau de code suivant ?
 
 ```lox
-var m = object.method;
+var m = objet.methode;
 m(argument);
 ```
 
-This program "looks up" the method and stores the result -- whatever that is --
-in a variable and then calls that object later. Is this allowed? Can you treat a
-method like it's a function on the instance?
+Ce programme "cherche" la méthode et stocke le résultat -- quel qu'il soit -- dans une variable et ensuite appelle cet objet plus tard. Est-ce autorisé ? Pouvez-vous traiter une méthode comme si c'était une fonction sur l'instance ?
 
-What about the other direction?
+Qu'en est-il de l'autre direction ?
 
 ```lox
 class Box {}
@@ -572,58 +401,41 @@ box.function = notMethod;
 box.function("argument");
 ```
 
-This program creates an instance and then stores a function in a field on it.
-Then it calls that function using the same syntax as a method call. Does that
-work?
+Ce programme crée une instance et ensuite stocke une fonction dans un champ dessus. Ensuite il appelle cette fonction en utilisant la même syntaxe qu'un appel de méthode. Est-ce que ça marche ?
 
-Different languages have different answers to these questions. One could write a
-treatise on it. For Lox, we'll say the answer to both of these is yes, it does
-work. We have a couple of reasons to justify that. For the second example --
-calling a function stored in a field -- we want to support that because
-first-class functions are useful and storing them in fields is a perfectly
-normal thing to do.
+Différents langages ont différentes réponses à ces questions. On pourrit écrire un traité là-dessus. Pour Lox, nous dirons que la réponse à ces deux-là est oui, ça marche. Nous avons quelques raisons pour justifier cela. Pour le second exemple -- appeler une fonction stockée dans un champ -- nous voulons supporter cela parce que les fonctions de première classe sont utiles et les stocker dans des champs est une chose parfaitement normale à faire.
 
-The first example is more obscure. One motivation is that users generally expect
-to be able to hoist a subexpression out into a local variable without changing
-the meaning of the program. You can take this:
+Le premier exemple est plus obscur. Une motivation est que les utilisateurs s'attendent généralement à être capables de hisser une sous-expression hors dans une variable locale sans changer le sens du programme. Vous pouvez prendre ceci :
 
 ```lox
 breakfast(omelette.filledWith(cheese), sausage);
 ```
 
-And turn it into this:
+Et le transformer en ceci :
 
 ```lox
 var eggs = omelette.filledWith(cheese);
 breakfast(eggs, sausage);
 ```
 
-And it does the same thing. Likewise, since the `.` and the `()` in a method
-call *are* two separate expressions, it seems you should be able to hoist the
-*lookup* part into a variable and then call it <span
-name="callback">later</span>. We need to think carefully about what the *thing*
-you get when you look up a method is, and how it behaves, even in weird cases
-like:
+Et cela fait la même chose. De même, puisque le `.` et les `()` dans un appel de méthode _sont_ deux expressions séparées, il semble que vous devriez être capable de hisser la partie _recherche_ dans une variable et ensuite l'appeler <span name="callback">plus tard</span>. Nous devons penser soigneusement à ce qu'est la _chose_ que vous obtenez quand vous cherchez une méthode, et comment elle se comporte, même dans des cas bizarres comme :
 
 <aside name="callback">
 
-A motivating use for this is callbacks. Often, you want to pass a callback whose
-body simply invokes a method on some object. Being able to look up the method and
-pass it directly saves you the chore of manually declaring a function to wrap
-it. Compare this:
+Un usage motivant pour cela est les callbacks. Souvent, vous voulez passer un callback dont le corps invoque simplement une méthode sur un certain objet. Être capable de chercher la méthode et de la passer directement vous épargne la corvée de déclarer manuellement une fonction pour l'envelopper. Comparez ceci :
 
 ```lox
 fun callback(a, b, c) {
-  object.method(a, b, c);
+  objet.methode(a, b, c);
 }
 
 takeCallback(callback);
 ```
 
-With this:
+Avec ceci :
 
 ```lox
-takeCallback(object.method);
+takeCallback(objet.methode);
 ```
 
 </aside>
@@ -642,14 +454,12 @@ var method = jane.sayName;
 method(); // ?
 ```
 
-If you grab a handle to a method on some instance and call it later, does it
-"remember" the instance it was pulled off from? Does `this` inside the method
-still refer to that original object?
+Si vous attrapez une poignée vers une méthode sur une certaine instance et l'appelez plus tard, est-ce qu'elle "se souvient" de l'instance d'où elle a été tirée ? Est-ce que `this` à l'intérieur de la méthode fait toujours référence à cet objet original ?
 
-Here's a more pathological example to bend your brain:
+Voici un exemple plus pathologique pour tordre votre cerveau :
 
 ```lox
-class Person {
+ class Person {
   sayName() {
     print this.name;
   }
@@ -665,92 +475,61 @@ bill.sayName = jane.sayName;
 bill.sayName(); // ?
 ```
 
-Does that last line print "Bill" because that's the instance that we *called*
-the method through, or "Jane" because it's the instance where we first grabbed
-the method?
+Est-ce que cette dernière ligne imprime "Bill" parce que c'est l'instance à travers laquelle nous avons _appelé_ la méthode, ou "Jane" parce que c'est l'instance où nous avons d'abord attrapé la méthode ?
 
-Equivalent code in Lua and JavaScript would print "Bill". Those languages don't
-really have a notion of "methods". Everything is sort of functions-in-fields, so
-it's not clear that `jane` "owns" `sayName` any more than `bill` does.
+Du code équivalent en Lua et JavaScript imprimerait "Bill". Ces langages n'ont pas vraiment une notion de "méthodes". Tout est en quelque sorte fonctions-dans-champs, donc il n'est pas clair que `jane` "possède" `sayName` plus que `bill` ne le fait.
 
-Lox, though, has real class syntax so we do know which callable things are
-methods and which are functions. Thus, like Python, C#, and others, we will have
-methods "bind" `this` to the original instance when the method is first grabbed.
-Python calls <span name="bound">these</span> **bound methods**.
+Lox, cependant, a une vraie syntaxe de classe donc nous savons quelles choses appelables sont des méthodes et lesquelles sont des fonctions. Ainsi, comme Python, C#, et autres, nous ferons en sorte que les méthodes "lient" `this` à l'instance originale quand la méthode est d'abord attrapée. Python appelle <span name="bound">ceux-ci</span> des **méthodes liées**.
 
 <aside name="bound">
 
-I know, imaginative name, right?
+Je sais, nom imaginatif, pas vrai ?
 
 </aside>
 
-In practice, that's usually what you want. If you take a reference to a method
-on some object so you can use it as a callback later, you want to remember the
-instance it belonged to, even if that callback happens to be stored in a field
-on some other object.
+En pratique, c'est habituellement ce que vous voulez. Si vous prenez une référence vers une méthode sur un certain objet pour pouvoir l'utiliser comme un callback plus tard, vous voulez vous souvenir de l'instance à laquelle elle appartenait, même si ce callback se trouve être stocké dans un champ sur un autre objet.
 
-OK, that's a lot of semantics to load into your head. Forget about the edge
-cases for a bit. We'll get back to those. For now, let's get basic method calls
-working. We're already parsing the method declarations inside the class body, so
-the next step is to resolve them.
+OK, c'est beaucoup de sémantique à charger dans votre tête. Oubliez les cas limites pour un peu. Nous y reviendrons. Pour l'instant, faisons fonctionner les appels de méthode basiques. Nous parsons déjà les déclarations de méthode à l'intérieur du corps de la classe, donc la prochaine étape est de les résoudre.
 
 ^code resolve-methods (1 before, 1 after)
 
 <aside name="local">
 
-Storing the function type in a local variable is pointless right now, but we'll
-expand this code before too long and it will make more sense.
+Stocker le type de fonction dans une variable locale est inutile pour l'instant, mais nous étendrons ce code d'ici peu et cela aura plus de sens.
 
 </aside>
 
-We iterate through the methods in the class body and call the
-`resolveFunction()` method we wrote for handling function declarations already.
-The only difference is that we pass in a new FunctionType enum value.
+Nous itérons à travers les méthodes dans le corps de la classe et appelons la méthode `resolveFunction()` que nous avons écrite pour gérer les déclarations de fonction précédemment. La seule différence est que nous passons une nouvelle valeur d'enum FunctionType.
 
 ^code function-type-method (1 before, 1 after)
 
-That's going to be important when we resolve `this` expressions. For now, don't
-worry about it. The interesting stuff is in the interpreter.
+Cela va être important quand nous résoudrons les expressions `this`. Pour l'instant, ne vous inquiétez pas pour ça. Le truc intéressant est dans l'interpréteur.
 
 ^code interpret-methods (1 before, 1 after)
 
-When we interpret a class declaration statement, we turn the syntactic
-representation of the class -- its AST node -- into its runtime representation.
-Now, we need to do that for the methods contained in the class as well. Each
-method declaration blossoms into a LoxFunction object.
+Quand nous interprétons une instruction de déclaration de classe, nous transformons la représentation syntaxique de la classe -- son nœud AST -- en sa représentation à l'exécution. Maintenant, nous devons faire cela pour les méthodes contenues dans la classe aussi. Chaque déclaration de méthode éclot en un objet LoxFunction.
 
-We take all of those and wrap them up into a map, keyed by the method names.
-That gets stored in LoxClass.
+Nous prenons tous ceux-là et les enveloppons dans une map, indexée par les noms de méthode. Cela est stocké dans LoxClass.
 
 ^code lox-class-methods (1 before, 3 after)
 
-Where an instance stores state, the class stores behavior. LoxInstance has its
-map of fields, and LoxClass gets a map of methods. Even though methods are
-owned by the class, they are still accessed through instances of that class.
+Là où une instance stocke l'état, la classe stocke le comportement. LoxInstance a sa map de champs, et LoxClass obtient une map de méthodes. Même si les méthodes sont possédées par la classe, elles sont toujours accédées à travers des instances de cette classe.
 
 ^code lox-instance-get-method (5 before, 2 after)
 
-When looking up a property on an instance, if we don't <span
-name="shadow">find</span> a matching field, we look for a method with that name
-on the instance's class. If found, we return that. This is where the distinction
-between "field" and "property" becomes meaningful. When accessing a property,
-you might get a field -- a bit of state stored on the instance -- or you could
-hit a method defined on the instance's class.
+Quand nous cherchons une propriété sur une instance, si nous ne <span name="shadow">trouvons</span> pas un champ correspondant, nous cherchons une méthode avec ce nom sur la classe de l'instance. Si trouvée, nous renvoyons cela. C'est là que la distinction entre "champ" et "propriété" devient significative. Quand vous accédez à une propriété, vous pourriez obtenir un champ -- un peu d'état stocké sur l'instance -- ou vous pourriez frapper une méthode définie sur la classe de l'instance.
 
-The method is looked up using this:
+La méthode est cherchée en utilisant ceci :
 
 <aside name="shadow">
 
-Looking for a field first implies that fields shadow methods, a subtle but
-important semantic point.
+Chercher un champ d'abord implique que les champs masquent les méthodes, un point sémantique subtil mais important.
 
 </aside>
 
 ^code lox-class-find-method
 
-You can probably guess this method is going to get more interesting later. For
-now, a simple map lookup on the class's method table is enough to get us
-started. Give it a try:
+Vous pouvez probablement deviner que cette méthode va devenir plus intéressante plus tard. Pour l'instant, une simple recherche de map sur la table de méthodes de la classe est suffisante pour nous démarrer. Donnez-lui un essai :
 
 <span name="crunch"></span>
 
@@ -761,41 +540,30 @@ class Bacon {
   }
 }
 
-Bacon().eat(); // Prints "Crunch crunch crunch!".
+Bacon().eat(); // Imprime "Crunch crunch crunch!".
 ```
 
 <aside name="crunch">
 
-Apologies if you prefer chewy bacon over crunchy. Feel free to adjust the script
-to your taste.
+Excuses si vous préférez le bacon caoutchouteux plutôt que croustillant. Sentez-vous libre d'ajuster le script à votre goût.
 
 </aside>
 
 ## This
 
-We can define both behavior and state on objects, but they aren't tied together
-yet. Inside a method, we have no way to access the fields of the "current"
-object -- the instance that the method was called on -- nor can we call other
-methods on that same object.
+Nous pouvons définir à la fois le comportement et l'état sur les objets, mais ils ne sont pas encore liés ensemble. À l'intérieur d'une méthode, nous n'avons aucun moyen d'accéder aux champs de l'objet "courant" -- l'instance sur laquelle la méthode a été appelée -- ni ne pouvons appeler d'autres méthodes sur ce même objet.
 
-To get at that instance, it needs a <span name="i">name</span>. Smalltalk,
-Ruby, and Swift use "self". Simula, C++, Java, and others use "this". Python
-uses "self" by convention, but you can technically call it whatever you like.
+Pour atteindre cette instance, elle a besoin d'un <span name="i">nom</span>. Smalltalk, Ruby, et Swift utilisent "self". Simula, C++, Java, et d'autres utilisent "this". Python utilise "self" par convention, mais vous pouvez techniquement l'appeler comme vous voulez.
 
 <aside name="i">
 
-"I" would have been a great choice, but using "i" for loop variables predates
-OOP and goes all the way back to Fortran. We are victims of the incidental
-choices of our forebears.
+"I" (Je) aurait été un super choix, mais utiliser "i" pour les variables de boucle précède la POO et remonte tout le chemin jusqu'à Fortran. Nous sommes victimes des choix accidentels de nos ancêtres.
 
 </aside>
 
-For Lox, since we generally hew to Java-ish style, we'll go with "this". Inside
-a method body, a `this` expression evaluates to the instance that the method was
-called on. Or, more specifically, since methods are accessed and then invoked as
-two steps, it will refer to the object that the method was *accessed* from.
+Pour Lox, puisque nous nous tenons généralement au style Java-esque, nous irons avec "this". À l'intérieur d'un corps de méthode, une expression `this` s'évalue à l'instance sur laquelle la méthode a été appelée. Ou, plus spécifiquement, puisque les méthodes sont accédées et ensuite invoquées comme deux étapes, elle fera référence à l'objet depuis lequel la méthode a été _accédée_.
 
-That makes our job harder. Peep at:
+Cela rend notre travail plus difficile. Regardez :
 
 ```lox
 class Egotist {
@@ -808,22 +576,13 @@ var method = Egotist().speak;
 method();
 ```
 
-On the second-to-last line, we grab a reference to the `speak()` method off an
-instance of the class. That returns a function, and that function needs to
-remember the instance it was pulled off of so that *later*, on the last line, it
-can still find it when the function is called.
+Sur l'avant-dernière ligne, nous attrapons une référence à la méthode `speak()` depuis une instance de la classe. Cela renvoie une fonction, et cette fonction a besoin de se souvenir de l'instance d'où elle a été tirée pour que _plus tard_, sur la dernière ligne, elle puisse encore la trouver quand la fonction est appelée.
 
-We need to take `this` at the point that the method is accessed and attach it to
-the function somehow so that it stays around as long as we need it to. Hmm... a
-way to store some extra data that hangs around a function, eh? That sounds an
-awful lot like a *closure*, doesn't it?
+Nous avons besoin de prendre `this` au point où la méthode est accédée et de l'attacher à la fonction d'une manière ou d'une autre pour qu'il reste dans les parages aussi longtemps que nous en avons besoin. Hmm... un moyen de stocker quelques données supplémentaires qui traînent autour d'une fonction, hein ? Cela sonne terriblement comme une _fermeture_, n'est-ce pas ?
 
-If we defined `this` as a sort of hidden variable in an environment that
-surrounds the function returned when looking up a method, then uses of `this` in
-the body would be able to find it later. LoxFunction already has the ability to
-hold on to a surrounding environment, so we have the machinery we need.
+Si nous définissions `this` comme une sorte de variable cachée dans un environnement qui entoure la fonction renvoyée lors de la recherche d'une méthode, alors les utilisations de `this` dans le corps seraient capables de la trouver plus tard. LoxFunction a déjà la capacité de s'accrocher à un environnement environnant, donc nous avons la machinerie dont nous avons besoin.
 
-Let's walk through an example to see how it works:
+Parcourons un exemple pour voir comment ça marche :
 
 ```lox
 class Cake {
@@ -835,35 +594,24 @@ class Cake {
 
 var cake = Cake();
 cake.flavor = "German chocolate";
-cake.taste(); // Prints "The German chocolate cake is delicious!".
+cake.taste(); // Imprime "The German chocolate cake is delicious!".
 ```
 
-When we first evaluate the class definition, we create a LoxFunction for
-`taste()`. Its closure is the environment surrounding the class, in this case
-the global one. So the LoxFunction we store in the class's method map looks
-like so:
+Quand nous évaluons d'abord la définition de classe, nous créons une LoxFunction pour `taste()`. Sa fermeture est l'environnement entourant la classe, dans ce cas le global. Donc la LoxFunction que nous stockons dans la map de méthodes de la classe ressemble à ceci :
 
-<img src="image/classes/closure.png" alt="The initial closure for the method." />
+<img src="image/classes/closure.png" alt="La fermeture initiale pour la méthode." />
 
-When we evaluate the `cake.taste` get expression, we create a new environment
-that binds `this` to the object the method is accessed from (here, `cake`). Then
-we make a *new* LoxFunction with the same code as the original one but using
-that new environment as its closure.
+Quand nous évaluons l'expression d'accès `cake.taste`, nous créons un nouvel environnement qui lie `this` à l'objet depuis lequel la méthode est accédée (ici, `cake`). Ensuite nous faisons une _nouvelle_ LoxFunction avec le même code que l'originale mais utilisant ce nouvel environnement comme sa fermeture.
 
-<img src="image/classes/bound-method.png" alt="The new closure that binds 'this'." />
+<img src="image/classes/bound-method.png" alt="La nouvelle fermeture qui lie 'this'." />
 
-This is the LoxFunction that gets returned when evaluating the get expression
-for the method name. When that function is later called by a `()` expression,
-we create an environment for the method body as usual.
+C'est la LoxFunction qui est renvoyée lors de l'évaluation de l'expression d'accès pour le nom de méthode. Quand cette fonction est plus tard appelée par une expression `()`, nous créons un environnement pour le corps de méthode comme d'habitude.
 
-<img src="image/classes/call.png" alt="Calling the bound method and creating a new environment for the method body." />
+<img src="image/classes/call.png" alt="Appeler la méthode liée et créer un nouvel environnement pour le corps de la méthode." />
 
-The parent of the body environment is the environment we created earlier to bind
-`this` to the current object. Thus any use of `this` inside the body
-successfully resolves to that instance.
+Le parent de l'environnement du corps est l'environnement que nous avons créé plus tôt pour lier `this` à l'objet courant. Ainsi tout usage de `this` à l'intérieur du corps se résout avec succès à cette instance.
 
-Reusing our environment code for implementing `this` also takes care of
-interesting cases where methods and functions interact, like:
+Réutiliser notre code d'environnement pour implémenter `this` s'occupe aussi des cas intéressants où méthodes et fonctions interagissent, comme :
 
 ```lox
 class Thing {
@@ -880,92 +628,65 @@ var callback = Thing().getCallback();
 callback();
 ```
 
-In, say, JavaScript, it's common to return a callback from inside a method. That
-callback may want to hang on to and retain access to the original object -- the
-`this` value -- that the method was associated with. Our existing support for
-closures and environment chains should do all this correctly.
+En, disons, JavaScript, il est courant de renvoyer un callback depuis l'intérieur d'une méthode. Ce callback peut vouloir s'accrocher et retenir l'accès à l'objet original -- la valeur `this` -- auquel la méthode était associée. Notre support existant pour les fermetures et les chaînes d'environnement devrait faire tout cela correctement.
 
-Let's code it up. The first step is adding <span name="this-ast">new
-syntax</span> for `this`.
+Codons-le. La première étape est d'ajouter une <span name="this-ast">nouvelle syntaxe</span> pour `this`.
 
 ^code this-ast (1 before, 1 after)
 
 <aside name="this-ast">
 
-The generated code for the new node is in [Appendix II][appendix-this].
+Le code généré pour le nouveau nœud est dans l'[Annexe II][appendix-this].
 
 [appendix-this]: appendix-ii.html#this-expression
 
 </aside>
 
-Parsing is simple since it's a single token which our lexer already
-recognizes as a reserved word.
+Le parsing est simple puisque c'est un seul token que notre lexer reconnaît déjà comme un mot réservé.
 
 ^code parse-this (2 before, 2 after)
 
-You can start to see how `this` works like a variable when we get to the
-resolver.
+Vous pouvez commencer à voir comment `this` fonctionne comme une variable quand nous arrivons au résolveur.
 
 ^code resolver-visit-this
 
-We resolve it exactly like any other local variable using "this" as the name for
-the "variable". Of course, that's not going to work right now, because "this"
-*isn't* declared in any scope. Let's fix that over in `visitClassStmt()`.
+Nous le résolvons exactement comme n'importe quelle autre variable locale en utilisant "this" comme le nom pour la "variable". Bien sûr, ça ne va pas marcher maintenant, parce que "this" n'_est pas_ déclaré dans une quelconque portée. Fixons cela là-bas dans `visitClassStmt()`.
 
 ^code resolver-begin-this-scope (2 before, 1 after)
 
-Before we step in and start resolving the method bodies, we push a new scope and
-define "this" in it as if it were a variable. Then, when we're done, we discard
-that surrounding scope.
+Avant que nous entrions et commencions à résoudre les corps des méthodes, nous poussons une nouvelle portée et définissons "this" dedans comme si c'était une variable. Ensuite, quand nous avons fini, nous jetons cette portée environnante.
 
 ^code resolver-end-this-scope (2 before, 1 after)
 
-Now, whenever a `this` expression is encountered (at least inside a method) it
-will resolve to a "local variable" defined in an implicit scope just outside of
-the block for the method body.
+Maintenant, chaque fois qu'une expression `this` est rencontrée (au moins à l'intérieur d'une méthode) elle se résoudra à une "variable locale" définie dans une portée implicite juste en dehors du bloc pour le corps de la méthode.
 
-The resolver has a new *scope* for `this`, so the interpreter needs to create a
-corresponding *environment* for it. Remember, we always have to keep the
-resolver's scope chains and the interpreter's linked environments in sync with
-each other. At runtime, we create the environment after we find the method on
-the instance. We replace the previous line of code that simply returned the
-method's LoxFunction with this:
+Le résolveur a une nouvelle _portée_ pour `this`, donc l'interpréteur a besoin de créer un _environnement_ correspondant pour lui. Rappelez-vous, nous devons toujours garder les chaînes de portée du résolveur et les environnements chaînés de l'interpréteur synchronisés l'un avec l'autre. À l'exécution, nous créons l'environnement après que nous ayons trouvé la méthode sur l'instance. Nous remplaçons la ligne de code précédente qui renvoyait simplement la LoxFunction de la méthode par ceci :
 
 ^code lox-instance-bind-method (1 before, 3 after)
 
-Note the new call to `bind()`. That looks like so:
+Notez le nouvel appel à `bind()`. Cela ressemble à ceci :
 
 ^code bind-instance
 
-There isn't much to it. We create a new environment nestled inside the method's
-original closure. Sort of a closure-within-a-closure. When the method is called,
-that will become the parent of the method body's environment.
+Il n'y a pas grand chose à cela. Nous créons un nouvel environnement niché à l'intérieur de la fermeture originale de la méthode. Sorte d'une fermeture-dans-une-fermeture. Quand la méthode est appelée, cela deviendra le parent de l'environnement du corps de la méthode.
 
-We declare "this" as a variable in that environment and bind it to the given
-instance, the instance that the method is being accessed from. *Et voilà*, the
-returned LoxFunction now carries around its own little persistent world where
-"this" is bound to the object.
+Nous déclarons "this" comme une variable dans cet environnement et la lions à l'instance donnée, l'instance depuis laquelle la méthode est accédée. _Et voilà_, la LoxFunction renvoyée transporte maintenant son propre petit monde persistant où "this" est lié à l'objet.
 
-The remaining task is interpreting those `this` expressions. Similar to the
-resolver, it is the same as interpreting a variable expression.
+La tâche restante est d'interpréter ces expressions `this`. Similaire au résolveur, c'est la même chose qu'interpréter une expression de variable.
 
 ^code interpreter-visit-this
 
-Go ahead and give it a try using that cake example from earlier. With less than
-twenty lines of code, our interpreter handles `this` inside methods even in all
-of the weird ways it can interact with nested classes, functions inside methods,
-handles to methods, etc.
+Allez-y et donnez-lui un essai en utilisant cet exemple de gâteau de tout à l'heure. Avec moins de vingt lignes de code, notre interpréteur gère `this` à l'intérieur des méthodes même dans toutes les façons bizarres dont il peut interagir avec les classes imbriquées, les fonctions à l'intérieur de méthodes, les poignées vers des méthodes, etc.
 
-### Invalid uses of this
+### Usages invalides de this
 
-Wait a minute. What happens if you try to use `this` *outside* of a method? What
-about:
+Attendez une minute. Qu'arrive-t-il si vous essayez d'utiliser `this` _en dehors_ d'une méthode ? Qu'en est-il de :
 
 ```lox
 print this;
 ```
 
-Or:
+Ou :
 
 ```lox
 fun notAMethod() {
@@ -973,123 +694,77 @@ fun notAMethod() {
 }
 ```
 
-There is no instance for `this` to point to if you're not in a method. We could
-give it some default value like `nil` or make it a runtime error, but the user
-has clearly made a mistake. The sooner they find and fix that mistake, the
-happier they'll be.
+Il n'y a pas d'instance vers laquelle `this` peut pointer si vous n'êtes pas dans une méthode. Nous pourrions lui donner une certaine valeur par défaut comme `nil` ou en faire une erreur d'exécution, mais l'utilisateur a clairement fait une erreur. Le plus tôt ils trouvent et corrigent cette erreur, le plus heureux ils seront.
 
-Our resolution pass is a fine place to detect this error statically. It already
-detects `return` statements outside of functions. We'll do something similar for
-`this`. In the vein of our existing FunctionType enum, we define a new ClassType
-one.
+Notre passe de résolution est un bon endroit pour détecter cette erreur statiquement. Elle détecte déjà les instructions `return` en dehors des fonctions. Nous ferons quelque chose de similaire pour `this`. Dans la veine de notre enum FunctionType existant, nous définissons un nouveau ClassType.
 
 ^code class-type (1 before, 1 after)
 
-Yes, it could be a Boolean. When we get to inheritance, it will get a third
-value, hence the enum right now. We also add a corresponding field,
-`currentClass`. Its value tells us if we are currently inside a class
-declaration while traversing the syntax tree. It starts out `NONE` which means
-we aren't in one.
+Oui, cela pourrait être un Booléen. Quand nous arriverons à l'héritage, cela obtiendra une troisième valeur, d'où l'enum maintenant. Nous ajoutons aussi un champ correspondant, `currentClass`. Sa valeur nous dit si nous sommes actuellement à l'intérieur d'une déclaration de classe pendant que nous traversons l'arbre syntaxique. Il commence à `NONE` ce qui signifie que nous ne sommes pas dans une.
 
-When we begin to resolve a class declaration, we change that.
+Quand nous commençons à résoudre une déclaration de classe, nous changeons cela.
 
 ^code set-current-class (1 before, 1 after)
 
-As with `currentFunction`, we store the previous value of the field in a local
-variable. This lets us piggyback onto the JVM to keep a stack of `currentClass`
-values. That way we don't lose track of the previous value if one class nests
-inside another.
+Comme avec `currentFunction`, nous stockons la valeur précédente du champ dans une variable locale. Cela nous permet de faire du ferroutage sur la JVM pour garder une pile de valeurs `currentClass`. De cette façon nous ne perdons pas la trace de la valeur précédente si une classe s'imbrique à l'intérieur d'une autre.
 
-Once the methods have been resolved, we "pop" that stack by restoring the old
-value.
+Une fois que les méthodes ont été résolues, nous "dépilons" cette pile en restaurant l'ancienne valeur.
 
 ^code restore-current-class (2 before, 1 after)
 
-When we resolve a `this` expression, the `currentClass` field gives us the bit
-of data we need to report an error if the expression doesn't occur nestled
-inside a method body.
+Quand nous résolvons une expression `this`, le champ `currentClass` nous donne le bout de donnée dont nous avons besoin pour rapporter une erreur si l'expression ne se produit pas nichée à l'intérieur d'un corps de méthode.
 
 ^code this-outside-of-class (1 before, 1 after)
 
-That should help users use `this` correctly, and it saves us from having to
-handle misuse at runtime in the interpreter.
+Cela devrait aider les utilisateurs à utiliser `this` correctement, et cela nous épargne d'avoir à gérer la mauvaise utilisation à l'exécution dans l'interpréteur.
 
-## Constructors and Initializers
+## Constructeurs et Initialiseurs
 
-We can do almost everything with classes now, and as we near the end of the
-chapter we find ourselves strangely focused on a beginning. Methods and fields
-let us encapsulate state and behavior together so that an object always *stays*
-in a valid configuration. But how do we ensure a brand new object *starts* in a
-good state?
+Nous pouvons faire presque tout avec les classes maintenant, et alors que nous approchons de la fin du chapitre nous nous trouvons étrangement concentrés sur un début. Les méthodes et les champs nous permettent d'encapsuler l'état et le comportement ensemble pour qu'un objet _reste_ toujours dans une configuration valide. Mais comment nous assurons-nous qu'un tout nouvel objet _commence_ dans un bon état ?
 
-For that, we need constructors. I find them one of the trickiest parts of a
-language to design, and if you peer closely at most other languages, you'll see
-<span name="cracks">cracks</span> around object construction where the seams of
-the design don't quite fit together perfectly. Maybe there's something
-intrinsically messy about the moment of birth.
+Pour cela, nous avons besoin de constructeurs. Je trouve qu'ils sont l'une des parties les plus délicates d'un langage à concevoir, et si vous regardez de près la plupart des autres langages, vous verrez des <span name="cracks">fissures</span> autour de la construction d'objet où les coutures du design ne s'ajustent pas tout à fait parfaitement ensemble. Peut-être qu'il y a quelque chose d'intrinsèquement désordonné à propos du moment de la naissance.
 
 <aside name="cracks">
 
-A few examples: In Java, even though final fields must be initialized, it is
-still possible to read one *before* it has been. Exceptions -- a huge, complex
-feature -- were added to C++ mainly as a way to emit errors from constructors.
+Quelques exemples : En Java, même si les champs finaux doivent être initialisés, il est toujours possible d'en lire un _avant_ qu'il ne l'ait été. Les exceptions -- une fonctionnalité énorme, complexe -- ont été ajoutées à C++ principalement comme un moyen d'émettre des erreurs depuis des constructeurs.
 
 </aside>
 
-"Constructing" an object is actually a pair of operations:
+"Construire" un objet est en fait une paire d'opérations :
 
-1.  The runtime <span name="allocate">*allocates*</span> the memory required for
-    a fresh instance. In most languages, this operation is at a fundamental
-    level beneath what user code is able to access.
+1.  Le runtime <span name="allocate">_alloue_</span> la mémoire requise pour une instance fraîche. Dans la plupart des langages, cette opération est à un niveau fondamental en dessous de ce à quoi le code utilisateur est capable d'accéder.
 
     <aside name="allocate">
 
-    C++'s "[placement new][]" is a rare example where the bowels of allocation
-    are laid bare for the programmer to prod.
+    Le "[placement new][]" de C++ est un exemple rare où les entrailles de l'allocation sont mises à nu pour que le programmeur puisse les piquer.
 
     </aside>
 
-2.  Then, a user-provided chunk of code is called which *initializes* the
-    unformed object.
+2.  Ensuite, un morceau de code fourni par l'utilisateur est appelé qui _initialise_ l'objet non formé.
 
 [placement new]: https://en.wikipedia.org/wiki/Placement_syntax
 
-The latter is what we tend to think of when we hear "constructor", but the
-language itself has usually done some groundwork for us before we get to that
-point. In fact, our Lox interpreter already has that covered when it creates a
-new LoxInstance object.
+Ce dernier est ce à quoi nous avons tendance à penser quand nous entendons "constructeur", mais le langage lui-même a habituellement fait un peu de travail préparatoire pour nous avant que nous arrivions à ce point. En fait, notre interpréteur Lox a déjà cela couvert quand il crée un nouvel objet LoxInstance.
 
-We'll do the remaining part -- user-defined initialization -- now. Languages
-have a variety of notations for the chunk of code that sets up a new object for
-a class. C++, Java, and C# use a method whose name matches the class name. Ruby
-and Python call it `init()`. The latter is nice and short, so we'll do that.
+Nous ferons la partie restante -- l'initialisation définie par l'utilisateur -- maintenant. Les langages ont une variété de notations pour le morceau de code qui met en place un nouvel objet pour une classe. C++, Java, et C# utilisent une méthode dont le nom correspond au nom de la classe. Ruby et Python l'appellent `init()`. Ce dernier est sympa et court, donc nous ferons ça.
 
-In LoxClass's implementation of LoxCallable, we add a few more lines.
+Dans l'implémentation de LoxClass de LoxCallable, nous ajoutons quelques lignes de plus.
 
 ^code lox-class-call-initializer (2 before, 1 after)
 
-When a class is called, after the LoxInstance is created, we look for an "init"
-method. If we find one, we immediately bind and invoke it just like a normal
-method call. The argument list is forwarded along.
+Quand une classe est appelée, après que la LoxInstance soit créée, nous cherchons une méthode "init". Si nous en trouvons une, nous la lions immédiatement et l'invoquons juste comme un appel de méthode normal. La liste d'arguments est transférée au passage.
 
-That argument list means we also need to tweak how a class declares its arity.
+Cette liste d'arguments signifie que nous avons aussi besoin d'ajuster comment une classe déclare son arité.
 
 ^code lox-initializer-arity (1 before, 1 after)
 
-If there is an initializer, that method's arity determines how many arguments
-you must pass when you call the class itself. We don't *require* a class to
-define an initializer, though, as a convenience. If you don't have an
-initializer, the arity is still zero.
+S'il y a un initialiseur, l'arité de cette méthode détermine combien d'arguments vous devez passer quand vous appelez la classe elle-même. Nous n'_exigeons_ pas d'une classe de définir un initialiseur, cependant, comme commodité. Si vous n'avez pas d'initialiseur, l'arité est toujours zéro.
 
-That's basically it. Since we bind the `init()` method before we call it, it has
-access to `this` inside its body. That, along with the arguments passed to the
-class, are all you need to be able to set up the new instance however you
-desire.
+C'est fondamentalement ça. Puisque nous lions la méthode `init()` avant de l'appeler, elle a accès à `this` à l'intérieur de son corps. Cela, avec les arguments passés à la classe, est tout ce dont vous avez besoin pour être capable de mettre en place la nouvelle instance comme vous le désirez.
 
-### Invoking init() directly
+### Invoquer init() directement
 
-As usual, exploring this new semantic territory rustles up a few weird
-creatures. Consider:
+Comme d'habitude, explorer ce nouveau territoire sémantique fait bruisser quelques créatures bizarres. Considérez :
 
 ```lox
 class Foo {
@@ -1102,57 +777,37 @@ var foo = Foo();
 print foo.init();
 ```
 
-Can you "re-initialize" an object by directly calling its `init()` method? If
-you do, what does it return? A <span name="compromise">reasonable</span> answer
-would be `nil` since that's what it appears the body returns.
+Pouvez-vous "ré-initialiser" un objet en appelant directement sa méthode `init()` ? Si vous le faites, que renvoie-t-elle ? Une réponse <span name="compromise">raisonnable</span> serait `nil` puisque c'est ce que le corps semble renvoyer.
 
-However -- and I generally dislike compromising to satisfy the
-implementation -- it will make clox's implementation of constructors much
-easier if we say that `init()` methods always return `this`, even when
-directly called. In order to keep jlox compatible with that, we add a little
-special case code in LoxFunction.
+Cependant -- et je déteste généralement faire des compromis pour satisfaire l'implémentation -- cela rendra l'implémentation des constructeurs de clox beaucoup plus facile si nous disons que les méthodes `init()` renvoient toujours `this`, même quand appelées directement. Afin de garder jlox compatible avec cela, nous ajoutons un petit code de cas spécial dans LoxFunction.
 
 <aside name="compromise">
 
-Maybe "dislike" is too strong a claim. It's reasonable to have the constraints
-and resources of your implementation affect the design of the language. There
-are only so many hours in the day, and if a cut corner here or there lets you get
-more features to users in less time, it may very well be a net win for their
-happiness and productivity. The trick is figuring out *which* corners to cut
-that won't cause your users and future self to curse your shortsightedness.
+Peut-être que "déteste" est une affirmation trop forte. Il est raisonnable d'avoir les contraintes et ressources de votre implémentation affecter le design du langage. Il n'y a qu'un nombre limité d'heures dans la journée, et si un coin coupé ici ou là vous permet d'obtenir plus de fonctionnalités pour les utilisateurs en moins de temps, cela peut très bien être une victoire nette pour leur bonheur et productivité. L'astuce est de deviner _quels_ coins couper qui ne causeront pas à vos utilisateurs et votre futur moi de maudire votre myopie.
 
 </aside>
 
 ^code return-this (2 before, 1 after)
 
-If the function is an initializer, we override the actual return value and
-forcibly return `this`. That relies on a new `isInitializer` field.
+Si la fonction est un initialiseur, nous surchargeons la valeur de retour réelle et renvoyons de force `this`. Cela repose sur un nouveau champ `isInitializer`.
 
 ^code is-initializer-field (2 before, 2 after)
 
-We can't simply see if the name of the LoxFunction is "init" because the user
-could have defined a *function* with that name. In that case, there *is* no
-`this` to return. To avoid *that* weird edge case, we'll directly store whether
-the LoxFunction represents an initializer method. That means we need to go back
-and fix the few places where we create LoxFunctions.
+Nous ne pouvons pas simplement voir si le nom de le LoxFunction est "init" parce que l'utilisateur pourrait avoir défini une _fonction_ avec ce nom. Dans ce cas, il n'y a _pas_ de `this` à renvoyer. Pour éviter _ce_ cas limite bizarre, nous stockerons directement si la LoxFunction représente une méthode initialiseur. Cela signifie que nous avons besoin de revenir en arrière et corriger les quelques endroits où nous créons des LoxFunctions.
 
 ^code construct-function (1 before, 1 after)
 
-For actual function declarations, `isInitializer` is always false. For methods,
-we check the name.
+Pour les déclarations de fonction réelles, `isInitializer` est toujours faux. Pour les méthodes, nous vérifions le nom.
 
 ^code interpreter-method-initializer (1 before, 1 after)
 
-And then in `bind()` where we create the closure that binds `this` to a method,
-we pass along the original method's value.
+Et ensuite dans `bind()` où nous créons la fermeture qui lie `this` à une méthode, nous passons la valeur de la méthode originale.
 
 ^code lox-function-bind-with-initializer (1 before, 1 after)
 
-### Returning from init()
+### Revenir depuis init()
 
-We aren't out of the woods yet. We've been assuming that a user-written
-initializer doesn't explicitly return a value because most constructors don't.
-What should happen if a user tries:
+Nous ne sommes pas encore sortis du bois. Nous avons supposé qu'un initialiseur écrit par l'utilisateur ne renvoie pas explicitement une valeur parce que la plupart des constructeurs ne le font pas. Que devrait-il arriver si un utilisateur essaie :
 
 ```lox
 class Foo {
@@ -1162,23 +817,19 @@ class Foo {
 }
 ```
 
-It's definitely not going to do what they want, so we may as well make it a
-static error. Back in the resolver, we add another case to FunctionType.
+Cela ne va définitivement pas faire ce qu'ils veulent, donc autant en faire une erreur statique. De retour dans le résolveur, nous ajoutons un autre cas à FunctionType.
 
 ^code function-type-initializer (1 before, 1 after)
 
-We use the visited method's name to determine if we're resolving an initializer
-or not.
+Nous utilisons le nom de la méthode visitée pour déterminer si nous résolvons un initialiseur ou pas.
 
 ^code resolver-initializer-type (1 before, 1 after)
 
-When we later traverse into a `return` statement, we check that field and make
-it an error to return a value from inside an `init()` method.
+Quand nous traversons plus tard dans une instruction `return`, nous vérifions ce champ et en faisons une erreur de renvoyer une valeur depuis l'intérieur d'une méthode `init()`.
 
 ^code return-in-initializer (1 before, 1 after)
 
-We're *still* not done. We statically disallow returning a *value* from an
-initializer, but you can still use an empty early `return`.
+Nous n'avons _toujours_ pas fini. Nous interdisons statiquement de renvoyer une _valeur_ depuis un initialiseur, mais vous pouvez toujours utiliser un `return` vide anticipé.
 
 ```lox
 class Foo {
@@ -1188,27 +839,19 @@ class Foo {
 }
 ```
 
-That is actually kind of useful sometimes, so we don't want to disallow it
-entirely. Instead, it should return `this` instead of `nil`. That's an easy fix
-over in LoxFunction.
+C'est en fait assez utile parfois, donc nous ne voulons pas l'interdire entièrement. Au lieu de cela, cela devrait renvoyer `this` au lieu de `nil`. C'est une correction facile là-bas dans LoxFunction.
 
 ^code early-return-this (1 before, 1 after)
 
-If we're in an initializer and execute a `return` statement, instead of
-returning the value (which will always be `nil`), we again return `this`.
+Si nous sommes dans un initialiseur et exécutons une instruction `return`, au lieu de renvoyer la valeur (qui sera toujours `nil`), nous renvoyons encore `this`.
 
-Phew! That was a whole list of tasks but our reward is that our little
-interpreter has grown an entire programming paradigm. Classes, methods, fields,
-`this`, and constructors. Our baby language is looking awfully grown-up.
+Ouf ! C'était toute une liste de tâches mais notre récompense est que notre petit interpréteur a gagné un paradigme de programmation entier. Classes, méthodes, champs, `this`, et constructeurs. Notre langage bébé a l'air terriblement adulte.
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  We have methods on instances, but there is no way to define "static" methods
-    that can be called directly on the class object itself. Add support for
-    them. Use a `class` keyword preceding the method to indicate a static method
-    that hangs off the class object.
+1.  Nous avons des méthodes sur les instances, mais il n'y a pas de moyen de définir des méthodes "statiques" qui peuvent être appelées directement sur l'objet classe lui-même. Ajoutez le support pour elles. Utilisez un mot-clé `class` précédant la méthode pour indiquer une méthode statique qui s'accroche à l'objet classe.
 
     ```lox
     class Math {
@@ -1217,18 +860,12 @@ interpreter has grown an entire programming paradigm. Classes, methods, fields,
       }
     }
 
-    print Math.square(3); // Prints "9".
+    print Math.square(3); // Imprime "9".
     ```
 
-    You can solve this however you like, but the "[metaclasses][]" used by
-    Smalltalk and Ruby are a particularly elegant approach. *Hint: Make LoxClass
-    extend LoxInstance and go from there.*
+    Vous pouvez résoudre ceci comme vous voulez, mais les "[métaclasses][]" utilisées par Smalltalk et Ruby sont une approche particulièrement élégante. _Indice : Faites en sorte que LoxClass étende LoxInstance et partez de là._
 
-2.  Most modern languages support "getters" and "setters" -- members on a class
-    that look like field reads and writes but that actually execute user-defined
-    code. Extend Lox to support getter methods. These are declared without a
-    parameter list. The body of the getter is executed when a property with that
-    name is accessed.
+2.  La plupart des langages modernes supportent des "getters" et "setters" -- des membres sur une classe qui ressemblent à des lectures et écritures de champ mais qui exécutent en fait du code défini par l'utilisateur. Étendez Lox pour supporter les méthodes getter. Celles-ci sont déclarées sans liste de paramètres. Le corps du getter est exécuté quand une propriété avec ce nom est accédée.
 
     ```lox
     class Circle {
@@ -1242,113 +879,60 @@ interpreter has grown an entire programming paradigm. Classes, methods, fields,
     }
 
     var circle = Circle(4);
-    print circle.area; // Prints roughly "50.2655".
+    print circle.area; // Imprime grossièrement "50.2655".
     ```
 
-3.  Python and JavaScript allow you to freely access an object's fields from
-    outside of its own methods. Ruby and Smalltalk encapsulate instance state.
-    Only methods on the class can access the raw fields, and it is up to the
-    class to decide which state is exposed. Most statically typed languages
-    offer modifiers like `private` and `public` to control which parts of a
-    class are externally accessible on a per-member basis.
+3.  Python et JavaScript vous permettent d'accéder librement aux champs d'un objet depuis l'extérieur de ses propres méthodes. Ruby et Smalltalk encapsulent l'état de l'instance. Seules les méthodes sur la classe peuvent accéder aux champs bruts, et c'est à la classe de décider quel état est exposé. La plupart des langages typés statiquement offrent des modificateurs comme `private` et `public` pour contrôler quelles parties d'une classe sont accessibles de l'extérieur sur une base par-membre.
 
-    What are the trade-offs between these approaches and why might a language
-    prefer one or the other?
+    Quels sont les compromis entre ces approches et pourquoi un langage pourrait-il préférer l'une ou l'autre ?
 
-[metaclasses]: https://en.wikipedia.org/wiki/Metaclass
+[métaclasses]: https://en.wikipedia.org/wiki/Metaclass
 
 </div>
 
 <div class="design-note">
 
-## Design Note: Prototypes and Power
+## Note de Conception : Prototypes et Puissance
 
-In this chapter, we introduced two new runtime entities, LoxClass and
-LoxInstance. The former is where behavior for objects lives, and the latter is
-for state. What if you could define methods right on a single object, inside
-LoxInstance? In that case, we wouldn't need LoxClass at all. LoxInstance would
-be a complete package for defining the behavior and state of an object.
+Dans ce chapitre, nous avons introduit deux nouvelles entités d'exécution, LoxClass et LoxInstance. La première est où le comportement pour les objets vit, et la dernière est pour l'état. Et si vous pouviez définir des méthodes juste sur un seul objet, à l'intérieur de LoxInstance ? Dans ce cas, nous n'aurions pas besoin de LoxClass du tout. LoxInstance serait un paquet complet pour définir le comportement et l'état d'un objet.
 
-We'd still want some way, without classes, to reuse behavior across multiple
-instances. We could let a LoxInstance [*delegate*][delegate] directly to another
-LoxInstance to reuse its fields and methods, sort of like inheritance.
+Nous voudrions toujours un moyen, sans classes, de réutiliser le comportement à travers plusieurs instances. Nous pourrions laisser une LoxInstance [_déléguer_][delegate] directement à une autre LoxInstance pour réutiliser ses champs et méthodes, en quelque sorte comme l'héritage.
 
-Users would model their program as a constellation of objects, some of which
-delegate to each other to reflect commonality. Objects used as delegates
-represent "canonical" or "prototypical" objects that others refine. The result
-is a simpler runtime with only a single internal construct, LoxInstance.
+Les utilisateurs modéliseraient leur programme comme une constellation d'objets, dont certains délèguent les uns aux autres pour refléter la communalité. Les objets utilisés comme délégués représentent des objets "canoniques" ou "prototypiques" que d'autres raffinent. Le résultat est un runtime plus simple avec seulement une seule construction interne, LoxInstance.
 
-That's where the name **[prototypes][proto]** comes from for this paradigm. It
-was invented by David Ungar and Randall Smith in a language called [Self][].
-They came up with it by starting with Smalltalk and following the above mental
-exercise to see how much they could pare it down.
+C'est de là que le nom **[prototypes][proto]** vient pour ce paradigme. Il a été inventé par David Ungar et Randall Smith dans un langage appelé [Self][]. Ils sont arrivés avec en commençant avec Smalltalk et en suivant l'exercice mental ci-dessus pour voir combien ils pouvaient le réduire.
 
-Prototypes were an academic curiosity for a long time, a fascinating one that
-generated interesting research but didn't make a dent in the larger world of
-programming. That is, until Brendan Eich crammed prototypes into JavaScript,
-which then promptly took over the world. Many (many) <span
-name="words">words</span> have been written about prototypes in JavaScript.
-Whether that shows that prototypes are brilliant or confusing -- or both! -- is
-an open question.
+Les prototypes ont été une curiosité académique pendant longtemps, une fascinante qui a généré de la recherche intéressante mais n'a pas fait une bosse dans le monde plus large de la programmation. C'est-à-dire, jusqu'à ce que Brendan Eich bourre les prototypes dans JavaScript, qui a alors promptement pris le contrôle du monde. Beaucoup (beaucoup) de <span name="words">mots</span> ont été écrits à propos des prototypes dans JavaScript. Si cela montre que les prototypes sont brillants ou confus -- ou les deux ! -- est une question ouverte.
 
 <aside name="words">
 
-Including [more than a handful][prototypes] by yours truly.
+Incluant [plus qu'une poignée][prototypes] par votre serviteur.
 
 </aside>
 
-I won't get into whether or not I think prototypes are a good idea for a
-language. I've made languages that are [prototypal][finch] and
-[class-based][wren], and my opinions of both are complex. What I want to discuss
-is the role of *simplicity* in a language.
+Je n'entrerai pas dans si je pense ou non que les prototypes sont une bonne idée pour un langage. J'ai fait des langages qui sont [prototypaux][finch] et [basés sur des classes][wren], et mes opinions des deux sont complexes. Ce que je veux discuter est le rôle de la _simplicité_ dans un langage.
 
-Prototypes are simpler than classes -- less code for the language implementer to
-write, and fewer concepts for the user to learn and understand. Does that make
-them better? We language nerds have a tendency to fetishize minimalism.
-Personally, I think simplicity is only part of the equation. What we really want
-to give the user is *power*, which I define as:
+Les prototypes sont plus simples que les classes -- moins de code pour l'implémenteur du langage à écrire, et moins de concepts pour l'utilisateur à apprendre et comprendre. Est-ce que ça les rend meilleurs ? Nous les nerds des langages avons une tendance à fétichiser le minimalisme. Personnellement, je pense que la simplicité est seulement une partie de l'équation. Ce que nous voulons vraiment donner à l'utilisateur est de la _puissance_, que je définis comme :
 
 ```text
-power = breadth × ease ÷ complexity
+puissance = étendue × facilité ÷ complexité
 ```
 
-None of these are precise numeric measures. I'm using math as analogy here, not
-actual quantification.
+Aucune de celles-ci ne sont des mesures numériques précises. J'utilise les maths comme analogie ici, pas une quantification réelle.
 
-*   **Breadth** is the range of different things the language lets you express.
-    C has a lot of breadth -- it's been used for everything from operating
-    systems to user applications to games. Domain-specific languages like
-    AppleScript and Matlab have less breadth.
+- **L'étendue** est la gamme de choses différentes que le langage vous laisse exprimer. C a beaucoup d'étendue -- il a été utilisé pour tout, des systèmes d'exploitation aux applications utilisateur aux jeux. Les langages spécifiques au domaine comme AppleScript et Matlab ont moins d'étendue.
 
-*   **Ease** is how little effort it takes to make the language do what you
-    want. "Usability" might be another term, though it carries more baggage than
-    I want to bring in. "Higher-level" languages tend to have more ease than
-    "lower-level" ones. Most languages have a "grain" to them where some things
-    feel easier to express than others.
+- **La facilité** est le peu d'effort que cela prend pour faire faire au langage ce que vous voulez. "Utilisabilité" pourrait être un autre terme, bien qu'il porte plus de bagages que je ne veux en apporter. Les langages de "plus haut niveau" ont tendance à avoir plus de facilité que ceux de "plus bas niveau". La plupart des langages ont un "grain" à eux où certaines choses semblent plus faciles à exprimer que d'autres.
 
-*   **Complexity** is how big the language (including its runtime, core libraries,
-    tools, ecosystem, etc.) is. People talk about how many pages are in a
-    language's spec, or how many keywords it has. It's how much the user has to
-    load into their wetware before they can be productive in the system. It is
-    the antonym of simplicity.
+- **La complexité** est combien le langage (incluant son runtime, bibliothèques centrales, outils, écosystème, etc.) est gros. Les gens parlent de combien de pages sont dans la spec d'un langage, ou combien de mots-clés il a. C'est combien l'utilisateur doit charger dans son cerveau (wetware) avant qu'il puisse être productif dans le système. C'est l'antonyme de la simplicité.
 
 [proto]: https://en.wikipedia.org/wiki/Prototype-based_programming
 
-Reducing complexity *does* increase power. The smaller the denominator, the
-larger the resulting value, so our intuition that simplicity is good is valid.
-However, when reducing complexity, we must take care not to sacrifice breadth or
-ease in the process, or the total power may go down. Java would be a strictly
-*simpler* language if it removed strings, but it probably wouldn't handle text
-manipulation tasks well, nor would it be as easy to get things done.
+Réduire la complexité augmente _bien_ la puissance. Plus le dénominateur est petit, plus la valeur résultante est grande, donc notre intuition que la simplicité est bonne est valide. Cependant, quand nous réduisons la complexité, nous devons faire attention de ne pas sacrifier l'étendue ou la facilité dans le processus, ou la puissance totale peut baisser. Java serait un langage strictement _plus simple_ s'il supprimait les chaînes de caractères, mais il ne gérerait probablement pas bien les tâches de manipulation de texte, ni ne serait-il aussi facile de faire avancer les choses.
 
-The art, then, is finding *accidental* complexity that can be omitted --
-language features and interactions that don't carry their weight by increasing
-the breadth or ease of using the language.
+L'art, alors, est de trouver la complexité _accidentelle_ qui peut être omise -- les fonctionnalités de langage et interactions qui ne portent pas leur poids en augmentant l'étendue ou la facilité d'utilisation du langage.
 
-If users want to express their program in terms of categories of objects, then
-baking classes into the language increases the ease of doing that, hopefully by
-a large enough margin to pay for the added complexity. But if that isn't how
-users are using your language, then by all means leave classes out.
+Si les utilisateurs veulent exprimer leur programme en termes de catégories d'objets, alors cuire les classes dans le langage augmente la facilité de faire cela, avec un peu de chance par une marge assez grande pour payer pour la complexité ajoutée. Mais si ce n'est pas comment les utilisateurs utilisent votre langage, alors par tous les moyens laissez les classes de côté.
 
 </div>
 

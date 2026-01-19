@@ -1,0 +1,5 @@
+Notre interpréteur Java, jlox, nous a appris beaucoup des fondamentaux des langages de programmation, mais nous avons encore beaucoup à apprendre. D'abord, si vous lancez des programmes Lox intéressants dans jlox, vous découvrirez que c'est douloureusement lent. Le style d'interprétation qu'il utilise -- parcourir l'AST directement -- est assez bon pour _certains_ usages du monde réel, mais laisse beaucoup à désirer pour un langage de script à usage général.
+
+Aussi, nous comptons implicitement sur des fonctionnalités d'exécution de la JVM elle-même. Nous prenons pour acquis que des choses comme `instanceof` en Java fonctionnent _d'une manière ou d'une autre_. Et nous ne nous inquiétons jamais une seconde de la gestion de la mémoire parce que le ramasse-miettes de la JVM s'en occupe pour nous.
+
+Quand nous étions concentrés sur des concepts de haut niveau, c'était bien de passer outre ceux-ci. Mais maintenant que nous connaissons notre chemin autour d'un interpréteur, il est temps de creuser vers ces couches plus basses et de construire notre propre machine virtuelle à partir de rien en n'utilisant rien de plus que la bibliothèque standard C...

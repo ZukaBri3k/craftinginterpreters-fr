@@ -37,12 +37,11 @@
 <h3><a href="#top">Représentation du code<small>5</small></a></h3>
 
 <ul>
-    <li><a href="#context-free-grammars"><small>5.1</small> Context-Free Grammars</a></li>
-    <li><a href="#implementing-syntax-trees"><small>5.2</small> Implementing Syntax Trees</a></li>
-    <li><a href="#working-with-trees"><small>5.3</small> Working with Trees</a></li>
-    <li><a href="#a-not-very-pretty-printer"><small>5.4</small> A (Not Very) Pretty Printer</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
+    <li><a href="#grammaires-non-contextuelles"><small>5.1</small> Grammaires non contextuelles</a></li>
+    <li><a href="#implémenter-des-arbres-syntaxiques"><small>5.2</small> Implémenter des Arbres Syntaxiques</a></li>
+    <li><a href="#travailler-avec-des-arbres"><small>5.3</small> Travailler avec des Arbres</a></li>
+    <li><a href="#un-pretty-printer-pas-très-joli"><small>5.4</small> Un Pretty Printer (Pas Très) Joli</a></li>
+    <li><a href="#défis"><small>5.5</small> Défis</a></li>
 </ul>
 
 
@@ -67,12 +66,11 @@
 <h3><a href="#top">Représentation du code<small>5</small></a></h3>
 
 <ul>
-    <li><a href="#context-free-grammars"><small>5.1</small> Context-Free Grammars</a></li>
-    <li><a href="#implementing-syntax-trees"><small>5.2</small> Implementing Syntax Trees</a></li>
-    <li><a href="#working-with-trees"><small>5.3</small> Working with Trees</a></li>
-    <li><a href="#a-not-very-pretty-printer"><small>5.4</small> A (Not Very) Pretty Printer</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
+    <li><a href="#grammaires-non-contextuelles"><small>5.1</small> Grammaires non contextuelles</a></li>
+    <li><a href="#implémenter-des-arbres-syntaxiques"><small>5.2</small> Implémenter des Arbres Syntaxiques</a></li>
+    <li><a href="#travailler-avec-des-arbres"><small>5.3</small> Travailler avec des Arbres</a></li>
+    <li><a href="#un-pretty-printer-pas-très-joli"><small>5.4</small> Un Pretty Printer (Pas Très) Joli</a></li>
+    <li><a href="#défis"><small>5.5</small> Défis</a></li>
 </ul>
 
 
@@ -91,169 +89,92 @@
   <h1>Représentation du code</h1>
 
 <blockquote>
-<p>To dwellers in a wood, almost every species of tree has its voice as well as
-its feature.
+<p>Pour les habitants d&rsquo;un bois, presque chaque espèce d&rsquo;arbre a sa voix aussi bien que
+son apparence.
 <cite>Thomas Hardy, <em>Under the Greenwood Tree</em></cite></p>
 </blockquote>
-<p>In the <a href="scanning.html">last chapter</a>, we took the raw source code as a string and
-transformed it into a slightly higher-level representation: a series of tokens.
-The parser we&rsquo;ll write in the <a href="parsing-expressions.html">next chapter</a> takes those tokens and
-transforms them yet again, into an even richer, more complex representation.</p>
-<p>Before we can produce that representation, we need to define it. That&rsquo;s the
-subject of this chapter. Along the way, we&rsquo;ll <span name="boring">cover</span>
-some theory around formal grammars, feel the difference between functional and
-object-oriented programming, go over a couple of design patterns, and do some
-metaprogramming.</p>
+<p>Dans le <a href="scanning.html">dernier chapitre</a>, nous avons pris le code source brut sous forme de chaîne et l&rsquo;avons transformé en une représentation de niveau légèrement supérieur : une série de tokens. Le parseur que nous écrirons dans le <a href="parsing-expressions.html">prochain chapitre</a> prendra ces tokens et les transformera encore une fois, en une représentation encore plus riche et plus complexe.</p>
+<p>Avant de pouvoir produire cette représentation, nous devons la définir. C&rsquo;est le sujet de ce chapitre. En chemin, nous <span name="boring">couvrirons</span> un peu de théorie autour des grammaires formelles, sentirons la différence entre la programmation fonctionnelle et orientée objet, passerons en revue quelques patrons de conception, et ferons un peu de métaprogrammation.</p>
 <aside name="boring">
-<p>I was so worried about this being one of the most boring chapters in the book
-that I kept stuffing more fun ideas into it until I ran out of room.</p>
+<p>J&rsquo;étais tellement inquiet que ce soit l&rsquo;un des chapitres les plus ennuyeux du livre que j&rsquo;ai continué à y fourrer des idées amusantes jusqu&rsquo;à ce que je n&rsquo;aie plus de place.</p>
 </aside>
-<p>Before we do all that, let&rsquo;s focus on the main goal<span class="em">&mdash;</span>a representation for
-code. It should be simple for the parser to produce and easy for the
-interpreter to consume. If you haven&rsquo;t written a parser or interpreter yet,
-those requirements aren&rsquo;t exactly illuminating. Maybe your intuition can help.
-What is your brain doing when you play the part of a <em>human</em> interpreter? How do
-you mentally evaluate an arithmetic expression like this:</p>
+<p>Avant de faire tout cela, concentrons-nous sur l&rsquo;objectif principal<span class="em">&mdash;</span>une représentation pour le code. Elle devrait être simple à produire pour le parseur et facile à consommer pour l&rsquo;interpréteur. Si vous n&rsquo;avez pas encore écrit de parseur ou d&rsquo;interpréteur, ces exigences ne sont pas exactement éclairantes. Peut-être que votre intuition peut aider. Que fait votre cerveau quand vous jouez le rôle d&rsquo;un interpréteur <em>humain</em> ? Comment évaluez-vous mentalement une expression arithmétique comme celle-ci :</p>
 <div class="codehilite"><pre><span class="n">1</span> + <span class="n">2</span> * <span class="n">3</span> - <span class="n">4</span>
 </pre></div>
-<p>Because you understand the order of operations<span class="em">&mdash;</span>the old &ldquo;<a href="https://en.wikipedia.org/wiki/Order_of_operations#Mnemonics">Please Excuse My
-Dear Aunt Sally</a>&rdquo; stuff<span class="em">&mdash;</span>you know that the multiplication is evaluated
-before the addition or subtraction. One way to visualize that precedence is
-using a tree. Leaf nodes are numbers, and interior nodes are operators with
-branches for each of their operands.</p>
-<p>In order to evaluate an arithmetic node, you need to know the numeric values of
-its subtrees, so you have to evaluate those first. That means working your way
-from the leaves up to the root<span class="em">&mdash;</span>a <em>post-order</em> traversal:</p>
-<p><span name="tree-steps"></span></p><img src="image/representing-code/tree-evaluate.png" alt="Evaluating the tree from the bottom up." />
+<p>Parce que vous comprenez l&rsquo;ordre des opérations<span class="em">&mdash;</span>le vieux truc &ldquo;PEMDAS&rdquo;<span class="em">&mdash;</span>vous savez que la multiplication est évaluée avant l&rsquo;addition ou la soustraction. Une façon de visualiser cette précédence est d&rsquo;utiliser un arbre. Les nœuds feuilles sont des nombres, et les nœuds intérieurs sont des opérateurs avec des branches pour chacun de leurs opérandes.</p>
+<p>Pour évaluer un nœud arithmétique, vous devez connaître les valeurs numériques de ses sous-arbres, donc vous devez évaluer ceux-là d&rsquo;abord. Cela signifie travailler des feuilles jusqu&rsquo;à la racine<span class="em">&mdash;</span>un parcours <em>post-ordre</em> :</p>
+<p><span name="tree-steps"></span></p><img src="image/representing-code/tree-evaluate.png" alt="Évaluation de l'arbre du bas vers le haut." />
 <aside name="tree-steps">
-<p>A. Starting with the full tree, evaluate the bottom-most operation, <code>2 * 3</code>.</p>
-<p>B. Now we can evaluate the <code>+</code>.</p>
-<p>C. Next, the <code>-</code>.</p>
-<p>D. The final answer.</p>
+<p>A. En commençant avec l&rsquo;arbre complet, évaluez l&rsquo;opération la plus basse, <code>2 * 3</code>.</p>
+<p>B. Maintenant nous pouvons évaluer le <code>+</code>.</p>
+<p>C. Ensuite, le <code>-</code>.</p>
+<p>D. La réponse finale.</p>
 </aside>
-<p>If I gave you an arithmetic expression, you could draw one of these trees pretty
-easily. Given a tree, you can evaluate it without breaking a sweat. So it
-intuitively seems like a workable representation of our code is a <span
-name="only">tree</span> that matches the grammatical structure<span class="em">&mdash;</span>the operator
-nesting<span class="em">&mdash;</span>of the language.</p>
+<p>Si je vous donnais une expression arithmétique, vous pourriez dessiner l&rsquo;un de ces arbres assez facilement. Étant donné un arbre, vous pouvez l&rsquo;évaluer sans transpirer. Il semble donc intuitivement qu&rsquo;une représentation viable de notre code soit un <span name="only">arbre</span> qui correspond à la structure grammaticale<span class="em">&mdash;</span>l&rsquo;imbrication des opérateurs<span class="em">&mdash;</span>du langage.</p>
 <aside name="only">
-<p>That&rsquo;s not to say a tree is the <em>only</em> possible representation of our code. In
-<a href="a-bytecode-virtual-machine.html">Part III</a>, we&rsquo;ll generate bytecode, another representation that isn&rsquo;t as
-human friendly but is closer to the machine.</p>
+<p>Cela ne veut pas dire qu&rsquo;un arbre est la <em>seule</em> représentation possible de notre code. Dans la [Partie III][], nous générerons du bytecode, une autre représentation qui n&rsquo;est pas aussi conviviale pour les humains mais qui est plus proche de la machine.</p>
 </aside>
-<p>We need to get more precise about what that grammar is then. Like lexical
-grammars in the last chapter, there is a long ton of theory around syntactic
-grammars. We&rsquo;re going into that theory a little more than we did when scanning
-because it turns out to be a useful tool throughout much of the interpreter.
-We start by moving one level up the <a href="https://en.wikipedia.org/wiki/Chomsky_hierarchy">Chomsky hierarchy</a><span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
-<h2><a href="#context-free-grammars" id="context-free-grammars"><small>5&#8202;.&#8202;1</small>Context-Free Grammars</a></h2>
-<p>In the last chapter, the formalism we used for defining the lexical grammar<span class="em">&mdash;</span>the rules for how characters get grouped into tokens<span class="em">&mdash;</span>was called a <em>regular
-language</em>. That was fine for our scanner, which emits a flat sequence of tokens.
-But regular languages aren&rsquo;t powerful enough to handle expressions which can
-nest arbitrarily deeply.</p>
-<p>We need a bigger hammer, and that hammer is a <strong>context-free grammar</strong>
-(<strong>CFG</strong>). It&rsquo;s the next heaviest tool in the toolbox of
-<strong><a href="https://en.wikipedia.org/wiki/Formal_grammar">formal grammars</a></strong>. A formal grammar takes a set of atomic pieces it calls
-its &ldquo;alphabet&rdquo;. Then it defines a (usually infinite) set of &ldquo;strings&rdquo; that are
-&ldquo;in&rdquo; the grammar. Each string is a sequence of &ldquo;letters&rdquo; in the alphabet.</p>
-<p>I&rsquo;m using all those quotes because the terms get a little confusing as you move
-from lexical to syntactic grammars. In our scanner&rsquo;s grammar, the alphabet
-consists of individual characters and the strings are the valid lexemes<span class="em">&mdash;</span>roughly &ldquo;words&rdquo;. In the syntactic grammar we&rsquo;re talking about now, we&rsquo;re at a
-different level of granularity. Now each &ldquo;letter&rdquo; in the alphabet is an entire
-token and a &ldquo;string&rdquo; is a sequence of <em>tokens</em><span class="em">&mdash;</span>an entire expression.</p>
-<p>Oof. Maybe a table will help:</p><table>
+<p>Nous devons être plus précis sur ce qu&rsquo;est cette grammaire alors. Comme les grammaires lexicales dans le dernier chapitre, il y a une tonne de théorie autour des grammaires syntaxiques. Nous entrons dans cette théorie un peu plus que nous ne l&rsquo;avons fait lors de l&rsquo;analyse lexicale parce qu&rsquo;il s&rsquo;avère que c&rsquo;est un outil utile pour une grande partie de l&rsquo;interpréteur. Nous commençons par monter d&rsquo;un niveau dans la [hiérarchie de Chomsky][]<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
+<h2><a href="#grammaires-non-contextuelles" id="grammaires-non-contextuelles"><small>5&#8202;.&#8202;1</small>Grammaires non contextuelles</a></h2>
+<p>Dans le dernier chapitre, le formalisme que nous avons utilisé pour définir la grammaire lexicale<span class="em">&mdash;</span>les règles pour comment les caractères sont regroupés en tokens<span class="em">&mdash;</span>s&rsquo;appelait un <em>langage régulier</em>. C&rsquo;était bien pour notre scanner, qui émet une séquence plate de tokens. Mais les langages réguliers ne sont pas assez puissants pour gérer des expressions qui peuvent s&rsquo;imbriquer arbitrairement profondément.</p>
+<p>Nous avons besoin d&rsquo;un plus gros marteau, et ce marteau est une <strong>grammaire non contextuelle</strong> (<strong>GNC</strong>). C&rsquo;est l&rsquo;outil le plus lourd suivant dans la caisse à outils des <strong>[grammaires formelles][]</strong>. Une grammaire formelle prend un ensemble de pièces atomiques qu&rsquo;elle appelle son &ldquo;alphabet&rdquo;. Ensuite, elle définit un ensemble (généralement infini) de &ldquo;chaînes&rdquo; qui sont &ldquo;dans&rdquo; la grammaire. Chaque chaîne est une séquence de &ldquo;lettres&rdquo; de l&rsquo;alphabet.</p>
+<p>J&rsquo;utilise tous ces guillemets parce que les termes deviennent un peu confus quand vous passez des grammaires lexicales aux grammaires syntaxiques. Dans la grammaire de notre scanner, l&rsquo;alphabet consiste en des caractères individuels et les chaînes sont les lexèmes valides<span class="em">&mdash;</span>grosso modo les &ldquo;mots&rdquo;. Dans la grammaire syntaxique dont nous parlons maintenant, nous sommes à un niveau de granularité différent. Maintenant chaque &ldquo;lettre&rdquo; dans l&rsquo;alphabet est un token entier et une &ldquo;chaîne&rdquo; est une séquence de <em>tokens</em><span class="em">&mdash;</span>une expression entière.</p>
+<p>Ouf. Peut-être qu&rsquo;un tableau aidera :</p><table>
 <thead>
 <tr>
-  <td>Terminology</td>
+  <td>Terminologie</td>
   <td></td>
-  <td>Lexical grammar</td>
-  <td>Syntactic grammar</td>
+  <td>Grammaire lexicale</td>
+  <td>Grammaire syntaxique</td>
 </tr>
 </thead>
 <tbody>
 <tr>
-  <td>The &ldquo;alphabet&rdquo; is<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.</span></td>
+  <td>L'&ldquo;alphabet&rdquo; est<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.</span></td>
   <td>&rarr;&ensp;</td>
-  <td>Characters</td>
+  <td>Caractères</td>
   <td>Tokens</td>
 </tr>
 <tr>
-  <td>A &ldquo;string&rdquo; is<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.</span></td>
+  <td>Une &ldquo;chaîne&rdquo; est<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.</span></td>
   <td>&rarr;&ensp;</td>
-  <td>Lexeme or token</td>
+  <td>Lexème ou token</td>
   <td>Expression</td>
 </tr>
 <tr>
-  <td>It&rsquo;s implemented by the<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.</span></td>
+  <td>C'est implémenté par le<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.</span></td>
   <td>&rarr;&ensp;</td>
   <td>Scanner</td>
-  <td>Parser</td>
+  <td>Parseur</td>
 </tr>
 </tbody>
 </table>
-<p>A formal grammar&rsquo;s job is to specify which strings are valid and which aren&rsquo;t.
-If we were defining a grammar for English sentences, &ldquo;eggs are tasty for
-breakfast&rdquo; would be in the grammar, but &ldquo;tasty breakfast for are eggs&rdquo; would
-probably not.</p>
-<h3><a href="#rules-for-grammars" id="rules-for-grammars"><small>5&#8202;.&#8202;1&#8202;.&#8202;1</small>Rules for grammars</a></h3>
-<p>How do we write down a grammar that contains an infinite number of valid
-strings? We obviously can&rsquo;t list them all out. Instead, we create a finite set
-of rules. You can think of them as a game that you can &ldquo;play&rdquo; in one of two
-directions.</p>
-<p>If you start with the rules, you can use them to <em>generate</em> strings that are in
-the grammar. Strings created this way are called <strong>derivations</strong> because each is
-<em>derived</em> from the rules of the grammar. In each step of the game, you pick a
-rule and follow what it tells you to do. Most of the lingo around formal
-grammars comes from playing them in this direction. Rules are called
-<strong>productions</strong> because they <em>produce</em> strings in the grammar.</p>
-<p>Each production in a context-free grammar has a <strong>head</strong><span class="em">&mdash;</span>its <span
-name="name">name</span><span class="em">&mdash;</span>and a <strong>body</strong>, which describes what it generates. In
-its pure form, the body is simply a list of symbols. Symbols come in two
-delectable flavors:</p>
+<p>Le travail d&rsquo;une grammaire formelle est de spécifier quelles chaînes sont valides et lesquelles ne le sont pas. Si nous définissions une grammaire pour des phrases en anglais, &ldquo;eggs are tasty for breakfast&rdquo; serait dans la grammaire, mais &ldquo;tasty breakfast for are eggs&rdquo; ne le serait probablement pas.</p>
+<h3><a href="#règles-pour-les-grammaires" id="règles-pour-les-grammaires"><small>5&#8202;.&#8202;1&#8202;.&#8202;1</small>Règles pour les grammaires</a></h3>
+<p>Comment écrivons-nous une grammaire qui contient un nombre infini de chaînes valides ? Nous ne pouvons évidemment pas toutes les lister. Au lieu de cela, nous créons un ensemble fini de règles. Vous pouvez penser à elles comme un jeu auquel vous pouvez &ldquo;jouer&rdquo; dans l&rsquo;une de deux directions.</p>
+<p>Si vous commencez avec les règles, vous pouvez les utiliser pour <em>générer</em> des chaînes qui sont dans la grammaire. Les chaînes créées de cette façon sont appelées des <strong>dérivations</strong> parce que chacune est <em>dérivée</em> des règles de la grammaire. À chaque étape du jeu, vous choisissez une règle et suivez ce qu&rsquo;elle vous dit de faire. La plupart du jargon autour des grammaires formelles vient du fait de les jouer dans cette direction. Les règles sont appelées <strong>productions</strong> parce qu&rsquo;elles <em>produisent</em> des chaînes dans la grammaire.</p>
+<p>Chaque production dans une grammaire non contextuelle a une <strong>tête</strong><span class="em">&mdash;</span>son <span name="name">nom</span><span class="em">&mdash;</span>et un <strong>corps</strong>, qui décrit ce qu&rsquo;elle génère. Dans sa forme pure, le corps est simplement une liste de symboles. Les symboles viennent en deux saveurs délectables :</p>
 <aside name="name">
-<p>Restricting heads to a single symbol is a defining feature of context-free
-grammars. More powerful formalisms like <strong><a href="https://en.wikipedia.org/wiki/Unrestricted_grammar">unrestricted grammars</a></strong> allow a
-sequence of symbols in the head as well as in the body.</p>
+<p>Restreindre les têtes à un seul symbole est une caractéristique qui définit les grammaires non contextuelles. Des formalismes plus puissants comme les <strong>[grammaires non restreintes][]</strong> autorisent une séquence de symboles dans la tête aussi bien que dans le corps.</p>
 </aside>
 <ul>
 <li>
-<p>A <strong>terminal</strong> is a letter from the grammar&rsquo;s alphabet. You can think of it
-like a literal value. In the syntactic grammar we&rsquo;re defining, the terminals
-are individual lexemes<span class="em">&mdash;</span>tokens coming from the scanner like <code>if</code> or
-<code>1234</code>.</p>
-<p>These are called &ldquo;terminals&rdquo;, in the sense of an &ldquo;end point&rdquo; because they
-don&rsquo;t lead to any further &ldquo;moves&rdquo; in the game. You simply produce that one
-symbol.</p>
+<p>Un <strong>terminal</strong> est une lettre de l&rsquo;alphabet de la grammaire. Vous pouvez le voir comme une valeur littérale. Dans la grammaire syntaxique que nous définissons, les terminaux sont des lexèmes individuels<span class="em">&mdash;</span>des tokens venant du scanner comme <code>if</code> ou <code>1234</code>.</p>
+<p>On les appelle &ldquo;terminaux&rdquo;, dans le sens de &ldquo;point final&rdquo; parce qu&rsquo;ils ne mènent à aucun autre &ldquo;coup&rdquo; dans le jeu. Vous produisez simplement ce symbole unique.</p>
 </li>
 <li>
-<p>A <strong>nonterminal</strong> is a named reference to another rule in the grammar. It
-means &ldquo;play that rule and insert whatever it produces here&rdquo;. In this way,
-the grammar composes.</p>
+<p>Un <strong>non-terminal</strong> est une référence nommée à une autre règle dans la grammaire. Cela signifie &ldquo;joue cette règle et insère quoi qu&rsquo;elle produise ici&rdquo;. De cette façon, la grammaire se compose.</p>
 </li>
 </ul>
-<p>There is one last refinement: you may have multiple rules with the same name.
-When you reach a nonterminal with that name, you are allowed to pick any of the
-rules for it, whichever floats your boat.</p>
-<p>To make this concrete, we need a <span name="turtles">way</span> to write down
-these production rules. People have been trying to crystallize grammar all the
-way back to Pāṇini&rsquo;s <em>Ashtadhyayi</em>, which codified Sanskrit grammar a mere
-couple thousand years ago. Not much progress happened until John Backus and
-company needed a notation for specifying ALGOL 58 and came up with
-<a href="https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form"><strong>Backus-Naur form</strong></a> (<strong>BNF</strong>). Since then, nearly everyone uses some
-flavor of BNF, tweaked to their own tastes.</p>
-<p>I tried to come up with something clean. Each rule is a name, followed by an
-arrow (<code>→</code>), followed by a sequence of symbols, and finally ending with a
-semicolon (<code>;</code>). Terminals are quoted strings, and nonterminals are lowercase
-words.</p>
+<p>Il y a un dernier raffinement : vous pouvez avoir plusieurs règles avec le même nom. Lorsque vous atteignez un non-terminal avec ce nom, vous êtes autorisé à choisir n&rsquo;importe laquelle des règles pour lui, celle qui vous plaît.</p>
+<p>Pour rendre cela concret, nous avons besoin d&rsquo;une <span name="turtles">façon</span> d&rsquo;écrire ces règles de production. Les gens ont essayé de cristalliser la grammaire depuis l&rsquo;<em>Ashtadhyayi</em> de Pāṇini, qui a codifié la grammaire sanskrite il y a seulement quelques milliers d&rsquo;années. Peu de progrès ont eu lieu jusqu&rsquo;à ce que John Backus et compagnie aient besoin d&rsquo;une notation pour spécifier ALGOL 58 et inventent la <a href="https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form"><strong>forme de Backus-Naur</strong></a> (<strong>BNF</strong>). Depuis lors, presque tout le monde utilise une variante de BNF, ajustée à ses propres goûts.</p>
+<p>J&rsquo;ai essayé de trouver quelque chose de propre. Chaque règle est un nom, suivi d&rsquo;une flèche (<code>→</code>), suivi d&rsquo;une séquence de symboles, et se terminant finalement par un point-virgule (<code>;</code>). Les terminaux sont des chaînes entre guillemets, et les non-terminaux sont des mots en minuscules.</p>
 <aside name="turtles">
-<p>Yes, we need to define a syntax to use for the rules that define our syntax.
-Should we specify that <em>metasyntax</em> too? What notation do we use for <em>it?</em> It&rsquo;s
-languages all the way down!</p>
+<p>Oui, nous avons besoin de définir une syntaxe à utiliser pour les règles qui définissent notre syntaxe. Devrions-nous spécifier cette <em>métasyntaxe</em> aussi ? Quelle notation utilisons-nous pour <em>elle</em> ? C&rsquo;est des langages jusqu&rsquo;en bas !</p>
 </aside>
-<p>Using that, here&rsquo;s a grammar for <span name="breakfast">breakfast</span> menus:</p>
+<p>En utilisant cela, voici une grammaire pour les menus du <span name="breakfast">petit-déjeuner</span> :</p>
 <aside name="breakfast">
-<p>Yes, I really am going to be using breakfast examples throughout this entire
-book. Sorry.</p>
+<p>Oui, je vais vraiment utiliser des exemples de petit-déjeuner tout au long de ce livre. Désolé.</p>
 </aside>
 <div class="codehilite"><pre><span class="i">breakfast</span>  → <span class="i">protein</span> <span class="s">&quot;with&quot;</span> <span class="i">breakfast</span> <span class="s">&quot;on the side&quot;</span> ;
 <span class="i">breakfast</span>  → <span class="i">protein</span> ;
@@ -274,98 +195,58 @@ book. Sorry.</p>
 <span class="i">bread</span>      → <span class="s">&quot;biscuits&quot;</span> ;
 <span class="i">bread</span>      → <span class="s">&quot;English muffin&quot;</span> ;
 </pre></div>
-<p>We can use this grammar to generate random breakfasts. Let&rsquo;s play a round and
-see how it works. By age-old convention, the game starts with the first rule in
-the grammar, here <code>breakfast</code>. There are three productions for that, and we
-randomly pick the first one. Our resulting string looks like:</p>
+<p>Nous pouvons utiliser cette grammaire pour générer des petits-déjeuners aléatoires. Jouons un tour et voyons comment ça marche. Par une convention séculaire, le jeu commence avec la première règle dans la grammaire, ici <code>breakfast</code>. Il y a trois productions pour celle-ci, et nous choisissons au hasard la première. Notre chaîne résultante ressemble à :</p>
 <div class="codehilite"><pre>protein &quot;with&quot; breakfast &quot;on the side&quot;
 </pre></div>
-<p>We need to expand that first nonterminal, <code>protein</code>, so we pick a production for
-that. Let&rsquo;s pick:</p>
+<p>Nous avons besoin d&rsquo;étendre ce premier non-terminal, <code>protein</code>, donc nous choisissons une production pour lui. Choisissons :</p>
 <div class="codehilite"><pre><span class="i">protein</span> → <span class="i">cooked</span> <span class="s">&quot;eggs&quot;</span> ;
 </pre></div>
-<p>Next, we need a production for <code>cooked</code>, and so we pick <code>"poached"</code>. That&rsquo;s a
-terminal, so we add that. Now our string looks like:</p>
+<p>Ensuite, nous avons besoin d&rsquo;une production pour <code>cooked</code>, et donc nous choisissons <code>"poached"</code>. C&rsquo;est un terminal, donc nous l&rsquo;ajoutons. Maintenant notre chaîne ressemble à :</p>
 <div class="codehilite"><pre>&quot;poached&quot; &quot;eggs&quot; &quot;with&quot; breakfast &quot;on the side&quot;
 </pre></div>
-<p>The next non-terminal is <code>breakfast</code> again. The first <code>breakfast</code> production we
-chose recursively refers back to the <code>breakfast</code> rule. Recursion in the grammar
-is a good sign that the language being defined is context-free instead of
-regular. In particular, recursion where the recursive nonterminal has
-productions on <span name="nest">both</span> sides implies that the language is
-not regular.</p>
+<p>Le prochain non-terminal est <code>breakfast</code> à nouveau. La première production <code>breakfast</code> que nous avons choisie fait référence récursivement à la règle <code>breakfast</code>. La récursion dans la grammaire est un bon signe que le langage défini est non contextuel au lieu de régulier. En particulier, la récursion où le non-terminal récursif a des productions des <span name="nest">deux</span> côtés implique que le langage n&rsquo;est pas régulier.</p>
 <aside name="nest">
-<p>Imagine that we&rsquo;ve recursively expanded the <code>breakfast</code> rule here several times,
-like &ldquo;bacon with bacon with bacon with<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>&rdquo; In order to complete the string
-correctly, we need to add an <em>equal</em> number of &ldquo;on the side&rdquo; bits to the end.
-Tracking the number of required trailing parts is beyond the capabilities of a
-regular grammar. Regular grammars can express <em>repetition</em>, but they can&rsquo;t <em>keep
-count</em> of how many repetitions there are, which is necessary to ensure that the
-string has the same number of <code>with</code> and <code>on the side</code> parts.</p>
+<p>Imaginez que nous ayons étendu récursivement la règle <code>breakfast</code> ici plusieurs fois, comme &ldquo;bacon with bacon with bacon with<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>&rdquo; Pour compléter la chaîne correctement, nous avons besoin d&rsquo;ajouter un nombre <em>égal</em> de bouts &ldquo;on the side&rdquo; à la fin. Suivre le nombre de parties finales requises est au-delà des capacités d&rsquo;une grammaire régulière. Les grammaires régulières peuvent exprimer la <em>répétition</em>, mais elles ne peuvent pas <em>compter</em> combien de répétitions il y a, ce qui est nécessaire pour s&rsquo;assurer que la chaîne a le même nombre de parties <code>with</code> et <code>on the side</code>.</p>
 </aside>
-<p>We could keep picking the first production for <code>breakfast</code> over and over again
-yielding all manner of breakfasts like &ldquo;bacon with sausage with scrambled eggs
-with bacon<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>&rdquo; We won&rsquo;t though. This time we&rsquo;ll pick <code>bread</code>. There are three
-rules for that, each of which contains only a terminal. We&rsquo;ll pick &ldquo;English
-muffin&rdquo;.</p>
-<p>With that, every nonterminal in the string has been expanded until it finally
-contains only terminals and we&rsquo;re left with:</p><img src="image/representing-code/breakfast.png" alt='"Playing" the grammar to generate a string.' />
-<p>Throw in some ham and Hollandaise, and you&rsquo;ve got eggs Benedict.</p>
-<p>Any time we hit a rule that had multiple productions, we just picked one
-arbitrarily. It is this flexibility that allows a short number of grammar rules
-to encode a combinatorially larger set of strings. The fact that a rule can
-refer to itself<span class="em">&mdash;</span>directly or indirectly<span class="em">&mdash;</span>kicks it up even more, letting us
-pack an infinite number of strings into a finite grammar.</p>
-<h3><a href="#enhancing-our-notation" id="enhancing-our-notation"><small>5&#8202;.&#8202;1&#8202;.&#8202;2</small>Enhancing our notation</a></h3>
-<p>Stuffing an infinite set of strings in a handful of rules is pretty fantastic,
-but let&rsquo;s take it further. Our notation works, but it&rsquo;s tedious. So, like any
-good language designer, we&rsquo;ll sprinkle a little syntactic sugar on top<span class="em">&mdash;</span>some
-extra convenience notation. In addition to terminals and nonterminals, we&rsquo;ll
-allow a few other kinds of expressions in the body of a rule:</p>
+<p>Nous pourrions continuer à choisir la première production pour <code>breakfast</code> encore et encore produisant toute sorte de petits-déjeuners comme &ldquo;bacon with sausage with scrambled eggs with bacon<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>&rdquo; Nous ne le ferons pas cependant. Cette fois nous choisirons <code>bread</code>. Il y a trois règles pour cela, chacune contenant seulement un terminal. Nous choisirons &ldquo;English muffin&rdquo;.</p>
+<p>Avec cela, chaque non-terminal dans la chaîne a été étendu jusqu&rsquo;à ce qu&rsquo;il ne contienne finalement que des terminaux et nous nous retrouvons avec :</p><img src="image/representing-code/breakfast.png" alt='"Jouer" la grammaire pour générer une chaîne.' />
+<p>Ajoutez du jambon et de la sauce Hollandaise, et vous avez des œufs Bénédicte.</p>
+<p>Chaque fois que nous tombions sur une règle qui avait plusieurs productions, nous en choisissions juste une arbitrairement. C&rsquo;est cette flexibilité qui permet à un petit nombre de règles de grammaire d&rsquo;encoder un ensemble combinatoirement plus grand de chaînes. Le fait qu&rsquo;une règle puisse se référer à elle-même<span class="em">&mdash;</span>directement ou indirectement<span class="em">&mdash;</span>augmente encore cela, nous laissant emballer un nombre infini de chaînes dans une grammaire finie.</p>
+<h3><a href="#améliorer-notre-notation" id="améliorer-notre-notation"><small>5&#8202;.&#8202;1&#8202;.&#8202;2</small>Améliorer notre notation</a></h3>
+<p>Fourrer un ensemble infini de chaînes dans une poignée de règles est assez fantastique, mais allons plus loin. Notre notation fonctionne, mais elle est fastidieuse. Donc, comme tout bon concepteur de langage, nous saupoudrerons un peu de sucre syntaxique dessus<span class="em">&mdash;</span>une notation de commodité supplémentaire. En plus des terminaux et des non-terminaux, nous autoriserons quelques autres types d&rsquo;expressions dans le corps d&rsquo;une règle :</p>
 <ul>
 <li>
-<p>Instead of repeating the rule name each time we want to add another
-production for it, we&rsquo;ll allow a series of productions separated by a pipe
-(<code>|</code>).</p>
+<p>Au lieu de répéter le nom de la règle chaque fois que nous voulons ajouter une autre production pour elle, nous autoriserons une série de productions séparées par un pipe (<code>|</code>).</p>
 <div class="codehilite"><pre><span class="i">bread</span> → <span class="s">&quot;toast&quot;</span> | <span class="s">&quot;biscuits&quot;</span> | <span class="s">&quot;English muffin&quot;</span> ;
 </pre></div>
 </li>
 <li>
-<p>Further, we&rsquo;ll allow parentheses for grouping and then allow <code>|</code> within that
-to select one from a series of options within the middle of a production.</p>
+<p>De plus, nous autoriserons les parenthèses pour le groupement et ensuite autoriserons <code>|</code> à l&rsquo;intérieur pour sélectionner une option parmi une série au milieu d&rsquo;une production.</p>
 <div class="codehilite"><pre><span class="i">protein</span> → ( <span class="s">&quot;scrambled&quot;</span> | <span class="s">&quot;poached&quot;</span> | <span class="s">&quot;fried&quot;</span> ) <span class="s">&quot;eggs&quot;</span> ;
 </pre></div>
 </li>
 <li>
-<p>Using recursion to support repeated sequences of symbols has a certain
-appealing <span name="purity">purity</span>, but it&rsquo;s kind of a chore to
-make a separate named sub-rule each time we want to loop. So, we also use a
-postfix <code>*</code> to allow the previous symbol or group to be repeated zero or
-more times.</p>
+<p>Utiliser la récursion pour supporter des séquences répétées de symboles a une certaine <span name="purity">pureté</span> attirante, mais c&rsquo;est un peu une corvée de faire une sous-règle nommée séparée chaque fois que nous voulons boucler. Donc, nous utilisons aussi un suffixe <code>*</code> pour permettre au symbole ou groupe précédent d&rsquo;être répété zéro ou plusieurs fois.</p>
 <div class="codehilite"><pre><span class="i">crispiness</span> → <span class="s">&quot;really&quot;</span> <span class="s">&quot;really&quot;</span>* ;
 </pre></div>
 </li>
 </ul>
 <aside name="purity">
-<p>This is how the Scheme programming language works. It has no built-in looping
-functionality at all. Instead, <em>all</em> repetition is expressed in terms of
-recursion.</p>
+<p>C&rsquo;est comme ça que le langage de programmation Scheme fonctionne. Il n&rsquo;a aucune fonctionnalité de boucle intégrée du tout. Au lieu de cela, <em>toute</em> répétition est exprimée en termes de récursion.</p>
 </aside>
 <ul>
 <li>
-<p>A postfix <code>+</code> is similar, but requires the preceding production to appear
-at least once.</p>
+<p>Un suffixe <code>+</code> est similaire, mais exige que la production précédente apparaisse au moins une fois.</p>
 <div class="codehilite"><pre><span class="i">crispiness</span> → <span class="s">&quot;really&quot;</span>+ ;
 </pre></div>
 </li>
 <li>
-<p>A postfix <code>?</code> is for an optional production. The thing before it can appear
-zero or one time, but not more.</p>
+<p>Un suffixe <code>?</code> est pour une production optionnelle. La chose avant elle peut apparaître zéro ou une fois, mais pas plus.</p>
 <div class="codehilite"><pre><span class="i">breakfast</span> → <span class="i">protein</span> ( <span class="s">&quot;with&quot;</span> <span class="i">breakfast</span> <span class="s">&quot;on the side&quot;</span> )? ;
 </pre></div>
 </li>
 </ul>
-<p>With all of those syntactic niceties, our breakfast grammar condenses down to:</p>
+<p>Avec toutes ces gentillesses syntaxiques, notre grammaire de petit-déjeuner se condense en :</p>
 <div class="codehilite"><pre><span class="i">breakfast</span> → <span class="i">protein</span> ( <span class="s">&quot;with&quot;</span> <span class="i">breakfast</span> <span class="s">&quot;on the side&quot;</span> )?
           | <span class="i">bread</span> ;
 
@@ -375,48 +256,30 @@ zero or one time, but not more.</p>
 
 <span class="i">bread</span>     → <span class="s">&quot;toast&quot;</span> | <span class="s">&quot;biscuits&quot;</span> | <span class="s">&quot;English muffin&quot;</span> ;
 </pre></div>
-<p>Not too bad, I hope. If you&rsquo;re used to grep or using <a href="https://en.wikipedia.org/wiki/Regular_expression#Standards">regular
-expressions</a> in your text editor, most of the punctuation should be
-familiar. The main difference is that symbols here represent entire tokens, not
-single characters.</p>
-<p>We&rsquo;ll use this notation throughout the rest of the book to precisely describe
-Lox&rsquo;s grammar. As you work on programming languages, you&rsquo;ll find that
-context-free grammars (using this or <a href="https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form">EBNF</a> or some other notation) help you
-crystallize your informal syntax design ideas. They are also a handy medium for
-communicating with other language hackers about syntax.</p>
-<p>The rules and productions we define for Lox are also our guide to the tree data
-structure we&rsquo;re going to implement to represent code in memory. Before we can do
-that, we need an actual grammar for Lox, or at least enough of one for us to get
-started.</p>
-<h3><a href="#a-grammar-for-lox-expressions" id="a-grammar-for-lox-expressions"><small>5&#8202;.&#8202;1&#8202;.&#8202;3</small>A Grammar for Lox expressions</a></h3>
-<p>In the previous chapter, we did Lox&rsquo;s entire lexical grammar in one fell swoop.
-Every keyword and bit of punctuation is there. The syntactic grammar is larger,
-and it would be a real bore to grind through the entire thing before we actually
-get our interpreter up and running.</p>
-<p>Instead, we&rsquo;ll crank through a subset of the language in the next couple of
-chapters. Once we have that mini-language represented, parsed, and interpreted,
-then later chapters will progressively add new features to it, including the new
-syntax. For now, we are going to worry about only a handful of expressions:</p>
+<p>Pas trop mal, j&rsquo;espère. Si vous êtes habitué à grep ou à utiliser des <a href="https://en.wikipedia.org/wiki/Regular_expression#Standards">expressions régulières</a> dans votre éditeur de texte, la plupart de la ponctuation devrait être familière. La principale différence est que les symboles ici représentent des tokens entiers, pas des caractères uniques.</p>
+<p>Nous utiliserons cette notation tout au long du reste du livre pour décrire précisément la grammaire de Lox. En travaillant sur des langages de programmation, vous découvrirez que les grammaires non contextuelles (utilisant ceci ou <a href="https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form">EBNF</a> ou une autre notation) vous aident à cristalliser vos idées informelles de conception de syntaxe. Elles sont aussi un support pratique pour communiquer avec d&rsquo;autres hackers de langage à propos de la syntaxe.</p>
+<p>Les règles et productions que nous définissons pour Lox sont aussi notre guide pour la structure de données en arbre que nous allons implémenter pour représenter le code en mémoire. Avant de pouvoir faire cela, nous avons besoin d&rsquo;une vraie grammaire pour Lox, ou au moins assez pour nous permettre de commencer.</p>
+<h3><a href="#une-grammaire-pour-les-expressions-lox" id="une-grammaire-pour-les-expressions-lox"><small>5&#8202;.&#8202;1&#8202;.&#8202;3</small>Une grammaire pour les expressions Lox</a></h3>
+<p>Dans le chapitre précédent, nous avons fait toute la grammaire lexicale de Lox d&rsquo;un seul coup. Chaque mot-clé et morceau de ponctuation est là. La grammaire syntaxique est plus grande, et ce serait vraiment ennuyeux de parcourir le tout avant que nous ayons réellement notre interpréteur en marche.</p>
+<p>Au lieu de cela, nous traiterons un sous-ensemble du langage dans les deux prochains chapitres. Une fois que nous aurons ce mini-langage représenté, parsé et interprété, les chapitres ultérieurs ajouteront progressivement de nouvelles fonctionnalités, y compris la nouvelle syntaxe. Pour l&rsquo;instant, nous allons nous soucier uniquement d&rsquo;une poignée d&rsquo;expressions :</p>
 <ul>
 <li>
-<p><strong>Literals.</strong> Numbers, strings, Booleans, and <code>nil</code>.</p>
+<p><strong>Littéraux.</strong> Nombres, chaînes, Booléens, et <code>nil</code>.</p>
 </li>
 <li>
-<p><strong>Unary expressions.</strong> A prefix <code>!</code> to perform a logical not, and <code>-</code> to
-negate a number.</p>
+<p><strong>Expressions unaires.</strong> Un préfixe <code>!</code> pour effectuer un non logique, et <code>-</code> pour nier un nombre.</p>
 </li>
 <li>
-<p><strong>Binary expressions.</strong> The infix arithmetic (<code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>) and logic
-operators (<code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code>) we know and love.</p>
+<p><strong>Expressions binaires.</strong> Les opérateurs arithmétiques infixes (<code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>) et logiques (<code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code>) que nous connaissons et aimons.</p>
 </li>
 <li>
-<p><strong>Parentheses.</strong> A pair of <code>(</code> and <code>)</code> wrapped around an expression.</p>
+<p><strong>Parenthèses.</strong> Une paire de <code>(</code> et <code>)</code> enroulée autour d&rsquo;une expression.</p>
 </li>
 </ul>
-<p>That gives us enough syntax for expressions like:</p>
+<p>Cela nous donne assez de syntaxe pour des expressions comme :</p>
 <div class="codehilite"><pre><span class="n">1</span> - (<span class="n">2</span> * <span class="n">3</span>) &lt; <span class="n">4</span> == <span class="k">false</span>
 </pre></div>
-<p>Using our handy dandy new notation, here&rsquo;s a grammar for those:</p>
+<p>En utilisant notre nouvelle notation bien pratique, voici une grammaire pour ceux-là :</p>
 <div class="codehilite"><pre><span class="i">expression</span>     → <span class="i">literal</span>
                | <span class="i">unary</span>
                | <span class="i">binary</span>
@@ -429,48 +292,22 @@ operators (<code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&lt;=</cod
 <span class="i">operator</span>       → <span class="s">&quot;==&quot;</span> | <span class="s">&quot;!=&quot;</span> | <span class="s">&quot;&lt;&quot;</span> | <span class="s">&quot;&lt;=&quot;</span> | <span class="s">&quot;&gt;&quot;</span> | <span class="s">&quot;&gt;=&quot;</span>
                | <span class="s">&quot;+&quot;</span>  | <span class="s">&quot;-&quot;</span>  | <span class="s">&quot;*&quot;</span> | <span class="s">&quot;/&quot;</span> ;
 </pre></div>
-<p>There&rsquo;s one bit of extra <span name="play">metasyntax</span> here. In addition
-to quoted strings for terminals that match exact lexemes, we <code>CAPITALIZE</code>
-terminals that are a single lexeme whose text representation may vary. <code>NUMBER</code>
-is any number literal, and <code>STRING</code> is any string literal. Later, we&rsquo;ll do the
-same for <code>IDENTIFIER</code>.</p>
-<p>This grammar is actually ambiguous, which we&rsquo;ll see when we get to parsing it.
-But it&rsquo;s good enough for now.</p>
+<p>Il y a un peu de <span name="play">métasyntaxe</span> supplémentaire ici. En plus des chaînes entre guillemets pour les terminaux qui matchent des lexèmes exacts, nous mettons en <code>MAJUSCULES</code> les terminaux qui sont un seul lexème dont la représentation textuelle peut varier. <code>NUMBER</code> est n&rsquo;importe quel littéral numérique, et <code>STRING</code> est n&rsquo;importe quel littéral de chaîne. Plus tard, nous ferons la même chose pour <code>IDENTIFIER</code>.</p>
+<p>Cette grammaire est en fait ambiguë, ce que nous verrons quand nous arriverons à la parser. Mais c&rsquo;est assez bon pour l&rsquo;instant.</p>
 <aside name="play">
-<p>If you&rsquo;re so inclined, try using this grammar to generate a few expressions like
-we did with the breakfast grammar before. Do the resulting expressions look
-right to you? Can you make it generate anything wrong like <code>1 + / 3</code>?</p>
+<p>Si vous êtes enclin à le faire, essayez d&rsquo;utiliser cette grammaire pour générer quelques expressions comme nous l&rsquo;avons fait avec la grammaire du petit-déjeuner auparavant. Les expressions résultantes vous semblent-elles correctes ? Pouvez-vous lui faire générer quelque chose de faux comme <code>1 + / 3</code> ?</p>
 </aside>
-<h2><a href="#implementing-syntax-trees" id="implementing-syntax-trees"><small>5&#8202;.&#8202;2</small>Implementing Syntax Trees</a></h2>
-<p>Finally, we get to write some code. That little expression grammar is our
-skeleton. Since the grammar is recursive<span class="em">&mdash;</span>note how <code>grouping</code>, <code>unary</code>, and
-<code>binary</code> all refer back to <code>expression</code><span class="em">&mdash;</span>our data structure will form a tree.
-Since this structure represents the syntax of our language, it&rsquo;s called a <span
-name="ast"><strong>syntax tree</strong></span>.</p>
+<h2><a href="#implémenter-des-arbres-syntaxiques" id="implémenter-des-arbres-syntaxiques"><small>5&#8202;.&#8202;2</small>Implémenter des Arbres Syntaxiques</a></h2>
+<p>Finalement, nous arrivons à écrire un peu de code. Cette petite grammaire d&rsquo;expression est notre squelette. Puisque la grammaire est récursive<span class="em">&mdash;</span>notez comment <code>grouping</code>, <code>unary</code>, et <code>binary</code> se réfèrent tous à <code>expression</code><span class="em">&mdash;</span>notre structure de données formera un arbre. Puisque cette structure représente la syntaxe de notre langage, elle est appelée un <span name="ast"><strong>arbre syntaxique</strong></span>.</p>
 <aside name="ast">
-<p>In particular, we&rsquo;re defining an <strong>abstract syntax tree</strong> (<strong>AST</strong>). In a
-<strong>parse tree</strong>, every single grammar production becomes a node in the tree. An
-AST elides productions that aren&rsquo;t needed by later phases.</p>
+<p>En particulier, nous définissons un <strong>arbre syntaxique abstrait</strong> (<strong>ASA</strong> ou <strong>AST</strong>). Dans un <strong>arbre d&rsquo;analyse</strong>, chaque production de grammaire devient un nœud dans l&rsquo;arbre. Un AST élide les productions qui ne sont pas nécessaires pour les phases ultérieures.</p>
 </aside>
-<p>Our scanner used a single Token class to represent all kinds of lexemes. To
-distinguish the different kinds<span class="em">&mdash;</span>think the number <code>123</code> versus the string
-<code>"123"</code><span class="em">&mdash;</span>we included a simple TokenType enum. Syntax trees are not so <span
-name="token-data">homogeneous</span>. Unary expressions have a single operand,
-binary expressions have two, and literals have none.</p>
-<p>We <em>could</em> mush that all together into a single Expression class with an
-arbitrary list of children. Some compilers do. But I like getting the most out
-of Java&rsquo;s type system. So we&rsquo;ll define a base class for expressions. Then, for
-each kind of expression<span class="em">&mdash;</span>each production under <code>expression</code><span class="em">&mdash;</span>we create a
-subclass that has fields for the nonterminals specific to that rule. This way,
-we get a compile error if we, say, try to access the second operand of a unary
-expression.</p>
+<p>Notre scanner utilisait une seule classe Token pour représenter toutes sortes de lexèmes. Pour distinguer les différentes sortes<span class="em">&mdash;</span>pensez au nombre <code>123</code> versus la chaîne <code>"123"</code><span class="em">&mdash;</span>nous incluions un simple enum TokenType. Les arbres syntaxiques ne sont pas si <span name="token-data">homogènes</span>. Les expressions unaires ont un seul opérande, les expressions binaires en ont deux, et les littéraux n&rsquo;en ont aucun.</p>
+<p>Nous <em>pourrions</em> écraser tout cela ensemble dans une seule classe Expression avec une liste arbitraire d&rsquo;enfants. Certains compilateurs le font. Mais j&rsquo;aime tirer le meilleur du système de types de Java. Donc nous définirons une classe de base pour les expressions. Ensuite, pour chaque type d&rsquo;expression<span class="em">&mdash;</span>chaque production sous <code>expression</code><span class="em">&mdash;</span>nous créons une sous-classe qui a des champs pour les non-terminaux spécifiques à cette règle. De cette façon, nous obtenons une erreur de compilation si nous essayons, disons, d&rsquo;accéder au deuxième opérande d&rsquo;une expression unaire.</p>
 <aside name="token-data">
-<p>Tokens aren&rsquo;t entirely homogeneous either. Tokens for literals store the value,
-but other kinds of lexemes don&rsquo;t need that state. I have seen scanners that use
-different classes for literals and other kinds of lexemes, but I figured I&rsquo;d
-keep things simpler.</p>
+<p>Les tokens ne sont pas entièrement homogènes non plus. Les tokens pour les littéraux stockent la valeur, mais d&rsquo;autres sortes de lexèmes n&rsquo;ont pas besoin de cet état. J&rsquo;ai vu des scanners qui utilisent différentes classes pour les littéraux et d&rsquo;autres sortes de lexèmes, mais je me suis dit que je garderais les choses plus simples.</p>
 </aside>
-<p>Something like this:</p>
+<p>Quelque chose comme ceci :</p>
 <div class="codehilite"><pre><span class="k">package</span> <span class="i">com.craftinginterpreters.lox</span>;
 
 <span class="k">abstract</span> <span class="k">class</span> <span class="t">Expr</span> {<span name="expr"> </span>
@@ -490,59 +327,26 @@ keep things simpler.</p>
 }
 </pre></div>
 <aside name="expr">
-<p>I avoid abbreviations in my code because they trip up a reader who doesn&rsquo;t know
-what they stand for. But in compilers I&rsquo;ve looked at, &ldquo;Expr&rdquo; and &ldquo;Stmt&rdquo; are so
-ubiquitous that I may as well start getting you used to them now.</p>
+<p>J&rsquo;évite les abréviations dans mon code parce qu&rsquo;elles font trébucher un lecteur qui ne sait pas ce qu&rsquo;elles signifient. Mais dans les compilateurs que j&rsquo;ai regardés, &ldquo;Expr&rdquo; et &ldquo;Stmt&rdquo; sont si omniprésents que je peux aussi bien commencer à vous y habituer maintenant.</p>
 </aside>
-<p>Expr is the base class that all expression classes inherit from. As you can see
-from <code>Binary</code>, the subclasses are nested inside of it. There&rsquo;s no technical need
-for this, but it lets us cram all of the classes into a single Java file.</p>
-<h3><a href="#disoriented-objects" id="disoriented-objects"><small>5&#8202;.&#8202;2&#8202;.&#8202;1</small>Disoriented objects</a></h3>
-<p>You&rsquo;ll note that, much like the Token class, there aren&rsquo;t any methods here. It&rsquo;s
-a dumb structure. Nicely typed, but merely a bag of data. This feels strange in
-an object-oriented language like Java. Shouldn&rsquo;t the class <em>do stuff</em>?</p>
-<p>The problem is that these tree classes aren&rsquo;t owned by any single domain. Should
-they have methods for parsing since that&rsquo;s where the trees are created? Or
-interpreting since that&rsquo;s where they are consumed? Trees span the border between
-those territories, which means they are really owned by <em>neither</em>.</p>
-<p>In fact, these types exist to enable the parser and interpreter to
-<em>communicate</em>. That lends itself to types that are simply data with no
-associated behavior. This style is very natural in functional languages like
-Lisp and ML where <em>all</em> data is separate from behavior, but it feels odd in
-Java.</p>
-<p>Functional programming aficionados right now are jumping up to exclaim &ldquo;See!
-Object-oriented languages are a bad fit for an interpreter!&rdquo; I won&rsquo;t go that
-far. You&rsquo;ll recall that the scanner itself was admirably suited to
-object-orientation. It had all of the mutable state to keep track of where it
-was in the source code, a well-defined set of public methods, and a handful of
-private helpers.</p>
-<p>My feeling is that each phase or part of the interpreter works fine in an
-object-oriented style. It is the data structures that flow between them that are
-stripped of behavior.</p>
-<h3><a href="#metaprogramming-the-trees" id="metaprogramming-the-trees"><small>5&#8202;.&#8202;2&#8202;.&#8202;2</small>Metaprogramming the trees</a></h3>
-<p>Java can express behavior-less classes, but I wouldn&rsquo;t say that it&rsquo;s
-particularly great at it. Eleven lines of code to stuff three fields in an
-object is pretty tedious, and when we&rsquo;re all done, we&rsquo;re going to have 21 of
-these classes.</p>
-<p>I don&rsquo;t want to waste your time or my ink writing all that down. Really, what is
-the essence of each subclass? A name, and a list of typed fields. That&rsquo;s it.
-We&rsquo;re smart language hackers, right? Let&rsquo;s <span
-name="automate">automate</span>.</p>
+<p>Expr est la classe de base dont héritent toutes les classes d&rsquo;expression. Comme vous pouvez le voir avec <code>Binary</code>, les sous-classes sont imbriquées à l&rsquo;intérieur. Il n&rsquo;y a pas de besoin technique pour cela, mais cela nous laisse fourrer toutes les classes dans un seul fichier Java.</p>
+<h3><a href="#objets-désorientés" id="objets-désorientés"><small>5&#8202;.&#8202;2&#8202;.&#8202;1</small>Objets désorientés</a></h3>
+<p>Vous noterez que, tout comme la classe Token, il n&rsquo;y a pas de méthodes ici. C&rsquo;est une structure bête. Joliment typée, mais simplement un sac de données. Cela semble étrange dans un langage orienté objet comme Java. La classe ne devrait-elle pas <em>faire des trucs</em> ?</p>
+<p>Le problème est que ces classes d&rsquo;arbres ne sont possédées par aucun domaine unique. Devraient-elles avoir des méthodes pour le parsing puisque c&rsquo;est là que les arbres sont créés ? Ou l&rsquo;interprétation puisque c&rsquo;est là qu&rsquo;ils sont consommés ? Les arbres enjambent la frontière entre ces territoires, ce qui signifie qu&rsquo;ils ne sont vraiment possédés par <em>aucun</em> des deux.</p>
+<p>En fait, ces types existent pour permettre au parseur et à l&rsquo;interpréteur de <em>communiquer</em>. Cela se prête à des types qui sont simplement des données sans comportement associé. Ce style est très naturel dans des langages fonctionnels comme Lisp et ML où <em>toutes</em> les données sont séparées du comportement, mais cela semble bizarre en Java.</p>
+<p>Les aficionados de la programmation fonctionnelle sautent en ce moment pour s&rsquo;exclamer &ldquo;Tu vois ! Les langages orientés objet sont un mauvais choix pour un interpréteur !&rdquo; Je n&rsquo;irai pas jusque-là. Vous vous souviendrez que le scanner lui-même était admirablement adapté à l&rsquo;orientation objet. Il avait tout l&rsquo;état mutable pour garder une trace d&rsquo;où il était dans le code source, un ensemble bien défini de méthodes publiques, et une poignée d&rsquo;assistants privés.</p>
+<p>Mon sentiment est que chaque phase ou partie de l&rsquo;interpréteur fonctionne bien dans un style orienté objet. Ce sont les structures de données qui circulent entre elles qui sont dépouillées de comportement.</p>
+<h3><a href="#métaprogrammer-les-arbres" id="métaprogrammer-les-arbres"><small>5&#8202;.&#8202;2&#8202;.&#8202;2</small>Métaprogrammer les arbres</a></h3>
+<p>Java peut exprimer des classes sans comportement, mais je ne dirais pas qu&rsquo;il est particulièrement bon à ça. Onze lignes de code pour fourrer trois champs dans un objet est assez fastidieux, et quand nous aurons fini, nous aurons 21 de ces classes.</p>
+<p>Je ne veux pas perdre votre temps ou mon encre à écrire tout cela. Vraiment, quelle est l&rsquo;essence de chaque sous-classe ? Un nom, et une liste de champs typés. C&rsquo;est tout. Nous sommes des hackers de langage intelligents, non ? <span name="automate">Automatisons</span>.</p>
 <aside name="automate">
-<p>Picture me doing an awkward robot dance when you read that. &ldquo;AU-TO-MATE.&rdquo;</p>
+<p>Imaginez-moi faisant une danse de robot maladroite quand vous lisez ceci. &ldquo;AU-TO-MA-TI-SONS.&rdquo;</p>
 </aside>
-<p>Instead of tediously handwriting each class definition, field declaration,
-constructor, and initializer, we&rsquo;ll hack together a <span
-name="python">script</span> that does it for us. It has a description of each
-tree type<span class="em">&mdash;</span>its name and fields<span class="em">&mdash;</span>and it prints out the Java code needed to
-define a class with that name and state.</p>
-<p>This script is a tiny Java command-line app that generates a file named
-&ldquo;Expr.java&rdquo;:</p>
+<p>Au lieu d&rsquo;écrire laborieusement à la main chaque définition de classe, déclaration de champ, constructeur et initialiseur, nous bricolerons un <span name="python">script</span> qui le fait pour nous. Il a une description de chaque type d&rsquo;arbre<span class="em">&mdash;</span>son nom et ses champs<span class="em">&mdash;</span>et il affiche le code Java nécessaire pour définir une classe avec ce nom et cet état.</p>
+<p>Ce script est une minuscule application en ligne de commande Java qui génère un fichier nommé &ldquo;Expr.java&rdquo; :</p>
 <aside name="python">
-<p>I got the idea of scripting the syntax tree classes from Jim Hugunin, creator of
-Jython and IronPython.</p>
-<p>An actual scripting language would be a better fit for this than Java, but I&rsquo;m
-trying not to throw too many languages at you.</p>
+<p>J&rsquo;ai eu l&rsquo;idée de scripter les classes d&rsquo;arbre syntaxique de Jim Hugunin, créateur de Jython et IronPython.</p>
+<p>Un vrai langage de script serait un meilleur choix pour cela que Java, mais j&rsquo;essaie de ne pas vous jeter trop de langages à la figure.</p>
 </aside>
 <div class="codehilite"><div class="source-file"><em>tool/GenerateAst.java</em><br>
 create new file</div>
@@ -565,13 +369,8 @@ create new file</div>
 </pre></div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, create new file</div>
 
-<p>Note that this file is in a different package, <code>.tool</code> instead of <code>.lox</code>. This
-script isn&rsquo;t part of the interpreter itself. It&rsquo;s a tool <em>we</em>, the people
-hacking on the interpreter, run ourselves to generate the syntax tree classes.
-When it&rsquo;s done, we treat &ldquo;Expr.java&rdquo; like any other file in the implementation.
-We are merely automating how that file gets authored.</p>
-<p>To generate the classes, it needs to have some description of each type and its
-fields.</p>
+<p>Notez que ce fichier est dans un paquetage différent, <code>.tool</code> au lieu de <code>.lox</code>. Ce script ne fait pas partie de l&rsquo;interpréteur lui-même. C&rsquo;est un outil que <em>nous</em>, les gens qui hackent l&rsquo;interpréteur, exécutons nous-mêmes pour générer les classes d&rsquo;arbre syntaxique. Quand c&rsquo;est fini, nous traitons &ldquo;Expr.java&rdquo; comme n&rsquo;importe quel autre fichier dans l&rsquo;implémentation. Nous automatisons simplement la façon dont ce fichier est rédigé.</p>
+<p>Pour générer les classes, il a besoin d&rsquo;avoir une description de chaque type et de ses champs.</p>
 <div class="codehilite"><pre class="insert-before">    String outputDir = args[0];
 </pre><div class="source-file"><em>tool/GenerateAst.java</em><br>
 in <em>main</em>()</div>
@@ -585,10 +384,8 @@ in <em>main</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, in <em>main</em>()</div>
 
-<p>For brevity&rsquo;s sake, I jammed the descriptions of the expression types into
-strings. Each is the name of the class followed by <code>:</code> and the list of fields,
-separated by commas. Each field has a type and a name.</p>
-<p>The first thing <code>defineAst()</code> needs to do is output the base Expr class.</p>
+<p>Pour la concision, j&rsquo;ai coincé les descriptions des types d&rsquo;expression dans des chaînes. Chacune est le nom de la classe suivi par <code>:</code> et la liste des champs, séparés par des virgules. Chaque champ a un type et un nom.</p>
+<p>La première chose que <code>defineAst()</code> doit faire est de sortir la classe de base Expr.</p>
 <div class="codehilite"><div class="source-file"><em>tool/GenerateAst.java</em><br>
 add after <em>main</em>()</div>
 <pre>  <span class="k">private</span> <span class="k">static</span> <span class="t">void</span> <span class="i">defineAst</span>(
@@ -609,11 +406,8 @@ add after <em>main</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, add after <em>main</em>()</div>
 
-<p>When we call this, <code>baseName</code> is &ldquo;Expr&rdquo;, which is both the name of the class and
-the name of the file it outputs. We pass this as an argument instead of
-hardcoding the name because we&rsquo;ll add a separate family of classes later for
-statements.</p>
-<p>Inside the base class, we define each subclass.</p>
+<p>Quand nous appelons ceci, <code>baseName</code> est &ldquo;Expr&rdquo;, qui est à la fois le nom de la classe et le nom du fichier qu&rsquo;il produit. Nous passons ceci comme argument au lieu de coder en dur le nom parce que nous ajouterons une famille séparée de classes plus tard pour les instructions.</p>
+<p>À l&rsquo;intérieur de la classe de base, nous définissons chaque sous-classe.</p>
 <div class="codehilite"><pre class="insert-before">    writer.println(&quot;abstract class &quot; + baseName + &quot; {&quot;);
 
 </pre><div class="source-file"><em>tool/GenerateAst.java</em><br>
@@ -629,11 +423,9 @@ in <em>defineAst</em>()</div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, in <em>defineAst</em>()</div>
 
 <aside name="robust">
-<p>This isn&rsquo;t the world&rsquo;s most elegant string manipulation code, but that&rsquo;s fine.
-It only runs on the exact set of class definitions we give it. Robustness ain&rsquo;t
-a priority.</p>
+<p>Ce n&rsquo;est pas le code de manipulation de chaînes le plus élégant du monde, mais c&rsquo;est bon. Il ne s&rsquo;exécute que sur l&rsquo;ensemble exact de définitions de classes que nous lui donnons. La robustesse n&rsquo;est pas une priorité.</p>
 </aside>
-<p>That code, in turn, calls:</p>
+<p>Ce code, à son tour, appelle :</p>
 <div class="codehilite"><div class="source-file"><em>tool/GenerateAst.java</em><br>
 add after <em>defineAst</em>()</div>
 <pre>  <span class="k">private</span> <span class="k">static</span> <span class="t">void</span> <span class="i">defineType</span>(
@@ -665,132 +457,54 @@ add after <em>defineAst</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, add after <em>defineAst</em>()</div>
 
-<p>There we go. All of that glorious Java boilerplate is done. It declares each
-field in the class body. It defines a constructor for the class with parameters
-for each field and initializes them in the body.</p>
-<p>Compile and run this Java program now and it <span name="longer">blasts</span>
-out a new &ldquo;.java&rdquo; file containing a few dozen lines of code. That file&rsquo;s
-about to get even longer.</p>
+<p>Et voilà. Tout ce superbe code standard Java est fait. Il déclare chaque champ dans le corps de la classe. Il définit un constructeur pour la classe avec des paramètres pour chaque champ et les initialise dans le corps.</p>
+<p>Compilez et lancez ce programme Java maintenant et il [crache][longer] un nouveau fichier &rdquo;.java&rdquo; contenant quelques douzaines de lignes de code. Ce fichier est sur le point de devenir encore plus long.</p>
 <aside name="longer">
-<p><a href="appendix-ii.html">Appendix II</a> contains the code generated by this script once we&rsquo;ve finished
-implementing jlox and defined all of its syntax tree nodes.</p>
+<p>L&rsquo;[Annexe II][] contient le code généré par ce script une fois que nous avons fini d&rsquo;implémenter jlox et défini tous ses nœuds d&rsquo;arbre syntaxique.</p>
 </aside>
-<h2><a href="#working-with-trees" id="working-with-trees"><small>5&#8202;.&#8202;3</small>Working with Trees</a></h2>
-<p>Put on your imagination hat for a moment. Even though we aren&rsquo;t there yet,
-consider what the interpreter will do with the syntax trees. Each kind of
-expression in Lox behaves differently at runtime. That means the interpreter
-needs to select a different chunk of code to handle each expression type. With
-tokens, we can simply switch on the TokenType. But we don&rsquo;t have a &ldquo;type&rdquo; enum
-for the syntax trees, just a separate Java class for each one.</p>
-<p>We could write a long chain of type tests:</p>
+<h2><a href="#travailler-avec-des-arbres" id="travailler-avec-des-arbres"><small>5&#8202;.&#8202;3</small>Travailler avec des Arbres</a></h2>
+<p>Mettez votre chapeau d&rsquo;imagination un instant. Même si nous n&rsquo;y sommes pas encore, considérez ce que l&rsquo;interpréteur fera avec les arbres syntaxiques. Chaque type d&rsquo;expression dans Lox se comporte différemment à l&rsquo;exécution. Cela signifie que l&rsquo;interpréteur a besoin de sélectionner un morceau de code différent pour gérer chaque type d&rsquo;expression. Avec les tokens, nous pouvons simplement switcher sur le TokenType. Mais nous n&rsquo;avons pas un enum &ldquo;type&rdquo; pour les arbres syntaxiques, juste une classe Java séparée pour chacun.</p>
+<p>Nous pourrions écrire une longue chaîne de tests de type :</p>
 <div class="codehilite"><pre><span class="k">if</span> (<span class="i">expr</span> <span class="k">instanceof</span> <span class="t">Expr</span>.<span class="t">Binary</span>) {
   <span class="c">// ...</span>
 } <span class="k">else</span> <span class="k">if</span> (<span class="i">expr</span> <span class="k">instanceof</span> <span class="t">Expr</span>.<span class="t">Grouping</span>) {
   <span class="c">// ...</span>
 } <span class="k">else</span> <span class="c">// ...</span>
 </pre></div>
-<p>But all of those sequential type tests are slow. Expression types whose names
-are alphabetically later would take longer to execute because they&rsquo;d fall
-through more <code>if</code> cases before finding the right type. That&rsquo;s not my idea of an
-elegant solution.</p>
-<p>We have a family of classes and we need to associate a chunk of behavior with
-each one. The natural solution in an object-oriented language like Java is to
-put those behaviors into methods on the classes themselves. We could add an
-abstract <span name="interpreter-pattern"><code>interpret()</code></span> method on Expr
-which each subclass would then implement to interpret itself.</p>
+<p>Mais tous ces tests de type séquentiels sont lents. Les types d&rsquo;expression dont les noms sont alphabétiquement plus tard prendraient plus de temps à s&rsquo;exécuter parce qu&rsquo;ils tomberaient à travers plus de cas <code>if</code> avant de trouver le bon type. Ce n&rsquo;est pas mon idée d&rsquo;une solution élégante.</p>
+<p>Nous avons une famille de classes et nous avons besoin d&rsquo;associer un morceau de comportement avec chacune. La solution naturelle dans un langage orienté objet comme Java est de mettre ces comportements dans des méthodes sur les classes elles-mêmes. Nous pourrions ajouter une méthode abstraite <span name="interpreter-pattern"><code>interpret()</code></span> sur Expr que chaque sous-classe implémenterait alors pour s&rsquo;interpréter elle-même.</p>
 <aside name="interpreter-pattern">
-<p>This exact thing is literally called the <a href="https://en.wikipedia.org/wiki/Interpreter_pattern">&ldquo;Interpreter pattern&rdquo;</a> in
-<em>Design Patterns: Elements of Reusable Object-Oriented Software</em>, by Erich
-Gamma, et al.</p>
+<p>Cette chose exacte est littéralement appelée le <a href="https://en.wikipedia.org/wiki/Interpreter_pattern">&ldquo;Patron Interpréteur&rdquo;</a> dans <em>Design Patterns: Elements of Reusable Object-Oriented Software</em>, par Erich Gamma, et al.</p>
 </aside>
-<p>This works alright for tiny projects, but it scales poorly. Like I noted before,
-these tree classes span a few domains. At the very least, both the parser and
-interpreter will mess with them. As <a href="resolving-and-binding.html">you&rsquo;ll see later</a>, we need to
-do name resolution on them. If our language was statically typed, we&rsquo;d have a
-type checking pass.</p>
-<p>If we added instance methods to the expression classes for every one of those
-operations, that would smush a bunch of different domains together. That
-violates <a href="https://en.wikipedia.org/wiki/Separation_of_concerns">separation of concerns</a> and leads to hard-to-maintain code.</p>
-<h3><a href="#the-expression-problem" id="the-expression-problem"><small>5&#8202;.&#8202;3&#8202;.&#8202;1</small>The expression problem</a></h3>
-<p>This problem is more fundamental than it may seem at first. We have a handful of
-types, and a handful of high-level operations like &ldquo;interpret&rdquo;. For each pair of
-type and operation, we need a specific implementation. Picture a table:</p><img src="image/representing-code/table.png" alt="A table where rows are labeled with expression classes, and columns are function names." />
-<p>Rows are types, and columns are operations. Each cell represents the unique
-piece of code to implement that operation on that type.</p>
-<p>An object-oriented language like Java assumes that all of the code in one row
-naturally hangs together. It figures all the things you do with a type are
-likely related to each other, and the language makes it easy to define them
-together as methods inside the same class.</p><img src="image/representing-code/rows.png" alt="The table split into rows for each class." />
-<p>This makes it easy to extend the table by adding new rows. Simply define a new
-class. No existing code has to be touched. But imagine if you want to add a new
-<em>operation</em><span class="em">&mdash;</span>a new column. In Java, that means cracking open each of those
-existing classes and adding a method to it.</p>
-<p>Functional paradigm languages in the <span name="ml">ML</span> family flip that
-around. There, you don&rsquo;t have classes with methods. Types and functions are
-totally distinct. To implement an operation for a number of different types, you
-define a single function. In the body of that function, you use <em>pattern
-matching</em><span class="em">&mdash;</span>sort of a type-based switch on steroids<span class="em">&mdash;</span>to implement the
-operation for each type all in one place.</p>
+<p>Cela marche bien pour les petits projets, mais cela passe mal à l&rsquo;échelle. Comme je l&rsquo;ai noté avant, ces classes d&rsquo;arbres enjambent quelques domaines. À tout le moins, le parseur et l&rsquo;interpréteur vont tous deux tripatouiller avec elles. Comme <a href="resolving-and-binding.html">vous le verrez plus tard</a>, nous avons besoin de faire une résolution de noms sur elles. Si notre langage était typé statiquement, nous aurions une passe de vérification de type.</p>
+<p>Si nous ajoutions des méthodes d&rsquo;instance aux classes d&rsquo;expression pour chacune de ces opérations, cela écraserait un tas de domaines différents ensemble. Cela viole la [séparation des préoccupations][] et mène à du code difficile à maintenir.</p>
+<h3><a href="#le-problème-de-lexpression" id="le-problème-de-lexpression"><small>5&#8202;.&#8202;3&#8202;.&#8202;1</small>Le problème de l&rsquo;expression</a></h3>
+<p>Ce problème est plus fondamental qu&rsquo;il n&rsquo;y paraît au premier abord. Nous avons une poignée de types, et une poignée d&rsquo;opérations de haut niveau comme &ldquo;interpréter&rdquo;. Pour chaque paire de type et d&rsquo;opération, nous avons besoin d&rsquo;une implémentation spécifique. Imaginez un tableau :</p><img src="image/representing-code/table.png" alt="Un tableau où les lignes sont étiquetées avec les classes d'expression, et les colonnes sont des noms de fonctions." />
+<p>Les lignes sont les types, et les colonnes sont les opérations. Chaque cellule représente le morceau de code unique pour implémenter cette opération sur ce type.</p>
+<p>Un langage orienté objet comme Java suppose que tout le code dans une ligne va naturellement ensemble. Il se figure que toutes les choses que vous faites avec un type sont probablement liées les unes aux autres, et le langage rend facile de les définir ensemble comme méthodes à l&rsquo;intérieur de la même classe.</p><img src="image/representing-code/rows.png" alt="Le tableau séparé en lignes pour chaque classe." />
+<p>Cela rend facile l&rsquo;extension du tableau en ajoutant de nouvelles lignes. Définissez simplement une nouvelle classe. Aucun code existant n&rsquo;a besoin d&rsquo;être touché. Mais imaginez si vous voulez ajouter une nouvelle <em>opération</em><span class="em">&mdash;</span>une nouvelle colonne. En Java, cela signifie ouvrir chacune de ces classes existantes et y ajouter une méthode.</p>
+<p>Les langages du paradigme fonctionnel de la famille <span name="ml">ML</span> retournent cela. Là, vous n&rsquo;avez pas de classes avec des méthodes. Les types et les fonctions sont totalement distincts. Pour implémenter une opération pour un certain nombre de types différents, vous définissez une seule fonction. Dans le corps de cette fonction, vous utilisez le <em>pattern matching</em> (filtrage par motif)<span class="em">&mdash;</span>sorte de switch basé sur le type sous stéroïdes<span class="em">&mdash;</span>pour implémenter l&rsquo;opération pour chaque type tout en un seul endroit.</p>
 <aside name="ml">
-<p>ML, short for &ldquo;metalanguage&rdquo; was created by Robin Milner and friends and forms
-one of the main branches in the great programming language family tree. Its
-children include SML, Caml, OCaml, Haskell, and F#. Even Scala, Rust, and Swift
-bear a strong resemblance.</p>
-<p>Much like Lisp, it is one of those languages that is so full of good ideas that
-language designers today are still rediscovering them over forty years later.</p>
+<p>ML, abréviation de &ldquo;métalangage&rdquo;, a été créé par Robin Milner et ses amis et forme l&rsquo;une des branches principales dans le grand arbre généalogique des langages de programmation. Ses enfants incluent SML, Caml, OCaml, Haskell, et F#. Même Scala, Rust, et Swift portent une forte ressemblance.</p>
+<p>Tout comme Lisp, c&rsquo;est l&rsquo;un de ces langages qui est si plein de bonnes idées que les concepteurs de langage aujourd&rsquo;hui les redécouvrent encore plus de quarante ans plus tard.</p>
 </aside>
-<p>This makes it trivial to add new operations<span class="em">&mdash;</span>simply define another function
-that pattern matches on all of the types.</p><img src="image/representing-code/columns.png" alt="The table split into columns for each function." />
-<p>But, conversely, adding a new type is hard. You have to go back and add a new
-case to all of the pattern matches in all of the existing functions.</p>
-<p>Each style has a certain &ldquo;grain&rdquo; to it. That&rsquo;s what the paradigm name literally
-says<span class="em">&mdash;</span>an object-oriented language wants you to <em>orient</em> your code along the
-rows of types. A functional language instead encourages you to lump each
-column&rsquo;s worth of code together into a <em>function</em>.</p>
-<p>A bunch of smart language nerds noticed that neither style made it easy to add
-<em>both</em> rows and columns to the <span name="multi">table</span>. They called this
-difficulty the &ldquo;expression problem&rdquo; because<span class="em">&mdash;</span>like we are now<span class="em">&mdash;</span>they first ran
-into it when they were trying to figure out the best way to model expression
-syntax tree nodes in a compiler.</p>
+<p>Cela rend trivial l&rsquo;ajout de nouvelles opérations<span class="em">&mdash;</span>définissez simplement une autre fonction qui fait du pattern matching sur tous les types.</p><img src="image/representing-code/columns.png" alt="Le tableau séparé en colonnes pour chaque fonction." />
+<p>Mais, inversement, ajouter un nouveau type est difficile. Vous devez revenir en arrière et ajouter un nouveau cas à tous les pattern matchings dans toutes les fonctions existantes.</p>
+<p>Chaque style a un certain &ldquo;grain&rdquo;. C&rsquo;est ce que le nom du paradigme dit littéralement<span class="em">&mdash;</span>un langage orienté objet veut que vous <em>orientiez</em> votre code le long des lignes de types. Un langage fonctionnel vous encourage au contraire à regrouper le code de chaque colonne dans une <em>fonction</em>.</p>
+<p>Un tas de nerds intelligents en langage ont remarqué qu&rsquo;aucun des deux styles ne rendait facile l&rsquo;ajout <em>à la fois</em> de lignes et de colonnes au <span name="multi">tableau</span>. Ils ont appelé cette difficulté le &ldquo;problème de l&rsquo;expression&rdquo; parce que<span class="em">&mdash;</span>comme nous maintenant<span class="em">&mdash;</span>ils l&rsquo;ont rencontré pour la première fois quand ils essayaient de trouver la meilleure façon de modéliser les nœuds d&rsquo;arbre syntaxique d&rsquo;expression dans un compilateur.</p>
 <aside name="multi">
-<p>Languages with <em>multimethods</em>, like Common Lisp&rsquo;s CLOS, Dylan, and Julia do
-support adding both new types and operations easily. What they typically
-sacrifice is either static type checking, or separate compilation.</p>
+<p>Les langages avec <em>multiméthodes</em>, comme CLOS de Common Lisp, Dylan, et Julia supportent l&rsquo;ajout facile à la fois de nouveaux types et d&rsquo;opérations. Ce qu&rsquo;ils sacrifient typiquement est soit la vérification statique de type, soit la compilation séparée.</p>
 </aside>
-<p>People have thrown all sorts of language features, design patterns, and
-programming tricks to try to knock that problem down but no perfect language has
-finished it off yet. In the meantime, the best we can do is try to pick a
-language whose orientation matches the natural architectural seams in the
-program we&rsquo;re writing.</p>
-<p>Object-orientation works fine for many parts of our interpreter, but these tree
-classes rub against the grain of Java. Fortunately, there&rsquo;s a design pattern we
-can bring to bear on it.</p>
-<h3><a href="#the-visitor-pattern" id="the-visitor-pattern"><small>5&#8202;.&#8202;3&#8202;.&#8202;2</small>The Visitor pattern</a></h3>
-<p>The <strong>Visitor pattern</strong> is the most widely misunderstood pattern in all of
-<em>Design Patterns</em>, which is really saying something when you look at the
-software architecture excesses of the past couple of decades.</p>
-<p>The trouble starts with terminology. The pattern isn&rsquo;t about &ldquo;visiting&rdquo;, and the
-&ldquo;accept&rdquo; method in it doesn&rsquo;t conjure up any helpful imagery either. Many think
-the pattern has to do with traversing trees, which isn&rsquo;t the case at all. We
-<em>are</em> going to use it on a set of classes that are tree-like, but that&rsquo;s a
-coincidence. As you&rsquo;ll see, the pattern works as well on a single object.</p>
-<p>The Visitor pattern is really about approximating the functional style within an
-OOP language. It lets us add new columns to that table easily. We can define all
-of the behavior for a new operation on a set of types in one place, without
-having to touch the types themselves. It does this the same way we solve almost
-every problem in computer science: by adding a layer of indirection.</p>
-<p>Before we apply it to our auto-generated Expr classes, let&rsquo;s walk through a
-simpler example. Say we have two kinds of pastries: <span
-name="beignet">beignets</span> and crullers.</p>
+<p>Les gens ont lancé toutes sortes de fonctionnalités de langage, de patrons de conception et d&rsquo;astuces de programmation pour essayer d&rsquo;abattre ce problème mais aucun langage parfait ne l&rsquo;a encore achevé. En attendant, le mieux que nous puissions faire est d&rsquo;essayer de choisir un langage dont l&rsquo;orientation correspond aux coutures architecturales naturelles dans le programme que nous écrivons.</p>
+<p>L&rsquo;orientation objet fonctionne bien pour de nombreuses parties de notre interpréteur, mais ces classes d&rsquo;arbres vont à l&rsquo;encontre du grain de Java. Heureusement, il y a un patron de conception que nous pouvons mettre à profit ici.</p>
+<h3><a href="#le-patron-visiteur" id="le-patron-visiteur"><small>5&#8202;.&#8202;3&#8202;.&#8202;2</small>Le patron Visiteur</a></h3>
+<p>Le <strong>patron Visiteur</strong> est le patron le plus largement mal compris de tout <em>Design Patterns</em>, ce qui veut vraiment dire quelque chose quand vous regardez les excès d&rsquo;architecture logicielle des deux dernières décennies.</p>
+<p>Le problème commence avec la terminologie. Le patron n&rsquo;a rien à voir avec &ldquo;visiter&rdquo;, et la méthode &ldquo;accept&rdquo; dedans n&rsquo;évoque aucune image utile non plus. Beaucoup pensent que le patron a à voir avec la traversée d&rsquo;arbres, ce qui n&rsquo;est pas le cas du tout. Nous <em>allons</em> l&rsquo;utiliser sur un ensemble de classes qui sont arborescentes, mais c&rsquo;est une coïncidence. Comme vous le verrez, le patron fonctionne aussi bien sur un seul objet.</p>
+<p>Le patron Visiteur consiste vraiment à approximer le style fonctionnel au sein d&rsquo;un langage POO. Il nous permet d&rsquo;ajouter facilement de nouvelles colonnes à ce tableau. Nous pouvons définir tout le comportement pour une nouvelle opération sur un ensemble de types en un seul endroit, sans avoir à toucher aux types eux-mêmes. Il fait cela de la même manière que nous résolvons presque tous les problèmes en informatique : en ajoutant une couche d&rsquo;indirection.</p>
+<p>Avant de l&rsquo;appliquer à nos classes Expr auto-générées, parcourons un exemple plus simple. Disons que nous avons deux sortes de pâtisseries : des <span name="beignet">beignets</span> et des crullers.</p>
 <aside name="beignet">
-<p>A beignet (pronounced &ldquo;ben-yay&rdquo;, with equal emphasis on both syllables) is a
-deep-fried pastry in the same family as doughnuts. When the French colonized
-North America in the 1700s, they brought beignets with them. Today, in the US,
-they are most strongly associated with the cuisine of New Orleans.</p>
-<p>My preferred way to consume them is fresh out of the fryer at Café du Monde,
-piled high in powdered sugar, and washed down with a cup of café au lait while I
-watch tourists staggering around trying to shake off their hangover from the
-previous night&rsquo;s revelry.</p>
+<p>Un beignet (prononcé &ldquo;bè-nié&ldquo;) est une pâtisserie frite de la même famille que les donuts. Quand les Français ont colonisé l&rsquo;Amérique du Nord dans les années 1700, ils ont apporté les beignets avec eux. Aujourd&rsquo;hui, aux US, ils sont le plus fortement associés à la cuisine de la Nouvelle-Orléans.</p>
+<p>Ma façon préférée de les consommer est tout juste sortis de la friteuse au Café du Monde, empilés haut sous le sucre en poudre, et arrosés d&rsquo;une tasse de café au lait pendant que je regarde les touristes tituber autour en essayant de secouer leur gueule de bois des festivités de la nuit précédente.</p>
 </aside>
 <div class="codehilite"><pre>  <span class="k">abstract</span> <span class="k">class</span> <span class="t">Pastry</span> {
   }
@@ -802,9 +516,7 @@ previous night&rsquo;s revelry.</p>
   }
 </pre></div>
 
-<p>We want to be able to define new pastry operations<span class="em">&mdash;</span>cooking them, eating them,
-decorating them, etc.<span class="em">&mdash;</span>without having to add a new method to each class every
-time. Here&rsquo;s how we do it. First, we define a separate interface.</p>
+<p>Nous voulons être capables de définir de nouvelles opérations de pâtisserie<span class="em">&mdash;</span>les cuire, les manger, les décorer, etc.<span class="em">&mdash;</span>sans avoir à ajouter une nouvelle méthode à chaque classe à chaque fois. Voici comment nous faisons. D&rsquo;abord, nous définissons une interface séparée.</p>
 <div class="codehilite"><pre>  <span class="k">interface</span> <span class="t">PastryVisitor</span> {
     <span class="t">void</span> <span class="i">visitBeignet</span>(<span class="t">Beignet</span> <span class="i">beignet</span>);<span name="overload"> </span>
     <span class="t">void</span> <span class="i">visitCruller</span>(<span class="t">Cruller</span> <span class="i">cruller</span>);
@@ -812,25 +524,17 @@ time. Here&rsquo;s how we do it. First, we define a separate interface.</p>
 </pre></div>
 
 <aside name="overload">
-<p>In <em>Design Patterns</em>, both of these methods are confusingly named <code>visit()</code>, and
-they rely on overloading to distinguish them. This leads some readers to think
-that the correct visit method is chosen <em>at runtime</em> based on its parameter
-type. That isn&rsquo;t the case. Unlike over<em>riding</em>, over<em>loading</em> is statically
-dispatched at compile time.</p>
-<p>Using distinct names for each method makes the dispatch more obvious, and also
-shows you how to apply this pattern in languages that don&rsquo;t support overloading.</p>
+<p>Dans <em>Design Patterns</em>, ces deux méthodes sont confusément nommées <code>visit()</code>, et elles comptent sur la surcharge pour les distinguer. Cela conduit certains lecteurs à penser que la bonne méthode visit est choisie <em>à l&rsquo;exécution</em> basée sur son type de paramètre. Ce n&rsquo;est pas le cas. Contrairement à la réécriture (overriding), la surcharge (overloading) est dépêchée statiquement au moment de la compilation.</p>
+<p>Utiliser des noms distincts pour chaque méthode rend le dispatch plus évident, et vous montre aussi comment appliquer ce patron dans des langages qui ne supportent pas la surcharge.</p>
 </aside>
-<p>Each operation that can be performed on pastries is a new class that implements
-that interface. It has a concrete method for each type of pastry. That keeps the
-code for the operation on both types all nestled snugly together in one class.</p>
-<p>Given some pastry, how do we route it to the correct method on the visitor based
-on its type? Polymorphism to the rescue! We add this method to Pastry:</p>
+<p>Chaque opération qui peut être effectuée sur des pâtisseries est une nouvelle classe qui implémente cette interface. Elle a une méthode concrète pour chaque type de pâtisserie. Cela garde le code pour l&rsquo;opération sur les deux types tout niché confortablement ensemble dans une classe.</p>
+<p>Étant donné une certaine pâtisserie, comment la router vers la bonne méthode sur le visiteur en fonction de son type ? Le polymorphisme à la rescousse ! Nous ajoutons cette méthode à Pastry :</p>
 <div class="codehilite"><pre class="insert-before">  abstract class Pastry {
 </pre><pre class="insert">    <span class="k">abstract</span> <span class="t">void</span> <span class="i">accept</span>(<span class="t">PastryVisitor</span> <span class="i">visitor</span>);
 </pre><pre class="insert-after">  }
 </pre></div>
 
-<p>Each subclass implements it.</p>
+<p>Chaque sous-classe l&rsquo;implémente.</p>
 <div class="codehilite"><pre class="insert-before">  class Beignet extends Pastry {
 </pre><pre class="insert">    <span class="a">@Override</span>
     <span class="t">void</span> <span class="i">accept</span>(<span class="t">PastryVisitor</span> <span class="i">visitor</span>) {
@@ -839,7 +543,7 @@ on its type? Polymorphism to the rescue! We add this method to Pastry:</p>
 </pre><pre class="insert-after">  }
 </pre></div>
 
-<p>And:</p>
+<p>Et :</p>
 <div class="codehilite"><pre class="insert-before">  class Cruller extends Pastry {
 </pre><pre class="insert">    <span class="a">@Override</span>
     <span class="t">void</span> <span class="i">accept</span>(<span class="t">PastryVisitor</span> <span class="i">visitor</span>) {
@@ -848,32 +552,15 @@ on its type? Polymorphism to the rescue! We add this method to Pastry:</p>
 </pre><pre class="insert-after">  }
 </pre></div>
 
-<p>To perform an operation on a pastry, we call its <code>accept()</code> method and pass in
-the visitor for the operation we want to execute. The pastry<span class="em">&mdash;</span>the specific
-subclass&rsquo;s overriding implementation of <code>accept()</code><span class="em">&mdash;</span>turns around and calls the
-appropriate visit method on the visitor and passes <em>itself</em> to it.</p>
-<p>That&rsquo;s the heart of the trick right there. It lets us use polymorphic dispatch
-on the <em>pastry</em> classes to select the appropriate method on the <em>visitor</em> class.
-In the table, each pastry class is a row, but if you look at all of the methods
-for a single visitor, they form a <em>column</em>.</p><img src="image/representing-code/visitor.png" alt="Now all of the cells for one operation are part of the same class, the visitor." />
-<p>We added one <code>accept()</code> method to each class, and we can use it for as many
-visitors as we want without ever having to touch the pastry classes again. It&rsquo;s
-a clever pattern.</p>
-<h3><a href="#visitors-for-expressions" id="visitors-for-expressions"><small>5&#8202;.&#8202;3&#8202;.&#8202;3</small>Visitors for expressions</a></h3>
-<p>OK, let&rsquo;s weave it into our expression classes. We&rsquo;ll also <span
-name="context">refine</span> the pattern a little. In the pastry example, the
-visit and <code>accept()</code> methods don&rsquo;t return anything. In practice, visitors often
-want to define operations that produce values. But what return type should
-<code>accept()</code> have? We can&rsquo;t assume every visitor class wants to produce the same
-type, so we&rsquo;ll use generics to let each implementation fill in a return type.</p>
+<p>Pour effectuer une opération sur une pâtisserie, nous appelons sa méthode <code>accept()</code> et passons le visiteur pour l&rsquo;opération que nous voulons exécuter. La pâtisserie<span class="em">&mdash;</span>l&rsquo;implémentation de réécriture de <code>accept()</code> de la sous-classe spécifique<span class="em">&mdash;</span>se retourne et appelle la méthode visit appropriée sur le visiteur et lui passe <em>elle-même</em>.</p>
+<p>C&rsquo;est le cœur du truc juste là. Cela nous permet d&rsquo;utiliser le dispatch polymorphique sur les classes de <em>pâtisserie</em> pour sélectionner la méthode appropriée sur la classe <em>visiteur</em>. Dans le tableau, chaque classe de pâtisserie est une ligne, mais si vous regardez toutes les méthodes pour un seul visiteur, elles forment une <em>colonne</em>.</p><img src="image/representing-code/visitor.png" alt="Maintenant toutes les cellules pour une opération font partie de la même classe, le visiteur." />
+<p>Nous avons ajouté une méthode <code>accept()</code> à chaque classe, et nous pouvons l&rsquo;utiliser pour autant de visiteurs que nous voulons sans jamais avoir à toucher aux classes de pâtisserie à nouveau. C&rsquo;est un patron intelligent.</p>
+<h3><a href="#visiteurs-pour-les-expressions" id="visiteurs-pour-les-expressions"><small>5&#8202;.&#8202;3&#8202;.&#8202;3</small>Visiteurs pour les expressions</a></h3>
+<p>OK, tissons-le dans nos classes d&rsquo;expression. Nous allons aussi <span name="context">affiner</span> le patron un peu. Dans l&rsquo;exemple de la pâtisserie, les méthodes visit et <code>accept()</code> ne renvoient rien. En pratique, les visiteurs veulent souvent définir des opérations qui produisent des valeurs. Mais quel type de retour devrait avoir <code>accept()</code> ? Nous ne pouvons pas supposer que chaque classe de visiteur veuille produire le même type, donc nous utiliserons des génériques pour laisser chaque implémentation remplir un type de retour.</p>
 <aside name="context">
-<p>Another common refinement is an additional &ldquo;context&rdquo; parameter that is passed to
-the visit methods and then sent back through as a parameter to <code>accept()</code>. That
-lets operations take an additional parameter. The visitors we&rsquo;ll define in the
-book don&rsquo;t need that, so I omitted it.</p>
+<p>Un autre raffinement courant est un paramètre &ldquo;contexte&rdquo; supplémentaire qui est passé aux méthodes visit et ensuite renvoyé à travers comme paramètre à <code>accept()</code>. Cela permet aux opérations de prendre un paramètre supplémentaire. Les visiteurs que nous définirons dans le livre n&rsquo;ont pas besoin de cela, donc je l&rsquo;ai omis.</p>
 </aside>
-<p>First, we define the visitor interface. Again, we nest it inside the base class
-so that we can keep everything in one file.</p>
+<p>D&rsquo;abord, nous définissons l&rsquo;interface visiteur. Encore une fois, nous l&rsquo;imbriquons à l&rsquo;intérieur de la classe de base pour pouvoir tout garder dans un fichier.</p>
 <div class="codehilite"><pre class="insert-before">    writer.println(&quot;abstract class &quot; + baseName + &quot; {&quot;);
 
 </pre><div class="source-file"><em>tool/GenerateAst.java</em><br>
@@ -884,7 +571,7 @@ in <em>defineAst</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, in <em>defineAst</em>()</div>
 
-<p>That function generates the visitor interface.</p>
+<p>Cette fonction génère l&rsquo;interface visiteur.</p>
 <div class="codehilite"><div class="source-file"><em>tool/GenerateAst.java</em><br>
 add after <em>defineAst</em>()</div>
 <pre>  <span class="k">private</span> <span class="k">static</span> <span class="t">void</span> <span class="i">defineVisitor</span>(
@@ -902,10 +589,8 @@ add after <em>defineAst</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, add after <em>defineAst</em>()</div>
 
-<p>Here, we iterate through all of the subclasses and declare a visit method for
-each one. When we define new expression types later, this will automatically
-include them.</p>
-<p>Inside the base class, we define the abstract <code>accept()</code> method.</p>
+<p>Ici, nous itérons à travers toutes les sous-classes et déclarons une méthode visit pour chacune. Quand nous définirons de nouveaux types d&rsquo;expression plus tard, cela les inclura automatiquement.</p>
+<p>À l&rsquo;intérieur de la classe de base, nous définissons la méthode abstraite <code>accept()</code>.</p>
 <div class="codehilite"><pre class="insert-before">      defineType(writer, baseName, className, fields);
     }
 </pre><div class="source-file"><em>tool/GenerateAst.java</em><br>
@@ -920,8 +605,7 @@ in <em>defineAst</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, in <em>defineAst</em>()</div>
 
-<p>Finally, each subclass implements that and calls the right visit method for its
-own type.</p>
+<p>Enfin, chaque sous-classe implémente cela et appelle la bonne méthode visit pour son propre type.</p>
 <div class="codehilite"><pre class="insert-before">    writer.println(&quot;    }&quot;);
 </pre><div class="source-file"><em>tool/GenerateAst.java</em><br>
 in <em>defineType</em>()</div>
@@ -940,34 +624,18 @@ in <em>defineType</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, in <em>defineType</em>()</div>
 
-<p>There we go. Now we can define operations on expressions without having to muck
-with the classes or our generator script. Compile and run this generator script
-to output an updated &ldquo;Expr.java&rdquo; file. It contains a generated Visitor
-interface and a set of expression node classes that support the Visitor pattern
-using it.</p>
-<p>Before we end this rambling chapter, let&rsquo;s implement that Visitor interface and
-see the pattern in action.</p>
-<h2><a href="#a-not-very-pretty-printer" id="a-not-very-pretty-printer"><small>5&#8202;.&#8202;4</small>A (Not Very) Pretty Printer</a></h2>
-<p>When we debug our parser and interpreter, it&rsquo;s often useful to look at a parsed
-syntax tree and make sure it has the structure we expect. We could inspect it in
-the debugger, but that can be a chore.</p>
-<p>Instead, we&rsquo;d like some code that, given a syntax tree, produces an unambiguous
-string representation of it. Converting a tree to a string is sort of the
-opposite of a parser, and is often called &ldquo;pretty printing&rdquo; when the goal is to
-produce a string of text that is valid syntax in the source language.</p>
-<p>That&rsquo;s not our goal here. We want the string to very explicitly show the nesting
-structure of the tree. A printer that returned <code>1 + 2 * 3</code> isn&rsquo;t super helpful
-if what we&rsquo;re trying to debug is whether operator precedence is handled
-correctly. We want to know if the <code>+</code> or <code>*</code> is at the top of the tree.</p>
-<p>To that end, the string representation we produce isn&rsquo;t going to be Lox syntax.
-Instead, it will look a lot like, well, Lisp. Each expression is explicitly
-parenthesized, and all of its subexpressions and tokens are contained in that.</p>
-<p>Given a syntax tree like:</p><img src="image/representing-code/expression.png" alt="An example syntax tree." />
-<p>It produces:</p>
+<p>Et voilà. Maintenant nous pouvons définir des opérations sur les expressions sans avoir à trifouiller avec les classes ou notre script générateur. Compilez et lancez ce script générateur pour sortir un fichier &ldquo;Expr.java&rdquo; mis à jour. Il contient une interface Visitor générée et un ensemble de classes de nœud d&rsquo;expression qui supportent le patron Visiteur en l&rsquo;utilisant.</p>
+<p>Avant de terminer ce chapitre décousu, implémentons cette interface Visitor et voyons le patron en action.</p>
+<h2><a href="#un-pretty-printer-pas-très-joli" id="un-pretty-printer-pas-très-joli"><small>5&#8202;.&#8202;4</small>Un Pretty Printer (Pas Très) Joli</a></h2>
+<p>Quand nous déboguons notre parseur et interpréteur, c&rsquo;est souvent utile de regarder un arbre syntaxique parsé et de s&rsquo;assurer qu&rsquo;il a la structure que nous attendons. Nous pourrions l&rsquo;inspecter dans le débogueur, mais cela peut être une corvée.</p>
+<p>Au lieu de cela, nous aimerions du code qui, étant donné un arbre syntaxique, produit une représentation en chaîne non ambiguë de celui-ci. Convertir un arbre en chaîne est une sorte d&rsquo;opposé d&rsquo;un parseur, et est souvent appelé &ldquo;pretty printing&rdquo; quand le but est de produire une chaîne de texte qui est une syntaxe valide dans le langage source.</p>
+<p>Ce n&rsquo;est pas notre but ici. Nous voulons que la chaîne montre très explicitement la structure d&rsquo;imbrication de l&rsquo;arbre. Un printer qui renverrait <code>1 + 2 * 3</code> n&rsquo;est pas super utile si ce que nous essayons de déboguer est de savoir si la précédence des opérateurs est gérée correctement. Nous voulons savoir si le <code>+</code> ou le <code>*</code> est au sommet de l&rsquo;arbre.</p>
+<p>À cette fin, la représentation en chaîne que nous produisons ne va pas être de la syntaxe Lox. Au lieu de cela, elle ressemblera beaucoup à, eh bien, du Lisp. Chaque expression est explicitement parenthésée, et toutes ses sous-expressions et tokens sont contenus là-dedans.</p>
+<p>Étant donné un arbre syntaxique comme :</p><img src="image/representing-code/expression.png" alt="Un exemple d'arbre syntaxique." />
+<p>Il produit :</p>
 <div class="codehilite"><pre>(* (- 123) (group 45.67))
 </pre></div>
-<p>Not exactly &ldquo;pretty&rdquo;, but it does show the nesting and grouping explicitly. To
-implement this, we define a new class.</p>
+<p>Pas exactement &ldquo;joli&rdquo;, mais cela montre l&rsquo;imbrication et le groupement explicitement. Pour implémenter cela, nous définissons une nouvelle classe.</p>
 <div class="codehilite"><div class="source-file"><em>lox/AstPrinter.java</em><br>
 create new file</div>
 <pre><span class="k">package</span> <span class="i">com.craftinginterpreters.lox</span>;
@@ -980,8 +648,7 @@ create new file</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/AstPrinter.java</em>, create new file</div>
 
-<p>As you can see, it implements the visitor interface. That means we need visit
-methods for each of the expression types we have so far.</p>
+<p>Comme vous pouvez le voir, elle implémente l&rsquo;interface visiteur. Cela signifie que nous avons besoin de méthodes visit pour chaque type d&rsquo;expression que nous avons jusqu&rsquo;à présent.</p>
 <div class="codehilite"><pre class="insert-before">    return expr.accept(this);
   }
 </pre><div class="source-file"><em>lox/AstPrinter.java</em><br>
@@ -1013,9 +680,7 @@ add after <em>print</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/AstPrinter.java</em>, add after <em>print</em>()</div>
 
-<p>Literal expressions are easy<span class="em">&mdash;</span>they convert the value to a string with a little
-check to handle Java&rsquo;s <code>null</code> standing in for Lox&rsquo;s <code>nil</code>. The other expressions
-have subexpressions, so they use this <code>parenthesize()</code> helper method:</p>
+<p>Les expressions littérales sont faciles<span class="em">&mdash;</span>elles convertissent la valeur en chaîne avec une petite vérification pour gérer le <code>null</code> de Java remplaçant le <code>nil</code> de Lox. Les autres expressions ont des sous-expressions, donc elles utilisent cette méthode d&rsquo;aide <code>parenthesize()</code> :</p>
 <div class="codehilite"><div class="source-file"><em>lox/AstPrinter.java</em><br>
 add after <em>visitUnaryExpr</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">String</span> <span class="i">parenthesize</span>(<span class="t">String</span> <span class="i">name</span>, <span class="t">Expr</span>... <span class="i">exprs</span>) {
@@ -1033,20 +698,14 @@ add after <em>visitUnaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/AstPrinter.java</em>, add after <em>visitUnaryExpr</em>()</div>
 
-<p>It takes a name and a list of subexpressions and wraps them all up in
-parentheses, yielding a string like:</p>
+<p>Elle prend un nom et une liste de sous-expressions et les enveloppe toutes dans des parenthèses, donnant une chaîne comme :</p>
 <div class="codehilite"><pre>(+ 1 2)
 </pre></div>
-<p>Note that it calls <code>accept()</code> on each subexpression and passes in itself. This
-is the <span name="tree">recursive</span> step that lets us print an entire
-tree.</p>
+<p>Notez qu&rsquo;elle appelle <code>accept()</code> sur chaque sous-expression et se passe elle-même. C&rsquo;est l&rsquo;étape <span name="tree">récursive</span> qui nous permet d&rsquo;afficher un arbre entier.</p>
 <aside name="tree">
-<p>This recursion is also why people think the Visitor pattern itself has to do
-with trees.</p>
+<p>Cette récursion est aussi la raison pour laquelle les gens pensent que le patron Visiteur lui-même a à voir avec des arbres.</p>
 </aside>
-<p>We don&rsquo;t have a parser yet, so it&rsquo;s hard to see this in action. For now, we&rsquo;ll
-hack together a little <code>main()</code> method that manually instantiates a tree and
-prints it.</p>
+<p>Nous n&rsquo;avons pas encore de parseur, donc il est difficile de voir cela en action. Pour l&rsquo;instant, nous allons bricoler une petite méthode <code>main()</code> qui instancie manuellement un arbre et l&rsquo;affiche.</p>
 <div class="codehilite"><div class="source-file"><em>lox/AstPrinter.java</em><br>
 add after <em>parenthesize</em>()</div>
 <pre>  <span class="k">public</span> <span class="k">static</span> <span class="t">void</span> <span class="i">main</span>(<span class="t">String</span>[] <span class="i">args</span>) {
@@ -1063,50 +722,34 @@ add after <em>parenthesize</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/AstPrinter.java</em>, add after <em>parenthesize</em>()</div>
 
-<p>If we did everything right, it prints:</p>
+<p>Si nous avons tout fait juste, cela affiche :</p>
 <div class="codehilite"><pre>(* (- 123) (group 45.67))
 </pre></div>
-<p>You can go ahead and delete this method. We won&rsquo;t need it. Also, as we add new
-syntax tree types, I won&rsquo;t bother showing the necessary visit methods for them
-in AstPrinter. If you want to (and you want the Java compiler to not yell at
-you), go ahead and add them yourself. It will come in handy in the next chapter
-when we start parsing Lox code into syntax trees. Or, if you don&rsquo;t care to
-maintain AstPrinter, feel free to delete it. We won&rsquo;t need it again.</p>
+<p>Vous pouvez y aller et supprimer cette méthode. Nous n&rsquo;en aurons pas besoin. Aussi, comme nous ajouterons de nouveaux types d&rsquo;arbre syntaxique, je ne prendrai pas la peine de montrer les méthodes visit nécessaires pour eux dans AstPrinter. Si vous voulez (et que vous voulez que le compilateur Java ne vous crie pas dessus), allez-y et ajoutez-les vous-même. Cela sera utile dans le prochain chapitre quand nous commencerons à parser du code Lox en arbres syntaxiques. Ou, si vous ne tenez pas à maintenir AstPrinter, sentez-vous libre de la supprimer. Nous n&rsquo;en aurons plus besoin.</p>
 <div class="challenges">
-<h2><a href="#challenges" id="challenges">Challenges</a></h2>
+<h2><a href="#défis" id="défis"><small>5&#8202;.&#8202;5</small>Défis</a></h2>
 <ol>
 <li>
-<p>Earlier, I said that the <code>|</code>, <code>*</code>, and <code>+</code> forms we added to our grammar
-metasyntax were just syntactic sugar. Take this grammar:</p>
+<p>Plus tôt, j&rsquo;ai dit que les formes <code>|</code>, <code>*</code>, et <code>+</code> que nous avons ajoutées à notre métasyntaxe de grammaire étaient juste du sucre syntaxique. Prenez cette grammaire :</p>
 <div class="codehilite"><pre><span class="i">expr</span> → <span class="i">expr</span> ( <span class="s">&quot;(&quot;</span> ( <span class="i">expr</span> ( <span class="s">&quot;,&quot;</span> <span class="i">expr</span> )* )? <span class="s">&quot;)&quot;</span> | <span class="s">&quot;.&quot;</span> <span class="t">IDENTIFIER</span> )+
      | <span class="t">IDENTIFIER</span>
      | <span class="t">NUMBER</span>
 </pre></div>
-<p>Produce a grammar that matches the same language but does not use any of
-that notational sugar.</p>
-<p><em>Bonus:</em> What kind of expression does this bit of grammar encode?</p>
+<p>Produisez une grammaire qui matche le même langage mais n&rsquo;utilise aucun de ces sucres notationnels.</p>
+<p><em>Bonus :</em> Quel genre d&rsquo;expression ce bout de grammaire encode-t-il ?</p>
 </li>
 <li>
-<p>The Visitor pattern lets you emulate the functional style in an
-object-oriented language. Devise a complementary pattern for a functional
-language. It should let you bundle all of the operations on one type
-together and let you define new types easily.</p>
-<p>(SML or Haskell would be ideal for this exercise, but Scheme or another Lisp
-works as well.)</p>
+<p>Le patron Visiteur vous permet d&rsquo;émuler le style fonctionnel dans un langage orienté objet. Concevez un patron complémentaire pour un langage fonctionnel. Il devrait vous permettre de regrouper toutes les opérations sur un type ensemble et vous permettre de définir de nouveaux types facilement.</p>
+<p>(SML ou Haskell serait idéal pour cet exercice, mais Scheme ou un autre Lisp marche aussi bien.)</p>
 </li>
 <li>
-<p>In <a href="https://en.wikipedia.org/wiki/Reverse_Polish_notation">reverse Polish notation</a> (RPN), the operands to an arithmetic
-operator are both placed before the operator, so <code>1 + 2</code> becomes <code>1 2 +</code>.
-Evaluation proceeds from left to right. Numbers are pushed onto an implicit
-stack. An arithmetic operator pops the top two numbers, performs the
-operation, and pushes the result. Thus, this:</p>
+<p>En <a href="https://en.wikipedia.org/wiki/Reverse_Polish_notation">notation polonaise inverse</a> (NPI), les opérandes d&rsquo;un opérateur arithmétique sont tous deux placés avant l&rsquo;opérateur, donc <code>1 + 2</code> devient <code>1 2 +</code>. L&rsquo;évaluation procède de gauche à droite. Les nombres sont poussés sur une pile implicite. Un opérateur arithmétique dépile les deux nombres du haut, effectue l&rsquo;opération, et empile le résultat. Ainsi, ceci :</p>
 <div class="codehilite"><pre>(<span class="n">1</span> + <span class="n">2</span>) * (<span class="n">4</span> - <span class="n">3</span>)
 </pre></div>
-<p>in RPN becomes:</p>
+<p>en NPI devient :</p>
 <div class="codehilite"><pre><span class="n">1</span> <span class="n">2</span> + <span class="n">4</span> <span class="n">3</span> - *
 </pre></div>
-<p>Define a visitor class for our syntax tree classes that takes an expression,
-converts it to RPN, and returns the resulting string.</p>
+<p>Définissez une classe visiteur pour nos classes d&rsquo;arbre syntaxique qui prend une expression, la convertit en NPI, et renvoie la chaîne résultante.</p>
 </li>
 </ol>
 </div>

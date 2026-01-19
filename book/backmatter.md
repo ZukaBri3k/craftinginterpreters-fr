@@ -1,10 +1,9 @@
-You've reached the end of the book! There are two pieces of supplementary
-material you may find helpful:
+Vous avez atteint la fin du livre ! Il y a deux annexes supplémentaires que vous pourriez trouver utiles :
 
-* **[Appendix I][]** contains a complete grammar for Lox, all in one place.
+* **[Annexe I][]** contient une grammaire complète pour Lox, tout en un seul endroit.
 
-* **[Appendix II][]** shows the Java classes produced by [the AST generator][]
-  we use for jlox.
+* **[Annexe II][]** montre les classes Java produites par [le générateur d'arbre abstrait][]
+  que nous utilisons pour jlox.
 
 [appendix i]: appendix-i.html
 [appendix ii]: appendix-ii.html

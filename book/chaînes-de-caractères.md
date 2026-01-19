@@ -1,486 +1,327 @@
-> "Ah? A small aversion to menial labor?" The doctor cocked an eyebrow.
-> "Understandable, but misplaced. One should treasure those hum-drum
-> tasks that keep the body occupied but leave the mind and heart unfettered."
+> "Ah ? Une petite aversion pour le travail manuel ?" Le docteur haussa un sourcil.
+> "Compréhensible, mais mal placé. On devrait chérir ces tâches terre-à-terre qui gardent le corps occupé mais laissent l'esprit et le cœur libres." (1)
 >
 > <cite>Tad Williams, <em>The Dragonbone Chair</em></cite>
 
-Our little VM can represent three types of values right now: numbers, Booleans,
-and `nil`. Those types have two important things in common: they're immutable
-and they're small. Numbers are the largest, and they still fit into two 64-bit
-words. That's a small enough price that we can afford to pay it for all values,
-even Booleans and nils which don't need that much space.
+Notre petite VM peut représenter trois types de valeurs en ce moment : les nombres, les Booléens, et `nil`. Ces types deux choses importantes en commun : ils sont immuables et ils sont petits. Les nombres sont les plus grands, et ils tiennent toujours dans deux mots de 64 bits. C'est un prix assez petit que nous pouvons nous permettre de payer pour toutes les valeurs, même les Booléens et les nils qui n'ont pas besoin d'autant d'espace.
 
-Strings, unfortunately, are not so petite. There's no maximum length for a
-string. Even if we were to artificially cap it at some contrived limit like
-<span name="pascal">255</span> characters, that's still too much memory to spend
-on every single value.
+Les chaînes de caractères, malheureusement, ne sont pas si petites. Il n'y a pas de longueur maximale pour une chaîne. Même si nous devions artificiellement la plafonner à quelque limite controuvée comme <span name="pascal">255</span> caractères, c'est encore trop de mémoire à dépenser sur chaque valeur unique.
 
 <aside name="pascal">
 
-UCSD Pascal, one of the first implementations of Pascal, had this exact limit.
-Instead of using a terminating null byte to indicate the end of the string like
-C, Pascal strings started with a length value. Since UCSD used only a single
-byte to store the length, strings couldn't be any longer than 255 characters.
+UCSD Pascal, une des premières implémentations de Pascal, avait cette limite exacte. Au lieu d'utiliser un octet nul de terminaison pour indiquer la fin de la chaîne comme C, les chaînes Pascal commençaient avec une valeur de longueur. Puisque UCSD utilisait seulement un octet unique pour stocker la longueur, les chaînes ne pouvaient pas être plus longues que 255 caractères.
 
-<img src="image/strings/pstring.png" alt="The Pascal string 'hello' with a length byte of 5 preceding it." />
+<img src="image/strings/pstring.png" alt="La chaîne Pascal 'hello' avec un octet de longueur de 5 la précédant." />
 
 </aside>
 
-We need a way to support values whose sizes vary, sometimes greatly. This is
-exactly what dynamic allocation on the heap is designed for. We can allocate as
-many bytes as we need. We get back a pointer that we'll use to keep track of the
-value as it flows through the VM.
+Nous avons besoin d'un moyen de supporter des valeurs dont les tailles varient, parfois grandement. C'est exactement ce pour quoi l'allocation dynamique sur le tas est conçue. Nous pouvons allouer autant d'octets que nous en avons besoin. Nous recevons en retour un pointeur que nous utiliserons pour garder une trace de la valeur alors qu'elle coule à travers la VM.
 
-## Values and Objects
+## Valeurs et Objets
 
-Using the heap for larger, variable-sized values and the stack for smaller,
-atomic ones leads to a two-level representation. Every Lox value that you can
-store in a variable or return from an expression will be a Value. For small,
-fixed-size types like numbers, the payload is stored directly inside the Value
-struct itself.
+Utiliser le tas pour des valeurs plus grandes, de taille variable et la pile pour celles plus petites, atomiques mène à une représentation à deux niveaux. Chaque valeur Lox que vous pouvez stocker dans une variable ou renvoyer d'une expression sera une Value. Pour les petits types de taille fixe comme les nombres, la charge utile est stockée directement à l'intérieur de la struct Value elle-même.
 
-If the object is larger, its data lives on the heap. Then the Value's payload is
-a *pointer* to that blob of memory. We'll eventually have a handful of
-heap-allocated types in clox: strings, instances, functions, you get the idea.
-Each type has its own unique data, but there is also state they all share that
-[our future garbage collector][gc] will use to manage their memory.
+Si l'objet est plus grand, ses données vivent sur le tas. Alors la charge utile de la Value est un _pointeur_ vers ce blob de mémoire. Nous aurons éventuellement une poignée de types alloués sur le tas dans clox : chaînes, instances, fonctions, vous voyez l'idée. Chaque type a ses propres données uniques, mais il y a aussi un état qu'ils partagent tous que [notre futur ramasse-miettes][gc] utilisera pour gérer leur mémoire.
 
-<img src="image/strings/value.png" class="wide" alt="Field layout of number and obj values." />
+<img src="image/strings/value.png" class="wide" alt="Disposition des champs des valeurs nombre et obj." />
 
-[gc]: garbage-collection.html
+[gc]: ramasse-miettes.html
 
-We'll call this common representation <span name="short">"Obj"</span>. Each Lox
-value whose state lives on the heap is an Obj. We can thus use a single new
-ValueType case to refer to all heap-allocated types.
+Nous appellerons cette représentation commune <span name="short">"Obj"</span>. Chaque valeur Lox dont l'état vit sur le tas est un Obj. Nous pouvons ainsi utiliser un unique nouveau cas `ValueType` pour référer à tous les types alloués sur le tas.
 
 <aside name="short">
 
-"Obj" is short for "object", natch.
+"Obj" est court pour "objet", évidemment.
 
 </aside>
 
 ^code val-obj (1 before, 1 after)
 
-When a Value's type is `VAL_OBJ`, the payload is a pointer to the heap memory,
-so we add another case to the union for that.
+Quand le type d'une Value est `VAL_OBJ`, la charge utile est un pointeur vers la mémoire du tas, donc nous ajoutons un autre cas à l'union pour ça.
 
 ^code union-object (1 before, 1 after)
 
-As we did with the other value types, we crank out a couple of helpful macros
-for working with Obj values.
+Comme nous l'avons fait avec les autres types de valeur, nous produisons une couple de macros utiles pour travailler avec les valeurs Obj.
 
 ^code is-obj (1 before, 2 after)
 
-This evaluates to `true` if the given Value is an Obj. If so, we can use this:
+Cela évalue à `true` si la Value donnée est un Obj. Si c'est le cas, nous pouvons utiliser ceci :
 
 ^code as-obj (2 before, 1 after)
 
-It extracts the Obj pointer from the value. We can also go the other way.
+Elle extrait le pointeur Obj de la valeur. Nous pouvons aussi aller dans l'autre sens.
 
 ^code obj-val (1 before, 2 after)
 
-This takes a bare Obj pointer and wraps it in a full Value.
+Cela prend un pointeur Obj nu et l'enveloppe dans une Value complète.
 
-## Struct Inheritance
+## Héritage de Structure
 
-Every heap-allocated value is an Obj, but <span name="objs">Objs</span> are
-not all the same. For strings, we need the array of characters. When we get to
-instances, they will need their data fields. A function object will need its
-chunk of bytecode. How do we handle different payloads and sizes? We can't use
-another union like we did for Value since the sizes are all over the place.
+Chaque valeur allouée sur le tas est un Obj, mais les <span name="objs">Objs</span> ne sont pas tous les mêmes. Pour les chaînes, nous avons besoin du tableau de caractères. Quand nous arriverons aux instances, elles auront besoin de leurs champs de données. Un objet fonction aura besoin de son morceau de bytecode. Comment gérons-nous différentes charges utiles et tailles ? Nous ne pouvons pas utiliser une autre union comme nous l'avons fait pour Value puisque les tailles sont partout.
 
 <aside name="objs">
 
-No, I don't know how to pronounce "objs" either. Feels like there should be a
-vowel in there somewhere.
+Non, je ne sais pas comment prononcer "objs" non plus. J'ai l'impression qu'il devrait y avoir une voyelle là-dedans quelque part.
 
 </aside>
 
-Instead, we'll use another technique. It's been around for ages, to the point
-that the C specification carves out specific support for it, but I don't know
-that it has a canonical name. It's an example of [*type punning*][pun], but that
-term is too broad. In the absence of any better ideas, I'll call it **struct
-inheritance**, because it relies on structs and roughly follows how
-single-inheritance of state works in object-oriented languages.
+Au lieu de cela, nous utiliserons une autre technique. Elle existe depuis des lustres, au point que la spécification C taille un support spécifique pour elle, mais je ne sais pas si elle a un nom canonique. C'est un exemple de [_type punning_][pun], mais ce terme est trop large. En l'absence de meilleures idées, je l'appellerai **héritage de structure**, parce qu'elle repose sur des structs et suit grossièrement comment l'héritage simple d'état fonctionne dans les langages orientés objet.
 
 [pun]: https://en.wikipedia.org/wiki/Type_punning
 
-Like a tagged union, each Obj starts with a tag field that identifies what kind
-of object it is -- string, instance, etc. Following that are the payload fields.
-Instead of a union with cases for each type, each type is its own separate
-struct. The tricky part is how to treat these structs uniformly since C has no
-concept of inheritance or polymorphism. I'll explain that soon, but first lets
-get the preliminary stuff out of the way.
+Comme une union étiquetée, chaque Obj commence par un champ d'étiquette (tag) qui identifie quel genre d'objet c'est -- chaîne, instance, etc. Suivant cela sont les champs de charge utile. Au lieu d'une union avec des cas pour chaque type, chaque type est sa propre struct séparée. La partie délicate est comment traiter ces structs uniformément puisque C n'a aucun concept d'héritage ou de polymorphisme. J'expliquerai cela bientôt, mais d'abord sortons les trucs préliminaires du chemin.
 
-The name "Obj" itself refers to a struct that contains the state shared across
-all object types. It's sort of like the "base class" for objects. Because of
-some cyclic dependencies between values and objects, we forward-declare it in
-the "value" module.
+Le nom "Obj" lui-même réfère à une struct qui contient l'état partagé à travers tous les types d'objet. C'est un peu comme la "classe de base" pour les objets. À cause de certaines dépendances cycliques entre valeurs et objets, nous la déclarons de manière anticipée dans le module "value".
 
 ^code forward-declare-obj (2 before, 1 after)
 
-And the actual definition is in a new module.
+Et la définition réelle est dans un nouveau module.
 
 ^code object-h
 
-Right now, it contains only the type tag. Shortly, we'll add some other
-bookkeeping information for memory management. The type enum is this:
+Pour l'instant, elle contient seulement l'étiquette de type. Sous peu, nous ajouterons d'autres informations de comptabilité pour la gestion de la mémoire. L'enum de type est ceci :
 
 ^code obj-type (1 before, 2 after)
 
-Obviously, that will be more useful in later chapters after we add more
-heap-allocated types. Since we'll be accessing these tag types frequently, it's
-worth making a little macro that extracts the object type tag from a given
-Value.
+Évidemment, cela sera plus utile dans les chapitres ultérieurs après que nous ayons ajouté plus de types alloués sur le tas. Puisque nous accéderons fréquemment à ces types d'étiquette, cela vaut la peine de faire une petite macro qui extrait l'étiquette de type d'objet d'une Value donnée.
 
 ^code obj-type-macro (1 before, 2 after)
 
-That's our foundation.
+C'est notre fondation.
 
-Now, let's build strings on top of it. The payload for strings is defined in a
-separate struct. Again, we need to forward-declare it.
+Maintenant, construisons les chaînes par-dessus. La charge utile pour les chaînes est définie dans une struct séparée. De nouveau, nous avons besoin de la déclarer de manière anticipée.
 
 ^code forward-declare-obj-string (1 before, 2 after)
 
-The definition lives alongside Obj.
+La définition vit aux côtés d'Obj.
 
 ^code obj-string (1 before, 2 after)
 
-A string object contains an array of characters. Those are stored in a separate,
-heap-allocated array so that we set aside only as much room as needed for each
-string. We also store the number of bytes in the array. This isn't strictly
-necessary but lets us tell how much memory is allocated for the string without
-walking the character array to find the null terminator.
+Un objet chaîne contient un tableau de caractères. Ceux-ci sont stockés dans un tableau séparé, alloué sur le tas pour que nous mettions de côté seulement autant de place que nécessaire pour chaque chaîne. Nous stockons aussi le nombre d'octets dans le tableau. Ce n'est pas strictement nécessaire mais nous permet de dire combien de mémoire est allouée pour la chaîne sans parcourir le tableau de caractères pour trouver le terminateur nul.
 
-Because ObjString is an Obj, it also needs the state all Objs share. It
-accomplishes that by having its first field be an Obj. C specifies that struct
-fields are arranged in memory in the order that they are declared. Also, when
-you nest structs, the inner struct's fields are expanded right in place. So the
-memory for Obj and for ObjString looks like this:
+Parce qu'ObjString est un Obj, il a aussi besoin de l'état que tous les Objs partagent. Il accomplit cela en ayant son premier champ être un Obj. C spécifie que les champs de struct sont arrangés en mémoire dans l'ordre où ils sont déclarés. Aussi, quand vous imbriquez des structs, les champs de la struct interne sont étendus juste sur place. Donc la mémoire pour Obj et pour ObjString ressemble à ceci :
 
-<img src="image/strings/obj.png" alt="The memory layout for the fields in Obj and ObjString." />
+<img src="image/strings/obj.png" alt="La disposition mémoire pour les champs dans Obj et ObjString." />
 
-Note how the first bytes of ObjString exactly line up with Obj. This is not a
-coincidence -- C <span name="spec">mandates</span> it. This is designed to
-enable a clever pattern: You can take a pointer to a struct and safely convert
-it to a pointer to its first field and back.
+Notez comment les premiers octets d'ObjString s'alignent exactement avec Obj. Ce n'est pas une coïncidence -- C le <span name="spec">mandate</span>. C'est conçu pour permettre un motif intelligent : Vous pouvez prendre un pointeur vers une struct et le convertir en toute sécurité en un pointeur vers son premier champ et inversement.
 
 <aside name="spec">
 
-The key part of the spec is:
+La partie clé de la spec est :
 
 > &sect; 6.7.2.1 13
 >
-> Within a structure object, the non-bit-field members and the units in which
-> bit-fields reside have addresses that increase in the order in which they
-> are declared. A pointer to a structure object, suitably converted, points to
-> its initial member (or if that member is a bit-field, then to the unit in
-> which it resides), and vice versa. There may be unnamed padding within a
-> structure object, but not at its beginning.
+> À l'intérieur d'un objet structure, les membres non-champs-de-bits et les unités dans lesquelles résident les champs-de-bits ont des adresses qui augmentent dans l'ordre dans lequel ils sont déclarés. Un pointeur vers un objet structure, convenablement converti, pointe vers son membre initial (ou si ce membre est un champ-de-bits, alors vers l'unité dans laquelle il réside), et vice versa. Il peut y avoir du remplissage sans nom à l'intérieur d'un objet structure, mais pas à son début.
 
 </aside>
 
-Given an `ObjString*`, you can safely cast it to `Obj*` and then access the
-`type` field from it. Every ObjString "is" an Obj in the OOP sense of "is". When
-we later add other object types, each struct will have an Obj as its first
-field. Any code that wants to work with all objects can treat them as base
-`Obj*` and ignore any other fields that may happen to follow.
+Étant donné un `ObjString*`, vous pouvez le caster en toute sécurité en `Obj*` et ensuite accéder au champ `type` depuis lui. Chaque ObjString "est" un Obj dans le sens POO de "est". Quand nous ajouterons plus tard d'autres types d'objet, chaque struct aura un Obj comme son premier champ. Tout code qui veut travailler avec tous les objets peut les traiter comme des `Obj*` de base et ignorer tous les autres champs qui peuvent arriver à suivre.
 
-You can go in the other direction too. Given an `Obj*`, you can "downcast" it to
-an `ObjString*`. Of course, you need to ensure that the `Obj*` pointer you have
-does point to the `obj` field of an actual ObjString. Otherwise, you are
-unsafely reinterpreting random bits of memory. To detect that such a cast is
-safe, we add another macro.
+Vous pouvez aller dans l'autre direction aussi. Étant donné un `Obj*`, vous pouvez le "descendre" (downcast) en un `ObjString*`. Bien sûr, vous devez vous assurer que le pointeur `Obj*` que vous avez pointe bien vers le champ `obj` d'un ObjString réel. Sinon, vous réinterprétez de manière non sûre des bits aléatoires de mémoire. Pour détecter qu'un tel cast est sûr, nous ajoutons une autre macro.
 
 ^code is-string (1 before, 2 after)
 
-It takes a Value, not a raw `Obj*` because most code in the VM works with
-Values. It relies on this inline function:
+Elle prend une Value, pas un `Obj*` brut parce que la plupart du code dans la VM travaille avec des Values. Elle repose sur cette fonction en ligne :
 
 ^code is-obj-type (2 before, 2 after)
 
-Pop quiz: Why not just put the body of this function right in the macro? What's
-different about this one compared to the others? Right, it's because the body
-uses `value` twice. A macro is expanded by inserting the argument *expression*
-every place the parameter name appears in the body. If a macro uses a parameter
-more than once, that expression gets evaluated multiple times.
+Quiz surprise : Pourquoi ne pas juste mettre le corps de cette fonction juste dans la macro ? Qu'est-ce qui est différent à propos de celle-ci comparé aux autres ? Correct, c'est parce que le corps utilise `value` deux fois. Une macro est étendue en insérant l'_expression_ argument chaque endroit où le nom du paramètre apparaît dans le corps. Si une macro utilise un paramètre plus d'une fois, cette expression est évaluée de multiples fois.
 
-That's bad if the expression has side effects. If we put the body of
-`isObjType()` into the macro definition and then you did, say,
+C'est mauvais si l'expression a des effets de bord. Si nous mettions le corps de `isObjType()` dans la définition de macro et qu'ensuite vous faisiez, disons,
 
 ```c
 IS_STRING(POP())
 ```
 
-then it would pop two values off the stack! Using a function fixes that.
+alors cela dépilerait deux valeurs de la pile ! Utiliser une fonction corrige cela.
 
-As long as we ensure that we set the type tag correctly whenever we create an
-Obj of some type, this macro will tell us when it's safe to cast a value to a
-specific object type. We can do that using these:
+Tant que nous assurons que nous définissons l'étiquette de type correctement chaque fois que nous créons un Obj de quelque type, cette macro nous dira quand il est sûr de caster une valeur vers un type d'objet spécifique. Nous pouvons faire cela en utilisant celles-ci :
 
 ^code as-string (1 before, 2 after)
 
-These two macros take a Value that is expected to contain a pointer to a valid
-ObjString on the heap. The first one returns the `ObjString*` pointer. The
-second one steps through that to return the character array itself, since that's
-often what we'll end up needing.
+Ces deux macros prennent une Value qui est attendue contenir un pointeur vers un ObjString valide sur le tas. La première renvoie le pointeur `ObjString*`. La seconde fait un pas à travers pour renvoyer le tableau de caractères lui-même, puisque c'est souvent ce dont nous finirons par avoir besoin.
 
-## Strings
+## Chaînes
 
-OK, our VM can now represent string values. It's time to add strings to the
-language itself. As usual, we begin in the front end. The lexer already
-tokenizes string literals, so it's the parser's turn.
+OK, notre VM peut maintenant représenter des valeurs chaîne. Il est temps d'ajouter les chaînes au langage lui-même. Comme d'habitude, nous commençons dans le front end. Le lexer tokenise déjà les littéraux chaîne, donc c'est au tour du parseur.
 
 ^code table-string (1 before, 1 after)
 
-When the parser hits a string token, it calls this parse function:
+Quand le parseur touche un token chaîne, il appelle cette fonction de parsing :
 
 ^code parse-string
 
-This takes the string's characters <span name="escape">directly</span> from the
-lexeme. The `+ 1` and `- 2` parts trim the leading and trailing quotation marks.
-It then creates a string object, wraps it in a Value, and stuffs it into the
-constant table.
+Cela prend les caractères de la chaîne <span name="escape">directement</span> du lexème. Les parties `+ 1` et `- 2` enlèvent les guillemets de tête et de traîne. Elle crée ensuite un objet chaîne, l'enveloppe dans une Value, et le bourre dans la table de constantes.
 
 <aside name="escape">
 
-If Lox supported string escape sequences like `\n`, we'd translate those here.
-Since it doesn't, we can take the characters as they are.
+Si Lox supportait les séquences d'échappement de chaîne comme `\n`, nous traduirions celles-ci ici. Puisqu'il ne le fait pas, nous pouvons prendre les caractères tels qu'ils sont.
 
 </aside>
 
-To create the string, we use `copyString()`, which is declared in `object.h`.
+Pour créer la chaîne, nous utilisons `copyString()`, qui est déclarée dans `object.h`.
 
 ^code copy-string-h (2 before, 1 after)
 
-The compiler module needs to include that.
+Le module compilateur a besoin d'inclure cela.
 
 ^code compiler-include-object (2 before, 1 after)
 
-Our "object" module gets an implementation file where we define the new
-function.
+Notre module "object" obtient un fichier d'implémentation où nous définissons la nouvelle fonction.
 
 ^code object-c
 
-First, we allocate a new array on the heap, just big enough for the string's
-characters and the trailing <span name="terminator">terminator</span>, using
-this low-level macro that allocates an array with a given element type and
-count:
+D'abord, nous allouons un nouveau tableau sur le tas, juste assez grand pour les caractères de la chaîne et le <span name="terminator">terminateur</span> de traîne, en utilisant cette macro de bas niveau qui alloue un tableau avec un type d'élément donné et un compte :
 
 ^code allocate (2 before, 1 after)
 
-Once we have the array, we copy over the characters from the lexeme and
-terminate it.
+Une fois que nous avons le tableau, nous copions par-dessus les caractères depuis le lexème et le terminons.
 
 <aside name="terminator" class="bottom">
 
-We need to terminate the string ourselves because the lexeme points at a range
-of characters inside the monolithic source string and isn't terminated.
+Nous avons besoin de terminer la chaîne nous-mêmes parce que le lexème pointe à une plage de caractères à l'intérieur de la chaîne source monolithique et n'est pas terminé.
 
-Since ObjString stores the length explicitly, we *could* leave the character
-array unterminated, but slapping a terminator on the end costs us only a byte
-and lets us pass the character array to C standard library functions that expect
-a terminated string.
+Puisque ObjString stocke la longueur explicitement, nous _pourrions_ laisser le tableau de caractères non terminé, mais coller un terminateur à la fin nous coûte seulement un octet et nous laisse passer le tableau de caractères aux fonctions de bibliothèque standard C qui attendent une chaîne terminée.
 
 </aside>
 
-You might wonder why the ObjString can't just point back to the original
-characters in the source string. Some ObjStrings will be created dynamically at
-runtime as a result of string operations like concatenation. Those strings
-obviously need to dynamically allocate memory for the characters, which means
-the string needs to *free* that memory when it's no longer needed.
+Vous pourriez vous demander pourquoi l'ObjString ne peut pas juste pointer en retour vers les caractères originaux dans la chaîne source. Certains ObjStrings seront créés dynamiquement à l'exécution comme résultat d'opérations sur les chaînes comme la concaténation. Ces chaînes ont évidemment besoin d'allouer dynamiquement de la mémoire pour les caractères, ce qui signifie que la chaîne a besoin de _libérer_ cette mémoire quand elle n'est plus nécessaire.
 
-If we had an ObjString for a string literal, and tried to free its character
-array that pointed into the original source code string, bad things would
-happen. So, for literals, we preemptively copy the characters over to the heap.
-This way, every ObjString reliably owns its character array and can free it.
+Si nous avions un ObjString pour un littéral chaîne, et essayions de libérer son tableau de caractères qui pointait dans la chaîne de code source originale, de mauvaises choses arriveraient. Donc, pour les littéraux, nous copions préventivement les caractères sur le tas. De cette façon, chaque ObjString possède de manière fiable son tableau de caractères et peut le libérer.
 
-The real work of creating a string object happens in this function:
+Le vrai travail de création d'un objet chaîne se passe dans cette fonction :
 
 ^code allocate-string (2 before)
 
-It creates a new ObjString on the heap and then initializes its fields. It's
-sort of like a constructor in an OOP language. As such, it first calls the "base
-class" constructor to initialize the Obj state, using a new macro.
+Elle crée un nouvel ObjString sur le tas et ensuite initialise ses champs. C'est un peu comme un constructeur dans un langage POO. En tant que tel, elle appelle d'abord le constructeur de "classe de base" pour initialiser l'état Obj, utilisant une nouvelle macro.
 
 ^code allocate-obj (1 before, 2 after)
 
-<span name="factored">Like</span> the previous macro, this exists mainly to
-avoid the need to redundantly cast a `void*` back to the desired type. The
-actual functionality is here:
+<span name="factored">Comme</span> la macro précédente, celle-ci existe principalement pour éviter le besoin de caster de manière redondante un `void*` de retour vers le type désiré. La fonctionnalité réelle est ici :
 
 <aside name="factored">
 
-I admit this chapter has a sea of helper functions and macros to wade through. I
-try to keep the code nicely factored, but that leads to a scattering of tiny
-functions. They will pay off when we reuse them later.
+J'admets que ce chapitre a une mer de fonctions aides et de macros à traverser. J'essaie de garder le code joliment factorisé, mais cela mène à un éparpillement de minuscules fonctions. Elles payeront quand nous les réutiliserons plus tard.
 
 </aside>
 
 ^code allocate-object (2 before, 2 after)
 
-It allocates an object of the given size on the heap. Note that the size is
-*not* just the size of Obj itself. The caller passes in the number of bytes so
-that there is room for the extra payload fields needed by the specific object
-type being created.
+Elle alloue un objet de la taille donnée sur le tas. Notez que la taille n'est _pas_ juste la taille d'Obj lui-même. L'appelant passe le nombre d'octets pour qu'il y ait de la place pour les champs de charge utile supplémentaires nécessaires par le type d'objet spécifique étant créé.
 
-Then it initializes the Obj state -- right now, that's just the type tag. This
-function returns to `allocateString()`, which finishes initializing the ObjString
-fields. <span name="viola">*Voilà*</span>, we can compile and execute string
-literals.
+Ensuite elle initialise l'état Obj -- pour l'instant, c'est juste l'étiquette de type. Cette fonction revient à `allocateString()`, qui finit d'initialiser les champs d'ObjString. <span name="viola">_Voilà_</span>, nous pouvons compiler et exécuter des littéraux chaîne.
 
 <aside name="viola">
 
-<img src="image/strings/viola.png" class="above" alt="A viola." />
+<img src="image/strings/viola.png" class="above" alt="Un alto." />
 
-Don't get "voilà" confused with "viola". One means "there it is" and the other
-is a string instrument, the middle child between a violin and a cello. Yes, I
-did spend two hours drawing a viola just to mention that.
+Ne confondez pas "voilà" avec "viola". L'un signifie "ça y est" et l'autre est un instrument à cordes, l'enfant du milieu entre un violon et un violoncelle. Oui, j'ai passé deux heures à dessiner un alto juste pour mentionner ça.
 
 </aside>
 
-## Operations on Strings
+## Opérations sur les Chaînes
 
-Our fancy strings are there, but they don't do much of anything yet. A good
-first step is to make the existing print code not barf on the new value type.
+Nos chaînes fantaisie sont là, mais elles ne font pas grand-chose encore. Une bonne première étape est de faire en sorte que le code d'impression existant ne vomisse pas sur le nouveau type de valeur.
 
 ^code call-print-object (1 before, 1 after)
 
-If the value is a heap-allocated object, it defers to a helper function over in
-the "object" module.
+Si la valeur est un objet alloué sur le tas, elle défère à une fonction aide là-bas dans le module "object".
 
 ^code print-object-h (1 before, 2 after)
 
-The implementation looks like this:
+L'implémentation ressemble à ceci :
 
 ^code print-object
 
-We have only a single object type now, but this function will sprout additional
-switch cases in later chapters. For string objects, it simply <span
-name="term-2">prints</span> the character array as a C string.
+Nous n'avons qu'un seul type d'objet maintenant, mais cette fonction germera des cas switch additionnels dans les chapitres ultérieurs. Pour les objets chaîne, elle <span name="term-2">imprime</span> simplement le tableau de caractères comme une chaîne C.
 
 <aside name="term-2">
 
-I told you terminating the string would come in handy.
+Je vous avais dit que terminer la chaîne deviendrait utile.
 
 </aside>
 
-The equality operators also need to gracefully handle strings. Consider:
+Les opérateurs d'égalité ont aussi besoin de gérer avec grâce les chaînes. Considérez :
 
 ```lox
 "string" == "string"
 ```
 
-These are two separate string literals. The compiler will make two separate
-calls to `copyString()`, create two distinct ObjString objects and store them as
-two constants in the chunk. They are different objects in the heap. But our
-users (and thus we) expect strings to have value equality. The above expression
-should evaluate to `true`. That requires a little special support.
+Ce sont deux littéraux chaîne séparés. Le compilateur fera deux appels séparés à `copyString()`, créera deux objets ObjString distincts et les stockera comme deux constantes dans le morceau. Ce sont des objets différents dans le tas. Mais nos utilisateurs (et donc nous) s'attendent à ce que les chaînes aient une égalité de valeur. L'expression ci-dessus devrait évaluer à `true`. Cela exige un petit support spécial.
 
 ^code strings-equal (1 before, 1 after)
 
-If the two values are both strings, then they are equal if their character
-arrays contain the same characters, regardless of whether they are two separate
-objects or the exact same one. This does mean that string equality is slower
-than equality on other types since it has to walk the whole string. We'll revise
-that [later][hash], but this gives us the right semantics for now.
+Si les deux valeurs sont toutes deux des chaînes, alors elles sont égales si leurs tableaux de caractères contiennent les mêmes caractères, indépendamment de si elles sont deux objets séparés ou exactement le même. Cela signifie bien que l'égalité de chaîne est plus lente que l'égalité sur les autres types puisqu'elle doit parcourir la chaîne entière. Nous réviserons cela [plus tard][hash], mais cela nous donne la bonne sémantique pour l'instant.
 
-[hash]: hash-tables.html
+[hash]: tables-de-hachage.html
 
-Finally, in order to use `memcmp()` and the new stuff in the "object" module, we
-need a couple of includes. Here:
+Finalement, afin d'utiliser `memcmp()` et les nouveaux trucs dans le module "object", nous avons besoin d'une couple d'includes. Ici :
 
 ^code value-include-string (1 before, 2 after)
 
-And here:
+Et ici :
 
 ^code value-include-object (2 before, 1 after)
 
-### Concatenation
+### Concaténation
 
-Full-grown languages provide lots of operations for working with strings --
-access to individual characters, the string's length, changing case, splitting,
-joining, searching, etc. When you implement your language, you'll likely want
-all that. But for this book, we keep things *very* minimal.
+Les langages adultes fournissent beaucoup d'opérations pour travailler avec les chaînes -- accès aux caractères individuels, la longueur de la chaîne, changer la casse, diviser, joindre, chercher, etc. Quand vous implémentez votre langage, vous voudrez probablement tout ça. Mais pour ce livre, nous gardons les choses _très_ minimales.
 
-The only interesting operation we support on strings is `+`. If you use that
-operator on two string objects, it produces a new string that's a concatenation
-of the two operands. Since Lox is dynamically typed, we can't tell which
-behavior is needed at compile time because we don't know the types of the
-operands until runtime. Thus, the `OP_ADD` instruction dynamically inspects the
-operands and chooses the right operation.
+La seule opération intéressante que nous supportons sur les chaînes est `+`. Si vous utilisez cet opérateur sur deux objets chaîne, il produit une nouvelle chaîne qui est une concaténation des deux opérandes. Puisque Lox est dynamiquement typé, nous ne pouvons pas dire quel comportement est nécessaire à la compilation parce que nous ne connaissons pas les types des opérandes avant l'exécution. Ainsi, l'instruction `OP_ADD` inspecte dynamiquement les opérandes et choisit la bonne opération.
 
 ^code add-strings (1 before, 1 after)
 
-If both operands are strings, it concatenates. If they're both numbers, it adds
-them. Any other <span name="convert">combination</span> of operand types is a
-runtime error.
+Si les deux opérandes sont des chaînes, il concatène. S'ils sont tous deux des nombres, il les additionne. Toute autre <span name="convert">combinaison</span> de types d'opérande est une erreur d'exécution.
 
 <aside name="convert" class="bottom">
 
-This is more conservative than most languages. In other languages, if one
-operand is a string, the other can be any type and it will be implicitly
-converted to a string before concatenating the two.
+C'est plus conservateur que la plupart des langages. Dans d'autres langages, si un opérande est une chaîne, l'autre peut être n'importe quel type et il sera implicitement converti en une chaîne avant de concaténer les deux.
 
-I think that's a fine feature, but would require writing tedious "convert to
-string" code for each type, so I left it out of Lox.
+Je pense que c'est une fonctionnalité correcte, mais exigerait d'écrire du code fastidieux "convertir en chaîne" pour chaque type, donc je l'ai laissée hors de Lox.
 
 </aside>
 
-To concatenate strings, we define a new function.
+Pour concaténer des chaînes, nous définissons une nouvelle fonction.
 
 ^code concatenate
 
-It's pretty verbose, as C code that works with strings tends to be. First, we
-calculate the length of the result string based on the lengths of the operands.
-We allocate a character array for the result and then copy the two halves in. As
-always, we carefully ensure the string is terminated.
+Elle est assez verbeuse, comme le code C qui travaille avec les chaînes tend à être. D'abord, nous calculons la longueur de la chaîne résultat basée sur les longueurs des opérandes. Nous allouons un tableau de caractères pour le résultat et ensuite copions les deux moitiés dedans. Comme toujours, nous assurons soigneusement que la chaîne est terminée.
 
-In order to call `memcpy()`, the VM needs an include.
+Afin d'appeler `memcpy()`, la VM a besoin d'un include.
 
 ^code vm-include-string (1 before, 2 after)
 
-Finally, we produce an ObjString to contain those characters. This time we use a
-new function, `takeString()`.
+Finalement, nous produisons un ObjString pour contenir ces caractères. Cette fois nous utilisons une nouvelle fonction, `takeString()`.
 
 ^code take-string-h (2 before, 1 after)
 
-The implementation looks like this:
+L'implémentation ressemble à ceci :
 
 ^code take-string
 
-The previous `copyString()` function assumes it *cannot* take ownership of the
-characters you pass in. Instead, it conservatively creates a copy of the
-characters on the heap that the ObjString can own. That's the right thing for
-string literals where the passed-in characters are in the middle of the source
-string.
+La fonction `copyString()` précédente suppose qu'elle ne _peut pas_ prendre la propriété des caractères que vous passez dedans. Au lieu de cela, elle crée de manière conservatrice une copie des caractères sur le tas que l'ObjString peut posséder. C'est la bonne chose pour les littéraux chaîne où les caractères passés sont au milieu de la chaîne source.
 
-But, for concatenation, we've already dynamically allocated a character array on
-the heap. Making another copy of that would be redundant (and would mean
-`concatenate()` has to remember to free its copy). Instead, this function claims
-ownership of the string you give it.
+Mais, pour la concaténation, nous avons déjà alloué dynamiquement un tableau de caractères sur le tas. Faire une autre copie de cela serait redondant (et signifierait que `concatenate()` doit se souvenir de libérer sa copie). Au lieu de cela, cette fonction réclame la propriété de la chaîne que vous lui donnez.
 
-As usual, stitching this functionality together requires a couple of includes.
+Comme d'habitude, coudre cette fonctionnalité ensemble exige une couple d'includes.
 
 ^code vm-include-object-memory (1 before, 1 after)
 
-## Freeing Objects
+## Libérer les Objets
 
-Behold this innocuous-seeming expression:
+Contemplez cette expression à l'apparence inoffensive :
 
 ```lox
 "st" + "ri" + "ng"
 ```
 
-When the compiler chews through this, it allocates an ObjString for each of
-those three string literals and stores them in the chunk's constant table and
-generates this <span name="stack">bytecode</span>:
+Quand le compilateur mâche à travers ceci, il alloue un ObjString pour chacun de ces trois littéraux chaîne et les stocke dans la table de constantes du morceau et génère ce <span name="stack">bytecode</span> :
 
 <aside name="stack">
 
-Here's what the stack looks like after each instruction:
+Voici à quoi ressemble la pile après chaque instruction :
 
-<img src="image/strings/stack.png" alt="The state of the stack at each instruction." />
+<img src="image/strings/stack.png" alt="L'état de la pile à chaque instruction." />
 
 </aside>
 
@@ -493,176 +334,107 @@ Here's what the stack looks like after each instruction:
 0008    OP_RETURN
 ```
 
-The first two instructions push `"st"` and `"ri"` onto the stack. Then the
-`OP_ADD` pops those and concatenates them. That dynamically allocates a new
-`"stri"` string on the heap. The VM pushes that and then pushes the `"ng"`
-constant. The last `OP_ADD` pops `"stri"` and `"ng"`, concatenates them, and
-pushes the result: `"string"`. Great, that's what we expect.
+Les deux premières instructions poussent `"st"` et `"ri"` sur la pile. Ensuite l'`OP_ADD` dépile ceux-ci et les concatène. Cela alloue dynamiquement une nouvelle chaîne `"stri"` sur le tas. La VM pousse cela et ensuite pousse la constante `"ng"`. Le dernier `OP_ADD` dépile `"stri"` et `"ng"`, les concatène, et pousse le résultat : `"string"`. Super, c'est ce que nous attendons.
 
-But, wait. What happened to that `"stri"` string? We dynamically allocated it,
-then the VM discarded it after concatenating it with `"ng"`. We popped it from
-the stack and no longer have a reference to it, but we never freed its memory.
-We've got ourselves a classic memory leak.
+Mais, attendez. Qu'est-ce qui est arrivé à cette chaîne `"stri"` ? Nous l'avons allouée dynamiquement, ensuite la VM l'a jetée après l'avoir concaténée avec `"ng"`. Nous l'avons dépilée de la pile et n'avons plus de référence vers elle, mais nous n'avons jamais libéré sa mémoire. Nous avons nous-mêmes une fuite de mémoire classique.
 
-Of course, it's perfectly fine for the *Lox program* to forget about
-intermediate strings and not worry about freeing them. Lox automatically manages
-memory on the user's behalf. The responsibility to manage memory doesn't
-*disappear*. Instead, it falls on our shoulders as VM implementers.
+Bien sûr, il est parfaitement correct pour le _programme Lox_ d'oublier les chaînes intermédiaires et de ne pas s'inquiéter de les libérer. Lox gère automatiquement la mémoire pour le compte de l'utilisateur. La responsabilité de gérer la mémoire ne _disparaît_ pas. Au lieu de cela, elle tombe sur nos épaules en tant qu'implémenteurs de VM.
 
-The full <span name="borrowed">solution</span> is a [garbage collector][gc] that
-reclaims unused memory while the program is running. We've got some other stuff
-to get in place before we're ready to tackle that project. Until then, we are
-living on borrowed time. The longer we wait to add the collector, the harder it
-is to do.
+La <span name="borrowed">solution</span> complète est un [ramasse-miettes][gc] qui récupère la mémoire inutilisée pendant que le programme tourne. Nous avons d'autres trucs à mettre en place avant que nous soyons prêts à tacler ce projet. Jusque-là, nous vivons sur du temps emprunté. Plus nous attendons pour ajouter le collecteur, plus il est dur à faire.
 
 <aside name="borrowed">
 
-I've seen a number of people implement large swathes of their language before
-trying to start on the GC. For the kind of toy programs you typically run while
-a language is being developed, you actually don't run out of memory before
-reaching the end of the program, so this gets you surprisingly far.
+J'ai vu un certain nombre de gens implémenter de larges pans de leur langage avant d'essayer de commencer sur le GC. Pour le genre de programmes jouets que vous lancez typiquement pendant qu'un langage est développé, vous ne tombez en fait pas à court de mémoire avant d'atteindre la fin du programme, donc cela vous mène étonnamment loin.
 
-But that underestimates how *hard* it is to add a garbage collector later. The
-collector *must* ensure it can find every bit of memory that *is* still being
-used so that it doesn't collect live data. There are hundreds of places a
-language implementation can squirrel away a reference to some object. If you
-don't find all of them, you get nightmarish bugs.
+Mais cela sous-estime combien il est _dur_ d'ajouter un ramasse-miettes plus tard. Le collecteur _doit_ assurer qu'il peut trouver chaque bout de mémoire qui _est_ encore utilisé de sorte qu'il ne collecte pas des données vivantes. Il y a des centaines d'endroits où une implémentation de langage peut écureuiller une référence vers quelque objet. Si vous ne les trouvez pas tous, vous obtenez des bugs cauchemardesques.
 
-I've seen language implementations die because it was too hard to get the GC in
-later. If your language needs GC, get it working as soon as you can. It's a
-crosscutting concern that touches the entire codebase.
+J'ai vu des implémentations de langage mourir parce qu'il était trop dur de mettre le GC dedans plus tard. Si votre langage a besoin d'un GC, faites-le marcher aussi tôt que vous pouvez. C'est une préoccupation transverse qui touche la base de code entière.
 
 </aside>
 
-Today, we should at least do the bare minimum: avoid *leaking* memory by making
-sure the VM can still find every allocated object even if the Lox program itself
-no longer references them. There are many sophisticated techniques that advanced
-memory managers use to allocate and track memory for objects. We're going to
-take the simplest practical approach.
+Aujourd'hui, nous devrions au moins faire le strict minimum : éviter de _fuiter_ de la mémoire en nous assurant que la VM peut toujours trouver chaque objet alloué même si le programme Lox lui-même ne les référence plus. Il y a beaucoup de techniques sophistiquées que les gestionnaires de mémoire avancés utilisent pour allouer et suivre la mémoire pour les objets. Nous allons prendre l'approche pratique la plus simple.
 
-We'll create a linked list that stores every Obj. The VM can traverse that
-list to find every single object that has been allocated on the heap, whether or
-not the user's program or the VM's stack still has a reference to it.
+Nous créerons une liste chaînée qui stocke chaque Obj. La VM peut traverser cette liste pour trouver chaque objet unique qui a été alloué sur le tas, que le programme de l'utilisateur ou la pile de la VM ait encore une référence vers lui ou non.
 
-We could define a separate linked list node struct but then we'd have to
-allocate those too. Instead, we'll use an **intrusive list** -- the Obj struct
-itself will be the linked list node. Each Obj gets a pointer to the next Obj in
-the chain.
+Nous pourrions définir une struct de nœud de liste chaînée séparée mais alors nous aurions à allouer ceux-là aussi. Au lieu de cela, nous utiliserons une **liste intrusive** -- la struct Obj elle-même sera le nœud de liste chaînée. Chaque Obj obtient un pointeur vers le prochain Obj dans la chaîne.
 
 ^code next-field (2 before, 1 after)
 
-The VM stores a pointer to the head of the list.
+La VM stocke un pointeur vers la tête de la liste.
 
 ^code objects-root (1 before, 1 after)
 
-When we first initialize the VM, there are no allocated objects.
+Quand nous initialisons la VM pour la première fois, il n'y a pas d'objets alloués.
 
 ^code init-objects-root (1 before, 1 after)
 
-Every time we allocate an Obj, we insert it in the list.
+Chaque fois que nous allouons un Obj, nous l'insérons dans la liste.
 
 ^code add-to-list (1 before, 1 after)
 
-Since this is a singly linked list, the easiest place to insert it is as the
-head. That way, we don't need to also store a pointer to the tail and keep it
-updated.
+Puisque c'est une liste chaînée simple, l'endroit le plus facile pour l'insérer est comme la tête. De cette façon, nous n'avons pas besoin de stocker aussi un pointeur vers la queue et de le garder à jour.
 
-The "object" module is directly using the global `vm` variable from the "vm"
-module, so we need to expose that externally.
+Le module "object" utilise directement la variable globale `vm` du module "vm", donc nous avons besoin d'exposer ça extérieurement.
 
 ^code extern-vm (2 before, 1 after)
 
-Eventually, the garbage collector will free memory while the VM is still
-running. But, even then, there will usually be unused objects still lingering in
-memory when the user's program completes. The VM should free those too.
+Éventuellement, le ramasse-miettes libérera la mémoire alors que la VM tourne encore. Mais, même alors, il y aura habituellement des objets inutilisés traînant encore en mémoire quand le programme de l'utilisateur termine. La VM devrait libérer ceux-là aussi.
 
-There's no sophisticated logic for that. Once the program is done, we can free
-*every* object. We can and should implement that now.
+Il n'y a pas de logique sophistiquée pour cela. Une fois que le programme est fini, nous pouvons libérer _chaque_ objet. Nous pouvons et devrions implémenter cela maintenant.
 
 ^code call-free-objects (1 before, 1 after)
 
-That empty function we defined [way back when][vm] finally does something! It
-calls this:
+Cette fonction vide que nous avons définie [il y a longtemps][vm] fait finalement quelque chose ! Elle appelle ceci :
 
-[vm]: a-virtual-machine.html#an-instruction-execution-machine
+[vm]: machine-virtuelle.html#une-machine-d-exécution-d-instruction
 
 ^code free-objects-h (1 before, 2 after)
 
-Here's how we free the objects:
+Voici comment nous libérons les objets :
 
 ^code free-objects
 
-This is a CS 101 textbook implementation of walking a linked list and freeing
-its nodes. For each node, we call:
+C'est une implémentation de manuel de CS 101 de parcourir une liste chaînée et de libérer ses nœuds. Pour chaque nœud, nous appelons :
 
 ^code free-object
 
-We aren't only freeing the Obj itself. Since some object types also allocate
-other memory that they own, we also need a little type-specific code to handle
-each object type's special needs. Here, that means we free the character array
-and then free the ObjString. Those both use one last memory management macro.
+Nous ne libérons pas seulement l'Obj lui-même. Puisque certains types d'objet allouent aussi d'autre mémoire qu'ils possèdent, nous avons aussi besoin d'un peu de code spécifique au type pour gérer les besoins spéciaux de chaque type d'objet. Ici, cela signifie que nous libérons le tableau de caractères et ensuite libérons l'ObjString. Ceux-ci utilisent tous deux une dernière macro de gestion de la mémoire.
 
 ^code free (1 before, 2 after)
 
-It's a tiny <span name="free">wrapper</span> around `reallocate()` that
-"resizes" an allocation down to zero bytes.
+C'est un minuscule <span name="free">emballage</span> autour de `reallocate()` qui "redimensionne" une allocation à zéro octet.
 
 <aside name="free">
 
-Using `reallocate()` to free memory might seem pointless. Why not just call
-`free()`? Later, this will help the VM track how much memory is still being
-used. If all allocation and freeing goes through `reallocate()`, it's easy to
-keep a running count of the number of bytes of allocated memory.
+Utiliser `reallocate()` pour libérer de la mémoire pourrait sembler inutile. Pourquoi ne pas juste appeler `free()` ? Plus tard, cela aidera la VM à suivre combien de mémoire est encore utilisée. Si toute allocation et libération passe par `reallocate()`, il est facile de garder un compte courant du nombre d'octets de mémoire allouée.
 
 </aside>
 
-As usual, we need an include to wire everything together.
+Comme d'habitude, nous avons besoin d'un include pour câbler tout ensemble.
 
 ^code memory-include-object (1 before, 2 after)
 
-Then in the implementation file:
+Ensuite dans le fichier d'implémentation :
 
 ^code memory-include-vm (1 before, 2 after)
 
-With this, our VM no longer leaks memory. Like a good C program, it cleans up
-its mess before exiting. But it doesn't free any objects while the VM is
-running. Later, when it's possible to write longer-running Lox programs, the VM
-will eat more and more memory as it goes, not relinquishing a single byte until
-the entire program is done.
+Avec ceci, notre VM ne fuite plus de mémoire. Comme un bon programme C, elle nettoie son désordre avant de quitter. Mais elle ne libère aucuns objets pendant que la VM tourne. Plus tard, quand il sera possible d'écrire des programmes Lox plus longs, la VM mangera de plus en plus de mémoire alors qu'elle va, ne relâchant pas un seul octet jusqu'à ce que le programme entier soit fini.
 
-We won't address that until we've added [a real garbage collector][gc], but this
-is a big step. We now have the infrastructure to support a variety of different
-kinds of dynamically allocated objects. And we've used that to add strings to
-clox, one of the most used types in most programming languages. Strings in turn
-enable us to build another fundamental data type, especially in dynamic
-languages: the venerable [hash table][]. But that's for the next chapter...
+Nous n'adresserons pas cela jusqu'à ce que nous ayons ajouté [un vrai ramasse-miettes][gc], mais c'est une grande étape. Nous avons maintenant l'infrastructure pour supporter une variété de différentes sortes d'objets alloués dynamiquement. Et nous avons utilisé cela pour ajouter les chaînes à clox, l'un des types les plus utilisés dans la plupart des langages de programmation. Les chaînes à leur tour nous permettent de construire un autre type de données fondamental, spécialement dans les langages dynamiques : la vénérable [table de hachage][]. Mais c'est pour le prochain chapitre...
 
-[hash table]: hash-tables.html
+[table de hachage]: tables-de-hachage.html
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  Each string requires two separate dynamic allocations -- one for the
-    ObjString and a second for the character array. Accessing the characters
-    from a value requires two pointer indirections, which can be bad for
-    performance. A more efficient solution relies on a technique called
-    **[flexible array members][]**. Use that to store the ObjString and its
-    character array in a single contiguous allocation.
+1.  Chaque chaîne exige deux allocations dynamiques séparées -- une pour l'ObjString et une seconde pour le tableau de caractères. Accéder aux caractères depuis une valeur exige deux indirections de pointeur, ce qui peut être mauvais pour la performance. Une solution plus efficace repose sur une technique appelée **[membres de tableau flexibles][flexible array members]**. Utilisez cela pour stocker l'ObjString et son tableau de caractères dans une allocation contiguë unique.
 
-2.  When we create the ObjString for each string literal, we copy the characters
-    onto the heap. That way, when the string is later freed, we know it is safe
-    to free the characters too.
+2.  Quand nous créons l'ObjString pour chaque littéral chaîne, nous copions les caractères sur le tas. De cette façon, quand la chaîne est plus tard libérée, nous savons qu'il est sûr de libérer les caractères aussi.
 
-    This is a simpler approach but wastes some memory, which might be a problem
-    on very constrained devices. Instead, we could keep track of which
-    ObjStrings own their character array and which are "constant strings" that
-    just point back to the original source string or some other non-freeable
-    location. Add support for this.
+    C'est une approche plus simple mais gaspille un peu de mémoire, ce qui pourrait être un problème sur des appareils très contraints. Au lieu de cela, nous pourrions garder une trace de quels ObjStrings possèdent leur tableau de caractères et lesquels sont des "chaînes constantes" qui pointent juste en retour vers la chaîne source originale ou quelque autre emplacement non libérable. Ajoutez le support pour cela.
 
-3.  If Lox was your language, what would you have it do when a user tries to use
-    `+` with one string operand and the other some other type? Justify your
-    choice. What do other languages do?
+3.  Si Lox était votre langage, que lui feriez-vous faire quand un utilisateur essaie d'utiliser `+` avec un opérande chaîne et l'autre d'un autre type ? Justifiez votre choix. Que font d'autres langages ?
 
 [flexible array members]: https://en.wikipedia.org/wiki/Flexible_array_member
 
@@ -670,119 +442,56 @@ languages: the venerable [hash table][]. But that's for the next chapter...
 
 <div class="design-note">
 
-## Design Note: String Encoding
+## Note de Conception : Encodage de Chaîne
 
-In this book, I try not to shy away from the gnarly problems you'll run into in
-a real language implementation. We might not always use the most *sophisticated*
-solution -- it's an intro book after all -- but I don't think it's honest to
-pretend the problem doesn't exist at all. However, I did skirt around one really
-nasty conundrum: deciding how to represent strings.
+Dans ce livre, j'essaie de ne pas fuir les problèmes gnagnus que vous rencontrerez dans une vraie implémentation de langage. Nous pourrions ne pas toujours utiliser la solution la plus _sophistiquée_ -- c'est un livre d'intro après tout -- mais je ne pense pas qu'il soit honnête de prétendre que le problème n'existe pas du tout. Cependant, j'ai contourné une énigme vraiment méchante : décider comment représenter les chaînes.
 
-There are two facets to a string encoding:
+Il y a deux facettes à un encodage de chaîne :
 
-*   **What is a single "character" in a string?** How many different values are
-    there and what do they represent? The first widely adopted standard answer
-    to this was [ASCII][]. It gave you 127 different character values and
-    specified what they were. It was great... if you only ever cared about
-    English. While it has weird, mostly forgotten characters like "record
-    separator" and "synchronous idle", it doesn't have a single umlaut, acute,
-    or grave. It can't represent "jalapeño", "naïve", <span
-    name="gruyere">"Gruyère"</span>, or "Mötley Crüe".
+- **Qu'est-ce qu'un "caractère" unique dans une chaîne ?** Combien de valeurs différentes y a-t-il et que représentent-elles ? La première réponse standard largement adoptée à cela était [ASCII][]. Il vous donnait 127 valeurs de caractères différentes et spécifiait ce qu'elles étaient. C'était génial... si vous ne vous souciez que de l'anglais. Bien qu'il ait des caractères bizarres, la plupart oubliés comme "séparateur d'enregistrement" et "attente synchrone", il n'a pas un seul trema, aigu, ou grave. Il ne peut pas représenter "jalapeño", "naïve", <span name="gruyere">"Gruyère"</span>, ou "Mötley Crüe".
 
-    <aside name="gruyere">
+      <aside name="gruyere">
 
-    It goes without saying that a language that does not let one discuss Gruyère
-    or Mötley Crüe is a language not worth using.
+    Il va sans dire qu'un langage qui ne laisse pas discuter de Gruyère ou de Mötley Crüe est un langage qui ne vaut pas la peine d'être utilisé.
 
-    </aside>
+      </aside>
 
-    Next came [Unicode][]. Initially, it supported 16,384 different characters
-    (**code points**), which fit nicely in 16 bits with a couple of bits to
-    spare. Later that grew and grew, and now there are well over 100,000
-    different code points including such vital instruments of human
-    communication as 💩 (Unicode Character 'PILE OF POO', `U+1F4A9`).
+    Ensuite vint [Unicode][]. Initialement, il supportait 16 384 caractères différents (**points de code**), qui tenaient joliment dans 16 bits avec une couple de bits à épargner. Plus tard cela a grandi et grandi, et maintenant il y a bien plus de 100 000 points de code différents incluant de tels instruments vitaux de communication humaine comme 💩 (Caractère Unicode 'TAS DE CACA', `U+1F4A9`).
 
-    Even that long list of code points is not enough to represent each possible
-    visible glyph a language might support. To handle that, Unicode also has
-    **combining characters** that modify a preceding code point. For example,
-    "a" followed by the combining character "¨" gives you "ä". (To make things
-    more confusing Unicode *also* has a single code point that looks like "ä".)
+    Même cette longue liste de points de code n'est pas suffisante pour représenter chaque glyphe visible possible qu'un langage pourrait supporter. Pour gérer cela, Unicode a aussi des **caractères combinants** qui modifient un point de code précédent. Par exemple, "a" suivi par le caractère combinant "¨" vous donne "ä". (Pour rendre les choses plus confuses Unicode a _aussi_ un point de code unique qui ressemble à "ä".)
 
-    If a user accesses the fourth "character" in "naïve", do they expect to get
-    back "v" or &ldquo;¨&rdquo;? The former means they are thinking of each code
-    point and its combining character as a single unit -- what Unicode calls an
-    **extended grapheme cluster** -- the latter means they are thinking in
-    individual code points. Which do your users expect?
+    Si un utilisateur accède au quatrième "caractère" dans "naïve", s'attend-il à récupérer "v" ou &ldquo;¨&rdquo; ? Le premier signifie qu'ils pensent à chaque point de code et son caractère combinant comme une unité unique -- ce que Unicode appelle un **amas de graphèmes étendu** -- le dernier signifie qu'ils pensent en points de code individuels. Auquel vos utilisateurs s'attendent-ils ?
 
-*   **How is a single unit represented in memory?** Most systems using ASCII
-    gave a single byte to each character and left the high bit unused. Unicode
-    has a handful of common encodings. UTF-16 packs most code points into 16
-    bits. That was great when every code point fit in that size. When that
-    overflowed, they added *surrogate pairs* that use multiple 16-bit code units
-    to represent a single code point. UTF-32 is the next evolution of
-    UTF-16 -- it gives a full 32 bits to each and every code point.
+- **Comment une unité unique est-elle représentée en mémoire ?** La plupart des systèmes utilisant ASCII donnaient un octet unique à chaque caractère et laissaient le bit haut inutilisé. Unicode a une poignée d'encodages communs. UTF-16 empaquette la plupart des points de code dans 16 bits. C'était génial quand chaque point de code tenait dans cette taille. Quand cela a débordé, ils ont ajouté des _paires de substitution_ qui utilisent de multiples unités de code de 16 bits pour représenter un point de code unique. UTF-32 est la prochaine évolution de UTF-16 -- il donne un plein 32 bits à chaque point de code.
 
-    UTF-8 is more complex than either of those. It uses a variable number of
-    bytes to encode a code point. Lower-valued code points fit in fewer bytes.
-    Since each character may occupy a different number of bytes, you can't
-    directly index into the string to find a specific code point. If you want,
-    say, the 10th code point, you don't know how many bytes into the string that
-    is without walking and decoding all of the preceding ones.
+    UTF-8 est plus complexe que l'un ou l'autre de ceux-ci. Il utilise un nombre variable d'octets pour encoder un point de code. Les points de code de valeur plus basse tiennent dans moins d'octets. Puisque chaque caractère peut occuper un nombre différent d'octets, vous ne pouvez pas directement indexer dans la chaîne pour trouver un point de code spécifique. Si vous voulez, disons, le 10ème point de code, vous ne savez pas à combien d'octets dans la chaîne c'est sans marcher et décoder tous les précédents.
 
 [ascii]: https://en.wikipedia.org/wiki/ASCII
 [unicode]: https://en.wikipedia.org/wiki/Unicode
 
-Choosing a character representation and encoding involves fundamental
-trade-offs. Like many things in engineering, there's no <span
-name="python">perfect</span> solution:
+Choisir une représentation de caractère et un encodage implique des compromis fondamentaux. Comme beaucoup de choses en ingénierie, il n'y a pas de solution <span name="python">parfaite</span> :
 
 <aside name="python">
 
-An example of how difficult this problem is comes from Python. The achingly long
-transition from Python 2 to 3 is painful mostly because of its changes around
-string encoding.
+Un exemple de combien ce problème est difficile vient de Python. La transition douloureusement longue de Python 2 à 3 est pénible surtout à cause de ses changements autour de l'encodage de chaîne.
 
 </aside>
 
-*   ASCII is memory efficient and fast, but it kicks non-Latin languages to the
-    side.
+- ASCII est efficace en mémoire et rapide, mais il jette les langages non-latins sur le côté.
 
-*   UTF-32 is fast and supports the whole Unicode range, but wastes a lot of
-    memory given that most code points do tend to be in the lower range of
-    values, where a full 32 bits aren't needed.
+- UTF-32 est rapide et supporte toute la plage Unicode, mais gaspille beaucoup de mémoire étant donné que la plupart des points de code tendent à être dans la plage basse de valeurs, où un plein 32 bits n'est pas nécessaire.
 
-*   UTF-8 is memory efficient and supports the whole Unicode range, but its
-    variable-length encoding makes it slow to access arbitrary code points.
+- UTF-8 est efficace en mémoire et supporte toute la plage Unicode, mais son encodage à longueur variable le rend lent pour accéder à des points de code arbitraires.
 
-*   UTF-16 is worse than all of them -- an ugly consequence of Unicode
-    outgrowing its earlier 16-bit range. It's less memory efficient than UTF-8
-    but is still a variable-length encoding thanks to surrogate pairs. Avoid it
-    if you can. Alas, if your language needs to run on or interoperate with the
-    browser, the JVM, or the CLR, you might be stuck with it, since those all
-    use UTF-16 for their strings and you don't want to have to convert every
-    time you pass a string to the underlying system.
+- UTF-16 est pire que tous ceux-là -- une conséquence laide d'Unicode dépassant sa plage 16-bit antérieure. Il est moins efficace en mémoire que UTF-8 mais est toujours un encodage à longueur variable grâce aux paires de substitution. Évitez-le si vous pouvez. Hélas, si votre langage a besoin de tourner sur ou d'interopérer avec le navigateur, la JVM, ou le CLR, vous pourriez être coincé avec, puisque ceux-ci utilisent tous UTF-16 pour leurs chaînes et vous ne voulez pas avoir à convertir chaque fois que vous passez une chaîne au système sous-jacent.
 
-One option is to take the maximal approach and do the "rightest" thing. Support
-all the Unicode code points. Internally, select an encoding for each string
-based on its contents -- use ASCII if every code point fits in a byte, UTF-16 if
-there are no surrogate pairs, etc. Provide APIs to let users iterate over both
-code points and extended grapheme clusters.
+Une option est de prendre l'approche maximale et de faire la chose la "plus juste". Supporter tous les points de code Unicode. En interne, sélectionner un encodage pour chaque chaîne basé sur son contenu -- utiliser ASCII si chaque point de code tient dans un octet, UTF-16 s'il n'y a pas de paires de substitution, etc. Fournir des APIs pour laisser les utilisateurs itérer sur à la fois les points de code et les amas de graphèmes étendus.
 
-This covers all your bases but is really complex. It's a lot to implement,
-debug, and optimize. When serializing strings or interoperating with other
-systems, you have to deal with all of the encodings. Users need to understand
-the two indexing APIs and know which to use when. This is the approach that
-newer, big languages tend to take -- like Raku and Swift.
+Cela couvre toutes vos bases mais est vraiment complexe. C'est beaucoup à implémenter, déboguer, et optimiser. Quand on sérialise des chaînes ou qu'on interopère avec d'autres systèmes, vous avez à gérer tous les encodages. Les utilisateurs ont besoin de comprendre les deux APIs d'indexation et savoir laquelle utiliser quand. C'est l'approche que les langages plus récents, gros tendent à prendre -- comme Raku et Swift.
 
-A simpler compromise is to always encode using UTF-8 and only expose an API that
-works with code points. For users that want to work with grapheme clusters, let
-them use a third-party library for that. This is less Latin-centric than ASCII
-but not much more complex. You lose fast direct indexing by code point, but you
-can usually live without that or afford to make it *O(n)* instead of *O(1)*.
+Un compromis plus simple est de toujours encoder en utilisant UTF-8 et seulement exposer une API qui travaille avec les points de code. Pour les utilisateurs qui veulent travailler avec les amas de graphèmes, laissez-les utiliser une bibliothèque tierce pour cela. C'est moins Latin-centrique qu'ASCII mais pas beaucoup plus complexe. Vous perdez l'indexation directe rapide par point de code, mais vous pouvez habituellement vivre sans cela ou vous permettre de le rendre _O(n)_ au lieu de _O(1)_.
 
-If I were designing a big workhorse language for people writing large
-applications, I'd probably go with the maximal approach. For my little embedded
-scripting language [Wren][], I went with UTF-8 and code points.
+Si je concevais un gros langage de trait pour des gens écrivant de larges applications, j'irais probablement avec l'approche maximale. Pour mon petit langage de script embarqué [Wren][], je suis allé avec UTF-8 et les points de code.
 
 [wren]: http://wren.io
 

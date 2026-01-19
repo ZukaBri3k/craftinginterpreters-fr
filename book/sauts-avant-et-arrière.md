@@ -1,201 +1,116 @@
-> The order that our mind imagines is like a net, or like a ladder, built to
-> attain something. But afterward you must throw the ladder away, because you
-> discover that, even if it was useful, it was meaningless.
+> L'ordre que notre esprit imagine est comme un filet, ou comme une échelle, construit pour atteindre quelque chose. Mais après vous devez jeter l'échelle, parce que vous découvrez que, même si c'était utile, c'était vide de sens.
 >
-> <cite>Umberto Eco, <em>The Name of the Rose</em></cite>
+> <cite>Umberto Eco, <em>Le Nom de la rose</em></cite>
 
-It's taken a while to get here, but we're finally ready to add control flow to
-our virtual machine. In the tree-walk interpreter we built for jlox, we
-implemented Lox's control flow in terms of Java's. To execute a Lox `if`
-statement, we used a Java `if` statement to run the chosen branch. That works,
-but isn't entirely satisfying. By what magic does the *JVM itself* or a native
-CPU implement `if` statements? Now that we have our own bytecode VM to hack on,
-we can answer that.
+Cela a pris un moment pour arriver ici, mais nous sommes enfin prêts à ajouter le contrôle de flux à notre machine virtuelle. Dans l'interpréteur à parcours d'arbre que nous avons construit pour jlox, nous avons implémenté le contrôle de flux de Lox en termes de celui de Java. Pour exécuter une instruction `if` Lox, nous avons utilisé une instruction `if` Java pour exécuter la branche choisie. Cela fonctionne, mais n'est pas entièrement satisfaisant. Par quelle magie la _JVM elle-même_ ou un CPU natif implémente-t-il les instructions `if` ? Maintenant que nous avons notre propre VM à bytecode à bricoler, nous pouvons répondre à cela.
 
-When we talk about "control flow", what are we referring to? By "flow" we mean
-the way execution moves through the text of the program. Almost like there is a
-little robot inside the computer wandering through our code, executing bits and
-pieces here and there. Flow is the path that robot takes, and by *controlling*
-the robot, we drive which pieces of code it executes.
+Quand nous parlons de "contrôle de flux", à quoi nous référons-nous ? Par "flux", nous voulons dire la façon dont l'exécution se déplace à travers le texte du programme. Presque comme s'il y avait un petit robot à l'intérieur de l'ordinateur errant à travers notre code, exécutant des morceaux ici et là. Le flux est le chemin que ce robot prend, et en _contrôlant_ le robot, nous pilotons quels morceaux de code il exécute.
 
-In jlox, the robot's locus of attention -- the *current* bit of code -- was
-implicit based on which AST nodes were stored in various Java variables and what
-Java code we were in the middle of running. In clox, it is much more explicit.
-The VM's `ip` field stores the address of the current bytecode instruction. The
-value of that field is exactly "where we are" in the program.
+Dans jlox, le lieu d'attention du robot -- le morceau de code _courant_ -- était implicite basé sur quels nœuds AST étaient stockés dans diverses variables Java et quel code Java nous étions au milieu d'exécuter. Dans clox, c'est beaucoup plus explicite. Le champ `ip` de la VM stocke l'adresse de l'instruction bytecode courante. La valeur de ce champ est exactement "où nous sommes" dans le programme.
 
-Execution proceeds normally by incrementing the `ip`. But we can mutate that
-variable however we want to. In order to implement control flow, all that's
-necessary is to change the `ip` in more interesting ways. The simplest control
-flow construct is an `if` statement with no `else` clause:
+L'exécution procède normalement en incrémentant le `ip`. Mais nous pouvons muter cette variable comme nous voulons. Afin d'implémenter le contrôle de flux, tout ce qui est nécessaire est de changer le `ip` de façons plus intéressantes. La construction de contrôle de flux la plus simple est une instruction `if` sans clause `else` :
 
 ```lox
 if (condition) print("condition was truthy");
 ```
 
-The VM evaluates the bytecode for the condition expression. If the result is
-truthy, then it continues along and executes the `print` statement in the body.
-The interesting case is when the condition is falsey. When that happens,
-execution skips over the then branch and proceeds to the next statement.
+La VM évalue le bytecode pour l'expression de condition. Si le résultat est "truthy" (vrai), alors elle continue et exécute l'instruction `print` dans le corps. Le cas intéressant est quand la condition est "falsey" (fausse). Quand cela arrive, l'exécution saute par-dessus la branche alors et procède à l'instruction suivante.
 
-To skip over a chunk of code, we simply set the `ip` field to the address of the
-bytecode instruction following that code. To *conditionally* skip over some
-code, we need an instruction that looks at the value on top of the stack. If
-it's falsey, it adds a given offset to the `ip` to jump over a range of
-instructions. Otherwise, it does nothing and lets execution proceed to the next
-instruction as usual.
+Pour sauter par-dessus un morceau de code, nous réglons simplement le champ `ip` à l'adresse de l'instruction bytecode suivant ce code. Pour sauter _conditionnellement_ par-dessus du code, nous avons besoin d'une instruction qui regarde la valeur au sommet de la pile. Si elle est fausse, elle ajoute un décalage donné au `ip` pour sauter par-dessus une plage d'instructions. Sinon, elle ne fait rien et laisse l'exécution procéder à l'instruction suivante comme d'habitude.
 
-When we compile to bytecode, the explicit nested block structure of the code
-evaporates, leaving only a flat series of instructions behind. Lox is a
-[structured programming][] language, but clox bytecode isn't. The right -- or
-wrong, depending on how you look at it -- set of bytecode instructions could
-jump into the middle of a block, or from one scope into another.
+Quand nous compilons vers du bytecode, la structure de bloc imbriquée explicite du code s'évapore, laissant seulement une série plate d'instructions derrière. Lox est un langage de [programmation structurée][structured programming], mais le bytecode clox ne l'est pas. Le bon -- ou mauvais, dépendant de comment vous le regardez -- ensemble d'instructions bytecode pourrait sauter au milieu d'un bloc, ou d'une portée dans une autre.
 
-The VM will happily execute that, even if the result leaves the stack in an
-unknown, inconsistent state. So even though the bytecode is unstructured, we'll
-take care to ensure that our compiler only generates clean code that maintains
-the same structure and nesting that Lox itself does.
+La VM exécutera joyeusement cela, même si le résultat laisse la pile dans un état inconnu, incohérent. Donc même si le bytecode est non structuré, nous prendrons soin de nous assurer que notre compilateur génère seulement du code propre qui maintient la même structure et imbrication que Lox lui-même fait.
 
-This is exactly how real CPUs behave. Even though we might program them using
-higher-level languages that mandate structured control flow, the compiler lowers
-that down to raw jumps. At the bottom, it turns out goto is the only real
-control flow.
+C'est exactement comment les vrais CPUs se comportent. Même si nous pourrions les programmer utilisant des langages de plus haut niveau qui mandatent un contrôle de flux structuré, le compilateur abaisse cela à des sauts bruts. Au fond, il s'avère que le goto est le seul vrai contrôle de flux.
 
-[structured programming]: https://en.wikipedia.org/wiki/Structured_programming
+[structured programming]: https://fr.wikipedia.org/wiki/Programmation_structur%C3%A9e
 
-Anyway, I didn't mean to get all philosophical. The important bit is that if we
-have that one conditional jump instruction, that's enough to implement Lox's
-`if` statement, as long as it doesn't have an `else` clause. So let's go ahead
-and get started with that.
+De toute façon, je ne voulais pas devenir tout philosophique. Le morceau important est que si nous avons cette instruction de saut conditionnel, c'est assez pour implémenter l'instruction `if` de Lox, tant qu'elle n'a pas de clause `else`. Donc allons de l'avant et commençons avec cela.
 
-## If Statements
+## Instructions If
 
-This many chapters in, you know the drill. Any new feature starts in the front
-end and works its way through the pipeline. An `if` statement is, well, a
-statement, so that's where we hook it into the parser.
+Autant de chapitres dedans, vous connaissez la routine. Toute nouvelle fonctionnalité commence dans le front end et travaille son chemin à travers le pipeline. Une instruction `if` est, eh bien, une instruction, donc c'est là où nous l'accrochons dans l'analyseur.
 
 ^code parse-if (2 before, 1 after)
 
-When we see an `if` keyword, we hand off compilation to this function:
+Quand nous voyons un mot-clé `if`, nous passons la main de la compilation à cette fonction :
 
 ^code if-statement
 
 <aside name="paren">
 
-Have you ever noticed that the `(` after the `if` keyword doesn't actually do
-anything useful? The language would be just as unambiguous and easy to parse
-without it, like:
+Avez-vous déjà remarqué que la `(` après le mot-clé `if` ne fait pas réellement quelque chose d'utile ? Le langage serait tout aussi non ambigu et facile à analyser sans elle, comme :
 
 ```lox
 if condition) print("looks weird");
 ```
 
-The closing `)` is useful because it separates the condition expression from the
-body. Some languages use a `then` keyword instead. But the opening `(` doesn't
-do anything. It's just there because unmatched parentheses look bad to us
-humans.
+La `)` fermante est utile parce qu'elle sépare l'expression de condition du corps. Certains langages utilisent un mot-clé `then` à la place. Mais la `(` ouvrante ne fait rien. Elle est juste là parce que les parenthèses non appariées semblent mauvaises pour nous humains.
 
 </aside>
 
-First we compile the condition expression, bracketed by parentheses. At runtime,
-that will leave the condition value on top of the stack. We'll use that to
-determine whether to execute the then branch or skip it.
+D'abord nous compilons l'expression de condition, encadrée par des parenthèses. À l'exécution, cela laissera la valeur de condition au sommet de la pile. Nous utiliserons cela pour déterminer s'il faut exécuter la branche alors ou la sauter.
 
-Then we emit a new `OP_JUMP_IF_FALSE` instruction. It has an operand for how
-much to offset the `ip` -- how many bytes of code to skip. If the condition is
-falsey, it adjusts the `ip` by that amount. Something like this:
+Ensuite nous émettons une nouvelle instruction `OP_JUMP_IF_FALSE`. Elle a un opérande pour combien décaler le `ip` -- combien d'octets de code sauter. Si la condition est fausse, elle ajuste le `ip` par ce montant. Quelque chose comme ceci :
 
 <aside name="legend">
 
-The boxes with the torn edges here represent the blob of bytecode generated by
-compiling some sub-clause of a control flow construct. So the "condition
-expression" box is all of the instructions emitted when we compiled that
-expression.
+Les boîtes avec les bords déchirés ici représentent le blob de bytecode généré en compilant quelque sous-clause d'une construction de contrôle de flux. Donc la boîte "expression de condition" est toutes les instructions émises quand nous avons compilé cette expression.
 
 </aside>
 
 <span name="legend"></span>
 
-<img src="image/jumping-back-and-forth/if-without-else.png" alt="Flowchart of the compiled bytecode of an if statement." />
+<img src="image/jumping-back-and-forth/if-without-else.png" alt="Organigramme du bytecode compilé d'une instruction if." />
 
-But we have a problem. When we're writing the `OP_JUMP_IF_FALSE` instruction's
-operand, how do we know how far to jump? We haven't compiled the then branch
-yet, so we don't know how much bytecode it contains.
+Mais nous avons un problème. Quand nous écrivons l'opérande de l'instruction `OP_JUMP_IF_FALSE`, comment savons-nous jusqu'où sauter ? Nous n'avons pas compilé la branche alors encore, donc nous ne savons pas combien de bytecode elle contient.
 
-To fix that, we use a classic trick called **backpatching**. We emit the jump
-instruction first with a placeholder offset operand. We keep track of where that
-half-finished instruction is. Next, we compile the then body. Once that's done,
-we know how far to jump. So we go back and replace that placeholder offset with
-the real one now that we can calculate it. Sort of like sewing a patch onto the
-existing fabric of the compiled code.
+Pour réparer cela, nous utilisons un truc classique appelé **backpatching** (rétro-apiéçage). Nous émettons l'instruction de saut d'abord avec un opérande de décalage bouche-trou. Nous gardons la trace d'où est cette instruction à moitié finie. Ensuite, nous compilons le corps alors. Une fois que c'est fait, nous savons jusqu'où sauter. Donc nous retournons en arrière et remplaçons ce décalage bouche-trou avec le vrai maintenant que nous pouvons le calculer. Sorte de comme coudre une pièce sur le tissu existant du code compilé.
 
-<img src="image/jumping-back-and-forth/patch.png" alt="A patch containing a number being sewn onto a sheet of bytecode." />
+<img src="image/jumping-back-and-forth/patch.png" alt="Une pièce contenant un nombre étant cousue sur une feuille de bytecode." />
 
-We encode this trick into two helper functions.
+Nous encodons ce truc dans deux fonctions d'aide.
 
 ^code emit-jump
 
-The first emits a bytecode instruction and writes a placeholder operand for the
-jump offset. We pass in the opcode as an argument because later we'll have two
-different instructions that use this helper. We use two bytes for the jump
-offset operand. A 16-bit <span name="offset">offset</span> lets us jump over up
-to 65,535 bytes of code, which should be plenty for our needs.
+La première émet une instruction bytecode et écrit un opérande bouche-trou pour le décalage de saut. Nous passons l'opcode comme un argument parce que plus tard nous aurons deux instructions différentes qui utilisent cet assistant. Nous utilisons deux octets pour l'opérande de décalage de saut. Un <span name="offset">décalage</span> de 16-bits nous laisse sauter par-dessus jusqu'à 65 535 octets de code, ce qui devrait être plein pour nos besoins.
 
 <aside name="offset">
 
-Some instruction sets have separate "long" jump instructions that take larger
-operands for when you need to jump a greater distance.
+Certains jeux d'instructions ont des instructions de saut "long" séparées qui prennent de plus grands opérandes pour quand vous avez besoin de sauter une plus grande distance.
 
 </aside>
 
-The function returns the offset of the emitted instruction in the chunk. After
-compiling the then branch, we take that offset and pass it to this:
+La fonction renvoie le décalage de l'instruction émise dans le chunk. Après avoir compilé la branche alors, nous prenons ce décalage et le passons à ceci :
 
 ^code patch-jump
 
-This goes back into the bytecode and replaces the operand at the given location
-with the calculated jump offset. We call `patchJump()` right before we emit the
-next instruction that we want the jump to land on, so it uses the current
-bytecode count to determine how far to jump. In the case of an `if` statement,
-that means right after we compile the then branch and before we compile the next
-statement.
+Ceci retourne dans le bytecode et remplace l'opérande à l'emplacement donné avec le décalage de saut calculé. Nous appelons `patchJump()` juste avant d'émettre l'instruction suivante sur laquelle nous voulons que le saut atterrisse, donc il utilise le compte de bytecode courant pour déterminer jusqu'où sauter. Dans le cas d'une instruction `if`, cela signifie juste après que nous compilons la branche alors et avant que nous compilions l'instruction suivante.
 
-That's all we need at compile time. Let's define the new instruction.
+C'est tout ce dont nous avons besoin au moment de la compilation. Définissons la nouvelle instruction.
 
 ^code jump-if-false-op (1 before, 1 after)
 
-Over in the VM, we get it working like so:
+Là-bas dans la VM, nous la faisons fonctionner comme ceci :
 
 ^code op-jump-if-false (2 before, 1 after)
 
-This is the first instruction we've added that takes a 16-bit operand. To read
-that from the chunk, we use a new macro.
+C'est la première instruction que nous avons ajoutée qui prend un opérande de 16-bits. Pour lire cela depuis le chunk, nous utilisons une nouvelle macro.
 
 ^code read-short (1 before, 1 after)
 
-It yanks the next two bytes from the chunk and builds a 16-bit unsigned integer
-out of them. As usual, we clean up our macro when we're done with it.
+Elle tire les deux prochains octets du chunk et construit un entier non signé de 16-bits hors d'eux. Comme d'habitude, nous nettoyons notre macro quand nous en avons fini avec elle.
 
 ^code undef-read-short (1 before, 1 after)
 
-After reading the offset, we check the condition value on top of the stack.
-<span name="if">If</span> it's falsey, we apply this jump offset to the `ip`.
-Otherwise, we leave the `ip` alone and execution will automatically proceed to
-the next instruction following the jump instruction.
+Après avoir lu le décalage, nous vérifions la valeur de condition au sommet de la pile. <span name="if">Si</span> elle est fausse, nous appliquons ce décalage de saut au `ip`. Sinon, nous laissons le `ip` seul et l'exécution procédera automatiquement à l'instruction suivante suivant l'instruction de saut.
 
-In the case where the condition is falsey, we don't need to do any other work.
-We've offset the `ip`, so when the outer instruction dispatch loop turns again,
-it will pick up execution at that new instruction, past all of the code in the
-then branch.
+Dans le cas où la condition est fausse, nous n'avons pas besoin de faire d'autre travail. Nous avons décalé le `ip`, donc quand la boucle de répartition d'instruction extérieure tourne encore, elle reprendra l'exécution à cette nouvelle instruction, passé tout le code dans la branche alors.
 
 <aside name="if">
 
-I said we wouldn't use C's `if` statement to implement Lox's control flow, but
-we do use one here to determine whether or not to offset the instruction
-pointer. But we aren't really using C for *control flow*. If we wanted to, we
-could do the same thing purely arithmetically. Let's assume we have a function
-`falsey()` that takes a Lox Value and returns 1 if it's falsey or 0 otherwise.
-Then we could implement the jump instruction like:
+J'ai dit que nous n'utiliserions pas l'instruction `if` du C pour implémenter le contrôle de flux de Lox, mais nous en utilisons bien une ici pour déterminer si oui ou non décaler le pointeur d'instruction. Mais nous n'utilisons pas vraiment le C pour le _contrôle de flux_. Si nous voulions, nous pourrions faire la même chose purement arithmétiquement. Supposons que nous avons une fonction `falsey()` qui prend une Value Lox et renvoie 1 si elle est fausse ou 0 sinon. Alors nous pourrions implémenter l'instruction de saut comme :
 
 ```c
 case OP_JUMP_IF_FALSE: {
@@ -205,429 +120,280 @@ case OP_JUMP_IF_FALSE: {
 }
 ```
 
-The `falsey()` function would probably use some control flow to handle the
-different value types, but that's an implementation detail of that function and
-doesn't affect how our VM does its own control flow.
+La fonction `falsey()` utiliserait probablement quelque contrôle de flux pour gérer les différents types de valeur, mais c'est un détail d'implémentation de cette fonction et n'affecte pas comment notre VM fait son propre contrôle de flux.
 
 </aside>
 
-Note that the jump instruction doesn't pop the condition value off the stack. So
-we aren't totally done here, since this leaves an extra value floating around on
-the stack. We'll clean that up soon. Ignoring that for the moment, we do have a
-working `if` statement in Lox now, with only one little instruction required to
-support it at runtime in the VM.
+Notez que l'instruction de saut ne dépile pas la valeur de condition de la pile. Donc nous n'avons pas totalement fini ici, puisque cela laisse une valeur supplémentaire flottant sur la pile. Nous nettoierons cela bientôt. Ignorant cela pour le moment, nous avons bien une instruction `if` fonctionnelle dans Lox maintenant, avec seulement une petite instruction requise pour la supporter à l'exécution dans la VM.
 
-### Else clauses
+### Clauses Else
 
-An `if` statement without support for `else` clauses is like Morticia Addams
-without Gomez. So, after we compile the then branch, we look for an `else`
-keyword. If we find one, we compile the else branch.
+Une instruction `if` sans support pour les clauses `else` est comme Morticia Addams sans Gomez. Donc, après avoir compilé la branche alors, nous cherchons un mot-clé `else`. Si nous en trouvons un, nous compilons la branche sinon.
 
 ^code compile-else (1 before, 1 after)
 
-When the condition is falsey, we'll jump over the then branch. If there's an
-else branch, the `ip` will land right at the beginning of its code. But that's
-not enough, though. Here's the flow that leads to:
+Quand la condition est fausse, nous sauterons par-dessus la branche alors. S'il y a une branche sinon, le `ip` atterrira juste au début de son code. Mais ce n'est pas suffisant, cependant. Voici le flux auquel cela mène :
 
-<img src="image/jumping-back-and-forth/bad-else.png" alt="Flowchart of the compiled bytecode with the then branch incorrectly falling through to the else branch." />
+<img src="image/jumping-back-and-forth/bad-else.png" alt="Organigramme du bytecode compilé avec la branche alors tombant incorrectement à travers vers la branche sinon." />
 
-If the condition is truthy, we execute the then branch like we want. But after
-that, execution rolls right on through into the else branch. Oops! When the
-condition is true, after we run the then branch, we need to jump over the else
-branch. That way, in either case, we only execute a single branch, like this:
+Si la condition est vraie, nous exécutons la branche alors comme nous voulons. Mais après cela, l'exécution roule droit à travers dans la branche sinon. Oups ! Quand la condition est vraie, après avoir exécuté la branche alors, nous avons besoin de sauter par-dessus la branche sinon. De cette façon, dans l'un ou l'autre cas, nous exécutons seulement une seule branche, comme ceci :
 
-<img src="image/jumping-back-and-forth/if-else.png" alt="Flowchart of the compiled bytecode for an if with an else clause." />
+<img src="image/jumping-back-and-forth/if-else.png" alt="Organigramme du bytecode compilé pour un if avec une clause else." />
 
-To implement that, we need another jump from the end of the then branch.
+Pour implémenter cela, nous avons besoin d'un autre saut depuis la fin de la branche alors.
 
 ^code jump-over-else (2 before, 1 after)
 
-We patch that offset after the end of the else body.
+Nous patchons ce décalage après la fin du corps du sinon.
 
 ^code patch-else (1 before, 1 after)
 
-After executing the then branch, this jumps to the next statement after the else
-branch. Unlike the other jump, this jump is unconditional. We always take it, so
-we need another instruction that expresses that.
+Après l'exécution de la branche alors, ceci saute à l'instruction suivante après la branche sinon. Contrairement à l'autre saut, ce saut est inconditionnel. Nous le prenons toujours, donc nous avons besoin d'une autre instruction qui exprime cela.
 
 ^code jump-op (1 before, 1 after)
 
-We interpret it like so:
+Nous l'interprétons comme ceci :
 
 ^code op-jump (2 before, 1 after)
 
-Nothing too surprising here -- the only difference is that it doesn't check a
-condition and always applies the offset.
+Rien de trop surprenant ici -- la seule différence est qu'elle ne vérifie pas une condition et applique toujours le décalage.
 
-We have then and else branches working now, so we're close. The last bit is to
-clean up that condition value we left on the stack. Remember, each statement is
-required to have zero stack effect -- after the statement is finished executing,
-the stack should be as tall as it was before.
+Nous avons les branches alors et sinon fonctionnant maintenant, donc nous sommes proches. Le dernier morceau est de nettoyer cette valeur de condition que nous avons laissée sur la pile. Rappelez-vous, chaque instruction est requise d'avoir un effet de pile nul -- après que l'instruction est finie d'exécuter, la pile devrait être aussi haute qu'elle l'était avant.
 
-We could have the `OP_JUMP_IF_FALSE` instruction pop the condition itself, but
-soon we'll use that same instruction for the logical operators where we don't
-want the condition popped. Instead, we'll have the compiler emit a couple of
-explicit `OP_POP` instructions when compiling an `if` statement. We need to take
-care that every execution path through the generated code pops the condition.
+Nous pourrions faire que l'instruction `OP_JUMP_IF_FALSE` dépile la condition elle-même, mais bientôt nous utiliserons cette même instruction pour les opérateurs logiques où nous ne voulons pas que la condition soit dépilée. Au lieu de cela, nous ferons que le compilateur émette une couple d'instructions `OP_POP` explicites lors de la compilation d'une instruction `if`. Nous avons besoin de prendre soin que chaque chemin d'exécution à travers le code généré dépile la condition.
 
-When the condition is truthy, we pop it right before the code inside the then
-branch.
+Quand la condition est vraie, nous la dépilons juste avant le code à l'intérieur de la branche alors.
 
 ^code pop-then (1 before, 1 after)
 
-Otherwise, we pop it at the beginning of the else branch.
+Sinon, nous la dépilons au début de la branche sinon.
 
 ^code pop-end (1 before, 2 after)
 
-This little instruction here also means that every `if` statement has an
-implicit else branch even if the user didn't write an `else` clause. In the case
-where they left it off, all the branch does is discard the condition value.
+Cette petite instruction ici signifie aussi que chaque instruction `if` a une branche sinon implicite même si l'utilisateur n'a pas écrit une clause `else`. Dans le cas où ils l'ont laissée de côté, tout ce que la branche fait est de jeter la valeur de condition.
 
-The full correct flow looks like this:
+Le flux correct complet ressemble à ceci :
 
-<img src="image/jumping-back-and-forth/full-if-else.png" alt="Flowchart of the compiled bytecode including necessary pop instructions." />
+<img src="image/jumping-back-and-forth/full-if-else.png" alt="Organigramme du bytecode compilé incluant les instructions pop nécessaires." />
 
-If you trace through, you can see that it always executes a single branch and
-ensures the condition is popped first. All that remains is a little disassembler
-support.
+Si vous tracez à travers, vous pouvez voir qu'il exécute toujours une seule branche et assure que la condition est dépilée d'abord. Tout ce qui reste est un peu de support de désassembleur.
 
 ^code disassemble-jump (1 before, 1 after)
 
-These two instructions have a new format with a 16-bit operand, so we add a new
-utility function to disassemble them.
+Ces deux instructions ont un nouveau format avec un opérande de 16-bits, donc nous ajoutons une nouvelle fonction utilitaire pour les désassembler.
 
 ^code jump-instruction
 
-There we go, that's one complete control flow construct. If this were an '80s
-movie, the montage music would kick in and the rest of the control flow syntax
-would take care of itself. Alas, the <span name="80s">'80s</span> are long over,
-so we'll have to grind it out ourselves.
+Et voilà, c'est une construction de contrôle de flux complète. Si c'était un film des années 80, la musique de montage démarrerait et le reste de la syntaxe de contrôle de flux prendrait soin de lui-même. Hélas, les <span name="80s">années 80</span> sont depuis longtemps finies, donc nous aurons à le broyer nous-mêmes.
 
 <aside name="80s">
 
-My enduring love of Depeche Mode notwithstanding.
+Mon amour durable de Depeche Mode nonobstant.
 
 </aside>
+## Opérateurs Logiques
 
-## Logical Operators
+Vous vous souvenez probablement de cela de jlox, mais les opérateurs logiques `and` et `or` ne sont pas juste une autre paire d'opérateurs binaires comme `+` et `-`. Parce qu'ils court-circuitent et peuvent ne pas évaluer leur opérande droit dépendant de la valeur de celui de gauche, ils fonctionnent plus comme des expressions de contrôle de flux.
 
-You probably remember this from jlox, but the logical operators `and` and `or`
-aren't just another pair of binary operators like `+` and `-`. Because they
-short-circuit and may not evaluate their right operand depending on the value of
-the left one, they work more like control flow expressions.
-
-They're basically a little variation on an `if` statement with an `else` clause.
-The easiest way to explain them is to just show you the compiler code and the
-control flow it produces in the resulting bytecode. Starting with `and`, we hook
-it into the expression parsing table here:
+Ils sont fondamentalement une petite variation sur une instruction `if` avec une clause `else`. La façon la plus facile de les expliquer est de juste vous montrer le code du compilateur et le contrôle de flux qu'il produit dans le bytecode résultant. Commençant avec `and`, nous l'accrochons dans la table d'analyse d'expression ici :
 
 ^code table-and (1 before, 1 after)
 
-That hands off to a new parser function.
+Cela passe la main à une nouvelle fonction d'analyseur.
 
 ^code and
 
-At the point this is called, the left-hand side expression has already been
-compiled. That means at runtime, its value will be on top of the stack. If that
-value is falsey, then we know the entire `and` must be false, so we skip the
-right operand and leave the left-hand side value as the result of the entire
-expression. Otherwise, we discard the left-hand value and evaluate the right
-operand which becomes the result of the whole `and` expression.
+Au point que ceci est appelé, l'expression du côté gauche a déjà été compilée. Cela signifie qu'à l'exécution, sa valeur sera au sommet de la pile. Si cette valeur est fausse, alors nous savons que le `and` entier doit être faux, donc nous sautons l'opérande droit et laissons la valeur du côté gauche comme le résultat de l'expression entière. Sinon, nous jetons la valeur de gauche et évaluons l'opérande droit qui devient le résultat du `and` entier.
 
-Those four lines of code right there produce exactly that. The flow looks like
-this:
+Ces quatre lignes de code juste là produisent exactement cela. Le flux ressemble à ceci :
 
-<img src="image/jumping-back-and-forth/and.png" alt="Flowchart of the compiled bytecode of an 'and' expression." />
+<img src="image/jumping-back-and-forth/and.png" alt="Organigramme du bytecode compilé d'une expression 'and'." />
 
-Now you can see why `OP_JUMP_IF_FALSE` <span name="instr">leaves</span> the
-value on top of the stack. When the left-hand side of the `and` is falsey, that
-value sticks around to become the result of the entire expression.
+Maintenant vous pouvez voir pourquoi `OP_JUMP_IF_FALSE` <span name="instr">laisse</span> la valeur au sommet de la pile. Quand le côté gauche du `and` est faux, cette valeur traîne pour devenir le résultat de l'expression entière.
 
 <aside name="instr">
 
-We've got plenty of space left in our opcode range, so we could have separate
-instructions for conditional jumps that implicitly pop and those that don't, I
-suppose. But I'm trying to keep things minimal for the book. In your bytecode
-VM, it's worth exploring adding more specialized instructions and seeing how
-they affect performance.
+Nous avons plein d'espace laissé dans notre plage d'opcode, donc nous pourrions avoir des instructions séparées pour les sauts conditionnels qui dépilent implicitement et ceux qui ne le font pas, je suppose. Mais j'essaie de garder les choses minimales pour le livre. Dans votre VM à bytecode, cela vaut la peine d'explorer l'ajout d'instructions plus spécialisées et voir comment elles affectent la performance.
 
 </aside>
 
-### Logical or operator
+### Opérateur logique or
 
-The `or` operator is a little more complex. First we add it to the parse table.
+L'opérateur `or` est un peu plus complexe. D'abord nous l'ajoutons à la table d'analyse.
 
 ^code table-or (1 before, 1 after)
 
-When that parser consumes an infix `or` token, it calls this:
+Quand cet analyseur consomme un jeton infixe `or`, il appelle ceci :
 
 ^code or
 
-In an `or` expression, if the left-hand side is *truthy*, then we skip over the
-right operand. Thus we need to jump when a value is truthy. We could add a
-separate instruction, but just to show how our compiler is free to map the
-language's semantics to whatever instruction sequence it wants, I implemented it
-in terms of the jump instructions we already have.
+Dans une expression `or`, si le côté gauche est _vrai_, alors nous sautons par-dessus l'opérande droit. Ainsi nous avons besoin de sauter quand une valeur est vraie. Nous pourrions ajouter une instruction séparée, mais juste pour montrer comment notre compilateur est libre de mapper la sémantique du langage à n'importe quelle séquence d'instruction qu'il veut, je l'ai implémenté en termes des instructions de saut que nous avons déjà.
 
-When the left-hand side is falsey, it does a tiny jump over the next statement.
-That statement is an unconditional jump over the code for the right operand.
-This little dance effectively does a jump when the value is truthy. The flow
-looks like this:
+Quand le côté gauche est faux, il fait un minuscule saut par-dessus l'instruction suivante. Cette instruction est un saut inconditionnel par-dessus le code pour l'opérande droit. Cette petite danse fait effectivement un saut quand la valeur est vraie. Le flux ressemble à ceci :
 
-<img src="image/jumping-back-and-forth/or.png" alt="Flowchart of the compiled bytecode of a logical or expression." />
+<img src="image/jumping-back-and-forth/or.png" alt="Organigramme du bytecode compilé d'une expression logique or." />
 
-If I'm honest with you, this isn't the best way to do this. There are more
-instructions to dispatch and more overhead. There's no good reason why `or`
-should be slower than `and`. But it is kind of fun to see that it's possible to
-implement both operators without adding any new instructions. Forgive me my
-indulgences.
+Si je suis honnête avec vous, ce n'est pas la meilleure façon de faire cela. Il y a plus d'instructions à répartir et plus de surcoût. Il n'y a aucune bonne raison pourquoi `or` devrait être plus lent que `and`. Mais c'est une sorte d'amusement de voir qu'il est possible d'implémenter les deux opérateurs sans ajouter aucune nouvelle instruction. Pardonnez-moi mes indulgences.
 
-OK, those are the three *branching* constructs in Lox. By that, I mean, these
-are the control flow features that only jump *forward* over code. Other
-languages often have some kind of multi-way branching statement like `switch`
-and maybe a conditional expression like `?:`, but Lox keeps it simple.
+OK, ce sont les trois constructions de _branchement_ dans Lox. Par là, je veux dire, ce sont les fonctionnalités de contrôle de flux qui sautent seulement en _avant_ par-dessus du code. D'autres langages ont souvent quelque sorte d'instruction de branchement multi-voie comme `switch` et peut-être une expression conditionnelle comme `?:`, mais Lox garde ça simple.
 
-## While Statements
+## Instructions While
 
-That takes us to the *looping* statements, which jump *backward* so that code
-can be executed more than once. Lox only has two loop constructs, `while` and
-`for`. A `while` loop is (much) simpler, so we start the party there.
+Cela nous amène aux instructions de _boucle_, qui sautent en _arrière_ pour que le code puisse être exécuté plus d'une fois. Lox a seulement deux constructions de boucle, `while` et `for`. Une boucle `while` est (beaucoup) plus simple, donc nous commençons la fête là.
 
 ^code parse-while (1 before, 1 after)
 
-When we reach a `while` token, we call:
+Quand nous atteignons un jeton `while`, nous appelons :
 
 ^code while-statement
 
-Most of this mirrors `if` statements -- we compile the condition expression,
-surrounded by mandatory parentheses. That's followed by a jump instruction that
-skips over the subsequent body statement if the condition is falsey.
+La plupart de ceci reflète les instructions `if` -- nous compilons l'expression de condition, entourée par des parenthèses obligatoires. C'est suivi par une instruction de saut qui saute par-dessus l'instruction de corps subséquente si la condition est fausse.
 
-We patch the jump after compiling the body and take care to <span
-name="pop">pop</span> the condition value from the stack on either path. The
-only difference from an `if` statement is the loop. That looks like this:
+Nous patchons le saut après la compilation du corps et prenons soin de <span name="pop">dépiler</span> la valeur de condition de la pile sur l'un ou l'autre chemin. La seule différence d'une instruction `if` est la boucle. Cela ressemble à ceci :
 
 <aside name="pop">
 
-Really starting to second-guess my decision to use the same jump instructions
-for the logical operators.
+Je commence vraiment à remettre en question ma décision d'utiliser les mêmes instructions de saut pour les opérateurs logiques.
 
 </aside>
 
 ^code loop (1 before, 2 after)
 
-After the body, we call this function to emit a "loop" instruction. That
-instruction needs to know how far back to jump. When jumping forward, we had to
-emit the instruction in two stages since we didn't know how far we were going to
-jump until after we emitted the jump instruction. We don't have that problem
-now. We've already compiled the point in code that we want to jump back to --
-it's right before the condition expression.
+Après le corps, nous appelons cette fonction pour émettre une instruction "loop" (boucle). Cette instruction a besoin de savoir jusqu'où sauter en arrière. Lors du saut en avant, nous devions émettre l'instruction en deux étapes puisque nous ne savions pas jusqu'où nous allions sauter jusqu'à après que nous ayons émis l'instruction de saut. Nous n'avons pas ce problème maintenant. Nous avons déjà compilé le point dans le code auquel nous voulons sauter en arrière -- c'est juste avant l'expression de condition.
 
-All we need to do is capture that location as we compile it.
+Tout ce que nous avons besoin de faire est de capturer cet emplacement alors que nous le compilons.
 
 ^code loop-start (1 before, 1 after)
 
-After executing the body of a `while` loop, we jump all the way back to before
-the condition. That way, we re-evaluate the condition expression on each
-iteration. We store the chunk's current instruction count in `loopStart` to
-record the offset in the bytecode right before the condition expression we're
-about to compile. Then we pass that into this helper function:
+Après avoir exécuté le corps d'une boucle `while`, nous sautons tout le chemin en arrière à avant la condition. De cette façon, nous réévaluons l'expression de condition à chaque itération. Nous stockons le compte d'instruction courant du chunk dans `loopStart` pour enregistrer le décalage dans le bytecode juste avant l'expression de condition que nous sommes sur le point de compiler. Ensuite nous passons cela dans cette fonction d'aide :
 
 ^code emit-loop
 
-It's a bit like `emitJump()` and `patchJump()` combined. It emits a new loop
-instruction, which unconditionally jumps *backwards* by a given offset. Like the
-jump instructions, after that we have a 16-bit operand. We calculate the offset
-from the instruction we're currently at to the `loopStart` point that we want to
-jump back to. The `+ 2` is to take into account the size of the `OP_LOOP`
-instruction's own operands which we also need to jump over.
+C'est un peu comme `emitJump()` et `patchJump()` combinés. Elle émet une nouvelle instruction de boucle, qui saute inconditionnellement en _arrière_ par un décalage donné. Comme les instructions de saut, après cela nous avons un opérande de 16-bits. Nous calculons le décalage depuis l'instruction à laquelle nous sommes actuellement vers le point `loopStart` auquel nous voulons sauter en arrière. Le `+ 2` est pour prendre en compte la taille des propres opérandes de l'instruction `OP_LOOP` que nous avons aussi besoin de sauter par-dessus.
 
-From the VM's perspective, there really is no semantic difference between
-`OP_LOOP` and `OP_JUMP`. Both just add an offset to the `ip`. We could have used
-a single instruction for both and given it a signed offset operand. But I
-figured it was a little easier to sidestep the annoying bit twiddling required
-to manually pack a signed 16-bit integer into two bytes, and we've got the
-opcode space available, so why not use it?
+De la perspective de la VM, il n'y a vraiment aucune différence sémantique entre `OP_LOOP` et `OP_JUMP`. Toutes deux ajoutent juste un décalage au `ip`. Nous aurions pu utiliser une seule instruction pour les deux et lui donner un opérande de décalage signé. Mais je me suis figuré que c'était un peu plus facile d'éviter le triturage de bits ennuyeux requis pour empaqueter manuellement un entier signé de 16-bits dans deux octets, et nous avons l'espace d'opcode disponible, alors pourquoi ne pas l'utiliser ?
 
-The new instruction is here:
+La nouvelle instruction est ici :
 
 ^code loop-op (1 before, 1 after)
 
-And in the VM, we implement it thusly:
+Et dans la VM, nous l'implémentons ainsi :
 
 ^code op-loop (1 before, 1 after)
 
-The only difference from `OP_JUMP` is a subtraction instead of an addition.
-Disassembly is similar too.
+La seule différence de `OP_JUMP` est une soustraction au lieu d'une addition. Le désassemblage est similaire aussi.
 
 ^code disassemble-loop (1 before, 1 after)
 
-That's our `while` statement. It contains two jumps -- a conditional forward one
-to escape the loop when the condition is not met, and an unconditional loop
-backward after we have executed the body. The flow looks like this:
+C'est notre instruction `while`. Elle contient deux sauts -- un conditionnel en avant pour échapper à la boucle quand la condition n'est pas remplie, et une boucle inconditionnelle en arrière après que nous avons exécuté le corps. Le flux ressemble à ceci :
 
-<img src="image/jumping-back-and-forth/while.png" alt="Flowchart of the compiled bytecode of a while statement." />
+<img src="image/jumping-back-and-forth/while.png" alt="Organigramme du bytecode compilé d'une instruction while." />
 
-## For Statements
+## Instructions For
 
-The other looping statement in Lox is the venerable `for` loop, inherited from
-C. It's got a lot more going on with it compared to a `while` loop. It has three
-clauses, all of which are optional:
+L'autre instruction de boucle dans Lox est la vénérable boucle `for`, héritée du C. Elle a beaucoup plus de choses qui se passent avec elle comparée à une boucle `while`. Elle a trois clauses, qui sont toutes optionnelles :
 
 <span name="detail"></span>
 
-*   The initializer can be a variable declaration or an expression. It runs once
-    at the beginning of the statement.
+- L'initialisateur peut être une déclaration de variable ou une expression. Il s'exécute une fois au début de l'instruction.
 
-*   The condition clause is an expression. Like in a `while` loop, we exit the
-    loop when it evaluates to something falsey.
+- La clause de condition est une expression. Comme dans une boucle `while`, nous sortons de la boucle quand elle évalue à quelque chose de faux.
 
-*   The increment expression runs once at the end of each loop iteration.
+- L'expression d'incrément s'exécute une fois à la fin de chaque itération de boucle.
 
 <aside name="detail">
 
-If you want a refresher, the corresponding chapter in part II goes through the
-semantics [in more detail][jlox].
+Si vous voulez un rafraîchissement, le chapitre correspondant dans la partie II parcourt la sémantique [plus en détail][jlox].
 
-[jlox]: control-flow.html#for-loops
+[jlox]: contrôle-de-flux.html#boucles-for
 
 </aside>
 
-In jlox, the parser desugared a `for` loop to a synthesized AST for a `while`
-loop with some extra stuff before it and at the end of the body. We'll do
-something similar, though we won't go through anything like an AST. Instead,
-our bytecode compiler will use the jump and loop instructions we already have.
+Dans jlox, l'analyseur dé-sucre une boucle `for` en un AST synthétisé pour une boucle `while` avec quelques trucs extra avant elle et à la fin du corps. Nous ferons quelque chose de similaire, bien que nous ne passerons par rien comme un AST. Au lieu de cela, notre compilateur de bytecode utilisera les instructions de saut et de boucle que nous avons déjà.
 
-We'll work our way through the implementation a piece at a time, starting with
-the `for` keyword.
+Nous travaillerons notre chemin à travers l'implémentation un morceau à la fois, commençant avec le mot-clé `for`.
 
 ^code parse-for (1 before, 1 after)
 
-It calls a helper function. If we only supported `for` loops with empty clauses
-like `for (;;)`, then we could implement it like this:
+Elle appelle une fonction d'aide. Si nous supportions seulement les boucles `for` avec des clauses vides comme `for (;;)`, alors nous pourrions l'implémenter comme ceci :
 
 ^code for-statement
 
-There's a bunch of mandatory punctuation at the top. Then we compile the body.
-Like we did for `while` loops, we record the bytecode offset at the top of the
-body and emit a loop to jump back to that point after it. We've got a working
-implementation of <span name="infinite">infinite</span> loops now.
+Il y a un tas de ponctuation obligatoire au sommet. Ensuite nous compilons le corps. Comme nous avons fait pour les boucles `while`, nous enregistrons le décalage bytecode au sommet du corps et émettons une boucle pour sauter en arrière à ce point après lui. Nous avons une implémentation fonctionnelle de boucles <span name="infinite">infinies</span> maintenant.
 
 <aside name="infinite">
 
-Alas, without `return` statements, there isn't any way to terminate it short of
-a runtime error.
+Hélas, sans instructions `return`, il n'y a aucun moyen de la terminer à moins d'une erreur d'exécution.
 
 </aside>
 
-### Initializer clause
+### Clause d'initialisateur
 
-Now we'll add the first clause, the initializer. It executes only once, before
-the body, so compiling is straightforward.
+Maintenant nous ajouterons la première clause, l'initialisateur. Elle s'exécute seulement une fois, avant le corps, donc compiler est direct.
 
 ^code for-initializer (1 before, 2 after)
 
-The syntax is a little complex since we allow either a variable declaration or
-an expression. We use the presence of the `var` keyword to tell which we have.
-For the expression case, we call `expressionStatement()` instead of
-`expression()`. That looks for a semicolon, which we need here too, and also
-emits an `OP_POP` instruction to discard the value. We don't want the
-initializer to leave anything on the stack.
+La syntaxe est un peu complexe puisque nous permettons soit une déclaration de variable soit une expression. Nous utilisons la présence du mot-clé `var` pour dire laquelle nous avons. Pour le cas de l'expression, nous appelons `expressionStatement()` au lieu de `expression()`. Cela cherche un point-virgule, dont nous avons besoin ici aussi, et émet aussi une instruction `OP_POP` pour jeter la valeur. Nous ne voulons pas que l'initialisateur laisse quoi que ce soit sur la pile.
 
-If a `for` statement declares a variable, that variable should be scoped to the
-loop body. We ensure that by wrapping the whole statement in a scope.
+Si une instruction `for` déclare une variable, cette variable devrait être portée au corps de la boucle. Nous assurons cela en enveloppant l'instruction entière dans une portée.
 
 ^code for-begin-scope (1 before, 1 after)
 
-Then we close it at the end.
+Ensuite nous la fermons à la fin.
 
 ^code for-end-scope (1 before, 1 after)
 
-### Condition clause
+### Clause de condition
 
-Next, is the condition expression that can be used to exit the loop.
+Suivant, est l'expression de condition qui peut être utilisée pour sortir de la boucle.
 
 ^code for-exit (1 before, 1 after)
 
-Since the clause is optional, we need to see if it's actually present. If the
-clause is omitted, the next token must be a semicolon, so we look for that to
-tell. If there isn't a semicolon, there must be a condition expression.
+Puisque la clause est optionnelle, nous avons besoin de voir si elle est réellement présente. Si la clause est omise, le jeton suivant doit être un point-virgule, donc nous cherchons cela pour dire. S'il n'y a pas de point-virgule, il doit y avoir une expression de condition.
 
-In that case, we compile it. Then, just like with while, we emit a conditional
-jump that exits the loop if the condition is falsey. Since the jump leaves the
-value on the stack, we pop it before executing the body. That ensures we discard
-the value when the condition is true.
+Dans ce cas, nous la compilons. Ensuite, juste comme avec while, nous émettons un saut conditionnel qui sort de la boucle si la condition est fausse. Puisque le saut laisse la valeur sur la pile, nous la dépilons avant d'exécuter le corps. Cela assure que nous jetons la valeur quand la condition est vraie.
 
-After the loop body, we need to patch that jump.
+Après le corps de la boucle, nous avons besoin de patcher ce saut.
 
 ^code exit-jump (1 before, 2 after)
 
-We do this only when there is a condition clause. If there isn't, there's no
-jump to patch and no condition value on the stack to pop.
+Nous faisons cela seulement quand il y a une clause de condition. S'il n'y en a pas, il n'y a pas de saut à patcher et pas de valeur de condition sur la pile à dépiler.
 
-### Increment clause
+### Clause d'incrément
 
-I've saved the best for last, the increment clause. It's pretty convoluted. It
-appears textually before the body, but executes *after* it. If we parsed to an
-AST and generated code in a separate pass, we could simply traverse into and
-compile the `for` statement AST's body field before its increment clause.
+J'ai gardé le meilleur pour la fin, la clause d'incrément. C'est assez alambiqué. Elle apparaît textuellement avant le corps, mais s'exécute _après_ lui. Si nous analysions vers un AST et générions du code dans une passe séparée, nous pourrions simplement traverser dans et compiler le champ corps de l'AST de l'instruction `for` avant sa clause d'incrément.
 
-Unfortunately, we can't compile the increment clause later, since our compiler
-only makes a single pass over the code. Instead, we'll *jump over* the
-increment, run the body, jump *back* up to the increment, run it, and then go to
-the next iteration.
+Malheureusement, nous ne pouvons pas compiler la clause d'incrément plus tard, puisque notre compilateur fait seulement une seule passe sur le code. Au lieu de cela, nous _sauterons par-dessus_ l'incrément, exécuterons le corps, sauterons _en arrière_ jusqu'à l'incrément, l'exécuterons, et ensuite irons à la prochaine itération.
 
-I know, a little weird, but hey, it beats manually managing ASTs in memory in C,
-right? Here's the code:
+Je sais, un peu bizarre, mais hey, cela bat la gestion manuelle d'ASTs en mémoire en C, non ? Voici le code :
 
 ^code for-increment (2 before, 2 after)
 
-Again, it's optional. Since this is the last clause, when omitted, the next
-token will be the closing parenthesis. When an increment is present, we need to
-compile it now, but it shouldn't execute yet. So, first, we emit an
-unconditional jump that hops over the increment clause's code to the body of the
-loop.
+Encore, c'est optionnel. Puisque c'est la dernière clause, quand omise, le jeton suivant sera la parenthèse fermante. Quand un incrément est présent, nous avons besoin de le compiler maintenant, mais il ne devrait pas s'exécuter encore. Donc, d'abord, nous émettons un saut inconditionnel qui saute par-dessus le code de la clause d'incrément vers le corps de la boucle.
 
-Next, we compile the increment expression itself. This is usually an assignment.
-Whatever it is, we only execute it for its side effect, so we also emit a pop to
-discard its value.
+Ensuite, nous compilons l'expression d'incrément elle-même. C'est habituellement une assignation. Quoi que ce soit, nous l'exécutons seulement pour son effet de bord, donc nous émettons aussi un pop pour jeter sa valeur.
 
-The last part is a little tricky. First, we emit a loop instruction. This is the
-main loop that takes us back to the top of the `for` loop -- right before the
-condition expression if there is one. That loop happens right after the
-increment, since the increment executes at the end of each loop iteration.
+La dernière partie est un peu délicate. D'abord, nous émettons une instruction de boucle. C'est la boucle principale qui nous ramène au sommet de la boucle `for` -- juste avant l'expression de condition s'il y en a une. Cette boucle arrive juste après l'incrément, puisque l'incrément s'exécute à la fin de chaque itération de boucle.
 
-Then we change `loopStart` to point to the offset where the increment expression
-begins. Later, when we emit the loop instruction after the body statement, this
-will cause it to jump up to the *increment* expression instead of the top of the
-loop like it does when there is no increment. This is how we weave the
-increment in to run after the body.
+Ensuite nous changeons `loopStart` pour pointer vers le décalage où l'expression d'incrément commence. Plus tard, quand nous émettons l'instruction de boucle après l'instruction de corps, cela causera qu'elle saute jusqu'à l'expression d'_incrément_ au lieu du sommet de la boucle comme elle fait quand il n'y a pas d'incrément. C'est comme cela que nous tissons l'incrément dedans pour tourner après le corps.
 
-It's convoluted, but it all works out. A complete loop with all the clauses
-compiles to a flow like this:
+C'est alambiqué, mais tout s'arrange. Une boucle complète avec toutes les clauses compile vers un flux comme ceci :
 
-<img src="image/jumping-back-and-forth/for.png" alt="Flowchart of the compiled bytecode of a for statement." />
+<img src="image/jumping-back-and-forth/for.png" alt="Organigramme du bytecode compilé d'une instruction for." />
 
-As with implementing `for` loops in jlox, we didn't need to touch the runtime.
-It all gets compiled down to primitive control flow operations the VM already
-supports. In this chapter, we've taken a big <span name="leap">leap</span>
-forward -- clox is now Turing complete. We've also covered quite a bit of new
-syntax: three statements and two expression forms. Even so, it only took three
-new simple instructions. That's a pretty good effort-to-reward ratio for the
-architecture of our VM.
+Comme avec l'implémentation des boucles `for` dans jlox, nous n'avons pas eu besoin de toucher au runtime. Tout se fait compiler vers des opérations de contrôle de flux primitives que la VM supporte déjà. Dans ce chapitre, nous avons fait un grand <span name="leap">bond</span> en avant -- clox est maintenant Turing-complet. Nous avons aussi couvert un bon peu de nouvelle syntaxe : trois instructions et deux formes d'expression. Même ainsi, cela a seulement pris trois nouvelles instructions simples. C'est un ratio effort-sur-récompense assez bon pour l'architecture de notre VM.
 
 <aside name="leap">
 
-I couldn't resist the pun. I regret nothing.
+Je n'ai pas pu résister au jeu de mots. Je ne regrette rien.
 
 </aside>
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  In addition to `if` statements, most C-family languages have a multi-way
-    `switch` statement. Add one to clox. The grammar is:
+1.  En plus des instructions `if`, la plupart des langages de la famille C ont une instruction `switch` multi-voie. Ajoutez-en une à clox. La grammaire est :
 
     ```ebnf
     switchStmt     → "switch" "(" expression ")"
@@ -636,200 +402,98 @@ I couldn't resist the pun. I regret nothing.
     defaultCase    → "default" ":" statement* ;
     ```
 
-    To execute a `switch` statement, first evaluate the parenthesized switch
-    value expression. Then walk the cases. For each case, evaluate its value
-    expression. If the case value is equal to the switch value, execute the
-    statements under the case and then exit the `switch` statement. Otherwise,
-    try the next case. If no case matches and there is a `default` clause,
-    execute its statements.
+    Pour exécuter une instruction `switch`, évaluez d'abord l'expression de valeur switch parenthesée. Ensuite parcourez les cas. Pour chaque cas, évaluez son expression de valeur. Si la valeur de cas est égale à la valeur switch, exécutez les instructions sous le cas et ensuite sortez de l'instruction `switch`. Sinon, essayez le cas suivant. Si aucun cas ne correspond et qu'il y a une clause `default`, exécutez ses instructions.
 
-    To keep things simpler, we're omitting fallthrough and `break` statements.
-    Each case automatically jumps to the end of the switch statement after its
-    statements are done.
+    Pour garder les choses plus simples, nous omettons la retombée (fallthrough) et les instructions `break`. Chaque cas saute automatiquement à la fin de l'instruction switch après que ses instructions sont faites.
 
-1.  In jlox, we had a challenge to add support for `break` statements. This
-    time, let's do `continue`:
+1.  Dans jlox, nous avions un défi pour ajouter le support pour les instructions `break`. Cette fois, faisons `continue` :
 
     ```ebnf
     continueStmt   → "continue" ";" ;
     ```
 
-    A `continue` statement jumps directly to the top of the nearest enclosing
-    loop, skipping the rest of the loop body. Inside a `for` loop, a `continue`
-    jumps to the increment clause, if there is one. It's a compile-time error to
-    have a `continue` statement not enclosed in a loop.
+    Une instruction `continue` saute directement au sommet de la boucle englobante la plus proche, sautant le reste du corps de la boucle. À l'intérieur d'une boucle `for`, un `continue` saute à la clause d'incrément, s'il y en a une. C'est une erreur de compilation d'avoir une instruction `continue` non englobée dans une boucle.
 
-    Make sure to think about scope. What should happen to local variables
-    declared inside the body of the loop or in blocks nested inside the loop
-    when a `continue` is executed?
+    Assurez-vous de penser à la portée. Que devrait-il arriver aux variables locales déclarées à l'intérieur du corps de la boucle ou dans des blocs imbriqués à l'intérieur de la boucle quand un `continue` est exécuté ?
 
-1.  Control flow constructs have been mostly unchanged since Algol 68. Language
-    evolution since then has focused on making code more declarative and high
-    level, so imperative control flow hasn't gotten much attention.
+1.  Les constructions de contrôle de flux ont été surtout inchangées depuis Algol 68. L'évolution du langage depuis lors s'est concentrée sur rendre le code plus déclaratif et haut niveau, donc le contrôle de flux impératif n'a pas obtenu beaucoup d'attention.
 
-    For fun, try to invent a useful novel control flow feature for Lox. It can
-    be a refinement of an existing form or something entirely new. In practice,
-    it's hard to come up with something useful enough at this low expressiveness
-    level to outweigh the cost of forcing a user to learn an unfamiliar notation
-    and behavior, but it's a good chance to practice your design skills.
+    Pour le plaisir, essayez d'inventer une fonctionnalité de contrôle de flux nouvelle utile pour Lox. Cela peut être un raffinement d'une forme existante ou quelque chose d'entièrement nouveau. En pratique, il est dur de trouver quelque chose d'assez utile à ce bas niveau d'expressivité pour peser plus lourd que le coût de forcer un utilisateur à apprendre une notation et un comportement non familiers, mais c'est une bonne chance de pratiquer vos compétences de conception.
 
 </div>
-
 <div class="design-note">
 
-## Design Note: Considering Goto Harmful
+## Note de Conception : Considérer le Goto Nuisible
 
-Discovering that all of our beautiful structured control flow in Lox is actually
-compiled to raw unstructured jumps is like the moment in Scooby Doo when the
-monster rips the mask off their face. It was goto all along! Except in this
-case, the monster is *under* the mask. We all know goto is evil. But... why?
+Découvrir que tout notre beau contrôle de flux structuré dans Lox est en fait compilé en sauts bruts non structurés est comme le moment dans Scooby Doo quand le monstre arrache le masque de son visage. C'était goto tout le long ! Sauf que dans ce cas, le monstre est _sous_ le masque. Nous savons tous que goto est maléfique. Mais... pourquoi ?
 
-It is true that you can write outrageously unmaintainable code using goto. But I
-don't think most programmers around today have seen that first hand. It's been a
-long time since that style was common. These days, it's a boogie man we invoke
-in scary stories around the campfire.
+Il est vrai que vous pouvez écrire du code outrageusement non maintenable utilisant goto. Mais je ne pense pas que la plupart des programmeurs autour d'aujourd'hui ont vu cela de première main. Cela fait longtemps que ce style était commun. Ces jours-ci, c'est un croque-mitaine que nous invoquons dans des histoires effrayantes autour du feu de camp.
 
-The reason we rarely confront that monster in person is because Edsger Dijkstra
-slayed it with his famous letter "Go To Statement Considered Harmful", published
-in *Communications of the ACM* (March, 1968). Debate around structured
-programming had been fierce for some time with adherents on both sides, but I
-think Dijkstra deserves the most credit for effectively ending it. Most new
-languages today have no unstructured jump statements.
+La raison pour laquelle nous confrontons rarement ce monstre en personne est parce que Edsger Dijkstra l'a tué avec sa célèbre lettre "Go To Statement Considered Harmful" (L'instruction Go To considérée nuisible), publiée dans _Communications of the ACM_ (Mars, 1968). Le débat autour de la programmation structurée avait été féroce pendant quelque temps avec des adhérents des deux côtés, mais je pense que Dijkstra mérite le plus de crédit pour effectivement y mettre fin. La plupart des nouveaux langages aujourd'hui n'ont pas d'instructions de saut non structuré.
 
-A one-and-a-half page letter that almost single-handedly destroyed a language
-feature must be pretty impressive stuff. If you haven't read it, I encourage you
-to do so. It's a seminal piece of computer science lore, one of our tribe's
-ancestral songs. Also, it's a nice, short bit of practice for reading academic
-CS <span name="style">writing</span>, which is a useful skill to develop.
+Une lettre d'une page et demie qui a presque à elle seule détruit une fonctionnalité de langage doit être un truc assez impressionnant. Si vous ne l'avez pas lue, je vous encourage à le faire. C'est un morceau séminal du folklore de la science informatique, une des chansons ancestrales de notre tribu. Aussi, c'est un joli, court morceau de pratique pour lire l'<span name="style">écriture</span> académique de CS, ce qui est une compétence utile à développer.
 
 <aside name="style">
 
-That is, if you can get past Dijkstra's insufferable faux-modest
-self-aggrandizing writing style:
+C'est-à-dire, si vous pouvez passer outre le style d'écriture faussement modeste et auto-agrandissant insupportable de Dijkstra :
 
-> More recently I discovered why the use of the go to statement has such
-> disastrous effects. ...At that time I did not attach too much importance to
-> this discovery; I now submit my considerations for publication because in very
-> recent discussions in which the subject turned up, I have been urged to do so.
+> Plus récemment, j'ai découvert pourquoi l'utilisation de l'instruction go to a de tels effets désastreux. ...À ce moment-là, je n'attachais pas trop d'importance à cette découverte ; je soumets maintenant mes considérations pour publication parce que dans des discussions très récentes dans lesquelles le sujet est apparu, j'ai été pressé de le faire.
 
-Ah, yet another one of my many discoveries. I couldn't even be bothered to write
-it up until the clamoring masses begged me to.
+Ah, encore une de mes nombreuses découvertes. Je ne pouvais même pas être dérangé de l'écrire jusqu'à ce que les masses clamantes me supplient de le faire.
 
 </aside>
 
-I've read it through a number of times, along with a few critiques, responses,
-and commentaries. I ended up with mixed feelings, at best. At a very high level,
-I'm with him. His general argument is something like this:
+Je l'ai lue un certain nombre de fois, avec quelques critiques, réponses, et commentaires. J'ai fini avec des sentiments mitigés, au mieux. À un très haut niveau, je suis avec lui. Son argument général est quelque chose comme ceci :
 
-1.  As programmers, we write programs -- static text -- but what we care about
-    is the actual running program -- its dynamic behavior.
+1.  En tant que programmeurs, nous écrivons des programmes -- texte statique -- mais ce dont nous nous soucions est le programme s'exécutant réellement -- son comportement dynamique.
 
-2.  We're better at reasoning about static things than dynamic things. (He
-    doesn't provide any evidence to support this claim, but I accept it.)
+2.  Nous sommes meilleurs à raisonner sur des choses statiques que des choses dynamiques. (Il ne fournit aucune preuve pour supporter cette affirmation, mais je l'accepte.)
 
-3.  Thus, the more we can make the dynamic execution of the program reflect its
-    textual structure, the better.
+3.  Ainsi, plus nous pouvons faire que l'exécution dynamique du programme reflète sa structure textuelle, mieux c'est.
 
-This is a good start. Drawing our attention to the separation between the code
-we write and the code as it runs inside the machine is an interesting insight.
-Then he tries to define a "correspondence" between program text and execution.
-For someone who spent literally his entire career advocating greater rigor in
-programming, his definition is pretty hand-wavey. He says:
+C'est un bon début. Attirer notre attention sur la séparation entre le code que nous écrivons et le code tel qu'il s'exécute à l'intérieur de la machine est une vue intéressante. Ensuite il essaie de définir une "correspondance" entre le texte du programme et l'exécution. Pour quelqu'un qui a passé littéralement sa carrière entière à préconiser une plus grande rigueur dans la programmation, sa définition est assez vague. Il dit :
 
-> Let us now consider how we can characterize the progress of a process. (You
-> may think about this question in a very concrete manner: suppose that a
-> process, considered as a time succession of actions, is stopped after an
-> arbitrary action, what data do we have to fix in order that we can redo the
-> process until the very same point?)
+> Considérons maintenant comment nous pouvons caractériser le progrès d'un processus. (Vous pouvez penser à cette question d'une manière très concrète : supposons qu'un processus, considéré comme une succession temporelle d'actions, est arrêté après une action arbitraire, quelles données devons-nous fixer afin que nous puissions refaire le processus jusqu'au même point ?)
 
-Imagine it like this. You have two computers with the same program running on
-the exact same inputs -- so totally deterministic. You pause one of them at an
-arbitrary point in its execution. What data would you need to send to the other
-computer to be able to stop it exactly as far along as the first one was?
+Imaginez-le comme ceci. Vous avez deux ordinateurs avec le même programme s'exécutant sur exactement les mêmes entrées -- donc totalement déterministes. Vous mettez en pause l'un d'eux à un point arbitraire dans son exécution. Quelles données auriez-vous besoin d'envoyer à l'autre ordinateur pour être capable de l'arrêter exactement aussi loin que le premier l'était ?
 
-If your program allows only simple statements like assignment, it's easy. You
-just need to know the point after the last statement you executed. Basically a
-breakpoint, the `ip` in our VM, or the line number in an error message. Adding
-branching control flow like `if` and `switch` doesn't add any more to this. Even
-if the marker points inside a branch, we can still tell where we are.
+Si votre programme permet seulement des instructions simples comme l'assignation, c'est facile. Vous avez juste besoin de connaître le point après la dernière instruction que vous avez exécutée. Fondamentalement un point d'arrêt, le `ip` dans notre VM, ou le numéro de ligne dans un message d'erreur. Ajouter le contrôle de flux de branchement comme `if` et `switch` n'ajoute rien de plus à cela. Même si le marqueur pointe à l'intérieur d'une branche, nous pouvons toujours dire où nous sommes.
 
-Once you add function calls, you need something more. You could have paused the
-first computer in the middle of a function, but that function may be called from
-multiple places. To pause the second machine at exactly the same point in *the
-entire program's* execution, you need to pause it on the *right* call to that
-function.
+Une fois que vous ajoutez les appels de fonction, vous avez besoin de quelque chose de plus. Vous pourriez avoir mis en pause le premier ordinateur au milieu d'une fonction, mais cette fonction peut être appelée de multiples endroits. Pour mettre en pause la seconde machine à exactement le même point dans l'exécution du _programme entier_, vous avez besoin de la mettre en pause sur le _bon_ appel à cette fonction.
 
-So you need to know not just the current statement, but, for function calls that
-haven't returned yet, you need to know the locations of the callsites. In other
-words, a call stack, though I don't think that term existed when Dijkstra wrote
-this. Groovy.
+Donc vous avez besoin de savoir non seulement l'instruction courante, mais, pour les appels de fonction qui n'ont pas encore retourné, vous avez besoin de connaître les emplacements des sites d'appel. En d'autres termes, une pile d'appels, bien que je ne pense pas que ce terme existait quand Dijkstra a écrit ceci. Groovy (Super).
 
-He notes that loops make things harder. If you pause in the middle of a loop
-body, you don't know how many iterations have run. So he says you also need to
-keep an iteration count. And, since loops can nest, you need a stack of those
-(presumably interleaved with the call stack pointers since you can be in loops
-in outer calls too).
+Il note que les boucles rendent les choses plus dures. Si vous mettez en pause au milieu d'un corps de boucle, vous ne savez pas combien d'itérations ont tourné. Donc il dit que vous avez aussi besoin de garder un compte d'itération. Et, puisque les boucles peuvent s'imbriquer, vous avez besoin d'une pile de ceux-ci (présumément entrelacés avec les pointeurs de pile d'appels puisque vous pouvez être dans des boucles dans des appels extérieurs aussi).
 
-This is where it gets weird. So we're really building to something now, and you
-expect him to explain how goto breaks all of this. Instead, he just says:
+C'est là que ça devient bizarre. Donc nous construisons vraiment vers quelque chose maintenant, et vous vous attendez à ce qu'il explique comment goto brise tout cela. Au lieu de cela, il dit juste :
 
-> The unbridled use of the go to statement has an immediate consequence that it
-> becomes terribly hard to find a meaningful set of coordinates in which to
-> describe the process progress.
+> L'utilisation débridée de l'instruction go to a une conséquence immédiate qu'il devient terriblement dur de trouver un ensemble significatif de coordonnées dans lequel décrire le progrès du processus.
 
-He doesn't prove that this is hard, or say why. He just says it. He does say
-that one approach is unsatisfactory:
+Il ne prouve pas que c'est dur, ou dit pourquoi. Il le dit juste. Il dit bien qu'une approche est insatisfaisante :
 
-> With the go to statement one can, of course, still describe the progress
-> uniquely by a counter counting the number of actions performed since program
-> start (viz. a kind of normalized clock). The difficulty is that such a
-> coordinate, although unique, is utterly unhelpful.
+> Avec l'instruction go to on peut, bien sûr, toujours décrire le progrès uniquement par un compteur comptant le nombre d'actions effectuées depuis le début du programme (c.-à-d. une sorte d'horloge normalisée). La difficulté est qu'une telle coordonnée, bien qu'unique, est totalement inutile.
 
-But... that's effectively what loop counters do, and he was fine with those.
-It's not like every loop is a simple "for every integer from 0 to 10"
-incrementing count. Many are `while` loops with complex conditionals.
+Mais... c'est effectivement ce que les compteurs de boucle font, et il était d'accord avec ceux-là. Ce n'est pas comme si chaque boucle est un simple "pour chaque entier de 0 à 10" comptage incrémental. Beaucoup sont des boucles `while` avec des conditionnelles complexes.
 
-Taking an example close to home, consider the core bytecode execution loop at
-the heart of clox. Dijkstra argues that that loop is tractable because we can
-simply count how many times the loop has run to reason about its progress. But
-that loop runs once for each executed instruction in some user's compiled Lox
-program. Does knowing that it executed 6,201 bytecode instructions really tell
-us VM maintainers *anything* edifying about the state of the interpreter?
+Prenant un exemple proche de la maison, considérez la boucle d'exécution de bytecode centrale au cœur de clox. Dijkstra argumente que cette boucle est traitable parce que nous pouvons simplement compter combien de fois la boucle a tourné pour raisonner sur son progrès. Mais cette boucle tourne une fois pour chaque instruction exécutée dans le programme Lox compilé de quelque utilisateur. Est-ce que savoir qu'elle a exécuté 6 201 instructions bytecode nous dit vraiment _quoi que ce soit_ d'édifiant sur l'état de l'interpréteur ?
 
-In fact, this particular example points to a deeper truth. Böhm and Jacopini
-[proved][] that *any* control flow using goto can be transformed into one using
-just sequencing, loops, and branches. Our bytecode interpreter loop is a living
-example of that proof: it implements the unstructured control flow of the clox
-bytecode instruction set without using any gotos itself.
+En fait, cet exemple particulier pointe vers une vérité plus profonde. Böhm et Jacopini ont [prouvé][proved] que _tout_ contrôle de flux utilisant goto peut être transformé en un utilisant juste le séquencement, les boucles, et les branches. Notre boucle d'interpréteur de bytecode est un exemple vivant de cette preuve : elle implémente le contrôle de flux non structuré du jeu d'instructions bytecode de clox sans utiliser aucun goto elle-même.
 
-[proved]: https://en.wikipedia.org/wiki/Structured_program_theorem
+[proved]: https://fr.wikipedia.org/wiki/Th%C3%A9or%C3%A8me_de_b%C3%B6hm-jacopini
 
-That seems to offer a counter-argument to Dijkstra's claim: you *can* define a
-correspondence for a program using gotos by transforming it to one that doesn't
-and then use the correspondence from that program, which -- according to him --
-is acceptable because it uses only branches and loops.
+Cela semble offrir un contre-argument à l'affirmation de Dijkstra : vous _pouvez_ définir une correspondance pour un programme utilisant des gotos en le transformant en un qui ne le fait pas et ensuite utiliser la correspondance depuis ce programme, qui -- selon lui -- est acceptable parce qu'il utilise seulement des branches et des boucles.
 
-But, honestly, my argument here is also weak. I think both of us are basically
-doing pretend math and using fake logic to make what should be an empirical,
-human-centered argument. Dijkstra is right that some code using goto is really
-bad. Much of that could and should be turned into clearer code by using
-structured control flow.
+Mais, honnêtement, mon argument ici est aussi faible. Je pense que nous deux faisons fondamentalement des maths pour de faux et utilisons de la fausse logique pour faire ce qui devrait être un argument empirique, centré sur l'humain. Dijkstra a raison que du code utilisant goto est vraiment mauvais. Beaucoup de cela pourrait et devrait être tourné en code plus clair en utilisant le contrôle de flux structuré.
 
-By eliminating goto completely from languages, you're definitely prevented from
-writing bad code using gotos. It may be that forcing users to use structured
-control flow and making it an uphill battle to write goto-like code using those
-constructs is a net win for all of our productivity.
+En éliminant goto complètement des langages, vous êtes définitivement empêché d'écrire du mauvais code utilisant des gotos. Il se peut que forcer les utilisateurs à utiliser le contrôle de flux structuré et faire que ce soit une bataille difficile d'écrire du code de type goto utilisant ces constructions est un gain net pour toute notre productivité.
 
-But I do wonder sometimes if we threw out the baby with the bathwater. In the
-absence of goto, we often resort to more complex structured patterns. The
-"switch inside a loop" is a classic one. Another is using a guard variable to
-exit out of a series of nested loops:
+Mais je me demande parfois si nous avons jeté le bébé avec l'eau du bain. En l'absence de goto, nous recourons souvent à des motifs structurés plus complexes. Le "switch à l'intérieur d'une boucle" en est un classique. Un autre est l'utilisation d'une variable garde pour sortir d'une série de boucles imbriquées :
 
 <span name="break">
 </span>
 
 ```c
-// See if the matrix contains a zero.
+// Voir si la matrice contient un zéro.
 bool found = false;
 for (int x = 0; x < xSize; x++) {
   for (int y = 0; y < ySize; y++) {
@@ -846,7 +510,7 @@ for (int x = 0; x < xSize; x++) {
 }
 ```
 
-Is that really better than:
+Est-ce vraiment mieux que :
 
 ```c
 for (int x = 0; x < xSize; x++) {
@@ -864,16 +528,10 @@ done:
 
 <aside name="break">
 
-You could do this without `break` statements -- themselves a limited goto-ish
-construct -- by inserting `!found &&` at the beginning of the condition clause
-of each loop.
+Vous pourriez faire cela sans instructions `break` -- elles-mêmes une construction de style goto limitée -- en insérant `!found &&` au début de la clause de condition de chaque boucle.
 
 </aside>
 
-I guess what I really don't like is that we're making language design and
-engineering decisions today based on fear. Few people today have any subtle
-understanding of the problems and benefits of goto. Instead, we just think it's
-"considered harmful". Personally, I've never found dogma a good starting place
-for quality creative work.
+Je suppose que ce que je n'aime vraiment pas est que nous prenons des décisions de conception de langage et d'ingénierie aujourd'hui basées sur la peur. Peu de gens aujourd'hui ont une compréhension subtile des problèmes et bénéfices de goto. Au lieu de cela, nous pensons juste qu'il est "considéré nuisible". Personnellement, je n'ai jamais trouvé le dogme un bon point de départ pour un travail créatif de qualité.
 
 </div>

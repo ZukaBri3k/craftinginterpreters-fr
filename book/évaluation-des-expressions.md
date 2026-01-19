@@ -1,82 +1,55 @@
-> You are my creator, but I am your master; Obey!
+> Tu es mon créateur, mais je suis ton maître ; Obéis !
 >
 > <cite>Mary Shelley, <em>Frankenstein</em></cite>
 
-If you want to properly set the mood for this chapter, try to conjure up a
-thunderstorm, one of those swirling tempests that likes to yank open shutters at
-the climax of the story. Maybe toss in a few bolts of lightning. In this
-chapter, our interpreter will take breath, open its eyes, and execute some code.
+Si vous voulez correctement mettre l'ambiance pour ce chapitre, essayez d'invoquer un orage, l'une de ces tempêtes tourbillonnantes qui aiment arracher les volets au point culminant de l'histoire. Peut-être jeter quelques éclairs. Dans ce chapitre, notre interpréteur va prendre sa respiration, ouvrir les yeux, et exécuter du code.
 
 <span name="spooky"></span>
 
-<img src="image/evaluating-expressions/lightning.png" alt="A bolt of lightning strikes a Victorian mansion. Spooky!" />
+<img src="image/evaluating-expressions/lightning.png" alt="Un éclair frappe un manoir victorien. Effrayant !" />
 
 <aside name="spooky">
 
-A decrepit Victorian mansion is optional, but adds to the ambiance.
+Un manoir victorien décrépit est optionnel, mais ajoute à l'ambiance.
 
 </aside>
 
-There are all manner of ways that language implementations make a computer do
-what the user's source code commands. They can compile it to machine code,
-translate it to another high-level language, or reduce it to some bytecode
-format for a virtual machine to run. For our first interpreter, though, we are
-going to take the simplest, shortest path and execute the syntax tree itself.
+Il y a toutes sortes de façons dont les implémentations de langage font faire à un ordinateur ce que le code source de l'utilisateur commande. Elles peuvent le compiler en code machine, le traduire vers un autre langage de haut niveau, ou le réduire à un format bytecode pour qu'une machine virtuelle l'exécute. Pour notre premier interpréteur, cependant, nous allons prendre le chemin le plus simple, le plus court et exécuter l'arbre syntaxique lui-même.
 
-Right now, our parser only supports expressions. So, to "execute" code, we will
-evaluate an expression and produce a value. For each kind of expression syntax
-we can parse -- literal, operator, etc. -- we need a corresponding chunk of code
-that knows how to evaluate that tree and produce a result. That raises two
-questions:
+Pour l'instant, notre parseur supporte seulement les expressions. Donc, pour "exécuter" du code, nous évaluerons une expression et produirons une valeur. Pour chaque type de syntaxe d'expression que nous pouvons parser -- littéral, opérateur, etc. -- nous avons besoin d'un morceau de code correspondant qui sait comment évaluer cet arbre et produire un résultat. Cela soulève deux questions :
 
-1. What kinds of values do we produce?
+1. Quels types de valeurs produisons-nous ?
 
-2. How do we organize those chunks of code?
+2. Comment organisons-nous ces morceaux de code ?
 
-Taking them on one at a time...
+Prenons-les une par une...
 
-## Representing Values
+## Représenter les Valeurs
 
-In Lox, <span name="value">values</span> are created by literals, computed by
-expressions, and stored in variables. The user sees these as *Lox* objects, but
-they are implemented in the underlying language our interpreter is written in.
-That means bridging the lands of Lox's dynamic typing and Java's static types. A
-variable in Lox can store a value of any (Lox) type, and can even store values
-of different types at different points in time. What Java type might we use to
-represent that?
+Dans Lox, les <span name="value">valeurs</span> sont créées par les littéraux, calculées par les expressions, et stockées dans des variables. L'utilisateur les voit comme des objets _Lox_, mais elles sont implémentées dans le langage sous-jacent dans lequel notre interpréteur est écrit. Cela signifie faire le pont entre les terres du typage dynamique de Lox et les types statiques de Java. Une variable dans Lox peut stocker une valeur de n'importe quel type (Lox), et peut même stocker des valeurs de différents types à différents moments. Quel type Java pourrions-nous utiliser pour représenter cela ?
 
 <aside name="value">
 
-Here, I'm using "value" and "object" pretty much interchangeably.
+Ici, j'utilise "valeur" et "objet" à peu près de manière interchangeable.
 
-Later in the C interpreter we'll make a slight distinction between them, but
-that's mostly to have unique terms for two different corners of the
-implementation -- in-place versus heap-allocated data. From the user's
-perspective, the terms are synonymous.
+Plus tard dans l'interpréteur C, nous ferons une légère distinction entre eux, mais c'est surtout pour avoir des termes uniques pour deux coins différents de l'implémentation -- données en place contre allouées sur le tas. Du point de vue de l'utilisateur, les termes sont synonymes.
 
 </aside>
 
-Given a Java variable with that static type, we must also be able to determine
-which kind of value it holds at runtime. When the interpreter executes a `+`
-operator, it needs to tell if it is adding two numbers or concatenating two
-strings. Is there a Java type that can hold numbers, strings, Booleans, and
-more? Is there one that can tell us what its runtime type is? There is! Good old
-java.lang.Object.
+Étant donné une variable Java avec ce type statique, nous devons aussi être capables de déterminer quel genre de valeur elle contient à l'exécution. Quand l'interpréteur exécute un opérateur `+`, il a besoin de dire s'il ajoute deux nombres ou concatène deux chaînes. Y a-t-il un type Java qui peut contenir des nombres, des chaînes, des booléens, et plus ? Y en a-t-il un qui peut nous dire quel est son type d'exécution ? Il y en a un ! Le bon vieux java.lang.Object.
 
-In places in the interpreter where we need to store a Lox value, we can use
-Object as the type. Java has boxed versions of its primitive types that all
-subclass Object, so we can use those for Lox's built-in types:
+Dans les endroits de l'interpréteur où nous avons besoin de stocker une valeur Lox, nous pouvons utiliser Object comme type. Java a des versions "boxées" (enveloppées) de ses types primitifs qui sous-classent toutes Object, donc nous pouvons utiliser celles-ci pour les types intégrés de Lox :
 
 <table>
 <thead>
 <tr>
-  <td>Lox type</td>
-  <td>Java representation</td>
+  <td>Type Lox</td>
+  <td>Représentation Java</td>
 </tr>
 </thead>
 <tbody>
 <tr>
-  <td>Any Lox value</td>
+  <td>N'importe quelle valeur Lox</td>
   <td>Object</td>
 </tr>
 <tr>
@@ -84,652 +57,421 @@ subclass Object, so we can use those for Lox's built-in types:
   <td><code>null</code></td>
 </tr>
 <tr>
-  <td>Boolean</td>
+  <td>Booléen</td>
   <td>Boolean</td>
 </tr>
 <tr>
-  <td>number</td>
+  <td>nombre</td>
   <td>Double</td>
 </tr>
 <tr>
-  <td>string</td>
+  <td>chaîne</td>
   <td>String</td>
 </tr>
 </tbody>
 </table>
 
-Given a value of static type Object, we can determine if the runtime value is a
-number or a string or whatever using Java's built-in `instanceof` operator. In
-other words, the <span name="jvm">JVM</span>'s own object representation
-conveniently gives us everything we need to implement Lox's built-in types.
-We'll have to do a little more work later when we add Lox's notions of
-functions, classes, and instances, but Object and the boxed primitive classes
-are sufficient for the types we need right now.
+Étant donné une valeur de type statique Object, nous pouvons déterminer si la valeur d'exécution est un nombre ou une chaîne ou quoi que ce soit en utilisant l'opérateur intégré de Java `instanceof`. En d'autres termes, la propre représentation d'objet de la <span name="jvm">JVM</span> nous donne commodément tout ce dont nous avons besoin pour implémenter les types intégrés de Lox. Nous devrons faire un peu plus de travail plus tard quand nous ajouterons les notions de fonctions, classes et instances de Lox, mais Object et les classes primitives boxées sont suffisants pour les types dont nous avons besoin pour l'instant.
 
 <aside name="jvm">
 
-Another thing we need to do with values is manage their memory, and Java does
-that too. A handy object representation and a really nice garbage collector are
-the main reasons we're writing our first interpreter in Java.
+Une autre chose que nous devons faire avec les valeurs est gérer leur mémoire, et Java fait cela aussi. Une représentation d'objet pratique et un ramasse-miettes vraiment sympa sont les raisons principales pour lesquelles nous écrivons notre premier interpréteur en Java.
 
 </aside>
 
-## Evaluating Expressions
+## Évaluation des Expressions
 
-Next, we need blobs of code to implement the evaluation logic for each kind of
-expression we can parse. We could stuff that code into the syntax tree classes
-in something like an `interpret()` method. In effect, we could tell each syntax
-tree node, "Interpret thyself". This is the Gang of Four's
-[Interpreter design pattern][]. It's a neat pattern, but like I mentioned
-earlier, it gets messy if we jam all sorts of logic into the tree classes.
+Ensuite, nous avons besoin de paquets de code pour implémenter la logique d'évaluation pour chaque type d'expression que nous pouvons parser. Nous pourrions fourrer ce code dans les classes d'arbre syntaxique dans quelque chose comme une méthode `interpret()`. En effet, nous pourrions dire à chaque nœud d'arbre syntaxique, "Interprète-toi toi-même". C'est le [patron de conception Interpréteur][interpreter design pattern] du Gang of Four. C'est un patron sympa, mais comme je l'ai mentionné plus tôt, cela devient désordonné si nous bourrons toutes sortes de logique dans les classes d'arbre.
 
 [interpreter design pattern]: https://en.wikipedia.org/wiki/Interpreter_pattern
 
-Instead, we're going to reuse our groovy [Visitor pattern][]. In the previous
-chapter, we created an AstPrinter class. It took in a syntax tree and
-recursively traversed it, building up a string which it ultimately returned.
-That's almost exactly what a real interpreter does, except instead of
-concatenating strings, it computes values.
+Au lieu de cela, nous allons réutiliser notre groovy [patron Visiteur][visitor pattern]. Dans le chapitre précédent, nous avons créé une classe AstPrinter. Elle prenait un arbre syntaxique et le parcourait récursivement, construisant une chaîne qu'elle renvoyait finalement. C'est presque exactement ce qu'un vrai interpréteur fait, sauf qu'au lieu de concaténer des chaînes, il calcule des valeurs.
 
 [visitor pattern]: representing-code.html#the-visitor-pattern
 
-We start with a new class.
+Nous commençons avec une nouvelle classe.
 
 ^code interpreter-class
 
-The class declares that it's a visitor. The return type of the visit methods
-will be Object, the root class that we use to refer to a Lox value in our Java
-code. To satisfy the Visitor interface, we need to define visit methods for each
-of the four expression tree classes our parser produces. We'll start with the
-simplest...
+La classe déclare qu'elle est un visiteur. Le type de retour des méthodes visit sera Object, la classe racine que nous utilisons pour nous référer à une valeur Lox dans notre code Java. Pour satisfaire l'interface Visitor, nous devons définir des méthodes visit pour chacune des quatre classes d'arbre d'expression que notre parseur produit. Nous commencerons par la plus simple...
 
-### Evaluating literals
+### Évaluation des littéraux
 
-The leaves of an expression tree -- the atomic bits of syntax that all other
-expressions are composed of -- are <span name="leaf">literals</span>. Literals
-are almost values already, but the distinction is important. A literal is a *bit
-of syntax* that produces a value. A literal always appears somewhere in the
-user's source code. Lots of values are produced by computation and don't exist
-anywhere in the code itself. Those aren't literals. A literal comes from the
-parser's domain. Values are an interpreter concept, part of the runtime's world.
+Les feuilles d'un arbre d'expression -- les bouts atomiques de syntaxe dont toutes les autres expressions sont composées -- sont les <span name="leaf">littéraux</span>. Les littéraux sont presque déjà des valeurs, mais la distinction est importante. Un littéral est un _bout de syntaxe_ qui produit une valeur. Un littéral apparaît toujours quelque part dans le code source de l'utilisateur. Beaucoup de valeurs sont produites par le calcul et n'existent nulle part dans le code lui-même. Ce ne sont pas des littéraux. Un littéral vient du domaine du parseur. Les valeurs sont un concept de l'interpréteur, une partie du monde de l'exécution (runtime).
 
 <aside name="leaf">
 
-In the [next chapter][vars], when we implement variables, we'll add identifier
-expressions, which are also leaf nodes.
+Dans le [prochain chapitre][vars], quand nous implémenterons les variables, nous ajouterons les expressions d'identifiant, qui sont aussi des nœuds feuilles.
 
 [vars]: statements-and-state.html
 
 </aside>
 
-So, much like we converted a literal *token* into a literal *syntax tree node*
-in the parser, now we convert the literal tree node into a runtime value. That
-turns out to be trivial.
+Donc, tout comme nous avons converti un _token_ littéral en un _nœud d'arbre syntaxique_ littéral dans le parseur, maintenant nous convertissons le nœud d'arbre littéral en une valeur d'exécution. Cela s'avère être trivial.
 
 ^code visit-literal
 
-We eagerly produced the runtime value way back during scanning and stuffed it in
-the token. The parser took that value and stuck it in the literal tree node,
-so to evaluate a literal, we simply pull it back out.
+Nous avons produit avidemment la valeur d'exécution bien avant pendant le scan et l'avons fourrée dans le token. Le parseur a pris cette valeur et l'a collée dans le nœud d'arbre littéral, donc pour évaluer un littéral, nous la ressortons simplement.
 
-### Evaluating parentheses
+### Évaluation des parenthèses
 
-The next simplest node to evaluate is grouping -- the node you get as a result
-of using explicit parentheses in an expression.
+Le prochain nœud le plus simple à évaluer est le groupement -- le nœud que vous obtenez comme résultat de l'utilisation de parenthèses explicites dans une expression.
 
 ^code visit-grouping
 
-A <span name="grouping">grouping</span> node has a reference to an inner node
-for the expression contained inside the parentheses. To evaluate the grouping
-expression itself, we recursively evaluate that subexpression and return it.
+Un nœud de <span name="grouping">groupement</span> a une référence vers un nœud interne pour l'expression contenue à l'intérieur des parenthèses. Pour évaluer l'expression de groupement elle-même, nous évaluons récursivement cette sous-expression et la renvoyons.
 
-We rely on this helper method which simply sends the expression back into the
-interpreter's visitor implementation:
+Nous comptons sur cette méthode d'aide qui renvoie simplement l'expression dans l'implémentation du visiteur de l'interpréteur :
 
 <aside name="grouping">
 
-Some parsers don't define tree nodes for parentheses. Instead, when parsing a
-parenthesized expression, they simply return the node for the inner expression.
-We do create a node for parentheses in Lox because we'll need it later to
-correctly handle the left-hand sides of assignment expressions.
+Certains parseurs ne définissent pas de nœuds d'arbre pour les parenthèses. Au lieu de cela, lors du parsing d'une expression parenthésée, ils renvoient simplement le nœud pour l'expression interne. Nous créons un nœud pour les parenthèses dans Lox parce que nous en aurons besoin plus tard pour gérer correctement les côtés gauches des expressions d'affectation.
 
 </aside>
 
 ^code evaluate
 
-### Evaluating unary expressions
+### Évaluation des expressions unaires
 
-Like grouping, unary expressions have a single subexpression that we must
-evaluate first. The difference is that the unary expression itself does a little
-work afterwards.
+Comme le groupement, les expressions unaires ont une seule sous-expression que nous devons évaluer en premier. La différence est que l'expression unaire elle-même fait un peu de travail après.
 
 ^code visit-unary
 
-First, we evaluate the operand expression. Then we apply the unary operator
-itself to the result of that. There are two different unary expressions,
-identified by the type of the operator token.
+D'abord, nous évaluons l'expression opérande. Ensuite, nous appliquons l'opérateur unaire lui-même au résultat de cela. Il y a deux expressions unaires différentes, identifiées par le type du token opérateur.
 
-Shown here is `-`, which negates the result of the subexpression. The
-subexpression must be a number. Since we don't *statically* know that in Java,
-we <span name="cast">cast</span> it before performing the operation. This type
-cast happens at runtime when the `-` is evaluated. That's the core of what makes
-a language dynamically typed right there.
+Montré ici est `-`, qui inverse le signe du résultat de la sous-expression. La sous-expression doit être un nombre. Puisque nous ne savons pas _statiquement_ cela en Java, nous le <span name="cast">castons</span> avant d'effectuer l'opération. Ce cast de type se produit à l'exécution quand le `-` est évalué. C'est le cœur de ce qui rend un langage typé dynamiquement juste là.
 
 <aside name="cast">
 
-You're probably wondering what happens if the cast fails. Fear not, we'll get
-into that soon.
+Vous vous demandez probablement ce qui se passe si le cast échoue. N'ayez crainte, nous y viendrons bientôt.
 
 </aside>
 
-You can start to see how evaluation recursively traverses the tree. We can't
-evaluate the unary operator itself until after we evaluate its operand
-subexpression. That means our interpreter is doing a **post-order traversal** --
-each node evaluates its children before doing its own work.
+Vous pouvez commencer à voir comment l'évaluation traverse récursivement l'arbre. Nous ne pouvons pas évaluer l'opérateur unaire lui-même avant d'avoir évalué sa sous-expression opérande. Cela signifie que notre interpréteur fait un **parcours post-ordre** -- chaque nœud évalue ses enfants avant de faire son propre travail.
 
-The other unary operator is logical not.
+L'autre opérateur unaire est le non logique.
 
 ^code unary-bang (1 before, 1 after)
 
-The implementation is simple, but what is this "truthy" thing about? We need to
-make a little side trip to one of the great questions of Western philosophy:
-*What is truth?*
+L'implémentation est simple, mais c'est quoi ce truc "truthy" (vrai) ? Nous avons besoin de faire une petite excursion vers l'une des grandes questions de la philosophie occidentale : _Qu'est-ce que la vérité ?_
 
-### Truthiness and falsiness
+### Vérité et fausseté
 
-OK, maybe we're not going to really get into the universal question, but at
-least inside the world of Lox, we need to decide what happens when you use
-something other than `true` or `false` in a logic operation like `!` or any
-other place where a Boolean is expected.
+OK, peut-être que nous n'allons pas vraiment entrer dans la question universelle, mais au moins à l'intérieur du monde de Lox, nous devons décider ce qui se passe quand vous utilisez quelque chose d'autre que `true` ou `false` dans une opération logique comme `!` ou n'importe quel autre endroit où un Booléen est attendu.
 
-We *could* just say it's an error because we don't roll with implicit
-conversions, but most dynamically typed languages aren't that ascetic. Instead,
-they take the universe of values of all types and partition them into two sets,
-one of which they define to be "true", or "truthful", or (my favorite) "truthy",
-and the rest which are "false" or "falsey". This partitioning is somewhat
-arbitrary and gets <span name="weird">weird</span> in a few languages.
+Nous _pourrions_ juste dire que c'est une erreur parce que nous ne roulons pas avec les conversions implicites, mais la plupart des langages typés dynamiquement ne sont pas aussi ascétiques. Au lieu de cela, ils prennent l'univers des valeurs de tous types et les partitionnent en deux ensembles, l'un qu'ils définissent comme "vrai", ou "truthy", et le reste qui sont "faux" ou "falsey". Ce partitionnement est quelque peu arbitraire et devient <span name="weird">bizarre</span> dans quelques langages.
 
 <aside name="weird" class="bottom">
 
-In JavaScript, strings are truthy, but empty strings are not. Arrays are truthy
-but empty arrays are... also truthy. The number `0` is falsey, but the *string*
-`"0"` is truthy.
+En JavaScript, les chaînes sont truthy, mais les chaînes vides ne le sont pas. Les tableaux sont truthy mais les tableaux vides sont... aussi truthy. Le nombre `0` est falsey, mais la _chaîne_ `"0"` est truthy.
 
-In Python, empty strings are falsey like in JS, but other empty sequences are
-falsey too.
+En Python, les chaînes vides sont falsey comme en JS, mais d'autres séquences vides sont falsey aussi.
 
-In PHP, both the number `0` and the string `"0"` are falsey. Most other
-non-empty strings are truthy.
+En PHP, à la fois le nombre `0` et la chaîne `"0"` sont falsey. La plupart des autres chaînes non vides sont truthy.
 
-Get all that?
+Vous avez tout suivi ?
 
 </aside>
 
-Lox follows Ruby's simple rule: `false` and `nil` are falsey, and everything else
-is truthy. We implement that like so:
+Lox suit la règle simple de Ruby : `false` et `nil` sont falsey, et tout le reste est truthy. Nous implémentons cela comme ceci :
 
 ^code is-truthy
 
-### Evaluating binary operators
+### Évaluation des opérateurs binaires
 
-On to the last expression tree class, binary operators. There's a handful of
-them, and we'll start with the arithmetic ones.
+Passons à la dernière classe d'arbre d'expression, les opérateurs binaires. Il y en a une poignée, et nous commencerons par ceux arithmétiques.
 
 ^code visit-binary
 
 <aside name="left">
 
-Did you notice we pinned down a subtle corner of the language semantics here?
-In a binary expression, we evaluate the operands in left-to-right order. If
-those operands have side effects, that choice is user visible, so this isn't
-simply an implementation detail.
+Avez-vous remarqué que nous avons épinglé un coin subtil de la sémantique du langage ici ? Dans une expression binaire, nous évaluons les opérandes dans l'ordre de gauche à droite. Si ces opérandes ont des effets de bord, ce choix est visible par l'utilisateur, donc ce n'est pas simplement un détail d'implémentation.
 
-If we want our two interpreters to be consistent (hint: we do), we'll need to
-make sure clox does the same thing.
+Si nous voulons que nos deux interpréteurs soient cohérents (indice : nous le voulons), nous devrons nous assurer que clox fait la même chose.
 
 </aside>
 
-I think you can figure out what's going on here. The main difference from the
-unary negation operator is that we have two operands to evaluate.
+Je pense que vous pouvez comprendre ce qui se passe ici. La différence principale avec l'opérateur de négation unaire est que nous avons deux opérandes à évaluer.
 
-I left out one arithmetic operator because it's a little special.
+J'ai laissé de côté un opérateur arithmétique parce qu'il est un peu spécial.
 
 ^code binary-plus (3 before, 1 after)
 
-The `+` operator can also be used to concatenate two strings. To handle that, we
-don't just assume the operands are a certain type and *cast* them, we
-dynamically *check* the type and choose the appropriate operation. This is why
-we need our object representation to support `instanceof`.
+L'opérateur `+` peut aussi être utilisé pour concaténer deux chaînes. Pour gérer cela, nous ne supposons pas juste que les opérandes sont d'un certain type et les _castons_, nous _vérifions_ dynamiquement le type et choisissons l'opération appropriée. C'est pourquoi nous avons besoin que notre représentation d'objet supporte `instanceof`.
 
 <aside name="plus">
 
-We could have defined an operator specifically for string concatenation. That's
-what Perl (`.`), Lua (`..`), Smalltalk (`,`), Haskell (`++`), and others do.
+Nous aurions pu définir un opérateur spécifiquement pour la concaténation de chaînes. C'est ce que Perl (`.`), Lua (`..`), Smalltalk (`,`), Haskell (`++`), et d'autres font.
 
-I thought it would make Lox a little more approachable to use the same syntax as
-Java, JavaScript, Python, and others. This means that the `+` operator is
-**overloaded** to support both adding numbers and concatenating strings. Even in
-languages that don't use `+` for strings, they still often overload it for
-adding both integers and floating-point numbers.
+J'ai pensé que cela rendrait Lox un peu plus abordable d'utiliser la même syntaxe que Java, JavaScript, Python, et d'autres. Cela signifie que l'opérateur `+` est **surchargé** pour supporter à la fois l'addition de nombres et la concaténation de chaînes. Même dans les langages qui n'utilisent pas `+` pour les chaînes, ils le surchargent toujours souvent pour ajouter à la fois des entiers et des nombres à virgule flottante.
 
 </aside>
 
-Next up are the comparison operators.
+Les suivants sont les opérateurs de comparaison.
 
 ^code binary-comparison (1 before, 1 after)
 
-They are basically the same as arithmetic. The only difference is that where the
-arithmetic operators produce a value whose type is the same as the operands
-(numbers or strings), the comparison operators always produce a Boolean.
+Ils sont fondamentalement les mêmes que l'arithmétique. La seule différence est que là où les opérateurs arithmétiques produisent une valeur dont le type est le même que les opérandes (nombres ou chaînes), les opérateurs de comparaison produisent toujours un Booléen.
 
-The last pair of operators are equality.
+La dernière paire d'opérateurs sont pour l'égalité.
 
 ^code binary-equality
 
-Unlike the comparison operators which require numbers, the equality operators
-support operands of any type, even mixed ones. You can't ask Lox if 3 is *less*
-than `"three"`, but you can ask if it's <span name="equal">*equal*</span> to
-it.
+Contrairement aux opérateurs de comparaison qui nécessitent des nombres, les opérateurs d'égalité supportent des opérandes de n'importe quel type, même mixtes. Vous ne pouvez pas demander à Lox si 3 est _plus petit_ que `"trois"`, mais vous pouvez demander s'il est <span name="equal">_égal_</span> à lui.
 
 <aside name="equal">
 
-Spoiler alert: it's not.
+Alerte spoiler : il ne l'est pas.
 
 </aside>
 
-Like truthiness, the equality logic is hoisted out into a separate method.
+Comme la véracité (truthiness), la logique d'égalité est hissée hors dans une méthode séparée.
 
 ^code is-equal
 
-This is one of those corners where the details of how we represent Lox objects
-in terms of Java matter. We need to correctly implement *Lox's* notion of
-equality, which may be different from Java's.
+C'est l'un de ces coins où les détails de comment nous représentons les objets Lox en termes de Java comptent. Nous devons implémenter correctement la notion d'égalité de _Lox_, qui peut être différente de celle de Java.
 
-Fortunately, the two are pretty similar. Lox doesn't do implicit conversions in
-equality and Java does not either. We do have to handle `nil`/`null` specially
-so that we don't throw a NullPointerException if we try to call `equals()` on
-`null`. Otherwise, we're fine. Java's <span name="nan">`equals()`</span> method
-on Boolean, Double, and String have the behavior we want for Lox.
+Heureusement, les deux sont assez similaires. Lox ne fait pas de conversions implicites dans l'égalité et Java non plus. Nous devons gérer `nil`/`null` spécialement afin de ne pas lancer de NullPointerException si nous essayons d'appeler `equals()` sur `null`. Sinon, nous sommes bons. La méthode <span name="nan">`equals()`</span> de Java sur Boolean, Double, et String a le comportement que nous voulons pour Lox.
 
 <aside name="nan">
 
-What do you expect this to evaluate to:
+À quoi vous attendez-vous que ceci évalue :
 
 ```lox
 (0 / 0) == (0 / 0)
 ```
 
-According to [IEEE 754][], which specifies the behavior of double-precision
-numbers, dividing a zero by zero gives you the special **NaN** ("not a number")
-value. Strangely enough, NaN is *not* equal to itself.
+Selon [IEEE 754][], qui spécifie le comportement des nombres à double précision, diviser un zéro par zéro vous donne la valeur spéciale **NaN** ("not a number" - pas un nombre). Étrangement assez, NaN n'est _pas_ égal à lui-même.
 
-In Java, the `==` operator on primitive doubles preserves that behavior, but the
-`equals()` method on the Double class does not. Lox uses the latter, so doesn't
-follow IEEE. These kinds of subtle incompatibilities occupy a dismaying fraction
-of language implementers' lives.
+En Java, l'opérateur `==` sur les doubles primitifs préserve ce comportement, mais la méthode `equals()` sur la classe Double ne le fait pas. Lox utilise cette dernière, donc ne suit pas IEEE. Ces types d'incompatibilités subtiles occupent une fraction consternante de la vie des implémenteurs de langage.
 
 [ieee 754]: https://en.wikipedia.org/wiki/IEEE_754
 
 </aside>
 
-And that's it! That's all the code we need to correctly interpret a valid Lox
-expression. But what about an *invalid* one? In particular, what happens when a
-subexpression evaluates to an object of the wrong type for the operation being
-performed?
+Et c'est tout ! C'est tout le code dont nous avons besoin pour interpréter correctement une expression Lox valide. Mais qu'en est-il d'une _invalide_ ? En particulier, que se passe-t-il quand une sous-expression s'évalue en un objet du mauvais type pour l'opération effectuée ?
 
-## Runtime Errors
+## Erreurs d'Exécution
 
-I was cavalier about jamming casts in whenever a subexpression produces an
-Object and the operator requires it to be a number or a string. Those casts can
-fail. Even though the user's code is erroneous, if we want to make a <span
-name="fail">usable</span> language, we are responsible for handling that error
-gracefully.
+J'ai été cavalier en bourrant des casts chaque fois qu'une sous-expression produit un Object et que l'opérateur exige qu'il soit un nombre ou une chaîne. Ces casts peuvent échouer. Même si le code de l'utilisateur est erroné, si nous voulons faire un langage <span name="fail">utilisable</span>, nous sommes responsables de la gestion de cette erreur avec grâce.
 
 <aside name="fail">
 
-We could simply not detect or report a type error at all. This is what C does if
-you cast a pointer to some type that doesn't match the data that is actually
-being pointed to. C gains flexibility and speed by allowing that, but is
-also famously dangerous. Once you misinterpret bits in memory, all bets are off.
+Nous pourrions simplement ne pas détecter ou rapporter une erreur de type du tout. C'est ce que fait C si vous castez un pointeur vers un certain type qui ne correspond pas aux données qui sont réellement pointées. C gagne de la flexibilité et de la vitesse en permettant cela, mais est aussi fameusement dangereux. Une fois que vous mésinterprétez des bits en mémoire, tous les paris sont ouverts.
 
-Few modern languages accept unsafe operations like that. Instead, most are
-**memory safe** and ensure -- through a combination of static and runtime checks
--- that a program can never incorrectly interpret the value stored in a piece of
-memory.
+Peu de langages modernes acceptent des opérations non sûres comme celle-là. Au lieu de cela, la plupart sont **sûrs pour la mémoire** et assurent -- à travers une combinaison de vérifications statiques et à l'exécution -- qu'un programme ne peut jamais interpréter incorrectement la valeur stockée dans un morceau de mémoire.
 
 </aside>
 
-It's time for us to talk about **runtime errors**. I spilled a lot of ink in the
-previous chapters talking about error handling, but those were all *syntax* or
-*static* errors. Those are detected and reported before *any* code is executed.
-Runtime errors are failures that the language semantics demand we detect and
-report while the program is running (hence the name).
+Il est temps pour nous de parler des **erreurs d'exécution** (runtime errors). J'ai versé beaucoup d'encre dans les chapitres précédents en parlant de la gestion d'erreur, mais c'étaient toutes des erreurs de _syntaxe_ ou _statiques_. Celles-ci sont détectées et rapportées avant que _le moindre_ code soit exécuté. Les erreurs d'exécution sont des échecs que la sémantique du langage exige que nous détections et rapportions pendant que le programme s'exécute (d'où le nom).
 
-Right now, if an operand is the wrong type for the operation being performed,
-the Java cast will fail and the JVM will throw a ClassCastException. That
-unwinds the whole stack and exits the application, vomiting a Java stack trace
-onto the user. That's probably not what we want. The fact that Lox is
-implemented in Java should be a detail hidden from the user. Instead, we want
-them to understand that a *Lox* runtime error occurred, and give them an error
-message relevant to our language and their program.
+Pour l'instant, si un opérande est du mauvais type pour l'opération effectuée, le cast Java échouera et la JVM lancera une ClassCastException. Cela déroule toute la pile et quitte l'application, vomissant une trace de pile Java sur l'utilisateur. Ce n'est probablement pas ce que nous voulons. Le fait que Lox soit implémenté en Java devrait être un détail caché de l'utilisateur. Au lieu de cela, nous voulons qu'ils comprennent qu'une erreur d'exécution _Lox_ s'est produite, et leur donner un message d'erreur pertinent pour notre langage et leur programme.
 
-The Java behavior does have one thing going for it, though. It correctly stops
-executing any code when the error occurs. Let's say the user enters some
-expression like:
+Le comportement Java a une chose pour lui, cependant. Il arrête correctement l'exécution de tout code quand l'erreur se produit. Disons que l'utilisateur entre une expression comme :
 
 ```lox
 2 * (3 / -"muffin")
 ```
 
-You can't negate a <span name="muffin">muffin</span>, so we need to report a
-runtime error at that inner `-` expression. That in turn means we can't evaluate
-the `/` expression since it has no meaningful right operand. Likewise for the
-`*`. So when a runtime error occurs deep in some expression, we need to escape
-all the way out.
+Vous ne pouvez pas inverser le signe d'un <span name="muffin">muffin</span>, donc nous devons rapporter une erreur d'exécution à cette expression `-` interne. Cela signifie à son tour que nous ne pouvons pas évaluer l'expression `/` puisqu'elle n'a pas d'opérande droit significatif. De même pour le `*`. Donc quand une erreur d'exécution se produit profondément dans une expression, nous avons besoin de nous échapper tout le chemin vers l'extérieur.
 
 <aside name="muffin">
 
-I don't know, man, *can* you negate a muffin?
+Je ne sais pas, mec, _peux_-tu inverser le signe d'un muffin ?
 
-<img src="image/evaluating-expressions/muffin.png" alt="A muffin, negated." />
+<img src="image/evaluating-expressions/muffin.png" alt="Un muffin, inversé." />
 
 </aside>
 
-We could print a runtime error and then abort the process and exit the
-application entirely. That has a certain melodramatic flair. Sort of the
-programming language interpreter equivalent of a mic drop.
+Nous pourrions imprimer une erreur d'exécution et ensuite avorter le processus et quitter l'application entièrement. Cela a un certain flair mélodramatique. Sorte d'équivalent pour un interpréteur de langage de programmation d'un lâcher de micro.
 
-Tempting as that is, we should probably do something a little less cataclysmic.
-While a runtime error needs to stop evaluating the *expression*, it shouldn't
-kill the *interpreter*. If a user is running the REPL and has a typo in a line
-of code, they should still be able to keep the session going and enter more code
-after that.
+Aussi tentant que cela soit, nous devrions probablement faire quelque chose d'un peu moins cataclysmique. Bien qu'une erreur d'exécution doive arrêter l'évaluation de l'_expression_, elle ne devrait pas tuer l'_interpréteur_. Si un utilisateur exécute le REPL et a une faute de frappe dans une ligne de code, il devrait toujours être capable de garder la session en cours et d'entrer plus de code après cela.
 
-### Detecting runtime errors
+### Détecter les erreurs d'exécution
 
-Our tree-walk interpreter evaluates nested expressions using recursive method
-calls, and we need to unwind out of all of those. Throwing an exception in Java
-is a fine way to accomplish that. However, instead of using Java's own cast
-failure, we'll define a Lox-specific one so that we can handle it how we want.
+Notre interpréteur à parcours d'arbre évalue les expressions imbriquées en utilisant des appels de méthode récursifs, et nous avons besoin de nous dérouler hors de tout ceux-là. Lancer une exception en Java est un bon moyen d'accomplir cela. Cependant, au lieu d'utiliser le propre échec de cast de Java, nous en définirons un spécifique à Lox afin que nous puissions le gérer comme nous voulons.
 
-Before we do the cast, we check the object's type ourselves. So, for unary `-`,
-we add:
+Avant de faire le cast, nous vérifions le type de l'objet nous-mêmes. Donc, pour le `-` unaire, nous ajoutons :
 
 ^code check-unary-operand (1 before, 1 after)
 
-The code to check the operand is:
+Le code pour vérifier l'opérande est :
 
 ^code check-operand
 
-When the check fails, it throws one of these:
+Quand la vérification échoue, elle lance un de ceux-ci :
 
 ^code runtime-error-class
 
-Unlike the Java cast exception, our <span name="class">class</span> tracks the
-token that identifies where in the user's code the runtime error came from. As
-with static errors, this helps the user know where to fix their code.
+Contrairement à l'exception de cast Java, notre <span name="class">classe</span> suit le token qui identifie d'où dans le code de l'utilisateur l'erreur d'exécution est venue. Comme pour les erreurs statiques, cela aide l'utilisateur à savoir où corriger son code.
 
 <aside name="class">
 
-I admit the name "RuntimeError" is confusing since Java defines a
-RuntimeException class. An annoying thing about building interpreters is your
-names often collide with ones already taken by the implementation language. Just
-wait until we support Lox classes.
+J'admets que le nom "RuntimeError" est confus puisque Java définit une classe RuntimeException. Une chose ennuyeuse à propos de la construction d'interpréteurs est que vos noms entrent souvent en collision avec ceux déjà pris par le langage d'implémentation. Attendez juste que nous supportions les classes Lox.
 
 </aside>
 
-We need similar checking for the binary operators. Since I promised you every
-single line of code needed to implement the interpreters, I'll run through them
-all.
+Nous avons besoin de vérifications similaires pour les opérateurs binaires. Puisque je vous ai promis chaque ligne de code nécessaire pour implémenter les interpréteurs, je vais toutes les passer en revue.
 
-Greater than:
+Plus grand que :
 
 ^code check-greater-operand (1 before, 1 after)
 
-Greater than or equal to:
+Plus grand ou égal à :
 
 ^code check-greater-equal-operand (1 before, 1 after)
 
-Less than:
+Plus petit que :
 
 ^code check-less-operand (1 before, 1 after)
 
-Less than or equal to:
+Plus petit ou égal à :
 
 ^code check-less-equal-operand (1 before, 1 after)
 
-Subtraction:
+Soustraction :
 
 ^code check-minus-operand (1 before, 1 after)
 
-Division:
+Division :
 
 ^code check-slash-operand (1 before, 1 after)
 
-Multiplication:
+Multiplication :
 
 ^code check-star-operand (1 before, 1 after)
 
-All of those rely on this validator, which is virtually the same as the unary
-one:
+Tous ceux-là reposent sur ce validateur, qui est virtuellement le même que celui unaire :
 
 ^code check-operands
 
 <aside name="operand">
 
-Another subtle semantic choice: We evaluate *both* operands before checking the
-type of *either*. Imagine we have a function `say()` that prints its argument
-then returns it. Using that, we write:
+Un autre choix sémantique subtil : Nous évaluons les _deux_ opérandes avant de vérifier le type de l'_un ou l'autre_. Imaginez que nous ayons une fonction `say()` qui imprime son argument puis le renvoie. En utilisant cela, nous écrivons :
 
 ```lox
 say("left") - say("right");
 ```
 
-Our interpreter prints "left" and "right" before reporting the runtime error. We
-could have instead specified that the left operand is checked before even
-evaluating the right.
+Notre interpréteur imprime "left" et "right" avant de rapporter l'erreur d'exécution. Nous aurions pu à la place spécifier que l'opérande gauche est vérifié avant même d'évaluer le droit.
 
 </aside>
 
-The last remaining operator, again the odd one out, is addition. Since `+` is
-overloaded for numbers and strings, it already has code to check the types. All
-we need to do is fail if neither of the two success cases match.
+Le dernier opérateur restant, encore l'intrus, est l'addition. Puisque `+` est surchargé pour les nombres et les chaînes, il a déjà du code pour vérifier les types. Tout ce que nous avons besoin de faire est d'échouer si aucun des deux cas de succès ne matche.
 
 ^code string-wrong-type (3 before, 1 after)
 
-That gets us detecting runtime errors deep in the innards of the evaluator. The
-errors are getting thrown. The next step is to write the code that catches them.
-For that, we need to wire up the Interpreter class into the main Lox class that
-drives it.
+Cela nous permet de détecter les erreurs d'exécution profondément dans les entrailles de l'évaluateur. Les erreurs sont lancées. L'étape suivante est d'écrire le code qui les attrape. Pour cela, nous avons besoin de brancher la classe Interpreter dans la classe Lox principale qui la pilote.
 
-## Hooking Up the Interpreter
+## Connecter l'Interpréteur
 
-The visit methods are sort of the guts of the Interpreter class, where the real
-work happens. We need to wrap a skin around them to interface with the rest of
-the program. The Interpreter's public API is simply one method.
+Les méthodes visit sont en quelque sorte les tripes de la classe Interpreter, où le vrai travail se passe. Nous avons besoin d'envelopper une peau autour d'elles pour s'interfacer avec le reste du programme. L'API publique de l'Interpreter est simplement une méthode.
 
 ^code interpret
 
-This takes in a syntax tree for an expression and evaluates it. If that
-succeeds, `evaluate()` returns an object for the result value. `interpret()`
-converts that to a string and shows it to the user. To convert a Lox value to a
-string, we rely on:
+Celle-ci prend un arbre syntaxique pour une expression et l'évalue. Si cela réussit, `evaluate()` renvoie un objet pour la valeur résultat. `interpret()` convertit cela en une chaîne et la montre à l'utilisateur. Pour convertir une valeur Lox en chaîne, nous comptons sur :
 
 ^code stringify
 
-This is another of those pieces of code like `isTruthy()` that crosses the
-membrane between the user's view of Lox objects and their internal
-representation in Java.
+C'est une autre de ces pièces de code comme `isTruthy()` qui traverse la membrane entre la vue de l'utilisateur des objets Lox et leur représentation interne en Java.
 
-It's pretty straightforward. Since Lox was designed to be familiar to someone
-coming from Java, things like Booleans look the same in both languages. The two
-edge cases are `nil`, which we represent using Java's `null`, and numbers.
+C'est assez direct. Puisque Lox a été conçu pour être familier à quelqu'un venant de Java, des choses comme les Booléens semblent identiques dans les deux langages. Les deux cas limites sont `nil`, que nous représentons en utilisant le `null` de Java, et les nombres.
 
-Lox uses double-precision numbers even for integer values. In that case, they
-should print without a decimal point. Since Java has both floating point and
-integer types, it wants you to know which one you're using. It tells you by
-adding an explicit `.0` to integer-valued doubles. We don't care about that, so
-we <span name="number">hack</span> it off the end.
+Lox utilise des nombres à double précision même pour les valeurs entières. Dans ce cas, ils devraient s'imprimer sans point décimal. Puisque Java a à la fois des types à virgule flottante et entiers, il veut que vous sachiez lequel vous utilisez. Il vous le dit en ajoutant un `.0` explicite aux doubles à valeur entière. Nous ne nous soucions pas de cela, donc nous le <span name="number">hachons</span> de la fin.
 
 <aside name="number">
 
-Yet again, we take care of this edge case with numbers to ensure that jlox and
-clox work the same. Handling weird corners of the language like this will drive
-you crazy but is an important part of the job.
+Encore une fois, nous prenons soin de ce cas limite avec les nombres pour nous assurer que jlox et clox fonctionnent de la même manière. Gérer des coins bizarres du langage comme celui-ci vous rendra fou mais est une partie importante du boulot.
 
-Users rely on these details -- either deliberately or inadvertently -- and if
-the implementations aren't consistent, their program will break when they run it
-on different interpreters.
+Les utilisateurs comptent sur ces détails -- soit délibérément soit par inadvertance -- et si les implémentations ne sont pas cohérentes, leur programme cassera quand ils l'exécuteront sur différents interpréteurs.
 
 </aside>
 
-### Reporting runtime errors
+### Rapporter les erreurs d'exécution
 
-If a runtime error is thrown while evaluating the expression, `interpret()`
-catches it. This lets us report the error to the user and then gracefully
-continue. All of our existing error reporting code lives in the Lox class, so we
-put this method there too:
+Si une erreur d'exécution est lancée pendant l'évaluation de l'expression, `interpret()` l'attrape. Cela nous laisse rapporter l'erreur à l'utilisateur et ensuite continuer avec grâce. Tout notre code de rapport d'erreur existant vit dans la classe Lox, donc nous mettons cette méthode là aussi :
 
 ^code runtime-error-method
 
-We use the token associated with the RuntimeError to tell the user what line of
-code was executing when the error occurred. Even better would be to give the
-user an entire call stack to show how they *got* to be executing that code. But
-we don't have function calls yet, so I guess we don't have to worry about it.
+Nous utilisons le token associé à la RuntimeError pour dire à l'utilisateur quelle ligne de code s'exécutait quand l'erreur s'est produite. Encore mieux serait de donner à l'utilisateur une pile d'appels entière pour montrer comment ils sont _arrivés_ à exécuter ce code. Mais nous n'avons pas encore d'appels de fonction, donc je suppose que nous n'avons pas à nous en soucier.
 
-After showing the error, `runtimeError()` sets this field:
+Après avoir montré l'erreur, `runtimeError()` définit ce champ :
 
 ^code had-runtime-error-field (1 before, 1 after)
 
-That field plays a small but important role.
+Ce champ joue un petit mais important rôle.
 
 ^code check-runtime-error (4 before, 1 after)
 
-If the user is running a Lox <span name="repl">script from a file</span> and a
-runtime error occurs, we set an exit code when the process quits to let the
-calling process know. Not everyone cares about shell etiquette, but we do.
+Si l'utilisateur exécute un <span name="repl">script Lox depuis un fichier</span> et qu'une erreur d'exécution se produit, nous définissons un code de sortie quand le processus quitte pour le faire savoir au processus appelant. Tout le monde ne se soucie pas de l'étiquette du shell, mais nous si.
 
 <aside name="repl">
 
-If the user is running the REPL, we don't care about tracking runtime errors.
-After they are reported, we simply loop around and let them input new code and
-keep going.
+Si l'utilisateur exécute le REPL, nous ne nous soucions pas de suivre les erreurs d'exécution. Après qu'elles soient rapportées, nous bouclons simplement et les laissons entrer du nouveau code et continuer.
 
 </aside>
 
-### Running the interpreter
+### Exécuter l'interpréteur
 
-Now that we have an interpreter, the Lox class can start using it.
+Maintenant que nous avons un interpréteur, la classe Lox peut commencer à l'utiliser.
 
 ^code interpreter-instance (1 before, 1 after)
 
-We make the field static so that successive calls to `run()` inside a REPL
-session reuse the same interpreter. That doesn't make a difference now, but it
-will later when the interpreter stores global variables. Those variables should
-persist throughout the REPL session.
+Nous rendons le champ statique afin que les appels successifs à `run()` à l'intérieur d'une session REPL réutilisent le même interpréteur. Cela ne fait pas de différence maintenant, mais cela en fera plus tard quand l'interpréteur stockera des variables globales. Ces variables devraient persister tout au long de la session REPL.
 
-Finally, we remove the line of temporary code from the [last chapter][] for
-printing the syntax tree and replace it with this:
+Finalement, nous supprimons la ligne de code temporaire du [dernier chapitre][last chapter] pour imprimer l'arbre syntaxique et la remplaçons par ceci :
 
 [last chapter]: parsing-expressions.html
 
 ^code interpreter-interpret (3 before, 1 after)
 
-We have an entire language pipeline now: scanning, parsing, and
-execution. Congratulations, you now have your very own arithmetic calculator.
+Nous avons un pipeline de langage entier maintenant : scan, parsing, et exécution. Félicitations, vous avez maintenant votre propre calculatrice arithmétique.
 
-As you can see, the interpreter is pretty bare bones. But the Interpreter class
-and the Visitor pattern we've set up today form the skeleton that later chapters
-will stuff full of interesting guts -- variables, functions, etc. Right now, the
-interpreter doesn't do very much, but it's alive!
+Comme vous pouvez le voir, l'interpréteur est assez squelettique. Mais la classe Interpreter et le patron Visiteur que nous avons mis en place aujourd'hui forment le squelette que les chapitres ultérieurs bourreront plein de tripes intéressantes -- variables, fonctions, etc. Pour l'instant, l'interpréteur ne fait pas grand chose, mais il est vivant !
 
-<img src="image/evaluating-expressions/skeleton.png" alt="A skeleton waving hello." />
+<img src="image/evaluating-expressions/skeleton.png" alt="Un squelette disant bonjour de la main." />
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  Allowing comparisons on types other than numbers could be useful. The
-    operators might have a reasonable interpretation for strings. Even
-    comparisons among mixed types, like `3 < "pancake"` could be handy to enable
-    things like ordered collections of heterogeneous types. Or it could simply
-    lead to bugs and confusion.
+1.  Permettre des comparaisons sur des types autres que les nombres pourrait être utile. Les opérateurs pourraient avoir une interprétation raisonnable pour les chaînes. Même les comparaisons parmi des types mixtes, comme `3 < "pancake"` pourraient être pratiques pour permettre des choses comme des collections ordonnées de types hétérogènes. Ou cela pourrait simplement mener à des bugs et de la confusion.
 
-    Would you extend Lox to support comparing other types? If so, which pairs of
-    types do you allow and how do you define their ordering? Justify your
-    choices and compare them to other languages.
+    Étenderiez-vous Lox pour supporter la comparaison d'autres types ? Si oui, quelles paires de types autorisez-vous et comment définissez-vous leur ordre ? Justifiez vos choix et comparez-les à d'autres langages.
 
-2.  Many languages define `+` such that if *either* operand is a string, the
-    other is converted to a string and the results are then concatenated. For
-    example, `"scone" + 4` would yield `scone4`. Extend the code in
-    `visitBinaryExpr()` to support that.
+2.  Beaucoup de langages définissent `+` tel que si _l'un ou l'autre_ des opérandes est une chaîne, l'autre est converti en une chaîne et les résultats sont ensuite concaténés. Par exemple, `"scone" + 4` donnerait `scone4`. Étendez le code dans `visitBinaryExpr()` pour supporter cela.
 
-3.  What happens right now if you divide a number by zero? What do you think
-    should happen? Justify your choice. How do other languages you know handle
-    division by zero, and why do they make the choices they do?
+3.  Qu'est-ce qui se passe pour l'instant si vous divisez un nombre par zéro ? Que pensez-vous qu'il devrait se passer ? Justifiez votre choix. Comment d'autres langages que vous connaissez gèrent-ils la division par zéro, et pourquoi font-ils les choix qu'ils font ?
 
-    Change the implementation in `visitBinaryExpr()` to detect and report a
-    runtime error for this case.
+    Changez l'implémentation dans `visitBinaryExpr()` pour détecter et rapporter une erreur d'exécution pour ce cas.
 
 </div>
 
 <div class="design-note">
 
-## Design Note: Static and Dynamic Typing
+## Note de Conception : Typage Statique et Dynamique
 
-Some languages, like Java, are statically typed which means type errors are
-detected and reported at compile time before any code is run. Others, like Lox,
-are dynamically typed and defer checking for type errors until runtime right
-before an operation is attempted. We tend to consider this a black-and-white
-choice, but there is actually a continuum between them.
+Certains langages, comme Java, sont typés statiquement ce qui signifie que les erreurs de type sont détectées et rapportées au temps de compilation avant que le moindre code ne soit exécuté. D'autres, comme Lox, sont typés dynamiquement et diffèrent la vérification des erreurs de type jusqu'à l'exécution juste avant qu'une opération ne soit tentée. Nous avons tendance à considérer cela comme un choix noir ou blanc, mais il y a en fait un continuum entre eux.
 
-It turns out even most statically typed languages do *some* type checks at
-runtime. The type system checks most type rules statically, but inserts runtime
-checks in the generated code for other operations.
+Il s'avère que même la plupart des langages typés statiquement font _quelques_ vérifications de type à l'exécution. Le système de type vérifie la plupart des règles de type statiquement, mais insère des vérifications à l'exécution dans le code généré pour d'autres opérations.
 
-For example, in Java, the *static* type system assumes a cast expression will
-always safely succeed. After you cast some value, you can statically treat it as
-the destination type and not get any compile errors. But downcasts can fail,
-obviously. The only reason the static checker can presume that casts always
-succeed without violating the language's soundness guarantees, is because the
-cast is checked *at runtime* and throws an exception on failure.
+Par exemple, en Java, le système de type _statique_ suppose qu'une expression de cast réussira toujours en toute sécurité. Après avoir casté une valeur, vous pouvez statiquement la traiter comme le type de destination et ne pas obtenir d'erreurs de compilation. Mais les downcasts peuvent échouer, évidemment. La seule raison pour laquelle le vérificateur statique peut présumer que les casts réussissent toujours sans violer les garanties de robustesse du langage, est parce que le cast est vérifié _à l'exécution_ et lance une exception en cas d'échec.
 
-A more subtle example is [covariant arrays][] in Java and C#. The static
-subtyping rules for arrays allow operations that are not sound. Consider:
+Un exemple plus subtil est les [tableaux covariants][covariant arrays] en Java et C#. Les règles de sous-typage statique pour les tableaux autorisent des opérations qui ne sont pas sûres. Considérez :
 
 [covariant arrays]: https://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science)#Covariant_arrays_in_Java_and_C.23
 
 ```java
 Object[] stuff = new Integer[1];
-stuff[0] = "not an int!";
+stuff[0] = "pas un int !";
 ```
 
-This code compiles without any errors. The first line upcasts the Integer array
-and stores it in a variable of type Object array. The second line stores a
-string in one of its cells. The Object array type statically allows that
--- strings *are* Objects -- but the actual Integer array that `stuff` refers to
-at runtime should never have a string in it! To avoid that catastrophe, when you
-store a value in an array, the JVM does a *runtime* check to make sure it's an
-allowed type. If not, it throws an ArrayStoreException.
+Ce code compile sans aucune erreur. La première ligne upcaste le tableau d'Integer et le stocke dans une variable de type tableau d'Object. La seconde ligne stocke une chaîne dans l'une de ses cellules. Le type tableau d'Object autorise statiquement cela -- les chaînes _sont_ des Objects -- mais le tableau d'Integer réel auquel `stuff` se réfère à l'exécution ne devrait jamais avoir une chaîne dedans ! Pour éviter cette catastrophe, quand vous stockez une valeur dans un tableau, la JVM fait une vérification _à l'exécution_ pour s'assurer que c'est un type autorisé. Si non, elle lance une ArrayStoreException.
 
-Java could have avoided the need to check this at runtime by disallowing the
-cast on the first line. It could make arrays *invariant* such that an array of
-Integers is *not* an array of Objects. That's statically sound, but it prohibits
-common and safe patterns of code that only read from arrays. Covariance is safe
-if you never *write* to the array. Those patterns were particularly important
-for usability in Java 1.0 before it supported generics. James Gosling and the
-other Java designers traded off a little static safety and performance -- those
-array store checks take time -- in return for some flexibility.
+Java aurait pu éviter le besoin de vérifier cela à l'exécution en interdisant le cast sur la première ligne. Il aurait pu rendre les tableaux _invariants_ de telle sorte qu'un tableau d'Integers n'est _pas_ un tableau d'Objects. C'est statiquement sûr, mais cela interdit des patrons courants et sûrs de code qui lisent seulement depuis les tableaux. La covariance est sûre si vous n'_écrivez_ jamais dans le tableau. Ces patrons étaient particulièrement importants pour l'utilisabilité dans Java 1.0 avant qu'il ne supporte les génériques. James Gosling et les autres concepteurs de Java ont échangé un peu de sécurité statique et de performance -- ces vérifications de stockage de tableau prennent du temps -- en retour d'un peu de flexibilité.
 
-There are few modern statically typed languages that don't make that trade-off
-*somewhere*. Even Haskell will let you run code with non-exhaustive matches. If
-you find yourself designing a statically typed language, keep in mind that you
-can sometimes give users more flexibility without sacrificing *too* many of the
-benefits of static safety by deferring some type checks until runtime.
+Il y a peu de langages typés statiquement modernes qui ne font pas ce compromis _quelque part_. Même Haskell vous laissera exécuter du code avec des correspondances non exhaustives. Si vous vous trouvez à concevoir un langage typé statiquement, gardez à l'esprit que vous pouvez parfois donner aux utilisateurs plus de flexibilité sans sacrifier _trop_ des bénéfices de la sécurité statique en différant certaines vérifications de type jusqu'à l'exécution.
 
-On the other hand, a key reason users choose statically typed languages is
-because of the confidence the language gives them that certain kinds of errors
-can *never* occur when their program is run. Defer too many type checks until
-runtime, and you erode that confidence.
+D'un autre côté, une raison clé pour laquelle les utilisateurs choisissent des langages typés statiquement est à cause de la confiance que le langage leur donne que certains types d'erreurs ne peuvent _jamais_ se produire quand leur programme est exécuté. Différez trop de vérifications de type jusqu'à l'exécution, et vous érodez cette confiance.
 
 </div>

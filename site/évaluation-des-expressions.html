@@ -37,13 +37,12 @@
 <h3><a href="#top">Évaluation des expressions<small>7</small></a></h3>
 
 <ul>
-    <li><a href="#representing-values"><small>7.1</small> Representing Values</a></li>
-    <li><a href="#evaluating-expressions"><small>7.2</small> Evaluating Expressions</a></li>
-    <li><a href="#runtime-errors"><small>7.3</small> Runtime Errors</a></li>
-    <li><a href="#hooking-up-the-interpreter"><small>7.4</small> Hooking Up the Interpreter</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
-    <li class="end-part"><a href="#design-note"><small>note</small>Static and Dynamic Typing</a></li>
+    <li><a href="#représenter-les-valeurs"><small>7.1</small> Représenter les Valeurs</a></li>
+    <li><a href="#évaluation-des-expressions"><small>7.2</small> Évaluation des Expressions</a></li>
+    <li><a href="#erreurs-dexécution"><small>7.3</small> Erreurs d&#x27;Exécution</a></li>
+    <li><a href="#connecter-linterpréteur"><small>7.4</small> Connecter l&#x27;Interpréteur</a></li>
+    <li><a href="#défis"><small>7.5</small> Défis</a></li>
+    <li><a href="#note-de-conception--typage-statique-et-dynamique"><small>7.6</small> Note de Conception : Typage Statique et Dynamique</a></li>
 </ul>
 
 
@@ -68,13 +67,12 @@
 <h3><a href="#top">Évaluation des expressions<small>7</small></a></h3>
 
 <ul>
-    <li><a href="#representing-values"><small>7.1</small> Representing Values</a></li>
-    <li><a href="#evaluating-expressions"><small>7.2</small> Evaluating Expressions</a></li>
-    <li><a href="#runtime-errors"><small>7.3</small> Runtime Errors</a></li>
-    <li><a href="#hooking-up-the-interpreter"><small>7.4</small> Hooking Up the Interpreter</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
-    <li class="end-part"><a href="#design-note"><small>note</small>Static and Dynamic Typing</a></li>
+    <li><a href="#représenter-les-valeurs"><small>7.1</small> Représenter les Valeurs</a></li>
+    <li><a href="#évaluation-des-expressions"><small>7.2</small> Évaluation des Expressions</a></li>
+    <li><a href="#erreurs-dexécution"><small>7.3</small> Erreurs d&#x27;Exécution</a></li>
+    <li><a href="#connecter-linterpréteur"><small>7.4</small> Connecter l&#x27;Interpréteur</a></li>
+    <li><a href="#défis"><small>7.5</small> Défis</a></li>
+    <li><a href="#note-de-conception--typage-statique-et-dynamique"><small>7.6</small> Note de Conception : Typage Statique et Dynamique</a></li>
 </ul>
 
 
@@ -93,69 +91,42 @@
   <h1>Évaluation des expressions</h1>
 
 <blockquote>
-<p>You are my creator, but I am your master; Obey!</p>
+<p>Tu es mon créateur, mais je suis ton maître ; Obéis !</p>
 <p><cite>Mary Shelley, <em>Frankenstein</em></cite></p>
 </blockquote>
-<p>If you want to properly set the mood for this chapter, try to conjure up a
-thunderstorm, one of those swirling tempests that likes to yank open shutters at
-the climax of the story. Maybe toss in a few bolts of lightning. In this
-chapter, our interpreter will take breath, open its eyes, and execute some code.</p>
-<p><span name="spooky"></span></p><img src="image/evaluating-expressions/lightning.png" alt="A bolt of lightning strikes a Victorian mansion. Spooky!" />
+<p>Si vous voulez correctement mettre l&rsquo;ambiance pour ce chapitre, essayez d&rsquo;invoquer un orage, l&rsquo;une de ces tempêtes tourbillonnantes qui aiment arracher les volets au point culminant de l&rsquo;histoire. Peut-être jeter quelques éclairs. Dans ce chapitre, notre interpréteur va prendre sa respiration, ouvrir les yeux, et exécuter du code.</p>
+<p><span name="spooky"></span></p><img src="image/evaluating-expressions/lightning.png" alt="Un éclair frappe un manoir victorien. Effrayant !" />
 <aside name="spooky">
-<p>A decrepit Victorian mansion is optional, but adds to the ambiance.</p>
+<p>Un manoir victorien décrépit est optionnel, mais ajoute à l&rsquo;ambiance.</p>
 </aside>
-<p>There are all manner of ways that language implementations make a computer do
-what the user&rsquo;s source code commands. They can compile it to machine code,
-translate it to another high-level language, or reduce it to some bytecode
-format for a virtual machine to run. For our first interpreter, though, we are
-going to take the simplest, shortest path and execute the syntax tree itself.</p>
-<p>Right now, our parser only supports expressions. So, to &ldquo;execute&rdquo; code, we will
-evaluate an expression and produce a value. For each kind of expression syntax
-we can parse<span class="em">&mdash;</span>literal, operator, etc.<span class="em">&mdash;</span>we need a corresponding chunk of code
-that knows how to evaluate that tree and produce a result. That raises two
-questions:</p>
+<p>Il y a toutes sortes de façons dont les implémentations de langage font faire à un ordinateur ce que le code source de l&rsquo;utilisateur commande. Elles peuvent le compiler en code machine, le traduire vers un autre langage de haut niveau, ou le réduire à un format bytecode pour qu&rsquo;une machine virtuelle l&rsquo;exécute. Pour notre premier interpréteur, cependant, nous allons prendre le chemin le plus simple, le plus court et exécuter l&rsquo;arbre syntaxique lui-même.</p>
+<p>Pour l&rsquo;instant, notre parseur supporte seulement les expressions. Donc, pour &ldquo;exécuter&rdquo; du code, nous évaluerons une expression et produirons une valeur. Pour chaque type de syntaxe d&rsquo;expression que nous pouvons parser<span class="em">&mdash;</span>littéral, opérateur, etc.<span class="em">&mdash;</span>nous avons besoin d&rsquo;un morceau de code correspondant qui sait comment évaluer cet arbre et produire un résultat. Cela soulève deux questions :</p>
 <ol>
 <li>
-<p>What kinds of values do we produce?</p>
+<p>Quels types de valeurs produisons-nous ?</p>
 </li>
 <li>
-<p>How do we organize those chunks of code?</p>
+<p>Comment organisons-nous ces morceaux de code ?</p>
 </li>
 </ol>
-<p>Taking them on one at a time<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
-<h2><a href="#representing-values" id="representing-values"><small>7&#8202;.&#8202;1</small>Representing Values</a></h2>
-<p>In Lox, <span name="value">values</span> are created by literals, computed by
-expressions, and stored in variables. The user sees these as <em>Lox</em> objects, but
-they are implemented in the underlying language our interpreter is written in.
-That means bridging the lands of Lox&rsquo;s dynamic typing and Java&rsquo;s static types. A
-variable in Lox can store a value of any (Lox) type, and can even store values
-of different types at different points in time. What Java type might we use to
-represent that?</p>
+<p>Prenons-les une par une<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
+<h2><a href="#représenter-les-valeurs" id="représenter-les-valeurs"><small>7&#8202;.&#8202;1</small>Représenter les Valeurs</a></h2>
+<p>Dans Lox, les <span name="value">valeurs</span> sont créées par les littéraux, calculées par les expressions, et stockées dans des variables. L&rsquo;utilisateur les voit comme des objets <em>Lox</em>, mais elles sont implémentées dans le langage sous-jacent dans lequel notre interpréteur est écrit. Cela signifie faire le pont entre les terres du typage dynamique de Lox et les types statiques de Java. Une variable dans Lox peut stocker une valeur de n&rsquo;importe quel type (Lox), et peut même stocker des valeurs de différents types à différents moments. Quel type Java pourrions-nous utiliser pour représenter cela ?</p>
 <aside name="value">
-<p>Here, I&rsquo;m using &ldquo;value&rdquo; and &ldquo;object&rdquo; pretty much interchangeably.</p>
-<p>Later in the C interpreter we&rsquo;ll make a slight distinction between them, but
-that&rsquo;s mostly to have unique terms for two different corners of the
-implementation<span class="em">&mdash;</span>in-place versus heap-allocated data. From the user&rsquo;s
-perspective, the terms are synonymous.</p>
+<p>Ici, j&rsquo;utilise &ldquo;valeur&rdquo; et &ldquo;objet&rdquo; à peu près de manière interchangeable.</p>
+<p>Plus tard dans l&rsquo;interpréteur C, nous ferons une légère distinction entre eux, mais c&rsquo;est surtout pour avoir des termes uniques pour deux coins différents de l&rsquo;implémentation<span class="em">&mdash;</span>données en place contre allouées sur le tas. Du point de vue de l&rsquo;utilisateur, les termes sont synonymes.</p>
 </aside>
-<p>Given a Java variable with that static type, we must also be able to determine
-which kind of value it holds at runtime. When the interpreter executes a <code>+</code>
-operator, it needs to tell if it is adding two numbers or concatenating two
-strings. Is there a Java type that can hold numbers, strings, Booleans, and
-more? Is there one that can tell us what its runtime type is? There is! Good old
-java.lang.Object.</p>
-<p>In places in the interpreter where we need to store a Lox value, we can use
-Object as the type. Java has boxed versions of its primitive types that all
-subclass Object, so we can use those for Lox&rsquo;s built-in types:</p><table>
+<p>Étant donné une variable Java avec ce type statique, nous devons aussi être capables de déterminer quel genre de valeur elle contient à l&rsquo;exécution. Quand l&rsquo;interpréteur exécute un opérateur <code>+</code>, il a besoin de dire s&rsquo;il ajoute deux nombres ou concatène deux chaînes. Y a-t-il un type Java qui peut contenir des nombres, des chaînes, des booléens, et plus ? Y en a-t-il un qui peut nous dire quel est son type d&rsquo;exécution ? Il y en a un ! Le bon vieux java.lang.Object.</p>
+<p>Dans les endroits de l&rsquo;interpréteur où nous avons besoin de stocker une valeur Lox, nous pouvons utiliser Object comme type. Java a des versions &ldquo;boxées&rdquo; (enveloppées) de ses types primitifs qui sous-classent toutes Object, donc nous pouvons utiliser celles-ci pour les types intégrés de Lox :</p><table>
 <thead>
 <tr>
-  <td>Lox type</td>
-  <td>Java representation</td>
+  <td>Type Lox</td>
+  <td>Représentation Java</td>
 </tr>
 </thead>
 <tbody>
 <tr>
-  <td>Any Lox value</td>
+  <td>N'importe quelle valeur Lox</td>
   <td>Object</td>
 </tr>
 <tr>
@@ -163,44 +134,27 @@ subclass Object, so we can use those for Lox&rsquo;s built-in types:</p><table>
   <td><code>null</code></td>
 </tr>
 <tr>
-  <td>Boolean</td>
+  <td>Booléen</td>
   <td>Boolean</td>
 </tr>
 <tr>
-  <td>number</td>
+  <td>nombre</td>
   <td>Double</td>
 </tr>
 <tr>
-  <td>string</td>
+  <td>chaîne</td>
   <td>String</td>
 </tr>
 </tbody>
 </table>
-<p>Given a value of static type Object, we can determine if the runtime value is a
-number or a string or whatever using Java&rsquo;s built-in <code>instanceof</code> operator. In
-other words, the <span name="jvm">JVM</span>&rsquo;s own object representation
-conveniently gives us everything we need to implement Lox&rsquo;s built-in types.
-We&rsquo;ll have to do a little more work later when we add Lox&rsquo;s notions of
-functions, classes, and instances, but Object and the boxed primitive classes
-are sufficient for the types we need right now.</p>
+<p>Étant donné une valeur de type statique Object, nous pouvons déterminer si la valeur d&rsquo;exécution est un nombre ou une chaîne ou quoi que ce soit en utilisant l&rsquo;opérateur intégré de Java <code>instanceof</code>. En d&rsquo;autres termes, la propre représentation d&rsquo;objet de la <span name="jvm">JVM</span> nous donne commodément tout ce dont nous avons besoin pour implémenter les types intégrés de Lox. Nous devrons faire un peu plus de travail plus tard quand nous ajouterons les notions de fonctions, classes et instances de Lox, mais Object et les classes primitives boxées sont suffisants pour les types dont nous avons besoin pour l&rsquo;instant.</p>
 <aside name="jvm">
-<p>Another thing we need to do with values is manage their memory, and Java does
-that too. A handy object representation and a really nice garbage collector are
-the main reasons we&rsquo;re writing our first interpreter in Java.</p>
+<p>Une autre chose que nous devons faire avec les valeurs est gérer leur mémoire, et Java fait cela aussi. Une représentation d&rsquo;objet pratique et un ramasse-miettes vraiment sympa sont les raisons principales pour lesquelles nous écrivons notre premier interpréteur en Java.</p>
 </aside>
-<h2><a href="#evaluating-expressions" id="evaluating-expressions"><small>7&#8202;.&#8202;2</small>Evaluating Expressions</a></h2>
-<p>Next, we need blobs of code to implement the evaluation logic for each kind of
-expression we can parse. We could stuff that code into the syntax tree classes
-in something like an <code>interpret()</code> method. In effect, we could tell each syntax
-tree node, &ldquo;Interpret thyself&rdquo;. This is the Gang of Four&rsquo;s
-<a href="https://en.wikipedia.org/wiki/Interpreter_pattern">Interpreter design pattern</a>. It&rsquo;s a neat pattern, but like I mentioned
-earlier, it gets messy if we jam all sorts of logic into the tree classes.</p>
-<p>Instead, we&rsquo;re going to reuse our groovy <a href="representing-code.html#the-visitor-pattern">Visitor pattern</a>. In the previous
-chapter, we created an AstPrinter class. It took in a syntax tree and
-recursively traversed it, building up a string which it ultimately returned.
-That&rsquo;s almost exactly what a real interpreter does, except instead of
-concatenating strings, it computes values.</p>
-<p>We start with a new class.</p>
+<h2><a href="#évaluation-des-expressions" id="évaluation-des-expressions"><small>7&#8202;.&#8202;2</small>Évaluation des Expressions</a></h2>
+<p>Ensuite, nous avons besoin de paquets de code pour implémenter la logique d&rsquo;évaluation pour chaque type d&rsquo;expression que nous pouvons parser. Nous pourrions fourrer ce code dans les classes d&rsquo;arbre syntaxique dans quelque chose comme une méthode <code>interpret()</code>. En effet, nous pourrions dire à chaque nœud d&rsquo;arbre syntaxique, &ldquo;Interprète-toi toi-même&rdquo;. C&rsquo;est le <a href="https://en.wikipedia.org/wiki/Interpreter_pattern">patron de conception Interpréteur</a> du Gang of Four. C&rsquo;est un patron sympa, mais comme je l&rsquo;ai mentionné plus tôt, cela devient désordonné si nous bourrons toutes sortes de logique dans les classes d&rsquo;arbre.</p>
+<p>Au lieu de cela, nous allons réutiliser notre groovy <a href="representing-code.html#the-visitor-pattern">patron Visiteur</a>. Dans le chapitre précédent, nous avons créé une classe AstPrinter. Elle prenait un arbre syntaxique et le parcourait récursivement, construisant une chaîne qu&rsquo;elle renvoyait finalement. C&rsquo;est presque exactement ce qu&rsquo;un vrai interpréteur fait, sauf qu&rsquo;au lieu de concaténer des chaînes, il calcule des valeurs.</p>
+<p>Nous commençons avec une nouvelle classe.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 create new file</div>
 <pre><span class="k">package</span> <span class="i">com.craftinginterpreters.lox</span>;
@@ -210,26 +164,13 @@ create new file</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, create new file</div>
 
-<p>The class declares that it&rsquo;s a visitor. The return type of the visit methods
-will be Object, the root class that we use to refer to a Lox value in our Java
-code. To satisfy the Visitor interface, we need to define visit methods for each
-of the four expression tree classes our parser produces. We&rsquo;ll start with the
-simplest<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
-<h3><a href="#evaluating-literals" id="evaluating-literals"><small>7&#8202;.&#8202;2&#8202;.&#8202;1</small>Evaluating literals</a></h3>
-<p>The leaves of an expression tree<span class="em">&mdash;</span>the atomic bits of syntax that all other
-expressions are composed of<span class="em">&mdash;</span>are <span name="leaf">literals</span>. Literals
-are almost values already, but the distinction is important. A literal is a <em>bit
-of syntax</em> that produces a value. A literal always appears somewhere in the
-user&rsquo;s source code. Lots of values are produced by computation and don&rsquo;t exist
-anywhere in the code itself. Those aren&rsquo;t literals. A literal comes from the
-parser&rsquo;s domain. Values are an interpreter concept, part of the runtime&rsquo;s world.</p>
+<p>La classe déclare qu&rsquo;elle est un visiteur. Le type de retour des méthodes visit sera Object, la classe racine que nous utilisons pour nous référer à une valeur Lox dans notre code Java. Pour satisfaire l&rsquo;interface Visitor, nous devons définir des méthodes visit pour chacune des quatre classes d&rsquo;arbre d&rsquo;expression que notre parseur produit. Nous commencerons par la plus simple<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
+<h3><a href="#évaluation-des-littéraux" id="évaluation-des-littéraux"><small>7&#8202;.&#8202;2&#8202;.&#8202;1</small>Évaluation des littéraux</a></h3>
+<p>Les feuilles d&rsquo;un arbre d&rsquo;expression<span class="em">&mdash;</span>les bouts atomiques de syntaxe dont toutes les autres expressions sont composées<span class="em">&mdash;</span>sont les <span name="leaf">littéraux</span>. Les littéraux sont presque déjà des valeurs, mais la distinction est importante. Un littéral est un <em>bout de syntaxe</em> qui produit une valeur. Un littéral apparaît toujours quelque part dans le code source de l&rsquo;utilisateur. Beaucoup de valeurs sont produites par le calcul et n&rsquo;existent nulle part dans le code lui-même. Ce ne sont pas des littéraux. Un littéral vient du domaine du parseur. Les valeurs sont un concept de l&rsquo;interpréteur, une partie du monde de l&rsquo;exécution (runtime).</p>
 <aside name="leaf">
-<p>In the <a href="statements-and-state.html">next chapter</a>, when we implement variables, we&rsquo;ll add identifier
-expressions, which are also leaf nodes.</p>
+<p>Dans le <a href="statements-and-state.html">prochain chapitre</a>, quand nous implémenterons les variables, nous ajouterons les expressions d&rsquo;identifiant, qui sont aussi des nœuds feuilles.</p>
 </aside>
-<p>So, much like we converted a literal <em>token</em> into a literal <em>syntax tree node</em>
-in the parser, now we convert the literal tree node into a runtime value. That
-turns out to be trivial.</p>
+<p>Donc, tout comme nous avons converti un <em>token</em> littéral en un <em>nœud d&rsquo;arbre syntaxique</em> littéral dans le parseur, maintenant nous convertissons le nœud d&rsquo;arbre littéral en une valeur d&rsquo;exécution. Cela s&rsquo;avère être trivial.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 in class <em>Interpreter</em></div>
 <pre>  <span class="a">@Override</span>
@@ -239,12 +180,9 @@ in class <em>Interpreter</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in class <em>Interpreter</em></div>
 
-<p>We eagerly produced the runtime value way back during scanning and stuffed it in
-the token. The parser took that value and stuck it in the literal tree node,
-so to evaluate a literal, we simply pull it back out.</p>
-<h3><a href="#evaluating-parentheses" id="evaluating-parentheses"><small>7&#8202;.&#8202;2&#8202;.&#8202;2</small>Evaluating parentheses</a></h3>
-<p>The next simplest node to evaluate is grouping<span class="em">&mdash;</span>the node you get as a result
-of using explicit parentheses in an expression.</p>
+<p>Nous avons produit avidemment la valeur d&rsquo;exécution bien avant pendant le scan et l&rsquo;avons fourrée dans le token. Le parseur a pris cette valeur et l&rsquo;a collée dans le nœud d&rsquo;arbre littéral, donc pour évaluer un littéral, nous la ressortons simplement.</p>
+<h3><a href="#évaluation-des-parenthèses" id="évaluation-des-parenthèses"><small>7&#8202;.&#8202;2&#8202;.&#8202;2</small>Évaluation des parenthèses</a></h3>
+<p>Le prochain nœud le plus simple à évaluer est le groupement<span class="em">&mdash;</span>le nœud que vous obtenez comme résultat de l&rsquo;utilisation de parenthèses explicites dans une expression.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 in class <em>Interpreter</em></div>
 <pre>  <span class="a">@Override</span>
@@ -254,16 +192,10 @@ in class <em>Interpreter</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in class <em>Interpreter</em></div>
 
-<p>A <span name="grouping">grouping</span> node has a reference to an inner node
-for the expression contained inside the parentheses. To evaluate the grouping
-expression itself, we recursively evaluate that subexpression and return it.</p>
-<p>We rely on this helper method which simply sends the expression back into the
-interpreter&rsquo;s visitor implementation:</p>
+<p>Un nœud de <span name="grouping">groupement</span> a une référence vers un nœud interne pour l&rsquo;expression contenue à l&rsquo;intérieur des parenthèses. Pour évaluer l&rsquo;expression de groupement elle-même, nous évaluons récursivement cette sous-expression et la renvoyons.</p>
+<p>Nous comptons sur cette méthode d&rsquo;aide qui renvoie simplement l&rsquo;expression dans l&rsquo;implémentation du visiteur de l&rsquo;interpréteur :</p>
 <aside name="grouping">
-<p>Some parsers don&rsquo;t define tree nodes for parentheses. Instead, when parsing a
-parenthesized expression, they simply return the node for the inner expression.
-We do create a node for parentheses in Lox because we&rsquo;ll need it later to
-correctly handle the left-hand sides of assignment expressions.</p>
+<p>Certains parseurs ne définissent pas de nœuds d&rsquo;arbre pour les parenthèses. Au lieu de cela, lors du parsing d&rsquo;une expression parenthésée, ils renvoient simplement le nœud pour l&rsquo;expression interne. Nous créons un nœud pour les parenthèses dans Lox parce que nous en aurons besoin plus tard pour gérer correctement les côtés gauches des expressions d&rsquo;affectation.</p>
 </aside>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 in class <em>Interpreter</em></div>
@@ -273,10 +205,8 @@ in class <em>Interpreter</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in class <em>Interpreter</em></div>
 
-<h3><a href="#evaluating-unary-expressions" id="evaluating-unary-expressions"><small>7&#8202;.&#8202;2&#8202;.&#8202;3</small>Evaluating unary expressions</a></h3>
-<p>Like grouping, unary expressions have a single subexpression that we must
-evaluate first. The difference is that the unary expression itself does a little
-work afterwards.</p>
+<h3><a href="#évaluation-des-expressions-unaires" id="évaluation-des-expressions-unaires"><small>7&#8202;.&#8202;2&#8202;.&#8202;3</small>Évaluation des expressions unaires</a></h3>
+<p>Comme le groupement, les expressions unaires ont une seule sous-expression que nous devons évaluer en premier. La différence est que l&rsquo;expression unaire elle-même fait un peu de travail après.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>visitLiteralExpr</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -294,22 +224,13 @@ add after <em>visitLiteralExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>visitLiteralExpr</em>()</div>
 
-<p>First, we evaluate the operand expression. Then we apply the unary operator
-itself to the result of that. There are two different unary expressions,
-identified by the type of the operator token.</p>
-<p>Shown here is <code>-</code>, which negates the result of the subexpression. The
-subexpression must be a number. Since we don&rsquo;t <em>statically</em> know that in Java,
-we <span name="cast">cast</span> it before performing the operation. This type
-cast happens at runtime when the <code>-</code> is evaluated. That&rsquo;s the core of what makes
-a language dynamically typed right there.</p>
+<p>D&rsquo;abord, nous évaluons l&rsquo;expression opérande. Ensuite, nous appliquons l&rsquo;opérateur unaire lui-même au résultat de cela. Il y a deux expressions unaires différentes, identifiées par le type du token opérateur.</p>
+<p>Montré ici est <code>-</code>, qui inverse le signe du résultat de la sous-expression. La sous-expression doit être un nombre. Puisque nous ne savons pas <em>statiquement</em> cela en Java, nous le <span name="cast">castons</span> avant d&rsquo;effectuer l&rsquo;opération. Ce cast de type se produit à l&rsquo;exécution quand le <code>-</code> est évalué. C&rsquo;est le cœur de ce qui rend un langage typé dynamiquement juste là.</p>
 <aside name="cast">
-<p>You&rsquo;re probably wondering what happens if the cast fails. Fear not, we&rsquo;ll get
-into that soon.</p>
+<p>Vous vous demandez probablement ce qui se passe si le cast échoue. N&rsquo;ayez crainte, nous y viendrons bientôt.</p>
 </aside>
-<p>You can start to see how evaluation recursively traverses the tree. We can&rsquo;t
-evaluate the unary operator itself until after we evaluate its operand
-subexpression. That means our interpreter is doing a <strong>post-order traversal</strong><span class="em">&mdash;</span>each node evaluates its children before doing its own work.</p>
-<p>The other unary operator is logical not.</p>
+<p>Vous pouvez commencer à voir comment l&rsquo;évaluation traverse récursivement l&rsquo;arbre. Nous ne pouvons pas évaluer l&rsquo;opérateur unaire lui-même avant d&rsquo;avoir évalué sa sous-expression opérande. Cela signifie que notre interpréteur fait un <strong>parcours post-ordre</strong><span class="em">&mdash;</span>chaque nœud évalue ses enfants avant de faire son propre travail.</p>
+<p>L&rsquo;autre opérateur unaire est le non logique.</p>
 <div class="codehilite"><pre class="insert-before">    switch (expr.operator.type) {
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
 in <em>visitUnaryExpr</em>()</div>
@@ -319,32 +240,17 @@ in <em>visitUnaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitUnaryExpr</em>()</div>
 
-<p>The implementation is simple, but what is this &ldquo;truthy&rdquo; thing about? We need to
-make a little side trip to one of the great questions of Western philosophy:
-<em>What is truth?</em></p>
-<h3><a href="#truthiness-and-falsiness" id="truthiness-and-falsiness"><small>7&#8202;.&#8202;2&#8202;.&#8202;4</small>Truthiness and falsiness</a></h3>
-<p>OK, maybe we&rsquo;re not going to really get into the universal question, but at
-least inside the world of Lox, we need to decide what happens when you use
-something other than <code>true</code> or <code>false</code> in a logic operation like <code>!</code> or any
-other place where a Boolean is expected.</p>
-<p>We <em>could</em> just say it&rsquo;s an error because we don&rsquo;t roll with implicit
-conversions, but most dynamically typed languages aren&rsquo;t that ascetic. Instead,
-they take the universe of values of all types and partition them into two sets,
-one of which they define to be &ldquo;true&rdquo;, or &ldquo;truthful&rdquo;, or (my favorite) &ldquo;truthy&rdquo;,
-and the rest which are &ldquo;false&rdquo; or &ldquo;falsey&rdquo;. This partitioning is somewhat
-arbitrary and gets <span name="weird">weird</span> in a few languages.</p>
+<p>L&rsquo;implémentation est simple, mais c&rsquo;est quoi ce truc &ldquo;truthy&rdquo; (vrai) ? Nous avons besoin de faire une petite excursion vers l&rsquo;une des grandes questions de la philosophie occidentale : <em>Qu&rsquo;est-ce que la vérité ?</em></p>
+<h3><a href="#vérité-et-fausseté" id="vérité-et-fausseté"><small>7&#8202;.&#8202;2&#8202;.&#8202;4</small>Vérité et fausseté</a></h3>
+<p>OK, peut-être que nous n&rsquo;allons pas vraiment entrer dans la question universelle, mais au moins à l&rsquo;intérieur du monde de Lox, nous devons décider ce qui se passe quand vous utilisez quelque chose d&rsquo;autre que <code>true</code> ou <code>false</code> dans une opération logique comme <code>!</code> ou n&rsquo;importe quel autre endroit où un Booléen est attendu.</p>
+<p>Nous <em>pourrions</em> juste dire que c&rsquo;est une erreur parce que nous ne roulons pas avec les conversions implicites, mais la plupart des langages typés dynamiquement ne sont pas aussi ascétiques. Au lieu de cela, ils prennent l&rsquo;univers des valeurs de tous types et les partitionnent en deux ensembles, l&rsquo;un qu&rsquo;ils définissent comme &ldquo;vrai&rdquo;, ou &ldquo;truthy&rdquo;, et le reste qui sont &ldquo;faux&rdquo; ou &ldquo;falsey&rdquo;. Ce partitionnement est quelque peu arbitraire et devient <span name="weird">bizarre</span> dans quelques langages.</p>
 <aside name="weird" class="bottom">
-<p>In JavaScript, strings are truthy, but empty strings are not. Arrays are truthy
-but empty arrays are<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>also truthy. The number <code>0</code> is falsey, but the <em>string</em>
-<code>"0"</code> is truthy.</p>
-<p>In Python, empty strings are falsey like in JS, but other empty sequences are
-falsey too.</p>
-<p>In PHP, both the number <code>0</code> and the string <code>"0"</code> are falsey. Most other
-non-empty strings are truthy.</p>
-<p>Get all that?</p>
+<p>En JavaScript, les chaînes sont truthy, mais les chaînes vides ne le sont pas. Les tableaux sont truthy mais les tableaux vides sont<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>aussi truthy. Le nombre <code>0</code> est falsey, mais la <em>chaîne</em> <code>"0"</code> est truthy.</p>
+<p>En Python, les chaînes vides sont falsey comme en JS, mais d&rsquo;autres séquences vides sont falsey aussi.</p>
+<p>En PHP, à la fois le nombre <code>0</code> et la chaîne <code>"0"</code> sont falsey. La plupart des autres chaînes non vides sont truthy.</p>
+<p>Vous avez tout suivi ?</p>
 </aside>
-<p>Lox follows Ruby&rsquo;s simple rule: <code>false</code> and <code>nil</code> are falsey, and everything else
-is truthy. We implement that like so:</p>
+<p>Lox suit la règle simple de Ruby : <code>false</code> et <code>nil</code> sont falsey, et tout le reste est truthy. Nous implémentons cela comme ceci :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>visitUnaryExpr</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">boolean</span> <span class="i">isTruthy</span>(<span class="t">Object</span> <span class="i">object</span>) {
@@ -355,9 +261,8 @@ add after <em>visitUnaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>visitUnaryExpr</em>()</div>
 
-<h3><a href="#evaluating-binary-operators" id="evaluating-binary-operators"><small>7&#8202;.&#8202;2&#8202;.&#8202;5</small>Evaluating binary operators</a></h3>
-<p>On to the last expression tree class, binary operators. There&rsquo;s a handful of
-them, and we&rsquo;ll start with the arithmetic ones.</p>
+<h3><a href="#évaluation-des-opérateurs-binaires" id="évaluation-des-opérateurs-binaires"><small>7&#8202;.&#8202;2&#8202;.&#8202;5</small>Évaluation des opérateurs binaires</a></h3>
+<p>Passons à la dernière classe d&rsquo;arbre d&rsquo;expression, les opérateurs binaires. Il y en a une poignée, et nous commencerons par ceux arithmétiques.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>evaluate</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -381,16 +286,11 @@ add after <em>evaluate</em>()</div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>evaluate</em>()</div>
 
 <aside name="left">
-<p>Did you notice we pinned down a subtle corner of the language semantics here?
-In a binary expression, we evaluate the operands in left-to-right order. If
-those operands have side effects, that choice is user visible, so this isn&rsquo;t
-simply an implementation detail.</p>
-<p>If we want our two interpreters to be consistent (hint: we do), we&rsquo;ll need to
-make sure clox does the same thing.</p>
+<p>Avez-vous remarqué que nous avons épinglé un coin subtil de la sémantique du langage ici ? Dans une expression binaire, nous évaluons les opérandes dans l&rsquo;ordre de gauche à droite. Si ces opérandes ont des effets de bord, ce choix est visible par l&rsquo;utilisateur, donc ce n&rsquo;est pas simplement un détail d&rsquo;implémentation.</p>
+<p>Si nous voulons que nos deux interpréteurs soient cohérents (indice : nous le voulons), nous devrons nous assurer que clox fait la même chose.</p>
 </aside>
-<p>I think you can figure out what&rsquo;s going on here. The main difference from the
-unary negation operator is that we have two operands to evaluate.</p>
-<p>I left out one arithmetic operator because it&rsquo;s a little special.</p>
+<p>Je pense que vous pouvez comprendre ce qui se passe ici. La différence principale avec l&rsquo;opérateur de négation unaire est que nous avons deux opérandes à évaluer.</p>
+<p>J&rsquo;ai laissé de côté un opérateur arithmétique parce qu&rsquo;il est un peu spécial.</p>
 <div class="codehilite"><pre class="insert-before">    switch (expr.operator.type) {
       case MINUS:
         return (double)left - (double)right;
@@ -410,20 +310,12 @@ in <em>visitBinaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitBinaryExpr</em>()</div>
 
-<p>The <code>+</code> operator can also be used to concatenate two strings. To handle that, we
-don&rsquo;t just assume the operands are a certain type and <em>cast</em> them, we
-dynamically <em>check</em> the type and choose the appropriate operation. This is why
-we need our object representation to support <code>instanceof</code>.</p>
+<p>L&rsquo;opérateur <code>+</code> peut aussi être utilisé pour concaténer deux chaînes. Pour gérer cela, nous ne supposons pas juste que les opérandes sont d&rsquo;un certain type et les <em>castons</em>, nous <em>vérifions</em> dynamiquement le type et choisissons l&rsquo;opération appropriée. C&rsquo;est pourquoi nous avons besoin que notre représentation d&rsquo;objet supporte <code>instanceof</code>.</p>
 <aside name="plus">
-<p>We could have defined an operator specifically for string concatenation. That&rsquo;s
-what Perl (<code>.</code>), Lua (<code>..</code>), Smalltalk (<code>,</code>), Haskell (<code>++</code>), and others do.</p>
-<p>I thought it would make Lox a little more approachable to use the same syntax as
-Java, JavaScript, Python, and others. This means that the <code>+</code> operator is
-<strong>overloaded</strong> to support both adding numbers and concatenating strings. Even in
-languages that don&rsquo;t use <code>+</code> for strings, they still often overload it for
-adding both integers and floating-point numbers.</p>
+<p>Nous aurions pu définir un opérateur spécifiquement pour la concaténation de chaînes. C&rsquo;est ce que Perl (<code>.</code>), Lua (<code>..</code>), Smalltalk (<code>,</code>), Haskell (<code>++</code>), et d&rsquo;autres font.</p>
+<p>J&rsquo;ai pensé que cela rendrait Lox un peu plus abordable d&rsquo;utiliser la même syntaxe que Java, JavaScript, Python, et d&rsquo;autres. Cela signifie que l&rsquo;opérateur <code>+</code> est <strong>surchargé</strong> pour supporter à la fois l&rsquo;addition de nombres et la concaténation de chaînes. Même dans les langages qui n&rsquo;utilisent pas <code>+</code> pour les chaînes, ils le surchargent toujours souvent pour ajouter à la fois des entiers et des nombres à virgule flottante.</p>
 </aside>
-<p>Next up are the comparison operators.</p>
+<p>Les suivants sont les opérateurs de comparaison.</p>
 <div class="codehilite"><pre class="insert-before">    switch (expr.operator.type) {
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
 in <em>visitBinaryExpr</em>()</div>
@@ -439,10 +331,8 @@ in <em>visitBinaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitBinaryExpr</em>()</div>
 
-<p>They are basically the same as arithmetic. The only difference is that where the
-arithmetic operators produce a value whose type is the same as the operands
-(numbers or strings), the comparison operators always produce a Boolean.</p>
-<p>The last pair of operators are equality.</p>
+<p>Ils sont fondamentalement les mêmes que l&rsquo;arithmétique. La seule différence est que là où les opérateurs arithmétiques produisent une valeur dont le type est le même que les opérandes (nombres ou chaînes), les opérateurs de comparaison produisent toujours un Booléen.</p>
+<p>La dernière paire d&rsquo;opérateurs sont pour l&rsquo;égalité.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 in <em>visitBinaryExpr</em>()</div>
 <pre>      <span class="k">case</span> <span class="i">BANG_EQUAL</span>: <span class="k">return</span> !<span class="i">isEqual</span>(<span class="i">left</span>, <span class="i">right</span>);
@@ -450,14 +340,11 @@ in <em>visitBinaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitBinaryExpr</em>()</div>
 
-<p>Unlike the comparison operators which require numbers, the equality operators
-support operands of any type, even mixed ones. You can&rsquo;t ask Lox if 3 is <em>less</em>
-than <code>"three"</code>, but you can ask if it&rsquo;s <span name="equal"><em>equal</em></span> to
-it.</p>
+<p>Contrairement aux opérateurs de comparaison qui nécessitent des nombres, les opérateurs d&rsquo;égalité supportent des opérandes de n&rsquo;importe quel type, même mixtes. Vous ne pouvez pas demander à Lox si 3 est <em>plus petit</em> que <code>"trois"</code>, mais vous pouvez demander s&rsquo;il est <span name="equal"><em>égal</em></span> à lui.</p>
 <aside name="equal">
-<p>Spoiler alert: it&rsquo;s not.</p>
+<p>Alerte spoiler : il ne l&rsquo;est pas.</p>
 </aside>
-<p>Like truthiness, the equality logic is hoisted out into a separate method.</p>
+<p>Comme la véracité (truthiness), la logique d&rsquo;égalité est hissée hors dans une méthode séparée.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>isTruthy</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">boolean</span> <span class="i">isEqual</span>(<span class="t">Object</span> <span class="i">a</span>, <span class="t">Object</span> <span class="i">b</span>) {
@@ -469,85 +356,36 @@ add after <em>isTruthy</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>isTruthy</em>()</div>
 
-<p>This is one of those corners where the details of how we represent Lox objects
-in terms of Java matter. We need to correctly implement <em>Lox&rsquo;s</em> notion of
-equality, which may be different from Java&rsquo;s.</p>
-<p>Fortunately, the two are pretty similar. Lox doesn&rsquo;t do implicit conversions in
-equality and Java does not either. We do have to handle <code>nil</code>/<code>null</code> specially
-so that we don&rsquo;t throw a NullPointerException if we try to call <code>equals()</code> on
-<code>null</code>. Otherwise, we&rsquo;re fine. Java&rsquo;s <span name="nan"><code>equals()</code></span> method
-on Boolean, Double, and String have the behavior we want for Lox.</p>
+<p>C&rsquo;est l&rsquo;un de ces coins où les détails de comment nous représentons les objets Lox en termes de Java comptent. Nous devons implémenter correctement la notion d&rsquo;égalité de <em>Lox</em>, qui peut être différente de celle de Java.</p>
+<p>Heureusement, les deux sont assez similaires. Lox ne fait pas de conversions implicites dans l&rsquo;égalité et Java non plus. Nous devons gérer <code>nil</code>/<code>null</code> spécialement afin de ne pas lancer de NullPointerException si nous essayons d&rsquo;appeler <code>equals()</code> sur <code>null</code>. Sinon, nous sommes bons. La méthode <span name="nan"><code>equals()</code></span> de Java sur Boolean, Double, et String a le comportement que nous voulons pour Lox.</p>
 <aside name="nan">
-<p>What do you expect this to evaluate to:</p>
+<p>À quoi vous attendez-vous que ceci évalue :</p>
 <div class="codehilite"><pre>(<span class="n">0</span> / <span class="n">0</span>) == (<span class="n">0</span> / <span class="n">0</span>)
 </pre></div>
-<p>According to <a href="https://en.wikipedia.org/wiki/IEEE_754">IEEE 754</a>, which specifies the behavior of double-precision
-numbers, dividing a zero by zero gives you the special <strong>NaN</strong> (&ldquo;not a number&rdquo;)
-value. Strangely enough, NaN is <em>not</em> equal to itself.</p>
-<p>In Java, the <code>==</code> operator on primitive doubles preserves that behavior, but the
-<code>equals()</code> method on the Double class does not. Lox uses the latter, so doesn&rsquo;t
-follow IEEE. These kinds of subtle incompatibilities occupy a dismaying fraction
-of language implementers&rsquo; lives.</p>
+<p>Selon <a href="https://en.wikipedia.org/wiki/IEEE_754">IEEE 754</a>, qui spécifie le comportement des nombres à double précision, diviser un zéro par zéro vous donne la valeur spéciale <strong>NaN</strong> (&ldquo;not a number&rdquo; - pas un nombre). Étrangement assez, NaN n&rsquo;est <em>pas</em> égal à lui-même.</p>
+<p>En Java, l&rsquo;opérateur <code>==</code> sur les doubles primitifs préserve ce comportement, mais la méthode <code>equals()</code> sur la classe Double ne le fait pas. Lox utilise cette dernière, donc ne suit pas IEEE. Ces types d&rsquo;incompatibilités subtiles occupent une fraction consternante de la vie des implémenteurs de langage.</p>
 </aside>
-<p>And that&rsquo;s it! That&rsquo;s all the code we need to correctly interpret a valid Lox
-expression. But what about an <em>invalid</em> one? In particular, what happens when a
-subexpression evaluates to an object of the wrong type for the operation being
-performed?</p>
-<h2><a href="#runtime-errors" id="runtime-errors"><small>7&#8202;.&#8202;3</small>Runtime Errors</a></h2>
-<p>I was cavalier about jamming casts in whenever a subexpression produces an
-Object and the operator requires it to be a number or a string. Those casts can
-fail. Even though the user&rsquo;s code is erroneous, if we want to make a <span
-name="fail">usable</span> language, we are responsible for handling that error
-gracefully.</p>
+<p>Et c&rsquo;est tout ! C&rsquo;est tout le code dont nous avons besoin pour interpréter correctement une expression Lox valide. Mais qu&rsquo;en est-il d&rsquo;une <em>invalide</em> ? En particulier, que se passe-t-il quand une sous-expression s&rsquo;évalue en un objet du mauvais type pour l&rsquo;opération effectuée ?</p>
+<h2><a href="#erreurs-dexécution" id="erreurs-dexécution"><small>7&#8202;.&#8202;3</small>Erreurs d&rsquo;Exécution</a></h2>
+<p>J&rsquo;ai été cavalier en bourrant des casts chaque fois qu&rsquo;une sous-expression produit un Object et que l&rsquo;opérateur exige qu&rsquo;il soit un nombre ou une chaîne. Ces casts peuvent échouer. Même si le code de l&rsquo;utilisateur est erroné, si nous voulons faire un langage <span name="fail">utilisable</span>, nous sommes responsables de la gestion de cette erreur avec grâce.</p>
 <aside name="fail">
-<p>We could simply not detect or report a type error at all. This is what C does if
-you cast a pointer to some type that doesn&rsquo;t match the data that is actually
-being pointed to. C gains flexibility and speed by allowing that, but is
-also famously dangerous. Once you misinterpret bits in memory, all bets are off.</p>
-<p>Few modern languages accept unsafe operations like that. Instead, most are
-<strong>memory safe</strong> and ensure<span class="em">&mdash;</span>through a combination of static and runtime checks<span class="em">&mdash;</span>that a program can never incorrectly interpret the value stored in a piece of
-memory.</p>
+<p>Nous pourrions simplement ne pas détecter ou rapporter une erreur de type du tout. C&rsquo;est ce que fait C si vous castez un pointeur vers un certain type qui ne correspond pas aux données qui sont réellement pointées. C gagne de la flexibilité et de la vitesse en permettant cela, mais est aussi fameusement dangereux. Une fois que vous mésinterprétez des bits en mémoire, tous les paris sont ouverts.</p>
+<p>Peu de langages modernes acceptent des opérations non sûres comme celle-là. Au lieu de cela, la plupart sont <strong>sûrs pour la mémoire</strong> et assurent<span class="em">&mdash;</span>à travers une combinaison de vérifications statiques et à l&rsquo;exécution<span class="em">&mdash;</span>qu&rsquo;un programme ne peut jamais interpréter incorrectement la valeur stockée dans un morceau de mémoire.</p>
 </aside>
-<p>It&rsquo;s time for us to talk about <strong>runtime errors</strong>. I spilled a lot of ink in the
-previous chapters talking about error handling, but those were all <em>syntax</em> or
-<em>static</em> errors. Those are detected and reported before <em>any</em> code is executed.
-Runtime errors are failures that the language semantics demand we detect and
-report while the program is running (hence the name).</p>
-<p>Right now, if an operand is the wrong type for the operation being performed,
-the Java cast will fail and the JVM will throw a ClassCastException. That
-unwinds the whole stack and exits the application, vomiting a Java stack trace
-onto the user. That&rsquo;s probably not what we want. The fact that Lox is
-implemented in Java should be a detail hidden from the user. Instead, we want
-them to understand that a <em>Lox</em> runtime error occurred, and give them an error
-message relevant to our language and their program.</p>
-<p>The Java behavior does have one thing going for it, though. It correctly stops
-executing any code when the error occurs. Let&rsquo;s say the user enters some
-expression like:</p>
+<p>Il est temps pour nous de parler des <strong>erreurs d&rsquo;exécution</strong> (runtime errors). J&rsquo;ai versé beaucoup d&rsquo;encre dans les chapitres précédents en parlant de la gestion d&rsquo;erreur, mais c&rsquo;étaient toutes des erreurs de <em>syntaxe</em> ou <em>statiques</em>. Celles-ci sont détectées et rapportées avant que <em>le moindre</em> code soit exécuté. Les erreurs d&rsquo;exécution sont des échecs que la sémantique du langage exige que nous détections et rapportions pendant que le programme s&rsquo;exécute (d&rsquo;où le nom).</p>
+<p>Pour l&rsquo;instant, si un opérande est du mauvais type pour l&rsquo;opération effectuée, le cast Java échouera et la JVM lancera une ClassCastException. Cela déroule toute la pile et quitte l&rsquo;application, vomissant une trace de pile Java sur l&rsquo;utilisateur. Ce n&rsquo;est probablement pas ce que nous voulons. Le fait que Lox soit implémenté en Java devrait être un détail caché de l&rsquo;utilisateur. Au lieu de cela, nous voulons qu&rsquo;ils comprennent qu&rsquo;une erreur d&rsquo;exécution <em>Lox</em> s&rsquo;est produite, et leur donner un message d&rsquo;erreur pertinent pour notre langage et leur programme.</p>
+<p>Le comportement Java a une chose pour lui, cependant. Il arrête correctement l&rsquo;exécution de tout code quand l&rsquo;erreur se produit. Disons que l&rsquo;utilisateur entre une expression comme :</p>
 <div class="codehilite"><pre><span class="n">2</span> * (<span class="n">3</span> / -<span class="s">&quot;muffin&quot;</span>)
 </pre></div>
-<p>You can&rsquo;t negate a <span name="muffin">muffin</span>, so we need to report a
-runtime error at that inner <code>-</code> expression. That in turn means we can&rsquo;t evaluate
-the <code>/</code> expression since it has no meaningful right operand. Likewise for the
-<code>*</code>. So when a runtime error occurs deep in some expression, we need to escape
-all the way out.</p>
+<p>Vous ne pouvez pas inverser le signe d&rsquo;un <span name="muffin">muffin</span>, donc nous devons rapporter une erreur d&rsquo;exécution à cette expression <code>-</code> interne. Cela signifie à son tour que nous ne pouvons pas évaluer l&rsquo;expression <code>/</code> puisqu&rsquo;elle n&rsquo;a pas d&rsquo;opérande droit significatif. De même pour le <code>*</code>. Donc quand une erreur d&rsquo;exécution se produit profondément dans une expression, nous avons besoin de nous échapper tout le chemin vers l&rsquo;extérieur.</p>
 <aside name="muffin">
-<p>I don&rsquo;t know, man, <em>can</em> you negate a muffin?</p><img src="image/evaluating-expressions/muffin.png" alt="A muffin, negated." />
+<p>Je ne sais pas, mec, <em>peux</em>-tu inverser le signe d&rsquo;un muffin ?</p><img src="image/evaluating-expressions/muffin.png" alt="Un muffin, inversé." />
 </aside>
-<p>We could print a runtime error and then abort the process and exit the
-application entirely. That has a certain melodramatic flair. Sort of the
-programming language interpreter equivalent of a mic drop.</p>
-<p>Tempting as that is, we should probably do something a little less cataclysmic.
-While a runtime error needs to stop evaluating the <em>expression</em>, it shouldn&rsquo;t
-kill the <em>interpreter</em>. If a user is running the REPL and has a typo in a line
-of code, they should still be able to keep the session going and enter more code
-after that.</p>
-<h3><a href="#detecting-runtime-errors" id="detecting-runtime-errors"><small>7&#8202;.&#8202;3&#8202;.&#8202;1</small>Detecting runtime errors</a></h3>
-<p>Our tree-walk interpreter evaluates nested expressions using recursive method
-calls, and we need to unwind out of all of those. Throwing an exception in Java
-is a fine way to accomplish that. However, instead of using Java&rsquo;s own cast
-failure, we&rsquo;ll define a Lox-specific one so that we can handle it how we want.</p>
-<p>Before we do the cast, we check the object&rsquo;s type ourselves. So, for unary <code>-</code>,
-we add:</p>
+<p>Nous pourrions imprimer une erreur d&rsquo;exécution et ensuite avorter le processus et quitter l&rsquo;application entièrement. Cela a un certain flair mélodramatique. Sorte d&rsquo;équivalent pour un interpréteur de langage de programmation d&rsquo;un lâcher de micro.</p>
+<p>Aussi tentant que cela soit, nous devrions probablement faire quelque chose d&rsquo;un peu moins cataclysmique. Bien qu&rsquo;une erreur d&rsquo;exécution doive arrêter l&rsquo;évaluation de l&rsquo;<em>expression</em>, elle ne devrait pas tuer l&rsquo;<em>interpréteur</em>. Si un utilisateur exécute le REPL et a une faute de frappe dans une ligne de code, il devrait toujours être capable de garder la session en cours et d&rsquo;entrer plus de code après cela.</p>
+<h3><a href="#détecter-les-erreurs-dexécution" id="détecter-les-erreurs-dexécution"><small>7&#8202;.&#8202;3&#8202;.&#8202;1</small>Détecter les erreurs d&rsquo;exécution</a></h3>
+<p>Notre interpréteur à parcours d&rsquo;arbre évalue les expressions imbriquées en utilisant des appels de méthode récursifs, et nous avons besoin de nous dérouler hors de tout ceux-là. Lancer une exception en Java est un bon moyen d&rsquo;accomplir cela. Cependant, au lieu d&rsquo;utiliser le propre échec de cast de Java, nous en définirons un spécifique à Lox afin que nous puissions le gérer comme nous voulons.</p>
+<p>Avant de faire le cast, nous vérifions le type de l&rsquo;objet nous-mêmes. Donc, pour le <code>-</code> unaire, nous ajoutons :</p>
 <div class="codehilite"><pre class="insert-before">      case MINUS:
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
 in <em>visitUnaryExpr</em>()</div>
@@ -556,7 +394,7 @@ in <em>visitUnaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitUnaryExpr</em>()</div>
 
-<p>The code to check the operand is:</p>
+<p>Le code pour vérifier l&rsquo;opérande est :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>visitUnaryExpr</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">void</span> <span class="i">checkNumberOperand</span>(<span class="t">Token</span> <span class="i">operator</span>, <span class="t">Object</span> <span class="i">operand</span>) {
@@ -566,7 +404,7 @@ add after <em>visitUnaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>visitUnaryExpr</em>()</div>
 
-<p>When the check fails, it throws one of these:</p>
+<p>Quand la vérification échoue, elle lance un de ceux-ci :</p>
 <div class="codehilite"><div class="source-file"><em>lox/RuntimeError.java</em><br>
 create new file</div>
 <pre><span class="k">package</span> <span class="i">com.craftinginterpreters.lox</span>;
@@ -582,19 +420,12 @@ create new file</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/RuntimeError.java</em>, create new file</div>
 
-<p>Unlike the Java cast exception, our <span name="class">class</span> tracks the
-token that identifies where in the user&rsquo;s code the runtime error came from. As
-with static errors, this helps the user know where to fix their code.</p>
+<p>Contrairement à l&rsquo;exception de cast Java, notre <span name="class">classe</span> suit le token qui identifie d&rsquo;où dans le code de l&rsquo;utilisateur l&rsquo;erreur d&rsquo;exécution est venue. Comme pour les erreurs statiques, cela aide l&rsquo;utilisateur à savoir où corriger son code.</p>
 <aside name="class">
-<p>I admit the name &ldquo;RuntimeError&rdquo; is confusing since Java defines a
-RuntimeException class. An annoying thing about building interpreters is your
-names often collide with ones already taken by the implementation language. Just
-wait until we support Lox classes.</p>
+<p>J&rsquo;admets que le nom &ldquo;RuntimeError&rdquo; est confus puisque Java définit une classe RuntimeException. Une chose ennuyeuse à propos de la construction d&rsquo;interpréteurs est que vos noms entrent souvent en collision avec ceux déjà pris par le langage d&rsquo;implémentation. Attendez juste que nous supportions les classes Lox.</p>
 </aside>
-<p>We need similar checking for the binary operators. Since I promised you every
-single line of code needed to implement the interpreters, I&rsquo;ll run through them
-all.</p>
-<p>Greater than:</p>
+<p>Nous avons besoin de vérifications similaires pour les opérateurs binaires. Puisque je vous ai promis chaque ligne de code nécessaire pour implémenter les interpréteurs, je vais toutes les passer en revue.</p>
+<p>Plus grand que :</p>
 <div class="codehilite"><pre class="insert-before">      case GREATER:
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
 in <em>visitBinaryExpr</em>()</div>
@@ -603,7 +434,7 @@ in <em>visitBinaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitBinaryExpr</em>()</div>
 
-<p>Greater than or equal to:</p>
+<p>Plus grand ou égal à :</p>
 <div class="codehilite"><pre class="insert-before">      case GREATER_EQUAL:
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
 in <em>visitBinaryExpr</em>()</div>
@@ -612,7 +443,7 @@ in <em>visitBinaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitBinaryExpr</em>()</div>
 
-<p>Less than:</p>
+<p>Plus petit que :</p>
 <div class="codehilite"><pre class="insert-before">      case LESS:
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
 in <em>visitBinaryExpr</em>()</div>
@@ -621,7 +452,7 @@ in <em>visitBinaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitBinaryExpr</em>()</div>
 
-<p>Less than or equal to:</p>
+<p>Plus petit ou égal à :</p>
 <div class="codehilite"><pre class="insert-before">      case LESS_EQUAL:
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
 in <em>visitBinaryExpr</em>()</div>
@@ -630,7 +461,7 @@ in <em>visitBinaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitBinaryExpr</em>()</div>
 
-<p>Subtraction:</p>
+<p>Soustraction :</p>
 <div class="codehilite"><pre class="insert-before">      case MINUS:
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
 in <em>visitBinaryExpr</em>()</div>
@@ -639,7 +470,7 @@ in <em>visitBinaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitBinaryExpr</em>()</div>
 
-<p>Division:</p>
+<p>Division :</p>
 <div class="codehilite"><pre class="insert-before">      case SLASH:
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
 in <em>visitBinaryExpr</em>()</div>
@@ -648,7 +479,7 @@ in <em>visitBinaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitBinaryExpr</em>()</div>
 
-<p>Multiplication:</p>
+<p>Multiplication :</p>
 <div class="codehilite"><pre class="insert-before">      case STAR:
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
 in <em>visitBinaryExpr</em>()</div>
@@ -657,8 +488,7 @@ in <em>visitBinaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitBinaryExpr</em>()</div>
 
-<p>All of those rely on this validator, which is virtually the same as the unary
-one:</p>
+<p>Tous ceux-là reposent sur ce validateur, qui est virtuellement le même que celui unaire :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>checkNumberOperand</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">void</span> <span class="i">checkNumberOperands</span>(<span class="t">Token</span> <span class="i">operator</span>,
@@ -671,18 +501,12 @@ add after <em>checkNumberOperand</em>()</div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>checkNumberOperand</em>()</div>
 
 <aside name="operand">
-<p>Another subtle semantic choice: We evaluate <em>both</em> operands before checking the
-type of <em>either</em>. Imagine we have a function <code>say()</code> that prints its argument
-then returns it. Using that, we write:</p>
+<p>Un autre choix sémantique subtil : Nous évaluons les <em>deux</em> opérandes avant de vérifier le type de l&rsquo;<em>un ou l&rsquo;autre</em>. Imaginez que nous ayons une fonction <code>say()</code> qui imprime son argument puis le renvoie. En utilisant cela, nous écrivons :</p>
 <div class="codehilite"><pre><span class="i">say</span>(<span class="s">&quot;left&quot;</span>) - <span class="i">say</span>(<span class="s">&quot;right&quot;</span>);
 </pre></div>
-<p>Our interpreter prints &ldquo;left&rdquo; and &ldquo;right&rdquo; before reporting the runtime error. We
-could have instead specified that the left operand is checked before even
-evaluating the right.</p>
+<p>Notre interpréteur imprime &ldquo;left&rdquo; et &ldquo;right&rdquo; avant de rapporter l&rsquo;erreur d&rsquo;exécution. Nous aurions pu à la place spécifier que l&rsquo;opérande gauche est vérifié avant même d&rsquo;évaluer le droit.</p>
 </aside>
-<p>The last remaining operator, again the odd one out, is addition. Since <code>+</code> is
-overloaded for numbers and strings, it already has code to check the types. All
-we need to do is fail if neither of the two success cases match.</p>
+<p>Le dernier opérateur restant, encore l&rsquo;intrus, est l&rsquo;addition. Puisque <code>+</code> est surchargé pour les nombres et les chaînes, il a déjà du code pour vérifier les types. Tout ce que nous avons besoin de faire est d&rsquo;échouer si aucun des deux cas de succès ne matche.</p>
 <div class="codehilite"><pre class="insert-before">          return (String)left + (String)right;
         }
 
@@ -695,14 +519,9 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitBinaryExpr</em>(), replace 1 line</div>
 
-<p>That gets us detecting runtime errors deep in the innards of the evaluator. The
-errors are getting thrown. The next step is to write the code that catches them.
-For that, we need to wire up the Interpreter class into the main Lox class that
-drives it.</p>
-<h2><a href="#hooking-up-the-interpreter" id="hooking-up-the-interpreter"><small>7&#8202;.&#8202;4</small>Hooking Up the Interpreter</a></h2>
-<p>The visit methods are sort of the guts of the Interpreter class, where the real
-work happens. We need to wrap a skin around them to interface with the rest of
-the program. The Interpreter&rsquo;s public API is simply one method.</p>
+<p>Cela nous permet de détecter les erreurs d&rsquo;exécution profondément dans les entrailles de l&rsquo;évaluateur. Les erreurs sont lancées. L&rsquo;étape suivante est d&rsquo;écrire le code qui les attrape. Pour cela, nous avons besoin de brancher la classe Interpreter dans la classe Lox principale qui la pilote.</p>
+<h2><a href="#connecter-linterpréteur" id="connecter-linterpréteur"><small>7&#8202;.&#8202;4</small>Connecter l&rsquo;Interpréteur</a></h2>
+<p>Les méthodes visit sont en quelque sorte les tripes de la classe Interpreter, où le vrai travail se passe. Nous avons besoin d&rsquo;envelopper une peau autour d&rsquo;elles pour s&rsquo;interfacer avec le reste du programme. L&rsquo;API publique de l&rsquo;Interpreter est simplement une méthode.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 in class <em>Interpreter</em></div>
 <pre>  <span class="t">void</span> <span class="i">interpret</span>(<span class="t">Expr</span> <span class="i">expression</span>) {<span name="void"> </span>
@@ -716,10 +535,7 @@ in class <em>Interpreter</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in class <em>Interpreter</em></div>
 
-<p>This takes in a syntax tree for an expression and evaluates it. If that
-succeeds, <code>evaluate()</code> returns an object for the result value. <code>interpret()</code>
-converts that to a string and shows it to the user. To convert a Lox value to a
-string, we rely on:</p>
+<p>Celle-ci prend un arbre syntaxique pour une expression et l&rsquo;évalue. Si cela réussit, <code>evaluate()</code> renvoie un objet pour la valeur résultat. <code>interpret()</code> convertit cela en une chaîne et la montre à l&rsquo;utilisateur. Pour convertir une valeur Lox en chaîne, nous comptons sur :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>isEqual</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">String</span> <span class="i">stringify</span>(<span class="t">Object</span> <span class="i">object</span>) {
@@ -738,30 +554,15 @@ add after <em>isEqual</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>isEqual</em>()</div>
 
-<p>This is another of those pieces of code like <code>isTruthy()</code> that crosses the
-membrane between the user&rsquo;s view of Lox objects and their internal
-representation in Java.</p>
-<p>It&rsquo;s pretty straightforward. Since Lox was designed to be familiar to someone
-coming from Java, things like Booleans look the same in both languages. The two
-edge cases are <code>nil</code>, which we represent using Java&rsquo;s <code>null</code>, and numbers.</p>
-<p>Lox uses double-precision numbers even for integer values. In that case, they
-should print without a decimal point. Since Java has both floating point and
-integer types, it wants you to know which one you&rsquo;re using. It tells you by
-adding an explicit <code>.0</code> to integer-valued doubles. We don&rsquo;t care about that, so
-we <span name="number">hack</span> it off the end.</p>
+<p>C&rsquo;est une autre de ces pièces de code comme <code>isTruthy()</code> qui traverse la membrane entre la vue de l&rsquo;utilisateur des objets Lox et leur représentation interne en Java.</p>
+<p>C&rsquo;est assez direct. Puisque Lox a été conçu pour être familier à quelqu&rsquo;un venant de Java, des choses comme les Booléens semblent identiques dans les deux langages. Les deux cas limites sont <code>nil</code>, que nous représentons en utilisant le <code>null</code> de Java, et les nombres.</p>
+<p>Lox utilise des nombres à double précision même pour les valeurs entières. Dans ce cas, ils devraient s&rsquo;imprimer sans point décimal. Puisque Java a à la fois des types à virgule flottante et entiers, il veut que vous sachiez lequel vous utilisez. Il vous le dit en ajoutant un <code>.0</code> explicite aux doubles à valeur entière. Nous ne nous soucions pas de cela, donc nous le <span name="number">hachons</span> de la fin.</p>
 <aside name="number">
-<p>Yet again, we take care of this edge case with numbers to ensure that jlox and
-clox work the same. Handling weird corners of the language like this will drive
-you crazy but is an important part of the job.</p>
-<p>Users rely on these details<span class="em">&mdash;</span>either deliberately or inadvertently<span class="em">&mdash;</span>and if
-the implementations aren&rsquo;t consistent, their program will break when they run it
-on different interpreters.</p>
+<p>Encore une fois, nous prenons soin de ce cas limite avec les nombres pour nous assurer que jlox et clox fonctionnent de la même manière. Gérer des coins bizarres du langage comme celui-ci vous rendra fou mais est une partie importante du boulot.</p>
+<p>Les utilisateurs comptent sur ces détails<span class="em">&mdash;</span>soit délibérément soit par inadvertance<span class="em">&mdash;</span>et si les implémentations ne sont pas cohérentes, leur programme cassera quand ils l&rsquo;exécuteront sur différents interpréteurs.</p>
 </aside>
-<h3><a href="#reporting-runtime-errors" id="reporting-runtime-errors"><small>7&#8202;.&#8202;4&#8202;.&#8202;1</small>Reporting runtime errors</a></h3>
-<p>If a runtime error is thrown while evaluating the expression, <code>interpret()</code>
-catches it. This lets us report the error to the user and then gracefully
-continue. All of our existing error reporting code lives in the Lox class, so we
-put this method there too:</p>
+<h3><a href="#rapporter-les-erreurs-dexécution" id="rapporter-les-erreurs-dexécution"><small>7&#8202;.&#8202;4&#8202;.&#8202;1</small>Rapporter les erreurs d&rsquo;exécution</a></h3>
+<p>Si une erreur d&rsquo;exécution est lancée pendant l&rsquo;évaluation de l&rsquo;expression, <code>interpret()</code> l&rsquo;attrape. Cela nous laisse rapporter l&rsquo;erreur à l&rsquo;utilisateur et ensuite continuer avec grâce. Tout notre code de rapport d&rsquo;erreur existant vit dans la classe Lox, donc nous mettons cette méthode là aussi :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Lox.java</em><br>
 add after <em>error</em>()</div>
 <pre>  <span class="k">static</span> <span class="t">void</span> <span class="i">runtimeError</span>(<span class="t">RuntimeError</span> <span class="i">error</span>) {
@@ -772,11 +573,8 @@ add after <em>error</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Lox.java</em>, add after <em>error</em>()</div>
 
-<p>We use the token associated with the RuntimeError to tell the user what line of
-code was executing when the error occurred. Even better would be to give the
-user an entire call stack to show how they <em>got</em> to be executing that code. But
-we don&rsquo;t have function calls yet, so I guess we don&rsquo;t have to worry about it.</p>
-<p>After showing the error, <code>runtimeError()</code> sets this field:</p>
+<p>Nous utilisons le token associé à la RuntimeError pour dire à l&rsquo;utilisateur quelle ligne de code s&rsquo;exécutait quand l&rsquo;erreur s&rsquo;est produite. Encore mieux serait de donner à l&rsquo;utilisateur une pile d&rsquo;appels entière pour montrer comment ils sont <em>arrivés</em> à exécuter ce code. Mais nous n&rsquo;avons pas encore d&rsquo;appels de fonction, donc je suppose que nous n&rsquo;avons pas à nous en soucier.</p>
+<p>Après avoir montré l&rsquo;erreur, <code>runtimeError()</code> définit ce champ :</p>
 <div class="codehilite"><pre class="insert-before">  static boolean hadError = false;
 </pre><div class="source-file"><em>lox/Lox.java</em><br>
 in class <em>Lox</em></div>
@@ -786,7 +584,7 @@ in class <em>Lox</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Lox.java</em>, in class <em>Lox</em></div>
 
-<p>That field plays a small but important role.</p>
+<p>Ce champ joue un petit mais important rôle.</p>
 <div class="codehilite"><pre class="insert-before">    run(new String(bytes, Charset.defaultCharset()));
 
     // Indicate an error in the exit code.
@@ -798,16 +596,12 @@ in <em>runFile</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Lox.java</em>, in <em>runFile</em>()</div>
 
-<p>If the user is running a Lox <span name="repl">script from a file</span> and a
-runtime error occurs, we set an exit code when the process quits to let the
-calling process know. Not everyone cares about shell etiquette, but we do.</p>
+<p>Si l&rsquo;utilisateur exécute un <span name="repl">script Lox depuis un fichier</span> et qu&rsquo;une erreur d&rsquo;exécution se produit, nous définissons un code de sortie quand le processus quitte pour le faire savoir au processus appelant. Tout le monde ne se soucie pas de l&rsquo;étiquette du shell, mais nous si.</p>
 <aside name="repl">
-<p>If the user is running the REPL, we don&rsquo;t care about tracking runtime errors.
-After they are reported, we simply loop around and let them input new code and
-keep going.</p>
+<p>Si l&rsquo;utilisateur exécute le REPL, nous ne nous soucions pas de suivre les erreurs d&rsquo;exécution. Après qu&rsquo;elles soient rapportées, nous bouclons simplement et les laissons entrer du nouveau code et continuer.</p>
 </aside>
-<h3><a href="#running-the-interpreter" id="running-the-interpreter"><small>7&#8202;.&#8202;4&#8202;.&#8202;2</small>Running the interpreter</a></h3>
-<p>Now that we have an interpreter, the Lox class can start using it.</p>
+<h3><a href="#exécuter-linterpréteur" id="exécuter-linterpréteur"><small>7&#8202;.&#8202;4&#8202;.&#8202;2</small>Exécuter l&rsquo;interpréteur</a></h3>
+<p>Maintenant que nous avons un interpréteur, la classe Lox peut commencer à l&rsquo;utiliser.</p>
 <div class="codehilite"><pre class="insert-before">public class Lox {
 </pre><div class="source-file"><em>lox/Lox.java</em><br>
 in class <em>Lox</em></div>
@@ -816,12 +610,8 @@ in class <em>Lox</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Lox.java</em>, in class <em>Lox</em></div>
 
-<p>We make the field static so that successive calls to <code>run()</code> inside a REPL
-session reuse the same interpreter. That doesn&rsquo;t make a difference now, but it
-will later when the interpreter stores global variables. Those variables should
-persist throughout the REPL session.</p>
-<p>Finally, we remove the line of temporary code from the <a href="parsing-expressions.html">last chapter</a> for
-printing the syntax tree and replace it with this:</p>
+<p>Nous rendons le champ statique afin que les appels successifs à <code>run()</code> à l&rsquo;intérieur d&rsquo;une session REPL réutilisent le même interpréteur. Cela ne fait pas de différence maintenant, mais cela en fera plus tard quand l&rsquo;interpréteur stockera des variables globales. Ces variables devraient persister tout au long de la session REPL.</p>
+<p>Finalement, nous supprimons la ligne de code temporaire du <a href="parsing-expressions.html">dernier chapitre</a> pour imprimer l&rsquo;arbre syntaxique et la remplaçons par ceci :</p>
 <div class="codehilite"><pre class="insert-before">    // Stop if there was a syntax error.
     if (hadError) return;
 
@@ -833,84 +623,37 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Lox.java</em>, in <em>run</em>(), replace 1 line</div>
 
-<p>We have an entire language pipeline now: scanning, parsing, and
-execution. Congratulations, you now have your very own arithmetic calculator.</p>
-<p>As you can see, the interpreter is pretty bare bones. But the Interpreter class
-and the Visitor pattern we&rsquo;ve set up today form the skeleton that later chapters
-will stuff full of interesting guts<span class="em">&mdash;</span>variables, functions, etc. Right now, the
-interpreter doesn&rsquo;t do very much, but it&rsquo;s alive!</p><img src="image/evaluating-expressions/skeleton.png" alt="A skeleton waving hello." />
+<p>Nous avons un pipeline de langage entier maintenant : scan, parsing, et exécution. Félicitations, vous avez maintenant votre propre calculatrice arithmétique.</p>
+<p>Comme vous pouvez le voir, l&rsquo;interpréteur est assez squelettique. Mais la classe Interpreter et le patron Visiteur que nous avons mis en place aujourd&rsquo;hui forment le squelette que les chapitres ultérieurs bourreront plein de tripes intéressantes<span class="em">&mdash;</span>variables, fonctions, etc. Pour l&rsquo;instant, l&rsquo;interpréteur ne fait pas grand chose, mais il est vivant !</p><img src="image/evaluating-expressions/skeleton.png" alt="Un squelette disant bonjour de la main." />
 <div class="challenges">
-<h2><a href="#challenges" id="challenges">Challenges</a></h2>
+<h2><a href="#défis" id="défis"><small>7&#8202;.&#8202;5</small>Défis</a></h2>
 <ol>
 <li>
-<p>Allowing comparisons on types other than numbers could be useful. The
-operators might have a reasonable interpretation for strings. Even
-comparisons among mixed types, like <code>3 &lt; "pancake"</code> could be handy to enable
-things like ordered collections of heterogeneous types. Or it could simply
-lead to bugs and confusion.</p>
-<p>Would you extend Lox to support comparing other types? If so, which pairs of
-types do you allow and how do you define their ordering? Justify your
-choices and compare them to other languages.</p>
+<p>Permettre des comparaisons sur des types autres que les nombres pourrait être utile. Les opérateurs pourraient avoir une interprétation raisonnable pour les chaînes. Même les comparaisons parmi des types mixtes, comme <code>3 &lt; "pancake"</code> pourraient être pratiques pour permettre des choses comme des collections ordonnées de types hétérogènes. Ou cela pourrait simplement mener à des bugs et de la confusion.</p>
+<p>Étenderiez-vous Lox pour supporter la comparaison d&rsquo;autres types ? Si oui, quelles paires de types autorisez-vous et comment définissez-vous leur ordre ? Justifiez vos choix et comparez-les à d&rsquo;autres langages.</p>
 </li>
 <li>
-<p>Many languages define <code>+</code> such that if <em>either</em> operand is a string, the
-other is converted to a string and the results are then concatenated. For
-example, <code>"scone" + 4</code> would yield <code>scone4</code>. Extend the code in
-<code>visitBinaryExpr()</code> to support that.</p>
+<p>Beaucoup de langages définissent <code>+</code> tel que si <em>l&rsquo;un ou l&rsquo;autre</em> des opérandes est une chaîne, l&rsquo;autre est converti en une chaîne et les résultats sont ensuite concaténés. Par exemple, <code>"scone" + 4</code> donnerait <code>scone4</code>. Étendez le code dans <code>visitBinaryExpr()</code> pour supporter cela.</p>
 </li>
 <li>
-<p>What happens right now if you divide a number by zero? What do you think
-should happen? Justify your choice. How do other languages you know handle
-division by zero, and why do they make the choices they do?</p>
-<p>Change the implementation in <code>visitBinaryExpr()</code> to detect and report a
-runtime error for this case.</p>
+<p>Qu&rsquo;est-ce qui se passe pour l&rsquo;instant si vous divisez un nombre par zéro ? Que pensez-vous qu&rsquo;il devrait se passer ? Justifiez votre choix. Comment d&rsquo;autres langages que vous connaissez gèrent-ils la division par zéro, et pourquoi font-ils les choix qu&rsquo;ils font ?</p>
+<p>Changez l&rsquo;implémentation dans <code>visitBinaryExpr()</code> pour détecter et rapporter une erreur d&rsquo;exécution pour ce cas.</p>
 </li>
 </ol>
 </div>
 <div class="design-note">
-<h2><a href="#design-note" id="design-note">Design Note: Static and Dynamic Typing</a></h2>
-<p>Some languages, like Java, are statically typed which means type errors are
-detected and reported at compile time before any code is run. Others, like Lox,
-are dynamically typed and defer checking for type errors until runtime right
-before an operation is attempted. We tend to consider this a black-and-white
-choice, but there is actually a continuum between them.</p>
-<p>It turns out even most statically typed languages do <em>some</em> type checks at
-runtime. The type system checks most type rules statically, but inserts runtime
-checks in the generated code for other operations.</p>
-<p>For example, in Java, the <em>static</em> type system assumes a cast expression will
-always safely succeed. After you cast some value, you can statically treat it as
-the destination type and not get any compile errors. But downcasts can fail,
-obviously. The only reason the static checker can presume that casts always
-succeed without violating the language&rsquo;s soundness guarantees, is because the
-cast is checked <em>at runtime</em> and throws an exception on failure.</p>
-<p>A more subtle example is <a href="https://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science)#Covariant_arrays_in_Java_and_C.23">covariant arrays</a> in Java and C#. The static
-subtyping rules for arrays allow operations that are not sound. Consider:</p>
+<h2><a href="#note-de-conception--typage-statique-et-dynamique" id="note-de-conception--typage-statique-et-dynamique"><small>7&#8202;.&#8202;6</small>Note de Conception : Typage Statique et Dynamique</a></h2>
+<p>Certains langages, comme Java, sont typés statiquement ce qui signifie que les erreurs de type sont détectées et rapportées au temps de compilation avant que le moindre code ne soit exécuté. D&rsquo;autres, comme Lox, sont typés dynamiquement et diffèrent la vérification des erreurs de type jusqu&rsquo;à l&rsquo;exécution juste avant qu&rsquo;une opération ne soit tentée. Nous avons tendance à considérer cela comme un choix noir ou blanc, mais il y a en fait un continuum entre eux.</p>
+<p>Il s&rsquo;avère que même la plupart des langages typés statiquement font <em>quelques</em> vérifications de type à l&rsquo;exécution. Le système de type vérifie la plupart des règles de type statiquement, mais insère des vérifications à l&rsquo;exécution dans le code généré pour d&rsquo;autres opérations.</p>
+<p>Par exemple, en Java, le système de type <em>statique</em> suppose qu&rsquo;une expression de cast réussira toujours en toute sécurité. Après avoir casté une valeur, vous pouvez statiquement la traiter comme le type de destination et ne pas obtenir d&rsquo;erreurs de compilation. Mais les downcasts peuvent échouer, évidemment. La seule raison pour laquelle le vérificateur statique peut présumer que les casts réussissent toujours sans violer les garanties de robustesse du langage, est parce que le cast est vérifié <em>à l&rsquo;exécution</em> et lance une exception en cas d&rsquo;échec.</p>
+<p>Un exemple plus subtil est les <a href="https://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science)#Covariant_arrays_in_Java_and_C.23">tableaux covariants</a> en Java et C#. Les règles de sous-typage statique pour les tableaux autorisent des opérations qui ne sont pas sûres. Considérez :</p>
 <div class="codehilite"><pre><span class="t">Object</span>[] <span class="i">stuff</span> = <span class="k">new</span> <span class="t">Integer</span>[<span class="n">1</span>];
-<span class="i">stuff</span>[<span class="n">0</span>] = <span class="s">&quot;not an int!&quot;</span>;
+<span class="i">stuff</span>[<span class="n">0</span>] = <span class="s">&quot;pas un int !&quot;</span>;
 </pre></div>
-<p>This code compiles without any errors. The first line upcasts the Integer array
-and stores it in a variable of type Object array. The second line stores a
-string in one of its cells. The Object array type statically allows that<span class="em">&mdash;</span>strings <em>are</em> Objects<span class="em">&mdash;</span>but the actual Integer array that <code>stuff</code> refers to
-at runtime should never have a string in it! To avoid that catastrophe, when you
-store a value in an array, the JVM does a <em>runtime</em> check to make sure it&rsquo;s an
-allowed type. If not, it throws an ArrayStoreException.</p>
-<p>Java could have avoided the need to check this at runtime by disallowing the
-cast on the first line. It could make arrays <em>invariant</em> such that an array of
-Integers is <em>not</em> an array of Objects. That&rsquo;s statically sound, but it prohibits
-common and safe patterns of code that only read from arrays. Covariance is safe
-if you never <em>write</em> to the array. Those patterns were particularly important
-for usability in Java 1.0 before it supported generics. James Gosling and the
-other Java designers traded off a little static safety and performance<span class="em">&mdash;</span>those
-array store checks take time<span class="em">&mdash;</span>in return for some flexibility.</p>
-<p>There are few modern statically typed languages that don&rsquo;t make that trade-off
-<em>somewhere</em>. Even Haskell will let you run code with non-exhaustive matches. If
-you find yourself designing a statically typed language, keep in mind that you
-can sometimes give users more flexibility without sacrificing <em>too</em> many of the
-benefits of static safety by deferring some type checks until runtime.</p>
-<p>On the other hand, a key reason users choose statically typed languages is
-because of the confidence the language gives them that certain kinds of errors
-can <em>never</em> occur when their program is run. Defer too many type checks until
-runtime, and you erode that confidence.</p>
+<p>Ce code compile sans aucune erreur. La première ligne upcaste le tableau d&rsquo;Integer et le stocke dans une variable de type tableau d&rsquo;Object. La seconde ligne stocke une chaîne dans l&rsquo;une de ses cellules. Le type tableau d&rsquo;Object autorise statiquement cela<span class="em">&mdash;</span>les chaînes <em>sont</em> des Objects<span class="em">&mdash;</span>mais le tableau d&rsquo;Integer réel auquel <code>stuff</code> se réfère à l&rsquo;exécution ne devrait jamais avoir une chaîne dedans ! Pour éviter cette catastrophe, quand vous stockez une valeur dans un tableau, la JVM fait une vérification <em>à l&rsquo;exécution</em> pour s&rsquo;assurer que c&rsquo;est un type autorisé. Si non, elle lance une ArrayStoreException.</p>
+<p>Java aurait pu éviter le besoin de vérifier cela à l&rsquo;exécution en interdisant le cast sur la première ligne. Il aurait pu rendre les tableaux <em>invariants</em> de telle sorte qu&rsquo;un tableau d&rsquo;Integers n&rsquo;est <em>pas</em> un tableau d&rsquo;Objects. C&rsquo;est statiquement sûr, mais cela interdit des patrons courants et sûrs de code qui lisent seulement depuis les tableaux. La covariance est sûre si vous n&rsquo;<em>écrivez</em> jamais dans le tableau. Ces patrons étaient particulièrement importants pour l&rsquo;utilisabilité dans Java 1.0 avant qu&rsquo;il ne supporte les génériques. James Gosling et les autres concepteurs de Java ont échangé un peu de sécurité statique et de performance<span class="em">&mdash;</span>ces vérifications de stockage de tableau prennent du temps<span class="em">&mdash;</span>en retour d&rsquo;un peu de flexibilité.</p>
+<p>Il y a peu de langages typés statiquement modernes qui ne font pas ce compromis <em>quelque part</em>. Même Haskell vous laissera exécuter du code avec des correspondances non exhaustives. Si vous vous trouvez à concevoir un langage typé statiquement, gardez à l&rsquo;esprit que vous pouvez parfois donner aux utilisateurs plus de flexibilité sans sacrifier <em>trop</em> des bénéfices de la sécurité statique en différant certaines vérifications de type jusqu&rsquo;à l&rsquo;exécution.</p>
+<p>D&rsquo;un autre côté, une raison clé pour laquelle les utilisateurs choisissent des langages typés statiquement est à cause de la confiance que le langage leur donne que certains types d&rsquo;erreurs ne peuvent <em>jamais</em> se produire quand leur programme est exécuté. Différez trop de vérifications de type jusqu&rsquo;à l&rsquo;exécution, et vous érodez cette confiance.</p>
 </div>
 
 <footer>

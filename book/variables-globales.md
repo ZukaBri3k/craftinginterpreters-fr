@@ -1,50 +1,24 @@
-> If only there could be an invention that bottled up a memory, like scent. And
-> it never faded, and it never got stale. And then, when one wanted it, the
-> bottle could be uncorked, and it would be like living the moment all over
-> again.
+> Si seulement l'on pouvait inventer quelque chose pour mettre les souvenirs en flacon, comme les parfums. Pour qu'ils ne se dissipent jamais, pour qu'ils ne s'éventent jamais. Et puis, quand on le voudrait, la bouteille pourrait être débouchée, et ce serait comme revivre le moment tout à nouveau.
 >
 > <cite>Daphne du Maurier, <em>Rebecca</em></cite>
 
-The [previous chapter][hash] was a long exploration of one big, deep,
-fundamental computer science data structure. Heavy on theory and concept. There
-may have been some discussion of big-O notation and algorithms. This chapter has
-fewer intellectual pretensions. There are no large ideas to learn. Instead, it's
-a handful of straightforward engineering tasks. Once we've completed them, our
-virtual machine will support variables.
+Le [chapitre précédent][hash] était une longue exploration d'une grosse structure de données fondamentale, profonde de l'informatique. Lourd sur la théorie et le concept. Il peut y avoir eu quelques discussions sur la notation grand-O et les algorithmes. Ce chapitre a moins de prétentions intellectuelles. Il n'y a pas de grandes idées à apprendre. Au lieu de cela, c'est une poignée de tâches d'ingénierie directes. Une fois que nous les aurons complétées, notre machine virtuelle supportera les variables.
 
-Actually, it will support only *global* variables. Locals are coming in the
-[next chapter][]. In jlox, we managed to cram them both into a single chapter
-because we used the same implementation technique for all variables. We built a
-chain of environments, one for each scope, all the way up to the top. That was a
-simple, clean way to learn how to manage state.
+En fait, elle supportera seulement les variables _globales_. Les locales arrivent dans le [chapitre suivant][]. Dans jlox, nous avons réussi à les fourrer toutes les deux dans un seul chapitre parce que nous avons utilisé la même technique d'implémentation pour toutes les variables. Nous avons construit une chaîne d'environnements, un pour chaque portée, tout le chemin jusqu'au sommet. C'était un moyen simple et propre d'apprendre comment gérer l'état.
 
-[next chapter]: local-variables.html
+[next chapter]: variables-locales.html
 
-But it's also *slow*. Allocating a new hash table each time you enter a block or
-call a function is not the road to a fast VM. Given how much code is concerned
-with using variables, if variables go slow, everything goes slow. For clox,
-we'll improve that by using a much more efficient strategy for <span
-name="different">local</span> variables, but globals aren't as easily optimized.
+Mais c'est aussi _lent_. Allouer une nouvelle table de hachage chaque fois que vous entrez dans un bloc ou appelez une fonction n'est pas la route vers une VM rapide. Étant donné combien de code est concerné par l'utilisation de variables, si les variables vont lentement, tout va lentement. Pour clox, nous améliorerons cela en utilisant une stratégie bien plus efficace pour les variables <span name="different">locales</span>, mais les globales ne sont pas aussi facilement optimisées.
 
 <aside name="different">
 
-This is a common meta-strategy in sophisticated language implementations. Often,
-the same language feature will have multiple implementation techniques, each
-tuned for different use patterns. For example, JavaScript VMs often have a
-faster representation for objects that are used more like instances of classes
-compared to other objects whose set of properties is more freely modified. C and
-C++ compilers usually have a variety of ways to compile `switch` statements
-based on the number of cases and how densely packed the case values are.
+C'est une méta-stratégie commune dans les implémentations de langage sophistiquées. Souvent, la même fonctionnalité de langage aura de multiples techniques d'implémentation, chacune réglée pour différents modèles d'utilisation. Par exemple, les VMs JavaScript ont souvent une représentation plus rapide pour les objets qui sont utilisés plus comme des instances de classes comparé à d'autres objets dont l'ensemble de propriétés est modifié plus librement. Les compilateurs C et C++ ont habituellement une variété de façons de compiler les instructions `switch` basées sur le nombre de cas et comment les valeurs de cas sont densément empaquetées.
 
 </aside>
 
-[hash]: hash-tables.html
+[hash]: tables-de-hachage.html
 
-A quick refresher on Lox semantics: Global variables in Lox are "late bound", or
-resolved dynamically. This means you can compile a chunk of code that refers to
-a global variable before it's defined. As long as the code doesn't *execute*
-before the definition happens, everything is fine. In practice, that means you
-can refer to later variables inside the body of functions.
+Un rafraîchissement rapide sur la sémantique de Lox : Les variables globales dans Lox sont "liées tardivement" (late bound), ou résolues dynamiquement. Cela signifie que vous pouvez compiler un morceau de code qui fait référence à une variable globale avant qu'elle soit définie. Tant que le code ne s'_exécute_ pas avant que la définition arrive, tout va bien. En pratique, cela signifie que vous pouvez faire référence à des variables ultérieures à l'intérieur du corps de fonctions.
 
 ```lox
 fun showVariable() {
@@ -55,33 +29,19 @@ var global = "after";
 showVariable();
 ```
 
-Code like this might seem odd, but it's handy for defining mutually recursive
-functions. It also plays nicer with the REPL. You can write a little function in
-one line, then define the variable it uses in the next.
+Du code comme celui-ci pourrait sembler étrange, mais c'est pratique pour définir des fonctions mutuellement récursives. Cela joue aussi plus gentiment avec le REPL. Vous pouvez écrire une petite fonction en une ligne, puis définir la variable qu'elle utilise dans la suivante.
 
-Local variables work differently. Since a local variable's declaration *always*
-occurs before it is used, the VM can resolve them at compile time, even in a
-simple single-pass compiler. That will let us use a smarter representation for
-locals. But that's for the next chapter. Right now, let's just worry about
-globals.
+Les variables locales fonctionnent différemment. Puisque la déclaration d'une variable locale se produit _toujours_ avant qu'elle soit utilisée, la VM peut les résoudre au moment de la compilation, même dans un simple compilateur à une passe. Cela nous laissera utiliser une représentation plus intelligente pour les locales. Mais c'est pour le chapitre suivant. Juste maintenant, inquiétons-nous seulement des globales.
 
-## Statements
+## Instructions
 
-Variables come into being using variable declarations, which means now is also
-the time to add support for statements to our compiler. If you recall, Lox
-splits statements into two categories. "Declarations" are those statements that
-bind a new name to a value. The other kinds of statements -- control flow,
-print, etc. -- are just called "statements". We disallow declarations directly
-inside control flow statements, like this:
+Les variables viennent à l'existence en utilisant des déclarations de variable, ce qui signifie que maintenant est aussi le moment d'ajouter le support pour les instructions à notre compilateur. Si vous vous rappelez, Lox sépare les instructions en deux catégories. Les "Déclarations" sont ces instructions qui lient un nouveau nom à une valeur. Les autres sortes d'instructions -- contrôle de flux, print, etc. -- sont juste appelées "instructions". Nous interdisons les déclarations directement à l'intérieur des instructions de contrôle de flux, comme ceci :
 
 ```lox
-if (monday) var croissant = "yes"; // Error.
+if (monday) var croissant = "yes"; // Erreur.
 ```
 
-Allowing it would raise confusing questions around the scope of the variable.
-So, like other languages, we prohibit it syntactically by having a separate
-grammar rule for the subset of statements that *are* allowed inside a control
-flow body.
+Le permettre soulèverait des questions confuses autour de la portée de la variable. Donc, comme d'autres langages, nous l'interdisons syntaxiquement en ayant une règle de grammaire séparée pour le sous-ensemble d'instructions qui _sont_ permises à l'intérieur d'un corps de contrôle de flux.
 
 ```ebnf
 statement      → exprStmt
@@ -93,7 +53,7 @@ statement      → exprStmt
                | block ;
 ```
 
-Then we use a separate rule for the top level of a script and inside a block.
+Ensuite nous utilisons une règle séparée pour le niveau supérieur d'un script et à l'intérieur d'un bloc.
 
 ```ebnf
 declaration    → classDecl
@@ -102,22 +62,15 @@ declaration    → classDecl
                | statement ;
 ```
 
-The `declaration` rule contains the statements that declare names, and also
-includes `statement` so that all statement types are allowed. Since `block`
-itself is in `statement`, you can put declarations <span
-name="parens">inside</span> a control flow construct by nesting them inside a
-block.
+La règle `declaration` contient les instructions qui déclarent des noms, et inclut aussi `statement` pour que tous les types d'instruction soient permis. Puisque `block` lui-même est dans `statement`, vous pouvez mettre des déclarations <span name="parens">à l'intérieur</span> d'une construction de contrôle de flux en les nichant à l'intérieur d'un bloc.
 
 <aside name="parens">
 
-Blocks work sort of like parentheses do for expressions. A block lets you put
-the "lower-precedence" declaration statements in places where only a
-"higher-precedence" non-declaring statement is allowed.
+Les blocs fonctionnent un peu comme les parenthèses le font pour les expressions. Un bloc vous laisse mettre les instructions de déclaration à "priorité plus basse" dans des endroits où seulement une instruction non déclarative à "priorité plus haute" est permise.
 
 </aside>
 
-In this chapter, we'll cover only a couple of statements and one
-declaration.
+Dans ce chapitre, nous couvrirons seulement une couple d'instructions et une déclaration.
 
 ```ebnf
 statement      → exprStmt
@@ -127,417 +80,299 @@ declaration    → varDecl
                | statement ;
 ```
 
-Up to now, our VM considered a "program" to be a single expression since that's
-all we could parse and compile. In a full Lox implementation, a program is a
-sequence of declarations. We're ready to support that now.
+Jusqu'à maintenant, notre VM considérait un "programme" comme étant une expression unique puisque c'est tout ce que nous pouvions analyser et compiler. Dans une implémentation complète de Lox, un programme est une séquence de déclarations. Nous sommes prêts à supporter cela maintenant.
 
 ^code compile (1 before, 1 after)
 
-We keep compiling declarations until we hit the end of the source file. We
-compile a single declaration using this:
+Nous continuons de compiler des déclarations jusqu'à ce que nous touchions la fin du fichier source. Nous compilons une déclaration unique en utilisant ceci :
 
 ^code declaration
 
-We'll get to variable declarations later in the chapter, so for now, we simply
-forward to `statement()`.
+Nous arriverons aux déclarations de variable plus tard dans le chapitre, donc pour l'instant, nous transférons simplement à `statement()`.
 
 ^code statement
 
-Blocks can contain declarations, and control flow statements can contain other
-statements. That means these two functions will eventually be recursive. We may
-as well write out the forward declarations now.
+Les blocs peuvent contenir des déclarations, et les instructions de contrôle de flux peuvent contenir d'autres instructions. Cela signifie que ces deux fonctions seront éventuellement récursives. Nous pouvons aussi bien écrire les déclarations anticipées maintenant.
 
 ^code forward-declarations (1 before, 1 after)
 
-### Print statements
+### Instructions Print
 
-We have two statement types to support in this chapter. Let's start with `print`
-statements, which begin, naturally enough, with a `print` token. We detect that
-using this helper function:
+Nous avons deux types d'instruction à supporter dans ce chapitre. Commençons avec les instructions `print`, qui commencent, assez naturellement, avec un jeton `print`. Nous détectons cela en utilisant cette fonction aide :
 
 ^code match
 
-You may recognize it from jlox. If the current token has the given type, we
-consume the token and return `true`. Otherwise we leave the token alone and
-return `false`. This <span name="turtles">helper</span> function is implemented
-in terms of this other helper:
+Vous pouvez la reconnaître de jlox. Si le jeton courant a le type donné, nous consommons le jeton et renvoyons `true`. Sinon nous laissons le jeton tranquille et renvoyons `false`. Cette fonction <span name="turtles">aide</span> est implémentée en termes de cette autre aide :
 
 <aside name="turtles">
 
-It's helpers all the way down!
+Ce sont des aides tout le long !
 
 </aside>
 
 ^code check
 
-The `check()` function returns `true` if the current token has the given type.
-It seems a little <span name="read">silly</span> to wrap this in a function, but
-we'll use it more later, and I think short verb-named functions like this make
-the parser easier to read.
+La fonction `check()` renvoie `true` si le jeton courant a le type donné. Cela semble un peu <span name="read">bête</span> d'envelopper ceci dans une fonction, mais nous l'utiliserons plus tard, et je pense que de courtes fonctions nommées par des verbes comme celle-ci rendent l'analyseur plus facile à lire.
 
 <aside name="read">
 
-This sounds trivial, but handwritten parsers for non-toy languages get pretty
-big. When you have thousands of lines of code, a utility function that turns two
-lines into one and makes the result a little more readable easily earns its
-keep.
+Cela semble trivial, mais les analyseurs écrits à la main pour des langages non-jouets deviennent assez gros. Quand vous avez des milliers de lignes de code, une fonction utilitaire qui transforme deux lignes en une et rend le résultat un peu plus lisible gagne facilement son pain.
 
 </aside>
 
-If we did match the `print` token, then we compile the rest of the statement
-here:
+Si nous avons bien correspondu au jeton `print`, alors nous compilons le reste de l'instruction ici :
 
 ^code print-statement
 
-A `print` statement evaluates an expression and prints the result, so we first
-parse and compile that expression. The grammar expects a semicolon after that,
-so we consume it. Finally, we emit a new instruction to print the result.
+Une instruction `print` évalue une expression et imprime le résultat, donc nous analysons et compilons d'abord cette expression. La grammaire attend un point-virgule après cela, donc nous le consommons. Finalement, nous émettons une nouvelle instruction pour imprimer le résultat.
 
 ^code op-print (1 before, 1 after)
 
-At runtime, we execute this instruction like so:
+À l'exécution, nous exécutons cette instruction comme ceci :
 
 ^code interpret-print (1 before, 1 after)
 
-When the interpreter reaches this instruction, it has already executed the code
-for the expression, leaving the result value on top of the stack. Now we simply
-pop and print it.
+Quand l'interpréteur atteint cette instruction, il a déjà exécuté le code pour l'expression, laissant la valeur résultat au sommet de la pile. Maintenant nous la dépilons simplement et l'imprimons.
 
-Note that we don't push anything else after that. This is a key difference
-between expressions and statements in the VM. Every bytecode instruction has a
-<span name="effect">**stack effect**</span> that describes how the instruction
-modifies the stack. For example, `OP_ADD` pops two values and pushes one,
-leaving the stack one element smaller than before.
+Notez que nous ne poussons rien d'autre après cela. C'est une différence clé entre les expressions et les instructions dans la VM. Chaque instruction bytecode a un <span name="effect">**effet de pile**</span> qui décrit comment l'instruction modifie la pile. Par exemple, `OP_ADD` dépile deux valeurs et en empile une, laissant la pile un élément plus petit qu'avant.
 
 <aside name="effect">
 
-The stack is one element shorter after an `OP_ADD`, so its effect is -1:
+La pile est un élément plus courte après un `OP_ADD`, donc son effet est -1 :
 
-<img src="image/global-variables/stack-effect.png" alt="The stack effect of an OP_ADD instruction." />
+<img src="image/global-variables/stack-effect.png" alt="L'effet de pile d'une instruction OP_ADD." />
 
 </aside>
 
-You can sum the stack effects of a series of instructions to get their total
-effect. When you add the stack effects of the series of instructions compiled
-from any complete expression, it will total one. Each expression leaves one
-result value on the stack.
+Vous pouvez sommer les effets de pile d'une série d'instructions pour obtenir leur effet total. Quand vous ajoutez les effets de pile de la série d'instructions compilées depuis n'importe quelle expression complète, cela totalisera un. Chaque expression laisse une valeur résultat sur la pile.
 
-The bytecode for an entire statement has a total stack effect of zero. Since a
-statement produces no values, it ultimately leaves the stack unchanged, though
-it of course uses the stack while it's doing its thing. This is important
-because when we get to control flow and looping, a program might execute a long
-series of statements. If each statement grew or shrank the stack, it might
-eventually overflow or underflow.
+Le bytecode pour une instruction entière a un effet de pile total de zéro. Puisqu'une instruction ne produit aucune valeur, elle laisse ultimement la pile inchangée, bien qu'elle utilise bien sûr la pile pendant qu'elle fait son truc. C'est important parce que quand nous arriverons au contrôle de flux et aux boucles, un programme pourrait exécuter une longue série d'instructions. Si chaque instruction grandissait ou rétrécissait la pile, elle pourrait éventuellement déborder ou sous-déborder.
 
-While we're in the interpreter loop, we should delete a bit of code.
+Pendant que nous sont dans la boucle de l'interpréteur, nous devrions supprimer un peu de code.
 
 ^code op-return (1 before, 1 after)
 
-When the VM only compiled and evaluated a single expression, we had some
-temporary code in `OP_RETURN` to output the value. Now that we have statements
-and `print`, we don't need that anymore. We're one <span
-name="return">step</span> closer to the complete implementation of clox.
+Quand la VM compilait et évaluait seulement une expression unique, nous avions du code temporaire dans `OP_RETURN` pour sortir la valeur. Maintenant que nous avons des instructions et `print`, nous n'avons plus besoin de ça. Nous sommes une <span name="return">étape</span> plus près de l'implémentation complète de clox.
 
 <aside name="return">
 
-We're only one step closer, though. We will revisit `OP_RETURN` again when we
-add functions. Right now, it exits the entire interpreter loop.
+Nous sommes seulement une étape plus près, cependant. Nous revisiterons `OP_RETURN` encore quand nous ajouterons les fonctions. Juste maintenant, elle sort de la boucle de l'interpréteur entière.
 
 </aside>
 
-As usual, a new instruction needs support in the disassembler.
+Comme d'habitude, une nouvelle instruction a besoin de support dans le désassembleur.
 
 ^code disassemble-print (1 before, 1 after)
 
-That's our `print` statement. If you want, give it a whirl:
+C'est notre instruction `print`. Si vous voulez, donnez-lui un essai :
 
 ```lox
 print 1 + 2;
 print 3 * 4;
 ```
 
-Exciting! OK, maybe not thrilling, but we can build scripts that contain as many
-statements as we want now, which feels like progress.
+Excitant ! OK, peut-être pas palpitant, mais nous pouvons construire des scripts qui contiennent autant d'instructions que nous voulons maintenant, ce qui ressemble à du progrès.
 
-### Expression statements
+### Instructions d'expression
 
-Wait until you see the next statement. If we *don't* see a `print` keyword, then
-we must be looking at an expression statement.
+Attendez de voir la prochaine instruction. Si nous ne voyons _pas_ un mot-clé `print`, alors nous devons être en train de regarder une instruction d'expression.
 
 ^code parse-expressions-statement (1 before, 1 after)
 
-It's parsed like so:
+C'est analysé comme ceci :
 
 ^code expression-statement
 
-An "expression statement" is simply an expression followed by a semicolon.
-They're how you write an expression in a context where a statement is expected.
-Usually, it's so that you can call a function or evaluate an assignment for its
-side effect, like this:
+Une "instruction d'expression" est simplement une expression suivie par un point-virgule. C'est comment vous écrivez une expression dans un contexte où une instruction est attendue. Habituellement, c'est pour que vous puissiez appeler une fonction ou évaluer une affectation pour son effet de bord, comme ceci :
 
 ```lox
 brunch = "quiche";
 eat(brunch);
 ```
 
-Semantically, an expression statement evaluates the expression and discards the
-result. The compiler directly encodes that behavior. It compiles the expression,
-and then emits an `OP_POP` instruction.
+Sémantiquement, une instruction d'expression évalue l'expression et jette le résultat. Le compilateur encode directement ce comportement. Il compile l'expression, et ensuite émet une instruction `OP_POP`.
 
 ^code pop-op (1 before, 1 after)
 
-As the name implies, that instruction pops the top value off the stack and
-forgets it.
+Comme le nom l'implique, cette instruction dépile la valeur du sommet de la pile et l'oublie.
 
 ^code interpret-pop (1 before, 1 after)
 
-We can disassemble it too.
+Nous pouvons la désassembler aussi.
 
 ^code disassemble-pop (1 before, 1 after)
 
-Expression statements aren't very useful yet since we can't create any
-expressions that have side effects, but they'll be essential when we
-[add functions later][functions]. The <span name="majority">majority</span> of
-statements in real-world code in languages like C are expression statements.
+Les instructions d'expression ne sont pas très utiles encore puisque nous ne pouvons créer aucune expression qui a des effets de bord, mais elles seront essentielles quand nous [ajouterons les fonctions plus tard][functions]. La <span name="majority">majorité</span> des instructions dans du code du monde réel dans des langages comme C sont des instructions d'expression.
 
 <aside name="majority">
 
-By my count, 80 of the 149 statements, in the version of "compiler.c" that we
-have at the end of this chapter are expression statements.
+D'après mon compte, 80 des 149 instructions, dans la version de "compiler.c" que nous avons à la fin de ce chapitre sont des instructions d'expression.
 
 </aside>
 
-[functions]: calls-and-functions.html
+[functions]: appels-et-fonctions.html
 
-### Error synchronization
+### Synchronisation d'erreur
 
-While we're getting this initial work done in the compiler, we can tie off a
-loose end we left [several chapters back][errors]. Like jlox, clox uses panic
-mode error recovery to minimize the number of cascaded compile errors that it
-reports. The compiler exits panic mode when it reaches a synchronization point.
-For Lox, we chose statement boundaries as that point. Now that we have
-statements, we can implement synchronization.
+Pendant que nous faisons ce travail initial dans le compilateur, nous pouvons nous occuper d'une affaire non résolue que nous avons laissée [plusieurs chapitres en arrière][errors]. Comme jlox, clox utilise la récupération d'erreur en mode panique pour minimiser le nombre d'erreurs de compilation en cascade qu'il rapporte. Le compilateur sort du mode panique quand il atteint un point de synchronisation. Pour Lox, nous avons choisi les frontières d'instruction comme point. Maintenant que nous avons des instructions, nous pouvons implémenter la synchronisation.
 
-[errors]: compiling-expressions.html#handling-syntax-errors
+[errors]: compilation-des-expressions.html#gérer-les-erreurs-de-syntaxe
 
 ^code call-synchronize (1 before, 1 after)
 
-If we hit a compile error while parsing the previous statement, we enter panic
-mode. When that happens, after the statement we start synchronizing.
+Si nous touchons une erreur de compilation en analysant l'instruction précédente, nous entrons en mode panique. Quand cela arrive, après l'instruction nous commençons à synchroniser.
 
 ^code synchronize
 
-We skip tokens indiscriminately until we reach something that looks like a
-statement boundary. We recognize the boundary by looking for a preceding token
-that can end a statement, like a semicolon. Or we'll look for a subsequent token
-that begins a statement, usually one of the control flow or declaration
-keywords.
+Nous sautons les jetons indistinctement jusqu'à ce que nous atteignions quelque chose qui ressemble à une frontière d'instruction. Nous reconnaissons la frontière en cherchant un jeton précédent qui peut finir une instruction, comme un point-virgule. Ou nous chercherons un jeton ultérieur qui commence une instruction, habituellement un des mots-clés de contrôle de flux ou de déclaration.
 
-## Variable Declarations
+## Déclarations de Variable
 
-Merely being able to *print* doesn't win your language any prizes at the
-programming language <span name="fair">fair</span>, so let's move on to
-something a little more ambitious and get variables going. There are three
-operations we need to support:
+Être simplement capable d'_imprimer_ ne gagne aucun prix à votre langage à la <span name="fair">foire</span> aux langages de programmation, alors passons à quelque chose d'un peu plus ambitieux et mettons les variables en marche. Il y a trois opérations que nous avons besoin de supporter :
 
 <aside name="fair">
 
-I can't help but imagine a "language fair" like some country 4H thing. Rows of
-straw-lined stalls full of baby languages *moo*ing and *baa*ing at each other.
+Je ne peux pas m'empêcher d'imaginer une "foire aux langages" comme une sorte de truc campagnard. Des rangées de stands doublés de paille pleins de bébés langages se *meuh*glant et se *bêê*lant l'un à l'autre.
 
 </aside>
 
-*   Declaring a new variable using a `var` statement.
-*   Accessing the value of a variable using an identifier expression.
-*   Storing a new value in an existing variable using an assignment expression.
+- Déclarer une nouvelle variable en utilisant une instruction `var`.
+- Accéder à la valeur d'une variable en utilisant une expression identifiant.
+- Stocker une nouvelle valeur dans une variable existante en utilisant une expression d'affectation.
 
-We can't do either of the last two until we have some variables, so we start
-with declarations.
+Nous ne pouvons faire aucune des deux dernières avant d'avoir quelques variables, donc nous commençons avec les déclarations.
 
 ^code match-var (1 before, 2 after)
 
-The placeholder parsing function we sketched out for the declaration grammar
-rule has an actual production now. If we match a `var` token, we jump here:
+La fonction d'analyse bouche-trou que nous avons esquissée pour la règle grammaticale de déclaration a une vraie production maintenant. Si nous correspondons à un jeton `var`, nous sautons ici :
 
 ^code var-declaration
 
-The keyword is followed by the variable name. That's compiled by
-`parseVariable()`, which we'll get to in a second. Then we look for an `=`
-followed by an initializer expression. If the user doesn't initialize the
-variable, the compiler implicitly initializes it to <span
-name="nil">`nil`</span> by emitting an `OP_NIL` instruction. Either way, we
-expect the statement to be terminated with a semicolon.
+Le mot-clé est suivi par le nom de la variable. C'est compilé par `parseVariable()`, à laquelle nous arriverons dans une seconde. Ensuite nous cherchons un `=` suivi par une expression initialisatrice. Si l'utilisateur n'initialise pas la variable, le compilateur l'initialise implicitement à <span name="nil">`nil`</span> en émettant une instruction `OP_NIL`. De toute façon, nous attendons que l'instruction soit terminée par un point-virgule.
 
 <aside name="nil" class="bottom">
 
-Essentially, the compiler desugars a variable declaration like:
+Essentiellement, le compilateur désucre une déclaration de variable comme :
 
 ```lox
 var a;
 ```
 
-into:
+en :
 
 ```lox
 var a = nil;
 ```
 
-The code it generates for the former is identical to what it produces for the
-latter.
+Le code qu'il génère pour la première est identique à ce qu'il produit pour la dernière.
 
 </aside>
 
-There are two new functions here for working with variables and identifiers.
-Here is the first:
+Il y a deux nouvelles fonctions ici pour travailler avec les variables et les identifiants. Voici la première :
 
 ^code parse-variable (2 before)
 
-It requires the next token to be an identifier, which it consumes and sends
-here:
+Elle exige que le prochain jeton soit un identifiant, qu'elle consomme et envoie ici :
 
 ^code identifier-constant (2 before)
 
-This function takes the given token and adds its lexeme to the chunk's constant
-table as a string. It then returns the index of that constant in the constant
-table.
+Cette fonction prend le jeton donné et ajoute son léxème à la table des constantes du fragment comme une chaîne. Elle renvoie ensuite l'index de cette constante dans la table des constantes.
 
-Global variables are looked up *by name* at runtime. That means the VM -- the
-bytecode interpreter loop -- needs access to the name. A whole string is too big
-to stuff into the bytecode stream as an operand. Instead, we store the string in
-the constant table and the instruction then refers to the name by its index in
-the table.
+Les variables globales sont cherchées _par nom_ à l'exécution. Cela signifie que la VM -- la boucle de l'interpréteur bytecode -- a besoin d'accéder au nom. Une chaîne entière est trop grosse pour fourrer dans le flux de bytecode comme opérande. Au lieu de cela, nous stockons la chaîne dans la table des constantes et l'instruction fait ensuite référence au nom par son index dans la table.
 
-This function returns that index all the way to `varDeclaration()` which later
-hands it over to here:
+Cette fonction renvoie cet index tout le chemin jusqu'à `varDeclaration()` qui le remet plus tard à ici :
 
 ^code define-variable
 
-<span name="helper">This</span> outputs the bytecode instruction that defines
-the new variable and stores its initial value. The index of the variable's name
-in the constant table is the instruction's operand. As usual in a stack-based
-VM, we emit this instruction last. At runtime, we execute the code for the
-variable's initializer first. That leaves the value on the stack. Then this
-instruction takes that value and stores it away for later.
+<span name="helper">Ceci</span> sort l'instruction bytecode qui définit la nouvelle variable et stocke sa valeur initiale. L'index du nom de la variable dans la table des constantes est l'opérande de l'instruction. Comme d'habitude dans une VM à pile, nous émettons cette instruction en dernier. À l'exécution, nous exécutons le code pour l'initialisateur de la variable d'abord. Cela laisse la valeur sur la pile. Ensuite cette instruction prend cette valeur et la stocke au loin pour plus tard.
 
 <aside name="helper">
 
-I know some of these functions seem pretty pointless right now. But we'll get
-more mileage out of them as we add more language features for working with
-names. Function and class declarations both declare new variables, and variable
-and assignment expressions access them.
+Je sais que certaines de ces fonctions semblent assez inutiles en ce moment. Mais nous en tirerons plus de kilométrage alors que nous ajouterons plus de fonctionnalités de langage pour travailler avec les noms. Les déclarations de fonction et de classe déclarent toutes deux de nouvelles variables, et les expressions de variable et d'affectation y accèdent.
 
 </aside>
 
-Over in the runtime, we begin with this new instruction:
+Là-bas dans le runtime, nous commençons avec cette nouvelle instruction :
 
 ^code define-global-op (1 before, 1 after)
 
-Thanks to our handy-dandy hash table, the implementation isn't too hard.
+Grâce à notre table de hachage pratique, l'implémentation n'est pas trop dure.
 
 ^code interpret-define-global (1 before, 1 after)
 
-We get the name of the variable from the constant table. Then we <span
-name="pop">take</span> the value from the top of the stack and store it in a
-hash table with that name as the key.
+Nous obtenons le nom de la variable depuis la table des constantes. Ensuite nous <span name="pop">prenons</span> la valeur du sommet de la pile et la stockons dans une table de hachage avec ce nom comme clé.
 
 <aside name="pop">
 
-Note that we don't *pop* the value until *after* we add it to the hash table.
-That ensures the VM can still find the value if a garbage collection is
-triggered right in the middle of adding it to the hash table. That's a distinct
-possibility since the hash table requires dynamic allocation when it resizes.
+Notez que nous ne _dépilons_ pas la valeur avant _après_ l'avoir ajoutée à la table de hachage. Cela assure que la VM peut toujours trouver la valeur si un ramasse-miettes est déclenché juste au milieu de son ajout à la table de hachage. C'est une possibilité distincte puisque la table de hachage exige une allocation dynamique quand elle redimensionne.
 
 </aside>
 
-This code doesn't check to see if the key is already in the table. Lox is pretty
-lax with global variables and lets you redefine them without error. That's
-useful in a REPL session, so the VM supports that by simply overwriting the
-value if the key happens to already be in the hash table.
+Ce code ne vérifie pas pour voir si la clé est déjà dans la table. Lox est assez lâche avec les variables globales et vous laisse les redéfinir sans erreur. C'est utile dans une session REPL, donc la VM supporte cela en écrasant simplement la valeur si la clé se trouve être déjà dans la table de hachage.
 
-There's another little helper macro:
+Il y a une autre petite macro aide :
 
 ^code read-string (1 before, 1 after)
 
-It reads a one-byte operand from the bytecode chunk. It treats that as an index
-into the chunk's constant table and returns the string at that index. It doesn't
-check that the value *is* a string -- it just indiscriminately casts it. That's
-safe because the compiler never emits an instruction that refers to a non-string
-constant.
+Elle lit un opérande d'un octet depuis le fragment de bytecode. Elle traite cela comme un index dans la table des constantes du fragment et renvoie la chaîne à cet index. Elle ne vérifie pas que la valeur _est_ une chaîne -- elle la caste juste indistinctement. C'est sûr parce que le compilateur n'émet jamais une instruction qui fait référence à une constante non-chaîne.
 
-Because we care about lexical hygiene, we also undefine this macro at the end of
-the interpret function.
+Parce que nous nous soucions de l'hygiène lexicale, nous indéfinissons aussi cette macro à la fin de la fonction interpret.
 
 ^code undef-read-string (1 before, 1 after)
 
-I keep saying "the hash table", but we don't actually have one yet. We need a
-place to store these globals. Since we want them to persist as long as clox is
-running, we store them right in the VM.
+Je continue de dire "la table de hachage", mais nous n'en avons pas réellement une encore. Nous avons besoin d'un endroit pour stocker ces globales. Puisque nous voulons qu'elles persistent aussi longtemps que clox tourne, nous les stockons juste dans la VM.
 
 ^code vm-globals (1 before, 1 after)
 
-As we did with the string table, we need to initialize the hash table to a valid
-state when the VM boots up.
+Comme nous l'avons fait avec la table des chaînes, nous avons besoin d'initialiser la table de hachage à un état valide quand la VM démarre.
 
 ^code init-globals (1 before, 1 after)
 
-And we <span name="tear">tear</span> it down when we exit.
+Et nous la <span name="tear">démolissons</span> quand nous sortons.
 
 <aside name="tear">
 
-The process will free everything on exit, but it feels undignified to require
-the operating system to clean up our mess.
+Le processus libérera tout à la sortie, mais cela semble indigne d'exiger du système d'exploitation de nettoyer notre désordre.
 
 </aside>
 
 ^code free-globals (1 before, 1 after)
 
-As usual, we want to be able to disassemble the new instruction too.
+Comme d'habitude, nous voulons être capables de désassembler la nouvelle instruction aussi.
 
 ^code disassemble-define-global (1 before, 1 after)
 
-And with that, we can define global variables. Not that users can *tell* that
-they've done so, because they can't actually *use* them. So let's fix that next.
+Et avec cela, nous pouvons définir des variables globales. Pas que les utilisateurs puissent _dire_ qu'ils l'ont fait, parce qu'ils ne peuvent pas réellement les _utiliser_. Donc réparons ça ensuite.
 
-## Reading Variables
+## Lecture des Variables
 
-As in every programming language ever, we access a variable's value using its
-name. We hook up identifier tokens to the expression parser here:
+Comme dans chaque langage de programmation de tous les temps, nous accédons à la valeur d'une variable en utilisant son nom. Nous accrochons les jetons identifiants à l'analyseur d'expression ici :
 
 ^code table-identifier (1 before, 1 after)
 
-That calls this new parser function:
+Cela appelle cette nouvelle fonction d'analyseur :
 
 ^code variable-without-assign
 
-Like with declarations, there are a couple of tiny helper functions that seem
-pointless now but will become more useful in later chapters. I promise.
+Comme avec les déclarations, il y a une couple de minuscules fonctions aides qui semblent inutiles maintenant mais deviendront plus utiles dans les chapitres ultérieurs. Je promets.
 
 ^code read-named-variable
 
-This calls the same `identifierConstant()` function from before to take the
-given identifier token and add its lexeme to the chunk's constant table as a
-string. All that remains is to emit an instruction that loads the global
-variable with that name. Here's the instruction:
+Ceci appelle la même fonction `identifierConstant()` d'avant pour prendre le jeton identifiant donné et ajouter son léxème à la table des constantes du fragment comme une chaîne. Tout ce qui reste est d'émettre une instruction qui charge la variable globale avec ce nom. Voici l'instruction :
 
 ^code get-global-op (1 before, 1 after)
 
-Over in the interpreter, the implementation mirrors `OP_DEFINE_GLOBAL`.
+Là-bas dans l'interpréteur, l'implémentation reflète `OP_DEFINE_GLOBAL`.
 
 ^code interpret-get-global (1 before, 1 after)
 
-We pull the constant table index from the instruction's operand and get the
-variable name. Then we use that as a key to look up the variable's value in the
-globals hash table.
+Nous tirons l'index de la table des constantes de l'opérande de l'instruction et obtenons le nom de la variable. Ensuite nous utilisons cela comme une clé pour chercher la valeur de la variable dans la table de hachage des globales.
 
-If the key isn't present in the hash table, it means that global variable has
-never been defined. That's a runtime error in Lox, so we report it and exit the
-interpreter loop if that happens. Otherwise, we take the value and push it
-onto the stack.
+Si la clé n'est pas présente dans la table de hachage, cela signifie que cette variable globale n'a jamais été définie. C'est une erreur d'exécution dans Lox, donc nous la rapportons et sortons de la boucle de l'interpréteur si cela arrive. Sinon, nous prenons la valeur et la poussons sur la pile.
 
 ^code disassemble-get-global (1 before, 1 after)
 
-A little bit of disassembling, and we're done. Our interpreter is now able to
-run code like this:
+Un petit peu de désassemblage, et nous avons fini. Notre interpréteur est maintenant capable de faire tourner du code comme ceci :
 
 ```lox
 var beverage = "cafe au lait";
@@ -545,229 +380,162 @@ var breakfast = "beignets with " + beverage;
 print breakfast;
 ```
 
-There's only one operation left.
+Il y a seulement une opération restante.
 
-## Assignment
+## Affectation
 
-Throughout this book, I've tried to keep you on a fairly safe and easy path. I
-don't avoid hard *problems*, but I try to not make the *solutions* more complex
-than they need to be. Alas, other design choices in our <span
-name="jlox">bytecode</span> compiler make assignment annoying to implement.
+À travers ce livre, j'ai essayé de vous garder sur un chemin assez sûr et facile. Je n'évite pas les _problèmes_ durs, mais j'essaie de ne pas rendre les _solutions_ plus complexes qu'elles ont besoin de l'être. Hélas, d'autres choix de conception dans notre compilateur <span name="jlox">bytecode</span> rendent l'affectation ennuyeuse à implémenter.
 
 <aside name="jlox">
 
-If you recall, assignment was pretty easy in jlox.
+Si vous vous rappelez, l'affectation était assez facile dans jlox.
 
 </aside>
 
-Our bytecode VM uses a single-pass compiler. It parses and generates bytecode
-on the fly without any intermediate AST. As soon as it recognizes a piece of
-syntax, it emits code for it. Assignment doesn't naturally fit that. Consider:
+Notre VM bytecode utilise un compilateur à une passe. Il analyse et génère du bytecode à la volée sans aucun AST intermédiaire. Dès qu'il reconnaît un morceau de syntaxe, il émet du code pour lui. L'affectation ne s'ajuste pas naturellement à cela. Considérez :
 
 ```lox
 menu.brunch(sunday).beverage = "mimosa";
 ```
 
-In this code, the parser doesn't realize `menu.brunch(sunday).beverage` is the
-target of an assignment and not a normal expression until it reaches `=`, many
-tokens after the first `menu`. By then, the compiler has already emitted
-bytecode for the whole thing.
+Dans ce code, l'analyseur ne réalise pas que `menu.brunch(sunday).beverage` est la cible d'une affectation et pas une expression normale jusqu'à ce qu'il atteigne `=`, beaucoup de jetons après le premier `menu`. D'ici là, le compilateur a déjà émis du bytecode pour le truc entier.
 
-The problem is not as dire as it might seem, though. Look at how the parser sees that example:
+Le problème n'est pas aussi grave qu'il pourrait paraître, cependant. Regardez comment l'analyseur voit cet exemple :
 
-<img src="image/global-variables/setter.png" alt="The 'menu.brunch(sunday).beverage = &quot;mimosa&quot;' statement, showing that 'menu.brunch(sunday)' is an expression." />
+<img src="image/global-variables/setter.png" alt="L'instruction 'menu.brunch(sunday).beverage = &quot;mimosa&quot;', montrant que 'menu.brunch(sunday)' est une expression." />
 
-Even though the `.beverage` part must not be compiled as a get expression,
-everything to the left of the `.` is an expression, with the normal expression
-semantics. The `menu.brunch(sunday)` part can be compiled and executed as usual.
+Même si la partie `.beverage` ne doit pas être compilée comme une expression get, tout à la gauche du `.` est une expression, avec la sémantique d'expression normale. La partie `menu.brunch(sunday)` peut être compilée et exécutée comme d'habitude.
 
-Fortunately for us, the only semantic differences on the left side of an
-assignment appear at the very right-most end of the tokens, immediately
-preceding the `=`. Even though the receiver of a setter may be an arbitrarily
-long expression, the part whose behavior differs from a get expression is only
-the trailing identifier, which is right before the `=`. We don't need much
-lookahead to realize `beverage` should be compiled as a set expression and not a
-getter.
+Heureusement pour nous, les seules différences sémantiques sur le côté gauche d'une affectation apparaissent à la toute fin la plus à droite des jetons, précédant immédiatement le `=`. Même si le receveur d'un setter peut être une expression arbitrairement longue, la partie dont le comportement diffère d'une expression get est seulement l'identifiant traînant, qui est juste avant le `=`. Nous n'avons pas besoin de beaucoup d'anticipation pour réaliser que `beverage` devrait être compilé comme une expression set et pas un getter.
 
-Variables are even easier since they are just a single bare identifier before an
-`=`. The idea then is that right *before* compiling an expression that can also
-be used as an assignment target, we look for a subsequent `=` token. If we see
-one, we compile it as an assignment or setter instead of a variable access or
-getter.
+Les variables sont encore plus faciles puisqu'elles sont juste un identifiant nu unique avant un `=`. L'idée alors est que juste _avant_ de compiler une expression qui peut aussi être utilisée comme une cible d'affectation, nous cherchons un jeton `=` ultérieur. Si nous en voyons un, nous le compilons comme une affectation ou un setter au lieu d'un accès de variable ou un getter.
 
-We don't have setters to worry about yet, so all we need to handle are variables.
+Nous n'avons pas de setters dont nous inquiéter encore, donc tout ce que nous avons besoin de gérer sont les variables.
 
 ^code named-variable (1 before, 1 after)
 
-In the parse function for identifier expressions, we look for an equals sign
-after the identifier. If we find one, instead of emitting code for a variable
-access, we compile the assigned value and then emit an assignment instruction.
+Dans la fonction d'analyse pour les expressions identifiants, nous cherchons un signe égal après l'identifiant. Si nous en trouvons un, au lieu d'émettre du code pour un accès de variable, nous compilons la valeur affectée et ensuite émettons une instruction d'affectation.
 
-That's the last instruction we need to add in this chapter.
+C'est la dernière instruction que nous avons besoin d'ajouter dans ce chapitre.
 
 ^code set-global-op (1 before, 1 after)
 
-As you'd expect, its runtime behavior is similar to defining a new variable.
+Comme vous vous y attendriez, son comportement à l'exécution est similaire à définir une nouvelle variable.
 
 ^code interpret-set-global (1 before, 1 after)
 
-The main difference is what happens when the key doesn't already exist in the
-globals hash table. If the variable hasn't been defined yet, it's a runtime
-error to try to assign to it. Lox [doesn't do implicit variable
-declaration][implicit].
+La différence principale est ce qui arrive quand la clé n'existe pas déjà dans la table de hachage des globales. Si la variable n'a pas été définie encore, c'est une erreur d'exécution d'essayer de lui assigner. Lox [ne fait pas de déclaration de variable implicite][implicit].
 
 <aside name="delete">
 
-The call to `tableSet()` stores the value in the global variable table even if
-the variable wasn't previously defined. That fact is visible in a REPL session,
-since it keeps running even after the runtime error is reported. So we also take
-care to delete that zombie value from the table.
+L'appel à `tableSet()` stocke la valeur dans la table des variables globales même si la variable n'était pas précédemment définie. Ce fait est visible dans une session REPL, puisqu'elle continue de tourner même après que l'erreur d'exécution a été rapportée. Donc nous prenons soin aussi de supprimer cette valeur zombie de la table.
 
 </aside>
 
-The other difference is that setting a variable doesn't pop the value off the
-stack. Remember, assignment is an expression, so it needs to leave that value
-there in case the assignment is nested inside some larger expression.
+L'autre différence est que régler une variable ne dépile pas la valeur de la pile. Rappelez-vous, l'affectation est une expression, donc elle a besoin de laisser cette valeur là au cas où l'affectation est nichée à l'intérieur de quelque plus grande expression.
 
-[implicit]: statements-and-state.html#design-note
+[implicit]: instructions-et-état.html#note-de-conception
 
-Add a dash of disassembly:
+Ajoutez un soupçon de désassemblage :
 
 ^code disassemble-set-global (2 before, 1 after)
 
-So we're done, right? Well... not quite. We've made a mistake! Take a gander at:
+Donc nous avons fini, pas vrai ? Eh bien... pas tout à fait. Nous avons fait une erreur ! Jetez un coup d'œil à :
 
 ```lox
 a * b = c + d;
 ```
 
-According to Lox's grammar, `=` has the lowest precedence, so this should be
-parsed roughly like:
+Selon la grammaire de Lox, `=` a la précédence la plus basse, donc cela devrait être analysé grossièrement comme :
 
-<img src="image/global-variables/ast-good.png" alt="The expected parse, like '(a * b) = (c + d)'." />
+<img src="image/global-variables/ast-good.png" alt="L'analyse attendue, comme '(a * b) = (c + d)'." />
 
-Obviously, `a * b` isn't a <span name="do">valid</span> assignment target, so
-this should be a syntax error. But here's what our parser does:
+Évidemment, `a * b` n'est pas une cible d'affectation <span name="do">valide</span>, donc cela devrait être une erreur de syntaxe. Mais voici ce que notre analyseur fait :
 
 <aside name="do">
 
-Wouldn't it be wild if `a * b` *was* a valid assignment target, though? You
-could imagine some algebra-like language that tried to divide the assigned value
-up in some reasonable way and distribute it to `a` and `b`... that's probably
-a terrible idea.
+Ne serait-ce pas dingue si `a * b` _était_ une cible d'affectation valide, cependant ? Vous pourriez imaginer quelque langage algèbre-esque qui essayait de diviser la valeur affectée d'une manière raisonnable et de la distribuer à `a` et `b`... c'est probablement une idée terrible.
 
 </aside>
 
-1.  First, `parsePrecedence()` parses `a` using the `variable()` prefix parser.
-1.  After that, it enters the infix parsing loop.
-1.  It reaches the `*` and calls `binary()`.
-1.  That recursively calls `parsePrecedence()` to parse the right-hand operand.
-1.  That calls `variable()` again for parsing `b`.
-1.  Inside that call to `variable()`, it looks for a trailing `=`. It sees one
-    and thus parses the rest of the line as an assignment.
+1.  D'abord, `parsePrecedence()` analyse `a` en utilisant l'analyseur préfixe `variable()`.
+1.  Après cela, il entre dans la boucle d'analyse infixe.
+1.  Il atteint le `*` et appelle `binary()`.
+1.  Cela appelle récursivement `parsePrecedence()` pour analyser l'opérande de main droite.
+1.  Cela appelle `variable()` encore pour analyser `b`.
+1.  À l'intérieur de cet appel à `variable()`, il cherche un `=` traînant. Il en voit un et analyse ainsi le reste de la ligne comme une affectation.
 
-In other words, the parser sees the above code like:
+En d'autres termes, l'analyseur voit le code ci-dessus comme :
 
-<img src="image/global-variables/ast-bad.png" alt="The actual parse, like 'a * (b = c + d)'." />
+<img src="image/global-variables/ast-bad.png" alt="L'analyse réelle, comme 'a * (b = c + d)'." />
 
-We've messed up the precedence handling because `variable()` doesn't take into
-account the precedence of the surrounding expression that contains the variable.
-If the variable happens to be the right-hand side of an infix operator, or the
-operand of a unary operator, then that containing expression is too high
-precedence to permit the `=`.
+Nous avons gâché la gestion de précédence parce que `variable()` ne prend pas en compte la précédence de l'expression environnante qui contient la variable. Si la variable se trouve être le côté main droite d'un opérateur infixe, ou l'opérande d'un opérateur unaire, alors cette expression contenante est de trop haute précédence pour permettre le `=`.
 
-To fix this, `variable()` should look for and consume the `=` only if it's in
-the context of a low-precedence expression. The code that knows the current
-precedence is, logically enough, `parsePrecedence()`. The `variable()` function
-doesn't need to know the actual level. It just cares that the precedence is low
-enough to allow assignment, so we pass that fact in as a Boolean.
+Pour réparer cela, `variable()` devrait chercher et consommer le `=` seulement s'il est dans le contexte d'une expression à basse précédence. Le code qui connaît la précédence courante est, assez logiquement, `parsePrecedence()`. La fonction `variable()` n'a pas besoin de connaître le niveau réel. Elle se soucie juste que la précédence soit assez basse pour permettre l'affectation, donc nous passons ce fait dedans comme un Booléen.
 
 ^code prefix-rule (4 before, 2 after)
 
-Since assignment is the lowest-precedence expression, the only time we allow an
-assignment is when parsing an assignment expression or top-level expression like
-in an expression statement. That flag makes its way to the parser function here:
+Puisque l'affectation est l'expression à la plus basse précédence, la seule fois où nous permettons une affectation est quand nous analysons une expression d'affectation ou une expression de niveau supérieur comme dans une instruction d'expression. Ce drapeau fait son chemin vers la fonction analyseur ici :
 
 ^code variable
 
-Which passes it through a new parameter:
+Qui le passe à travers un nouveau paramètre :
 
 ^code named-variable-signature (1 after)
 
-And then finally uses it here:
+Et ensuite l'utilise finalement ici :
 
 ^code named-variable-can-assign (2 before, 1 after)
 
-That's a lot of plumbing to get literally one bit of data to the right place in
-the compiler, but arrived it has. If the variable is nested inside some
-expression with higher precedence, `canAssign` will be `false` and this will
-ignore the `=` even if there is one there. Then `namedVariable()` returns, and
-execution eventually makes its way back to `parsePrecedence()`.
+C'est beaucoup de plomberie pour obtenir littéralement un bit de donnée au bon endroit dans le compilateur, mais arrivé il est. Si la variable est nichée à l'intérieur de quelque expression avec une précédence plus haute, `canAssign` sera `false` et cela ignorera le `=` même s'il y en a un là. Ensuite `namedVariable()` renvoie, et l'exécution fait éventuellement son chemin en retour vers `parsePrecedence()`.
 
-Then what? What does the compiler do with our broken example from before? Right
-now, `variable()` won't consume the `=`, so that will be the current token. The
-compiler returns back to `parsePrecedence()` from the `variable()` prefix parser
-and then tries to enter the infix parsing loop. There is no parsing function
-associated with `=`, so it skips that loop.
+Et alors ? Que fait le compilateur avec notre exemple cassé d'avant ? Juste maintenant, `variable()` ne consommera pas le `=`, donc ce sera le jeton courant. Le compilateur renvoie en retour vers `parsePrecedence()` depuis l'analyseur préfixe `variable()` et essaie ensuite d'entrer dans la boucle d'analyse infixe. Il n'y a pas de fonction d'analyse associée avec `=`, donc il saute cette boucle.
 
-Then `parsePrecedence()` silently returns back to the caller. That also isn't
-right. If the `=` doesn't get consumed as part of the expression, nothing else
-is going to consume it. It's an error and we should report it.
+Ensuite `parsePrecedence()` renvoie silencieusement en retour vers l'appelant. Cela n'est pas juste non plus. Si le `=` ne se fait pas consommer comme partie de l'expression, rien d'autre ne va le consommer. C'est une erreur et nous devrions la rapporter.
 
 ^code invalid-assign (2 before, 1 after)
 
-With that, the previous bad program correctly gets an error at compile time. OK,
-*now* are we done? Still not quite. See, we're passing an argument to one of the
-parse functions. But those functions are stored in a table of function pointers,
-so all of the parse functions need to have the same type. Even though most parse
-functions don't support being used as an assignment target -- setters are the
-<span name="index">only</span> other one -- our friendly C compiler requires
-them *all* to accept the parameter.
+Avec cela, le programme mauvais précédent obtient correctement une erreur au moment de la compilation. OK, _maintenant_ avons-nous fini ? Toujours pas tout à fait. Voyez, nous passons un argument à une des fonctions d'analyse. Mais ces fonctions sont stockées dans une table de pointeurs de fonction, donc toutes les fonctions d'analyse ont besoin d'avoir le même type. Même si la plupart des fonctions d'analyse ne supportent pas d'être utilisées comme une cible d'affectation -- les setters sont la <span name="index">seule</span> autre -- notre compilateur C amical exige qu'elles acceptent _toutes_ le paramètre.
 
 <aside name="index">
 
-If Lox had arrays and subscript operators like `array[index]` then an infix `[`
-would also allow assignment to support `array[index] = value`.
+Si Lox avait des tableaux et des opérateurs indice comme `array[index]` alors un `[` infixe permettrait aussi l'affectation pour supporter `array[index] = value`.
 
 </aside>
 
-So we're going to finish off this chapter with some grunt work. First, let's go
-ahead and pass the flag to the infix parse functions.
+Donc nous allons finir ce chapitre avec un peu de sale boulot. D'abord, allons de l'avant et passons le drapeau aux fonctions d'analyse infixes.
 
 ^code infix-rule (1 before, 1 after)
 
-We'll need that for setters eventually. Then we'll fix the typedef for the
-function type.
+Nous aurons besoin de ça pour les setters éventuellement. Ensuite nous réparerons le typedef pour le type de fonction.
 
 ^code parse-fn-type (2 before, 2 after)
 
-And some completely tedious code to accept this parameter in all of our existing
-parse functions. Here:
+Et un peu de code complètement ennuyeux pour accepter ce paramètre dans toutes nos fonctions d'analyse existantes. Ici :
 
 ^code binary (1 after)
 
-And here:
+Et ici :
 
 ^code parse-literal (1 after)
 
-And here:
+Et ici :
 
 ^code grouping (1 after)
 
-And here:
+Et ici :
 
 ^code number (1 after)
 
-And here too:
+Et ici aussi :
 
 ^code string (1 after)
 
-And, finally:
+Et, finalement :
 
 ^code unary (1 after)
 
-Phew! We're back to a C program we can compile. Fire it up and now you can run
-this:
+Ouf ! Nous sommes de retour à un programme C que nous pouvons compiler. Démarrez-le et maintenant vous pouvez faire tourner ceci :
 
 ```lox
 var breakfast = "beignets";
@@ -777,35 +545,21 @@ breakfast = "beignets with " + beverage;
 print breakfast;
 ```
 
-It's starting to look like real code for an actual language!
+Cela commence à ressembler à du vrai code pour un langage réel !
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  The compiler adds a global variable's name to the constant table as a string
-    every time an identifier is encountered. It creates a new constant each
-    time, even if that variable name is already in a previous slot in the
-    constant table. That's wasteful in cases where the same variable is
-    referenced multiple times by the same function. That, in turn, increases the
-    odds of filling up the constant table and running out of slots since we
-    allow only 256 constants in a single chunk.
+1.  Le compilateur ajoute le nom d'une variable globale à la table des constantes comme une chaîne chaque fois qu'un identifiant est rencontré. Il crée une nouvelle constante chaque fois, même si ce nom de variable est déjà dans un emplacement précédent dans la table des constantes. C'est gaspilleur dans les cas où la même variable est référencée de multiples fois par la même fonction. Cela, à son tour, augmente les chances de remplir la table des constantes et de tomber à court d'emplacements puisque nous permettons seulement 256 constantes dans un fragment unique.
 
-    Optimize this. How does your optimization affect the performance of the
-    compiler compared to the runtime? Is this the right trade-off?
+    Optimisez cela. Comment votre optimisation affecte-t-elle la performance du compilateur comparée au runtime ? Est-ce le bon compromis ?
 
-2.  Looking up a global variable by name in a hash table each time it is used
-    is pretty slow, even with a good hash table. Can you come up with a more
-    efficient way to store and access global variables without changing the
-    semantics?
+2.  Chercher une variable globale par nom dans une table de hachage chaque fois qu'elle est utilisée est assez lent, même avec une bonne table de hachage. Pouvez-vous trouver un moyen plus efficace de stocker et accéder aux variables globales sans changer la sémantique ?
 
-3.  When running in the REPL, a user might write a function that references an
-    unknown global variable. Then, in the next line, they declare the variable.
-    Lox should handle this gracefully by not reporting an "unknown variable"
-    compile error when the function is first defined.
+3.  En tournant dans le REPL, un utilisateur pourrait écrire une fonction qui fait référence à une variable globale inconnue. Ensuite, dans la ligne suivante, il déclare la variable. Lox devrait gérer cela gracieusement en ne rapportant pas une erreur de compilation "variable inconnue" quand la fonction est d'abord définie.
 
-    But when a user runs a Lox *script*, the compiler has access to the full
-    text of the entire program before any code is run. Consider this program:
+    Mais quand un utilisateur fait tourner un _script_ Lox, le compilateur a accès au texte complet du programme entier avant que du code soit tourné. Considérez ce programme :
 
     ```lox
     fun useVar() {
@@ -815,13 +569,8 @@ It's starting to look like real code for an actual language!
     var ooops = "too many o's!";
     ```
 
-    Here, we can tell statically that `oops` will not be defined because there
-    is *no* declaration of that global anywhere in the program. Note that
-    `useVar()` is never called either, so even though the variable isn't
-    defined, no runtime error will occur because it's never used either.
+    Ici, nous pouvons dire statiquement que `oops` ne sera pas définie parce qu'il n'y a _aucune_ déclaration de cette globale nulle part dans le programme. Notez que `useVar()` n'est jamais appelée non plus, donc même si la variable n'est pas définie, aucune erreur d'exécution ne se produira parce qu'elle n'est jamais utilisée non plus.
 
-    We could report mistakes like this as compile errors, at least when running
-    from a script. Do you think we should? Justify your answer. What do other
-    scripting languages you know do?
+    Nous pourrions rapporter des erreurs comme celle-ci comme des erreurs de compilation, au moins en tournant depuis un script. Pensez-vous que nous devrions ? Justifiez votre réponse. Que font d'autres langages de script que vous connaissez ?
 
 </div>

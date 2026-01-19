@@ -37,14 +37,13 @@
 <h3><a href="#top">Contrôle de flux<small>9</small></a></h3>
 
 <ul>
-    <li><a href="#turing-machines-briefly"><small>9.1</small> Turing Machines (Briefly)</a></li>
-    <li><a href="#conditional-execution"><small>9.2</small> Conditional Execution</a></li>
-    <li><a href="#logical-operators"><small>9.3</small> Logical Operators</a></li>
-    <li><a href="#while-loops"><small>9.4</small> While Loops</a></li>
-    <li><a href="#for-loops"><small>9.5</small> For Loops</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
-    <li class="end-part"><a href="#design-note"><small>note</small>Spoonfuls of Syntactic Sugar</a></li>
+    <li><a href="#machines-de-turing-brièvement"><small>9.1</small> Machines de Turing (Brièvement)</a></li>
+    <li><a href="#exécution-conditionnelle"><small>9.2</small> Exécution Conditionnelle</a></li>
+    <li><a href="#opérateurs-logiques"><small>9.3</small> Opérateurs Logiques</a></li>
+    <li><a href="#boucles-while"><small>9.4</small> Boucles While</a></li>
+    <li><a href="#boucles-for"><small>9.5</small> Boucles For</a></li>
+    <li><a href="#défis"><small>9.6</small> Défis</a></li>
+    <li><a href="#note-de-conception--cuillerées-de-sucre-syntaxique"><small>9.7</small> Note de Conception : Cuillerées de Sucre Syntaxique</a></li>
 </ul>
 
 
@@ -69,14 +68,13 @@
 <h3><a href="#top">Contrôle de flux<small>9</small></a></h3>
 
 <ul>
-    <li><a href="#turing-machines-briefly"><small>9.1</small> Turing Machines (Briefly)</a></li>
-    <li><a href="#conditional-execution"><small>9.2</small> Conditional Execution</a></li>
-    <li><a href="#logical-operators"><small>9.3</small> Logical Operators</a></li>
-    <li><a href="#while-loops"><small>9.4</small> While Loops</a></li>
-    <li><a href="#for-loops"><small>9.5</small> For Loops</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
-    <li class="end-part"><a href="#design-note"><small>note</small>Spoonfuls of Syntactic Sugar</a></li>
+    <li><a href="#machines-de-turing-brièvement"><small>9.1</small> Machines de Turing (Brièvement)</a></li>
+    <li><a href="#exécution-conditionnelle"><small>9.2</small> Exécution Conditionnelle</a></li>
+    <li><a href="#opérateurs-logiques"><small>9.3</small> Opérateurs Logiques</a></li>
+    <li><a href="#boucles-while"><small>9.4</small> Boucles While</a></li>
+    <li><a href="#boucles-for"><small>9.5</small> Boucles For</a></li>
+    <li><a href="#défis"><small>9.6</small> Défis</a></li>
+    <li><a href="#note-de-conception--cuillerées-de-sucre-syntaxique"><small>9.7</small> Note de Conception : Cuillerées de Sucre Syntaxique</a></li>
 </ul>
 
 
@@ -95,111 +93,50 @@
   <h1>Contrôle de flux</h1>
 
 <blockquote>
-<p>Logic, like whiskey, loses its beneficial effect when taken in too large
-quantities.</p>
+<p>La logique, comme le whisky, perd son effet bénéfique quand prise en trop larges
+quantités.</p>
 <p><cite>Edward John Moreton Drax Plunkett, Lord Dunsany</cite></p>
 </blockquote>
-<p>Compared to <a href="statements-and-state.html">last chapter&rsquo;s</a> grueling marathon, today is a
-lighthearted frolic through a daisy meadow. But while the work is easy, the
-reward is surprisingly large.</p>
-<p>Right now, our interpreter is little more than a calculator. A Lox program can
-only do a fixed amount of work before completing. To make it run twice as long
-you have to make the source code twice as lengthy. We&rsquo;re about to fix that. In
-this chapter, our interpreter takes a big step towards the programming
-language major leagues: <em>Turing-completeness</em>.</p>
-<h2><a href="#turing-machines-briefly" id="turing-machines-briefly"><small>9&#8202;.&#8202;1</small>Turing Machines (Briefly)</a></h2>
-<p>In the early part of last century, mathematicians stumbled into a series of
-confusing <span name="paradox">paradoxes</span> that led them to doubt the
-stability of the foundation they had built their work upon. To address that
-<a href="https://en.wikipedia.org/wiki/Foundations_of_mathematics#Foundational_crisis">crisis</a>, they went back to square one. Starting from a handful of axioms,
-logic, and set theory, they hoped to rebuild mathematics on top of an
-impervious foundation.</p>
+<p>Comparé au marathon épuisant du <a href="statements-and-state.html">dernier chapitre</a>, aujourd&rsquo;hui est une gambade légère à travers une prairie de marguerites. Mais alors que le travail est facile, la récompense est étonnamment grande.</p>
+<p>Pour l&rsquo;instant, notre interpréteur est un peu plus qu&rsquo;une calculatrice. Un programme Lox peut seulement faire une quantité fixe de travail avant de se terminer. Pour le faire tourner deux fois plus longtemps, vous devez rendre le code source deux fois plus long. Nous sommes sur le point de corriger cela. Dans ce chapitre, notre interpréteur fait un grand pas vers les ligues majeures des langages de programmation : la <em>Turing-complétude</em>.</p>
+<h2><a href="#machines-de-turing-brièvement" id="machines-de-turing-brièvement"><small>9&#8202;.&#8202;1</small>Machines de Turing (Brièvement)</a></h2>
+<p>Au début du siècle dernier, les mathématiciens ont trébuché sur une série de <span name="paradox">paradoxes</span> confus qui les ont menés à douter de la stabilité de la fondation sur laquelle ils avaient construit leur travail. Pour adresser cette <a href="https://en.wikipedia.org/wiki/Foundations_of_mathematics#Foundational_crisis">crise</a>, ils sont retournés à la case départ. En partant d&rsquo;une poignée d&rsquo;axiomes, de logique, et de théorie des ensembles, ils espéraient reconstruire les mathématiques au-dessus d&rsquo;une fondation imperméable.</p>
 <aside name="paradox">
-<p>The most famous is <a href="https://en.wikipedia.org/wiki/Russell%27s_paradox"><strong>Russell&rsquo;s paradox</strong></a>. Initially, set theory
-allowed you to define any sort of set. If you could describe it in English, it
-was valid. Naturally, given mathematicians&rsquo; predilection for self-reference,
-sets can contain other sets. So Russell, rascal that he was, came up with:</p>
-<p><em>R is the set of all sets that do not contain themselves.</em></p>
-<p>Does R contain itself? If it doesn&rsquo;t, then according to the second half of the
-definition it should. But if it does, then it no longer meets the definition.
-Cue mind exploding.</p>
+<p>Le plus célèbre est le <a href="https://fr.wikipedia.org/wiki/Paradoxe_de_Russell"><strong>paradoxe de Russell</strong></a>. Initialement, la théorie des ensembles vous permettait de définir n&rsquo;importe quelle sorte d&rsquo;ensemble. Si vous pouviez le décrire en anglais, c&rsquo;était valide. Naturellement, étant donné la prédilection des mathématiciens pour l&rsquo;auto-référence, les ensembles peuvent contenir d&rsquo;autres ensembles. Donc Russell, coquin qu&rsquo;il était, est arrivé avec :</p>
+<p><em>R est l&rsquo;ensemble de tous les ensembles qui ne se contiennent pas eux-mêmes.</em></p>
+<p>Est-ce que R se contient lui-même ? S&rsquo;il ne le fait pas, alors selon la seconde moitié de la définition il le devrait. Mais s&rsquo;il le fait, alors il ne respecte plus la définition. Cerveau qui explose.</p>
 </aside>
-<p>They wanted to rigorously answer questions like, &ldquo;Can all true statements be
-proven?&rdquo;, &ldquo;Can we <a href="https://en.wikipedia.org/wiki/Computable_function">compute</a> all functions that we can define?&rdquo;, or even the
-more general question, &ldquo;What do we mean when we claim a function is
-&lsquo;computable&rsquo;?&rdquo;</p>
-<p>They presumed the answer to the first two questions would be &ldquo;yes&rdquo;. All that
-remained was to prove it. It turns out that the answer to both is &ldquo;no&rdquo;, and
-astonishingly, the two questions are deeply intertwined. This is a fascinating
-corner of mathematics that touches fundamental questions about what brains are
-able to do and how the universe works. I can&rsquo;t do it justice here.</p>
-<p>What I do want to note is that in the process of proving that the answer to the
-first two questions is &ldquo;no&rdquo;, Alan Turing and Alonzo Church devised a precise
-answer to the last question<span class="em">&mdash;</span>a definition of what kinds of functions are <span
-name="uncomputable">computable</span>. They each crafted a tiny system with a
-minimum set of machinery that is still powerful enough to compute any of a
-(very) large class of functions.</p>
+<p>Ils voulaient répondre rigoureusement à des questions comme, &ldquo;Toutes les instructions vraies peuvent-elles être prouvées ?&rdquo;, &ldquo;Pouvons-nous <a href="https://en.wikipedia.org/wiki/Computable_function">calculer</a> toutes les fonctions que nous pouvons définir ?&rdquo;, ou même la question plus générale, &ldquo;Que voulons-nous dire quand nous prétendons qu&rsquo;une fonction est &lsquo;calculable&rsquo; ?&rdquo;</p>
+<p>Ils présumaient que la réponse aux deux premières questions serait &ldquo;oui&rdquo;. Tout ce qui restait était de le prouver. Il s&rsquo;avère que la réponse aux deux est &ldquo;non&rdquo;, et étonnamment, les deux questions sont profondément entrelacées. C&rsquo;est un coin fascinant des mathématiques qui touche aux questions fondamentales sur ce que les cerveaux sont capables de faire et comment l&rsquo;univers fonctionne. Je ne peux pas lui rendre justice ici.</p>
+<p>Ce que je veux noter est que dans le processus de prouver que la réponse aux deux premières questions est &ldquo;non&rdquo;, Alan Turing et Alonzo Church ont conçu une réponse précise à la dernière question<span class="em">&mdash;</span>une définition de quels types de fonctions sont <span name="uncomputable">calculables</span>. Ils ont chacun fabriqué un système minuscule avec un ensemble minimum de machinerie qui est encore assez puissant pour calculer n&rsquo;importe laquelle d&rsquo;une (très) grande classe de fonctions.</p>
 <aside name="uncomputable">
-<p>They proved the answer to the first question is &ldquo;no&rdquo; by showing that the
-function that returns the truth value of a given statement is <em>not</em> a computable
-one.</p>
+<p>Ils ont prouvé que la réponse à la première question est &ldquo;non&rdquo; en montrant que la fonction qui renvoie la valeur de vérité d&rsquo;une instruction donnée n&rsquo;est <em>pas</em> calculable.</p>
 </aside>
-<p>These are now considered the &ldquo;computable functions&rdquo;. Turing&rsquo;s system is called a
-<span name="turing"><strong>Turing machine</strong></span>. Church&rsquo;s is the <strong>lambda
-calculus</strong>. Both are still widely used as the basis for models of computation
-and, in fact, many modern functional programming languages use the lambda
-calculus at their core.</p>
+<p>Celles-ci sont maintenant considérées comme les &ldquo;fonctions calculables&rdquo;. Le système de Turing est appelé une <span name="turing"><strong>machine de Turing</strong></span>. Celui de Church est le <strong>lambda-calcul</strong>. Les deux sont encore largement utilisés comme base pour les modèles de calcul et, en fait, beaucoup de langages de programmation fonctionnels modernes utilisent le lambda-calcul à leur cœur.</p>
 <aside name="turing">
-<p>Turing called his inventions &ldquo;a-machines&rdquo; for &ldquo;automatic&rdquo;. He wasn&rsquo;t so
-self-aggrandizing as to put his <em>own</em> name on them. Later mathematicians did
-that for him. That&rsquo;s how you get famous while still retaining some modesty.</p>
-</aside><img src="image/control-flow/turing-machine.png" alt="A Turing machine." />
-<p>Turing machines have better name recognition<span class="em">&mdash;</span>there&rsquo;s no Hollywood film about
-Alonzo Church yet<span class="em">&mdash;</span>but the two formalisms are <a href="https://en.wikipedia.org/wiki/Church%E2%80%93Turing_thesis">equivalent in power</a>.
-In fact, any programming language with some minimal level of expressiveness is
-powerful enough to compute <em>any</em> computable function.</p>
-<p>You can prove that by writing a simulator for a Turing machine in your language.
-Since Turing proved his machine can compute any computable function, by
-extension, that means your language can too. All you need to do is translate the
-function into a Turing machine, and then run that on your simulator.</p>
-<p>If your language is expressive enough to do that, it&rsquo;s considered
-<strong>Turing-complete</strong>. Turing machines are pretty dang simple, so it doesn&rsquo;t take
-much power to do this. You basically need arithmetic, a little control flow,
-and the ability to allocate and use (theoretically) arbitrary amounts of memory.
-We&rsquo;ve got the first. By the end of this chapter, we&rsquo;ll have the <span
-name="memory">second</span>.</p>
+<p>Turing appelait ses inventions &ldquo;a-machines&rdquo; pour &ldquo;automatique&rdquo;. Il n&rsquo;était pas auto-glorifiant au point de mettre son <em>propre</em> nom dessus. Plus tard les mathématiciens ont fait ça pour lui. C&rsquo;est comme ça qu&rsquo;on devient célèbre tout en gardant un peu de modestie.</p>
+</aside><img src="image/control-flow/turing-machine.png" alt="Une machine de Turing." />
+<p>Les machines de Turing ont une meilleure reconnaissance de nom<span class="em">&mdash;</span>il n&rsquo;y a pas encore de film hollywoodien sur Alonzo Church<span class="em">&mdash;</span>mais les deux formalismes sont <a href="https://en.wikipedia.org/wiki/Church%E2%80%93Turing_thesis">équivalents en puissance</a>. En fait, n&rsquo;importe quel langage de programmation avec un certain niveau minimal d&rsquo;expressivité est assez puissant pour calculer <em>n&rsquo;importe quelle</em> fonction calculable.</p>
+<p>Vous pouvez prouver cela en écrivant un simulateur pour une machine de Turing dans votre langage. Puisque Turing a prouvé que sa machine peut calculer n&rsquo;importe quelle fonction calculable, par extension, cela signifie que votre langage le peut aussi. Tout ce que vous avez besoin de faire est de traduire la fonction en une machine de Turing, et ensuite d&rsquo;exécuter cela sur votre simulateur.</p>
+<p>Si votre langage est assez expressif pour faire cela, il est considéré <strong>Turing-complet</strong>. Les machines de Turing sont assez simples, donc ça ne prend pas beaucoup de puissance pour faire cela. Vous avez fondamentalement besoin d&rsquo;arithmétique, d&rsquo;un peu de contrôle de flux, et de la capacité d&rsquo;allouer et d&rsquo;utiliser (théoriquement) des quantités arbitraires de mémoire. Nous avons la première. À la fin de ce chapitre, nous aurons la <span name="memory">seconde</span>.</p>
 <aside name="memory">
-<p>We <em>almost</em> have the third too. You can create and concatenate strings of
-arbitrary size, so you can <em>store</em> unbounded memory. But we don&rsquo;t have any way
-to access parts of a string.</p>
+<p>Nous avons <em>presque</em> la troisième aussi. Vous pouvez créer et concaténer des chaînes de taille arbitraire, donc vous pouvez <em>stocker</em> une mémoire illimitée. Mais nous n&rsquo;avons aucun moyen d&rsquo;accéder aux parties d&rsquo;une chaîne.</p>
 </aside>
-<h2><a href="#conditional-execution" id="conditional-execution"><small>9&#8202;.&#8202;2</small>Conditional Execution</a></h2>
-<p>Enough history, let&rsquo;s jazz up our language. We can divide control flow roughly
-into two kinds:</p>
+<h2><a href="#exécution-conditionnelle" id="exécution-conditionnelle"><small>9&#8202;.&#8202;2</small>Exécution Conditionnelle</a></h2>
+<p>Assez d&rsquo;histoire, allons jazzer notre langage. Nous pouvons diviser le contrôle de flux grossièrement en deux types :</p>
 <ul>
 <li>
-<p><strong>Conditional</strong> or <strong>branching control flow</strong> is used to <em>not</em> execute
-some piece of code. Imperatively, you can think of it as jumping <em>ahead</em>
-over a region of code.</p>
+<p>Le <strong>contrôle de flux conditionnel</strong> ou <strong>de branchement</strong> est utilisé pour <em>ne pas</em> exécuter un certain morceau de code. Impérativement, vous pouvez penser à cela comme sauter <em>par-dessus</em> une région de code.</p>
 </li>
 <li>
-<p><strong>Looping control flow</strong> executes a chunk of code more than once. It jumps
-<em>back</em> so that you can do something again. Since you don&rsquo;t usually want
-<em>infinite</em> loops, it typically has some conditional logic to know when to
-stop looping as well.</p>
+<p>Le <strong>contrôle de flux de boucle</strong> exécute un morceau de code plus d&rsquo;une fois. Il saute en <em>arrière</em> pour que vous puissiez faire quelque chose à nouveau. Puisque vous ne voulez généralement pas de boucles <em>infinies</em>, il a typiquement une certaine logique conditionnelle pour savoir quand arrêter de boucler aussi.</p>
 </li>
 </ul>
-<p>Branching is simpler, so we&rsquo;ll start there. C-derived languages have two main
-conditional execution features, the <code>if</code> statement and the perspicaciously named
-&ldquo;conditional&rdquo; <span name="ternary">operator</span> (<code>?:</code>). An <code>if</code> statement
-lets you conditionally execute statements and the conditional operator lets you
-conditionally execute expressions.</p>
+<p>Le branchement est plus simple, donc nous commencerons là. Les langages dérivés de C ont deux fonctionnalités principales d&rsquo;exécution conditionnelle, l&rsquo;instruction <code>if</code> et l&rsquo;<span name="ternary">opérateur</span> &ldquo;conditionnel&rdquo; nommé avec perspicacité (<code>?:</code>). Une instruction <code>if</code> vous laisse exécuter conditionnellement des instructions et l&rsquo;opérateur conditionnel vous laisse exécuter conditionnellement des expressions.</p>
 <aside name="ternary">
-<p>The conditional operator is also called the &ldquo;ternary&rdquo; operator because it&rsquo;s the
-only operator in C that takes three operands.</p>
+<p>L&rsquo;opérateur conditionnel est aussi appelé l&rsquo;opérateur &ldquo;ternaire&rdquo; parce que c&rsquo;est le seul opérateur en C qui prend trois opérandes.</p>
 </aside>
-<p>For simplicity&rsquo;s sake, Lox doesn&rsquo;t have a conditional operator, so let&rsquo;s get our
-<code>if</code> statement on. Our statement grammar gets a new production.</p>
+<p>Pour la simplicité, Lox n&rsquo;a pas d&rsquo;opérateur conditionnel, donc allons-y avec notre instruction <code>if</code>. Notre grammaire d&rsquo;instructions obtient une nouvelle production.</p>
 <p><span name="semicolon"></span></p>
 <div class="codehilite"><pre><span class="i">statement</span>      → <span class="i">exprStmt</span>
                | <span class="i">ifStmt</span>
@@ -210,15 +147,9 @@ only operator in C that takes three operands.</p>
                ( <span class="s">&quot;else&quot;</span> <span class="i">statement</span> )? ;
 </pre></div>
 <aside name="semicolon">
-<p>The semicolons in the rules aren&rsquo;t quoted, which means they are part of the
-grammar metasyntax, not Lox&rsquo;s syntax. A block does not have a <code>;</code> at the end and
-an <code>if</code> statement doesn&rsquo;t either, unless the then or else statement happens to
-be one that ends in a semicolon.</p>
+<p>Les points-virgules dans les règles ne sont pas cités, ce qui signifie qu&rsquo;ils font partie de la métasyntaxe de grammaire, pas de la syntaxe de Lox. Un bloc n&rsquo;a pas de <code>;</code> à la fin et une instruction <code>if</code> non plus, à moins que l&rsquo;instruction then ou else se trouve être une qui finit par un point-virgule.</p>
 </aside>
-<p>An <code>if</code> statement has an expression for the condition, then a statement to execute
-if the condition is truthy. Optionally, it may also have an <code>else</code> keyword and a
-statement to execute if the condition is falsey. The <span name="if-ast">syntax
-tree node</span> has fields for each of those three pieces.</p>
+<p>Une instruction <code>if</code> a une expression pour la condition, puis une instruction à exécuter si la condition est truthy (&ldquo;vraie&rdquo;). Optionnellement, elle peut aussi avoir un mot-clé <code>else</code> et une instruction à exécuter si la condition est falsey (&ldquo;fausse&rdquo;). Le <span name="if-ast">nœud d&rsquo;arbre syntaxique</span> a des champs pour chacune de ces trois pièces.</p>
 <div class="codehilite"><pre class="insert-before">      &quot;Expression : Expr expression&quot;,
 </pre><div class="source-file"><em>tool/GenerateAst.java</em><br>
 in <em>main</em>()</div>
@@ -229,10 +160,9 @@ in <em>main</em>()</div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, in <em>main</em>()</div>
 
 <aside name="if-ast">
-<p>The generated code for the new node is in <a href="appendix-ii.html#if-statement">Appendix II</a>.</p>
+<p>Le code généré pour le nouveau nœud est dans l&rsquo;<a href="appendix-ii.html#if-statement">Annexe II</a>.</p>
 </aside>
-<p>Like other statements, the parser recognizes an <code>if</code> statement by the leading
-<code>if</code> keyword.</p>
+<p>Comme les autres instructions, le parseur reconnaît une instruction <code>if</code> par le mot-clé <code>if</code> de tête.</p>
 <div class="codehilite"><pre class="insert-before">  private Stmt statement() {
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
 in <em>statement</em>()</div>
@@ -241,7 +171,7 @@ in <em>statement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>statement</em>()</div>
 
-<p>When it finds one, it calls this new method to parse the rest:</p>
+<p>Quand il en trouve un, il appelle cette nouvelle méthode pour parser le reste :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Parser.java</em><br>
 add after <em>statement</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">Stmt</span> <span class="i">ifStatement</span>() {
@@ -261,57 +191,31 @@ add after <em>statement</em>()</div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, add after <em>statement</em>()</div>
 
 <aside name="parens">
-<p>The parentheses around the condition are only half useful. You need some kind of
-delimiter <em>between</em> the condition and the then statement, otherwise the parser
-can&rsquo;t tell when it has reached the end of the condition expression. But the
-<em>opening</em> parenthesis after <code>if</code> doesn&rsquo;t do anything useful. Dennis Ritchie put
-it there so he could use <code>)</code> as the ending delimiter without having unbalanced
-parentheses.</p>
-<p>Other languages like Lua and some BASICs use a keyword like <code>then</code> as the ending
-delimiter and don&rsquo;t have anything before the condition. Go and Swift instead
-require the statement to be a braced block. That lets them use the <code>{</code> at the
-beginning of the statement to tell when the condition is done.</p>
+<p>Les parenthèses autour de la condition sont seulement à moitié utiles. Vous avez besoin d&rsquo;une sorte de délimiteur <em>entre</em> la condition et l&rsquo;instruction then, sinon le parseur ne peut pas dire quand il a atteint la fin de l&rsquo;expression de condition. Mais la parenthèse <em>ouvrante</em> après <code>if</code> ne fait rien d&rsquo;utile. Dennis Ritchie l&rsquo;a mise là pour qu&rsquo;il puisse utiliser <code>)</code> comme délimiteur de fin sans avoir de parenthèses non balancées.</p>
+<p>D&rsquo;autres langages comme Lua et certains BASICs utilisent un mot-clé comme <code>then</code> comme délimiteur de fin et n&rsquo;ont rien avant la condition. Go et Swift exigent à la place que l&rsquo;instruction soit un bloc entre accolades. Cela leur permet d&rsquo;utiliser le <code>{</code> au début de l&rsquo;instruction pour dire quand la condition est finie.</p>
 </aside>
-<p>As usual, the parsing code hews closely to the grammar. It detects an else
-clause by looking for the preceding <code>else</code> keyword. If there isn&rsquo;t one, the
-<code>elseBranch</code> field in the syntax tree is <code>null</code>.</p>
-<p>That seemingly innocuous optional else has, in fact, opened up an ambiguity in
-our grammar. Consider:</p>
+<p>Comme d&rsquo;habitude, le code de parsing colle de près à la grammaire. Il détecte une clause else en cherchant le mot-clé <code>else</code> précédent. S&rsquo;il n&rsquo;y en a pas, le champ <code>elseBranch</code> dans l&rsquo;arbre syntaxique est <code>null</code>.</p>
+<p>Ce else optionnel apparemment inoffensif a, en fait, ouvert une ambiguïté dans notre grammaire. Considérez :</p>
 <div class="codehilite"><pre><span class="k">if</span> (<span class="i">first</span>) <span class="k">if</span> (<span class="i">second</span>) <span class="i">whenTrue</span>(); <span class="k">else</span> <span class="i">whenFalse</span>();
 </pre></div>
-<p>Here&rsquo;s the riddle: Which <code>if</code> statement does that else clause belong to? This
-isn&rsquo;t just a theoretical question about how we notate our grammar. It actually
-affects how the code executes:</p>
+<p>Voici l&rsquo;énigme : À quelle instruction <code>if</code> cette clause else appartient-elle ? Ce n&rsquo;est pas juste une question théorique sur la façon dont nous notons notre grammaire. Cela affecte réellement comment le code s&rsquo;exécute :</p>
 <ul>
 <li>
-<p>If we attach the else to the first <code>if</code> statement, then <code>whenFalse()</code> is
-called if <code>first</code> is falsey, regardless of what value <code>second</code> has.</p>
+<p>Si nous attachons le else à la première instruction <code>if</code>, alors <code>whenFalse()</code> est appelée si <code>first</code> est falsey, peu importe quelle valeur <code>second</code> a.</p>
 </li>
 <li>
-<p>If we attach it to the second <code>if</code> statement, then <code>whenFalse()</code> is only
-called if <code>first</code> is truthy and <code>second</code> is falsey.</p>
+<p>Si nous l&rsquo;attachons à la seconde instruction <code>if</code>, alors <code>whenFalse()</code> est seulement appelée si <code>first</code> est truthy et <code>second</code> est falsey.</p>
 </li>
 </ul>
-<p>Since else clauses are optional, and there is no explicit delimiter marking the
-end of the <code>if</code> statement, the grammar is ambiguous when you nest <code>if</code>s in this
-way. This classic pitfall of syntax is called the <strong><a href="https://en.wikipedia.org/wiki/Dangling_else">dangling else</a></strong> problem.</p>
-<p><span name="else"></span></p><img class="above" src="image/control-flow/dangling-else.png" alt="Two ways the else can be interpreted." />
+<p>Puisque les clauses else sont optionnelles, et qu&rsquo;il n&rsquo;y a pas de délimiteur explicite marquant la fin de l&rsquo;instruction <code>if</code>, la grammaire est ambiguë quand vous imbriquez des <code>if</code>s de cette façon. Ce piège classique de syntaxe est appelé le problème du <strong><a href="https://en.wikipedia.org/wiki/Dangling_else">dangling else</a></strong> (else pendant).</p>
+<p><span name="else"></span></p><img class="above" src="image/control-flow/dangling-else.png" alt="Deux façons dont le else peut être interprété." />
 <aside name="else">
-<p>Here, formatting highlights the two ways the else could be parsed. But note that
-since whitespace characters are ignored by the parser, this is only a guide to
-the human reader.</p>
+<p>Ici, le formatage souligne les deux façons dont le else pourrait être parsé. Mais notez que puisque les caractères d&rsquo;espacement sont ignorés par le parseur, c&rsquo;est seulement un guide pour le lecteur humain.</p>
 </aside>
-<p>It <em>is</em> possible to define a context-free grammar that avoids the ambiguity
-directly, but it requires splitting most of the statement rules into pairs, one
-that allows an <code>if</code> with an <code>else</code> and one that doesn&rsquo;t. It&rsquo;s annoying.</p>
-<p>Instead, most languages and parsers avoid the problem in an ad hoc way. No
-matter what hack they use to get themselves out of the trouble, they always
-choose the same interpretation<span class="em">&mdash;</span>the <code>else</code> is bound to the nearest <code>if</code> that
-precedes it.</p>
-<p>Our parser conveniently does that already. Since <code>ifStatement()</code> eagerly looks
-for an <code>else</code> before returning, the innermost call to a nested series will claim
-the else clause for itself before returning to the outer <code>if</code> statements.</p>
-<p>Syntax in hand, we are ready to interpret.</p>
+<p>Il <em>est</em> possible de définir une grammaire hors-contexte qui évite l&rsquo;ambiguïté directement, mais elle exige de diviser la plupart des règles d&rsquo;instruction en paires, une qui permet un <code>if</code> avec un <code>else</code> et une qui ne le permet pas. C&rsquo;est ennuyeux.</p>
+<p>Au lieu de cela, la plupart des langages et parseurs évitent le problème d&rsquo;une manière ad hoc. Peu importe quel hack ils utilisent pour se sortir du pétrin, ils choisissent toujours la même interprétation<span class="em">&mdash;</span>le <code>else</code> est lié au <code>if</code> le plus proche qui le précède.</p>
+<p>Notre parseur fait commodément cela déjà. Puisque <code>ifStatement()</code> cherche avidement un <code>else</code> avant de retourner, l&rsquo;appel le plus interne à une série imbriquée réclamera la clause else pour lui-même avant de retourner aux instructions <code>if</code> externes.</p>
+<p>Syntaxe en main, nous sommes prêts à interpréter.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>visitExpressionStmt</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -326,36 +230,17 @@ add after <em>visitExpressionStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>visitExpressionStmt</em>()</div>
 
-<p>The interpreter implementation is a thin wrapper around the self-same Java code.
-It evaluates the condition. If truthy, it executes the then branch. Otherwise,
-if there is an else branch, it executes that.</p>
-<p>If you compare this code to how the interpreter handles other syntax we&rsquo;ve
-implemented, the part that makes control flow special is that Java <code>if</code>
-statement. Most other syntax trees always evaluate their subtrees. Here, we may
-not evaluate the then or else statement. If either of those has a side effect,
-the choice not to evaluate it becomes user visible.</p>
-<h2><a href="#logical-operators" id="logical-operators"><small>9&#8202;.&#8202;3</small>Logical Operators</a></h2>
-<p>Since we don&rsquo;t have the conditional operator, you might think we&rsquo;re done with
-branching, but no. Even without the ternary operator, there are two other
-operators that are technically control flow constructs<span class="em">&mdash;</span>the logical operators
-<code>and</code> and <code>or</code>.</p>
-<p>These aren&rsquo;t like other binary operators because they <strong>short-circuit</strong>. If,
-after evaluating the left operand, we know what the result of the logical
-expression must be, we don&rsquo;t evaluate the right operand. For example:</p>
+<p>L&rsquo;implémentation de l&rsquo;interpréteur est une fine enveloppe autour du code Java lui-même. Elle évalue la condition. Si truthy, elle exécute la branche then. Sinon, s&rsquo;il y a une branche else, elle exécute celle-là.</p>
+<p>Si vous comparez ce code à la façon dont l&rsquo;interpréteur gère d&rsquo;autres syntaxes que nous avons implémentées, la partie qui rend le contrôle de flux spécial est cette instruction <code>if</code> Java. La plupart des autres arbres syntaxiques évaluent toujours leurs sous-arbres. Ici, nous pouvons ne pas évaluer l&rsquo;instruction then ou else. Si l&rsquo;une ou l&rsquo;autre a un effet de bord, le choix de ne pas l&rsquo;évaluer devient visible par l&rsquo;utilisateur.</p>
+<h2><a href="#opérateurs-logiques" id="opérateurs-logiques"><small>9&#8202;.&#8202;3</small>Opérateurs Logiques</a></h2>
+<p>Puisque nous n&rsquo;avons pas l&rsquo;opérateur conditionnel, vous pourriez penser que nous en avons fini avec le branchement, mais non. Même sans l&rsquo;opérateur ternaire, il y a deux autres opérateurs qui sont techniquement des constructions de contrôle de flux<span class="em">&mdash;</span>les opérateurs logiques <code>and</code> et <code>or</code>.</p>
+<p>Ceux-ci ne sont pas comme les autres opérateurs binaires parce qu&rsquo;ils <strong>court-circuitent</strong>. Si, après avoir évalué l&rsquo;opérande gauche, nous savons quel doit être le résultat de l&rsquo;expression logique, nous n&rsquo;évaluons pas l&rsquo;opérande droit. Par exemple :</p>
 <div class="codehilite"><pre><span class="k">false</span> <span class="k">and</span> <span class="i">sideEffect</span>();
 </pre></div>
-<p>For an <code>and</code> expression to evaluate to something truthy, both operands must be
-truthy. We can see as soon as we evaluate the left <code>false</code> operand that that
-isn&rsquo;t going to be the case, so there&rsquo;s no need to evaluate <code>sideEffect()</code> and it
-gets skipped.</p>
-<p>This is why we didn&rsquo;t implement the logical operators with the other binary
-operators. Now we&rsquo;re ready. The two new operators are low in the precedence
-table. Similar to <code>||</code> and <code>&amp;&amp;</code> in C, they each have their <span
-name="logical">own</span> precedence with <code>or</code> lower than <code>and</code>. We slot them
-right between <code>assignment</code> and <code>equality</code>.</p>
+<p>Pour qu&rsquo;une expression <code>and</code> s&rsquo;évalue en quelque chose de truthy, les deux opérandes doivent être truthy. Nous pouvons voir dès que nous évaluons l&rsquo;opérande gauche <code>false</code> que ça ne va pas être le cas, donc il n&rsquo;y a pas besoin d&rsquo;évaluer <code>sideEffect()</code> et il est sauté.</p>
+<p>C&rsquo;est pourquoi nous n&rsquo;avons pas implémenté les opérateurs logiques avec les autres opérateurs binaires. Maintenant nous sommes prêts. Les deux nouveaux opérateurs sont bas dans la table de précédence. Similaire à <code>||</code> et <code>&amp;&amp;</code> en C, ils ont chacun leur <span name="logical">propre</span> précédence avec <code>or</code> plus bas que <code>and</code>. Nous les glissons juste entre <code>assignment</code> et <code>equality</code>.</p>
 <aside name="logical">
-<p>I&rsquo;ve always wondered why they don&rsquo;t have the same precedence, like the various
-comparison or equality operators do.</p>
+<p>Je me suis toujours demandé pourquoi ils n&rsquo;ont pas la même précédence, comme le font les divers opérateurs de comparaison ou d&rsquo;égalité.</p>
 </aside>
 <div class="codehilite"><pre><span class="i">expression</span>     → <span class="i">assignment</span> ;
 <span class="i">assignment</span>     → <span class="t">IDENTIFIER</span> <span class="s">&quot;=&quot;</span> <span class="i">assignment</span>
@@ -363,20 +248,11 @@ comparison or equality operators do.</p>
 <span class="i">logic_or</span>       → <span class="i">logic_and</span> ( <span class="s">&quot;or&quot;</span> <span class="i">logic_and</span> )* ;
 <span class="i">logic_and</span>      → <span class="i">equality</span> ( <span class="s">&quot;and&quot;</span> <span class="i">equality</span> )* ;
 </pre></div>
-<p>Instead of falling back to <code>equality</code>, <code>assignment</code> now cascades to <code>logic_or</code>.
-The two new rules, <code>logic_or</code> and <code>logic_and</code>, are <span
-name="same">similar</span> to other binary operators. Then <code>logic_and</code> calls
-out to <code>equality</code> for its operands, and we chain back to the rest of the
-expression rules.</p>
+<p>Au lieu de se replier sur <code>equality</code>, <code>assignment</code> cascade maintenant vers <code>logic_or</code>. Les deux nouvelles règles, <code>logic_or</code> et <code>logic_and</code>, sont <span name="same">similaires</span> aux autres opérateurs binaires. Puis <code>logic_and</code> appelle <code>equality</code> pour ses opérandes, et nous rechaînons vers le reste des règles d&rsquo;expression.</p>
 <aside name="same">
-<p>The <em>syntax</em> doesn&rsquo;t care that they short-circuit. That&rsquo;s a semantic concern.</p>
+<p>La <em>syntaxe</em> se fiche qu&rsquo;ils court-circuitent. C&rsquo;est une préoccupation sémantique.</p>
 </aside>
-<p>We could reuse the existing Expr.Binary class for these two new expressions
-since they have the same fields. But then <code>visitBinaryExpr()</code> would have to
-check to see if the operator is one of the logical operators and use a different
-code path to handle the short circuiting. I think it&rsquo;s cleaner to define a <span
-name="logical-ast">new class</span> for these operators so that they get their
-own visit method.</p>
+<p>Nous pourrions réutiliser la classe Expr.Binary existante pour ces deux nouvelles expressions puisqu&rsquo;elles ont les mêmes champs. Mais alors <code>visitBinaryExpr()</code> devrait vérifier pour voir si l&rsquo;opérateur est l&rsquo;un des opérateurs logiques et utiliser un chemin de code différent pour gérer le court-circuitage. Je pense que c&rsquo;est plus propre de définir une <span name="logical-ast">nouvelle classe</span> pour ces opérateurs pour qu&rsquo;ils obtiennent leur propre méthode visit.</p>
 <div class="codehilite"><pre class="insert-before">      &quot;Literal  : Object value&quot;,
 </pre><div class="source-file"><em>tool/GenerateAst.java</em><br>
 in <em>main</em>()</div>
@@ -386,10 +262,9 @@ in <em>main</em>()</div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, in <em>main</em>()</div>
 
 <aside name="logical-ast">
-<p>The generated code for the new node is in <a href="appendix-ii.html#logical-expression">Appendix II</a>.</p>
+<p>Le code généré pour le nouveau nœud est dans l&rsquo;<a href="appendix-ii.html#logical-expression">Annexe II</a>.</p>
 </aside>
-<p>To weave the new expressions into the parser, we first change the parsing code
-for assignment to call <code>or()</code>.</p>
+<p>Pour tisser les nouvelles expressions dans le parseur, nous changeons d&rsquo;abord le code de parsing pour l&rsquo;affectation pour appeler <code>or()</code>.</p>
 <div class="codehilite"><pre class="insert-before">  private Expr assignment() {
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
 in <em>assignment</em>()<br>
@@ -401,7 +276,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>assignment</em>(), replace 1 line</div>
 
-<p>The code to parse a series of <code>or</code> expressions mirrors other binary operators.</p>
+<p>Le code pour parser une série d&rsquo;expressions <code>or</code> reflète les autres opérateurs binaires.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Parser.java</em><br>
 add after <em>assignment</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">Expr</span> <span class="i">or</span>() {
@@ -418,7 +293,7 @@ add after <em>assignment</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, add after <em>assignment</em>()</div>
 
-<p>Its operands are the next higher level of precedence, the new <code>and</code> expression.</p>
+<p>Ses opérandes sont le niveau de précédence immédiatement supérieur, la nouvelle expression <code>and</code>.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Parser.java</em><br>
 add after <em>or</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">Expr</span> <span class="i">and</span>() {
@@ -435,8 +310,7 @@ add after <em>or</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, add after <em>or</em>()</div>
 
-<p>That calls <code>equality()</code> for its operands, and with that, the expression parser
-is all tied back together again. We&rsquo;re ready to interpret.</p>
+<p>Cela appelle <code>equality()</code> pour ses opérandes, et avec cela, le parseur d&rsquo;expression est tout relié ensemble à nouveau. Nous sommes prêts à interpréter.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>visitLiteralExpr</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -454,29 +328,16 @@ add after <em>visitLiteralExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>visitLiteralExpr</em>()</div>
 
-<p>If you compare this to the <a href="evaluating-expressions.html">earlier chapter&rsquo;s</a> <code>visitBinaryExpr()</code>
-method, you can see the difference. Here, we evaluate the left operand first. We
-look at its value to see if we can short-circuit. If not, and only then, do we
-evaluate the right operand.</p>
-<p>The other interesting piece here is deciding what actual value to return. Since
-Lox is dynamically typed, we allow operands of any type and use truthiness to
-determine what each operand represents. We apply similar reasoning to the
-result. Instead of promising to literally return <code>true</code> or <code>false</code>, a logic
-operator merely guarantees it will return a value with appropriate truthiness.</p>
-<p>Fortunately, we have values with proper truthiness right at hand<span class="em">&mdash;</span>the results
-of the operands themselves. So we use those. For example:</p>
-<div class="codehilite"><pre><span class="k">print</span> <span class="s">&quot;hi&quot;</span> <span class="k">or</span> <span class="n">2</span>; <span class="c">// &quot;hi&quot;.</span>
-<span class="k">print</span> <span class="k">nil</span> <span class="k">or</span> <span class="s">&quot;yes&quot;</span>; <span class="c">// &quot;yes&quot;.</span>
+<p>Si vous comparez cela à la méthode <code>visitBinaryExpr()</code> du <a href="evaluating-expressions.html">chapitre précédent</a>, vous pouvez voir la différence. Ici, nous évaluons l&rsquo;opérande gauche d&rsquo;abord. Nous regardons sa valeur pour voir si nous pouvons cour-circuiter. Si non, et seulement alors, nous évaluons l&rsquo;opérande droit.</p>
+<p>L&rsquo;autre morceau intéressant ici est de décider quelle valeur réelle renvoyer. Puisque Lox est typé dynamiquement, nous autorisons des opérandes de n&rsquo;importe quel type et utilisons la véracité (truthiness) pour déterminer ce que chaque opérande représente. Nous appliquons un raisonnement similaire au résultat. Au lieu de promettre de renvoyer littéralement <code>true</code> ou <code>false</code>, un opérateur logique garantit simplement qu&rsquo;il renverra une valeur avec la véracité appropriée.</p>
+<p>Heureusement, nous avons des valeurs avec la bonne véracité juste sous la main<span class="em">&mdash;</span>les résultats des opérandes eux-mêmes. Donc nous utilisons ceux-là. Par exemple :</p>
+<div class="codehilite"><pre><span class="k">print</span> <span class="s">&quot;salut&quot;</span> <span class="k">or</span> <span class="n">2</span>; <span class="c">// &quot;salut&quot;.</span>
+<span class="k">print</span> <span class="k">nil</span> <span class="k">or</span> <span class="s">&quot;oui&quot;</span>; <span class="c">// &quot;oui&quot;.</span>
 </pre></div>
-<p>On the first line, <code>"hi"</code> is truthy, so the <code>or</code> short-circuits and returns
-that. On the second line, <code>nil</code> is falsey, so it evaluates and returns the
-second operand, <code>"yes"</code>.</p>
-<p>That covers all of the branching primitives in Lox. We&rsquo;re ready to jump ahead to
-loops. You see what I did there? <em>Jump. Ahead.</em> Get it? See, it&rsquo;s like a
-reference to<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>oh, forget it.</p>
-<h2><a href="#while-loops" id="while-loops"><small>9&#8202;.&#8202;4</small>While Loops</a></h2>
-<p>Lox features two looping control flow statements, <code>while</code> and <code>for</code>. The <code>while</code>
-loop is the simpler one, so we&rsquo;ll start there. Its grammar is the same as in C.</p>
+<p>Sur la première ligne, <code>"salut"</code> est truthy, donc le <code>or</code> court-circuite et renvoie ça. Sur la seconde ligne, <code>nil</code> est falsey, donc il évalue et renvoie le second opérande, <code>"oui"</code>.</p>
+<p>Cela couvre toutes les primitives de branchement dans Lox. Nous sommes prêts à sauter en avant vers les boucles. Vous voyez ce que j&rsquo;ai fait là ? <em>Sauter. En avant.</em> Vous avez compris ? Voyez, c&rsquo;est comme une référence à<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>oh, oubliez ça.</p>
+<h2><a href="#boucles-while" id="boucles-while"><small>9&#8202;.&#8202;4</small>Boucles While</a></h2>
+<p>Lox propose deux instructions de contrôle de flux de boucle, <code>while</code> et <code>for</code>. La boucle <code>while</code> est la plus simple, donc nous commencerons là. Sa grammaire est la même qu&rsquo;en C.</p>
 <div class="codehilite"><pre><span class="i">statement</span>      → <span class="i">exprStmt</span>
                | <span class="i">ifStmt</span>
                | <span class="i">printStmt</span>
@@ -485,10 +346,7 @@ loop is the simpler one, so we&rsquo;ll start there. Its grammar is the same as 
 
 <span class="i">whileStmt</span>      → <span class="s">&quot;while&quot;</span> <span class="s">&quot;(&quot;</span> <span class="i">expression</span> <span class="s">&quot;)&quot;</span> <span class="i">statement</span> ;
 </pre></div>
-<p>We add another clause to the statement rule that points to the new rule for
-while. It takes a <code>while</code> keyword, followed by a parenthesized condition
-expression, then a statement for the body. That new grammar rule gets a <span
-name="while-ast">syntax tree node</span>.</p>
+<p>Nous ajoutons une autre clause à la règle statement qui pointe vers la nouvelle règle pour while. Elle prend un mot-clé <code>while</code>, suivi par une expression de condition parenthésée, puis une instruction pour le corps. Cette nouvelle règle de grammaire obtient un <span name="while-ast">nœud d&rsquo;arbre syntaxique</span>.</p>
 <div class="codehilite"><pre class="insert-before">      &quot;Print      : Expr expression&quot;,
 </pre><pre class="insert-before">      <span class="s">&quot;Var        : Token name, Expr initializer&quot;</span><span class="insert-comma">,</span>
 </pre><div class="source-file"><em>tool/GenerateAst.java</em><br>
@@ -500,14 +358,10 @@ add <em>&ldquo;,&rdquo;</em> to previous line</div>
 <div class="source-file-narrow"><em>tool/GenerateAst.java</em>, in <em>main</em>(), add <em>&ldquo;,&rdquo;</em> to previous line</div>
 
 <aside name="while-ast">
-<p>The generated code for the new node is in <a href="appendix-ii.html#while-statement">Appendix II</a>.</p>
+<p>Le code généré pour le nouveau nœud est dans l&rsquo;<a href="appendix-ii.html#while-statement">Annexe II</a>.</p>
 </aside>
-<p>The node stores the condition and body. Here you can see why it&rsquo;s nice to have
-separate base classes for expressions and statements. The field declarations
-make it clear that the condition is an expression and the body is a statement.</p>
-<p>Over in the parser, we follow the same process we used for <code>if</code> statements.
-First, we add another case in <code>statement()</code> to detect and match the leading
-keyword.</p>
+<p>Le nœud stocke la condition et le corps. Ici vous pouvez voir pourquoi c&rsquo;est agréable d&rsquo;avoir des classes de base séparées pour les expressions et les instructions. Les déclarations de champ rendent clair que la condition est une expression et le corps est une instruction.</p>
+<p>Là-bas dans le parseur, nous suivons le même processus que nous avons utilisé pour les instructions <code>if</code>. D&rsquo;abord, nous ajoutons un autre cas dans <code>statement()</code> pour détecter et matcher le mot-clé de tête.</p>
 <div class="codehilite"><pre class="insert-before">    if (match(PRINT)) return printStatement();
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
 in <em>statement</em>()</div>
@@ -516,7 +370,7 @@ in <em>statement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>statement</em>()</div>
 
-<p>That delegates the real work to this method:</p>
+<p>Cela délègue le vrai travail à cette méthode :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Parser.java</em><br>
 add after <em>varDeclaration</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">Stmt</span> <span class="i">whileStatement</span>() {
@@ -530,8 +384,7 @@ add after <em>varDeclaration</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, add after <em>varDeclaration</em>()</div>
 
-<p>The grammar is dead simple and this is a straight translation of it to Java.
-Speaking of translating straight to Java, here&rsquo;s how we execute the new syntax:</p>
+<p>La grammaire est simple à mourir et c&rsquo;est une traduction directe de celle-ci vers Java. En parlant de traduire directement vers Java, voici comment nous exécutons la nouvelle syntaxe :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>visitVarStmt</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -544,16 +397,12 @@ add after <em>visitVarStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>visitVarStmt</em>()</div>
 
-<p>Like the visit method for <code>if</code>, this visitor uses the corresponding Java
-feature. This method isn&rsquo;t complex, but it makes Lox much more powerful. We can
-finally write a program whose running time isn&rsquo;t strictly bound by the length of
-the source code.</p>
-<h2><a href="#for-loops" id="for-loops"><small>9&#8202;.&#8202;5</small>For Loops</a></h2>
-<p>We&rsquo;re down to the last control flow construct, <span name="for">Ye Olde</span>
-C-style <code>for</code> loop. I probably don&rsquo;t need to remind you, but it looks like this:</p>
+<p>Comme la méthode visit pour <code>if</code>, ce visiteur utilise la fonctionnalité Java correspondante. Cette méthode n&rsquo;est pas complexe, mais elle rend Lox beaucoup plus puissant. Nous pouvons enfin écrire un programme dont le temps d&rsquo;exécution n&rsquo;est pas strictement lié par la longueur du code source.</p>
+<h2><a href="#boucles-for" id="boucles-for"><small>9&#8202;.&#8202;5</small>Boucles For</a></h2>
+<p>Nous sommes enfin à la dernière construction de contrôle de flux, <span name="for">Ye Olde</span> boucle <code>for</code> de style C. Je n&rsquo;ai probablement pas besoin de vous rappeler, mais ça ressemble à ça :</p>
 <div class="codehilite"><pre><span class="k">for</span> (<span class="k">var</span> <span class="i">i</span> = <span class="n">0</span>; <span class="i">i</span> &lt; <span class="n">10</span>; <span class="i">i</span> = <span class="i">i</span> + <span class="n">1</span>) <span class="k">print</span> <span class="i">i</span>;
 </pre></div>
-<p>In grammarese, that&rsquo;s:</p>
+<p>En grammairien, c&rsquo;est :</p>
 <div class="codehilite"><pre><span class="i">statement</span>      → <span class="i">exprStmt</span>
                | <span class="i">forStmt</span>
                | <span class="i">ifStmt</span>
@@ -566,54 +415,27 @@ C-style <code>for</code> loop. I probably don&rsquo;t need to remind you, but it
                  <span class="i">expression</span>? <span class="s">&quot;)&quot;</span> <span class="i">statement</span> ;
 </pre></div>
 <aside name="for">
-<p>Most modern languages have a higher-level looping statement for iterating over
-arbitrary user-defined sequences. C# has <code>foreach</code>, Java has &ldquo;enhanced for&rdquo;,
-even C++ has range-based <code>for</code> statements now. Those offer cleaner syntax than
-C&rsquo;s <code>for</code> statement by implicitly calling into an iteration protocol that the
-object being looped over supports.</p>
-<p>I love those. For Lox, though, we&rsquo;re limited by building up the interpreter a
-chapter at a time. We don&rsquo;t have objects and methods yet, so we have no way of
-defining an iteration protocol that the <code>for</code> loop could use. So we&rsquo;ll stick
-with the old school C <code>for</code> loop. Think of it as &ldquo;vintage&rdquo;. The fixie of control
-flow statements.</p>
+<p>La plupart des langages modernes ont une instruction de boucle de plus haut niveau pour itérer sur des séquences arbitraires définies par l&rsquo;utilisateur. C# a <code>foreach</code>, Java a le &ldquo;enhanced for&rdquo;, même C++ a des instructions <code>for</code> basées sur l&rsquo;intervalle maintenant. Celles-là offrent une syntaxe plus propre que l&rsquo;instruction <code>for</code> du C en appelant implicitement un protocole d&rsquo;itération que l&rsquo;objet sur lequel on boucle supporte.</p>
+<p>Je les adore. Pour Lox, cependant, nous sommes limités par la construction de l&rsquo;interpréteur un chapitre à la fois. Nous n&rsquo;avons pas encore d&rsquo;objets et de méthodes, donc nous n&rsquo;avons aucun moyen de définir un protocole d&rsquo;itération que la boucle <code>for</code> pourrait utiliser. Donc nous allons rester avec la boucle <code>for</code> C vieille école. Pensez-y comme &ldquo;vintage&rdquo;. Le fixie des instructions de contrôle de flux.</p>
 </aside>
-<p>Inside the parentheses, you have three clauses separated by semicolons:</p>
+<p>À l&rsquo;intérieur des parenthèses, vous avez trois clauses séparées par des points-virgules :</p>
 <ol>
 <li>
-<p>The first clause is the <em>initializer</em>. It is executed exactly once, before
-anything else. It&rsquo;s usually an expression, but for convenience, we also
-allow a variable declaration. In that case, the variable is scoped to the
-rest of the <code>for</code> loop<span class="em">&mdash;</span>the other two clauses and the body.</p>
+<p>La première clause est l&rsquo;<em>initialiseur</em>. Elle est exécutée exactement une fois, avant tout le reste. C&rsquo;est habituellement une expression, mais pour la commodité, nous autorisons aussi une déclaration de variable. Dans ce cas, la variable est portée au reste de la boucle <code>for</code><span class="em">&mdash;</span>les deux autres clauses et le corps.</p>
 </li>
 <li>
-<p>Next is the <em>condition</em>. As in a <code>while</code> loop, this expression controls when
-to exit the loop. It&rsquo;s evaluated once at the beginning of each iteration,
-including the first. If the result is truthy, it executes the loop body.
-Otherwise, it bails.</p>
+<p>Ensuite est la <em>condition</em>. Comme dans une boucle <code>while</code>, cette expression contrôle quand sortir de la boucle. Elle est évaluée une fois au début de chaque itération, incluant la première. Si le résultat est truthy, elle exécute le corps de la boucle. Sinon, elle se tire.</p>
 </li>
 <li>
-<p>The last clause is the <em>increment</em>. It&rsquo;s an arbitrary expression that does
-some work at the end of each loop iteration. The result of the expression is
-discarded, so it must have a side effect to be useful. In practice, it
-usually increments a variable.</p>
+<p>La dernière clause est l&rsquo;<em>incrément</em>. C&rsquo;est une expression arbitraire qui fait un peu de travail à la fin de chaque itération de boucle. Le résultat de l&rsquo;expression est rejeté, donc elle doit avoir un effet de bord pour être utile. En pratique, elle incrémente habituellement une variable.</p>
 </li>
 </ol>
-<p>Any of these clauses can be omitted. Following the closing parenthesis is a
-statement for the body, which is typically a block.</p>
-<h3><a href="#desugaring" id="desugaring"><small>9&#8202;.&#8202;5&#8202;.&#8202;1</small>Desugaring</a></h3>
-<p>That&rsquo;s a lot of machinery, but note that none of it does anything you couldn&rsquo;t
-do with the statements we already have. If <code>for</code> loops didn&rsquo;t support
-initializer clauses, you could just put the initializer expression before the
-<code>for</code> statement. Without an increment clause, you could simply put the increment
-expression at the end of the body yourself.</p>
-<p>In other words, Lox doesn&rsquo;t <em>need</em> <code>for</code> loops, they just make some common code
-patterns more pleasant to write. These kinds of features are called <span
-name="sugar"><strong>syntactic sugar</strong></span>. For example, the previous <code>for</code> loop
-could be rewritten like so:</p>
+<p>N&rsquo;importe laquelle de ces clauses peut être omise. Suivant la parenthèse fermante est une instruction pour le corps, qui est typiquement un bloc.</p>
+<h3><a href="#désucrage" id="désucrage"><small>9&#8202;.&#8202;5&#8202;.&#8202;1</small>Désucrage</a></h3>
+<p>C&rsquo;est beaucoup de machinerie, mais notez qu&rsquo;aucune partie ne fait quelque chose que vous ne pourriez pas faire avec les instructions que nous avons déjà. Si les boucles <code>for</code> ne supportaient pas de clauses d&rsquo;initialiseur, vous pourriez juste mettre l&rsquo;expression d&rsquo;initialiseur avant l&rsquo;instruction <code>for</code>. Sans une clause d&rsquo;incrément, vous pourriez simplement mettre l&rsquo;expression d&rsquo;incrément à la fin du corps vous-même.</p>
+<p>En d&rsquo;autres termes, Lox n&rsquo;a pas <em>besoin</em> de boucles <code>for</code>, elles rendent juste certains motifs de code courants plus plaisants à écrire. Ces types de fonctionnalités sont appelés du <span name="sugar"><strong>sucre syntaxique</strong></span>. Par exemple, la boucle <code>for</code> précédente pourrait être réécrite comme ceci :</p>
 <aside name="sugar">
-<p>This delightful turn of phrase was coined by Peter J. Landin in 1964 to describe
-how some of the nice expression forms supported by languages like ALGOL were a
-sweetener sprinkled over the more fundamental<span class="em">&mdash;</span>but presumably less palatable<span class="em">&mdash;</span>lambda calculus underneath.</p><img class="above" src="image/control-flow/sugar.png" alt="Slightly more than a spoonful of sugar." />
+<p>Cette délicieuse tournure de phrase a été inventée par Peter J. Landin en 1964 pour décrire comment certaines des jolies formes d&rsquo;expression supportées par des langages comme ALGOL étaient un édulcorant saupoudré sur le lambda-calcul plus fondamental<span class="em">&mdash;</span>mais présumément moins agréable au goût<span class="em">&mdash;</span>en dessous.</p><img class="above" src="image/control-flow/sugar.png" alt="Légèrement plus qu'une cuillère de sucre." />
 </aside>
 <div class="codehilite"><pre>{
   <span class="k">var</span> <span class="i">i</span> = <span class="n">0</span>;
@@ -623,24 +445,12 @@ sweetener sprinkled over the more fundamental<span class="em">&mdash;</span>but 
   }
 }
 </pre></div>
-<p>This script has the exact same semantics as the previous one, though it&rsquo;s not as
-easy on the eyes. Syntactic sugar features like Lox&rsquo;s <code>for</code> loop make a language
-more pleasant and productive to work in. But, especially in sophisticated
-language implementations, every language feature that requires back-end support
-and optimization is expensive.</p>
-<p>We can have our cake and eat it too by <span
-name="caramel"><strong>desugaring</strong></span>. That funny word describes a process where
-the front end takes code using syntax sugar and translates it to a more
-primitive form that the back end already knows how to execute.</p>
+<p>Ce script a exactement la même sémantique que le précédent, bien qu&rsquo;il ne soit pas aussi facile pour les yeux. Les fonctionnalités de sucre syntaxique comme la boucle <code>for</code> de Lox rendent un langage plus plaisant et productif pour y travailler. Mais, spécialement dans les implémentations de langage sophistiquées, chaque fonctionnalité de langage qui nécessite du support en back-end et de l&rsquo;optimisation est coûteuse.</p>
+<p>Nous pouvons avoir le beurre et l&rsquo;argent du beurre en <span name="caramel"><strong>désucrant</strong></span>. Ce mot drôle décrit un processus où le front end prend du code utilisant du sucre syntaxique et le traduit vers une forme plus primitive que le back end sait déjà comment exécuter.</p>
 <aside name="caramel">
-<p>Oh, how I wish the accepted term for this was &ldquo;caramelization&rdquo;. Why introduce a
-metaphor if you aren&rsquo;t going to stick with it?</p>
+<p>Oh, combien je souhaite que le terme accepté pour cela fût &ldquo;caramélisation&rdquo;. Pourquoi introduire une métaphore si vous n&rsquo;allez pas rester avec ?</p>
 </aside>
-<p>We&rsquo;re going to desugar <code>for</code> loops to the <code>while</code> loops and other statements the
-interpreter already handles. In our simple interpreter, desugaring really
-doesn&rsquo;t save us much work, but it does give me an excuse to introduce you to the
-technique. So, unlike the previous statements, we <em>won&rsquo;t</em> add a new syntax tree
-node. Instead, we go straight to parsing. First, add an import we&rsquo;ll need soon.</p>
+<p>Nous allons désucrer les boucles <code>for</code> vers les boucles <code>while</code> et d&rsquo;autres instructions que l&rsquo;interpréteur gère déjà. Dans notre interpréteur simple, le désucrage ne nous économise vraiment pas beaucoup de travail, mais il me donne une excuse pour vous introduire à la technique. Donc, contrairement aux instructions précédentes, nous n&rsquo;ajouterons <em>pas</em> un nouveau nœud d&rsquo;arbre syntaxique. Au lieu de cela, nous allons directement au parsing. D&rsquo;abord, ajoutez un import dont nous aurons besoin bientôt.</p>
 <div class="codehilite"><pre class="insert-before">import java.util.ArrayList;
 </pre><div class="source-file"><em>lox/Parser.java</em></div>
 <pre class="insert"><span class="k">import</span> <span class="i">java.util.Arrays</span>;
@@ -648,7 +458,7 @@ node. Instead, we go straight to parsing. First, add an import we&rsquo;ll need 
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em></div>
 
-<p>Like every statement, we start parsing a <code>for</code> loop by matching its keyword.</p>
+<p>Comme chaque instruction, nous commençons à parser une boucle <code>for</code> en matchant son mot-clé.</p>
 <div class="codehilite"><pre class="insert-before">  private Stmt statement() {
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
 in <em>statement</em>()</div>
@@ -657,9 +467,7 @@ in <em>statement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>statement</em>()</div>
 
-<p>Here is where it gets interesting. The desugaring is going to happen here, so
-we&rsquo;ll build this method a piece at a time, starting with the opening parenthesis
-before the clauses.</p>
+<p>C&rsquo;est ici que ça devient intéressant. Le désucrage va se passer ici, donc nous construirons cette méthode un morceau à la fois, en commençant avec la parenthèse ouvrante avant les clauses.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Parser.java</em><br>
 add after <em>statement</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">Stmt</span> <span class="i">forStatement</span>() {
@@ -670,7 +478,7 @@ add after <em>statement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, add after <em>statement</em>()</div>
 
-<p>The first clause following that is the initializer.</p>
+<p>La première clause suivant cela est l&rsquo;initialiseur.</p>
 <div class="codehilite"><pre class="insert-before">    consume(LEFT_PAREN, &quot;Expect '(' after 'for'.&quot;);
 
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
@@ -688,18 +496,11 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>forStatement</em>(), replace 1 line</div>
 
-<p>If the token following the <code>(</code> is a semicolon then the initializer has been
-omitted. Otherwise, we check for a <code>var</code> keyword to see if it&rsquo;s a <span
-name="variable">variable</span> declaration. If neither of those matched, it
-must be an expression. We parse that and wrap it in an expression statement so
-that the initializer is always of type Stmt.</p>
+<p>Si le token suivant la <code>(</code> est un point-virgule alors l&rsquo;initialiseur a été omis. Sinon, nous vérifions un mot-clé <code>var</code> pour voir si c&rsquo;est une déclaration de <span name="variable">variable</span>. Si aucun de ceux-ci n&rsquo;a matché, ce doit être une expression. Nous parsons cela et l&rsquo;enveloppons dans une instruction d&rsquo;expression pour que l&rsquo;initialiseur soit toujours de type Stmt.</p>
 <aside name="variable">
-<p>In a previous chapter, I said we can split expression and statement syntax trees
-into two separate class hierarchies because there&rsquo;s no single place in the
-grammar that allows both an expression and a statement. That wasn&rsquo;t <em>entirely</em>
-true, I guess.</p>
+<p>Dans un chapitre précédent, j&rsquo;ai dit que nous pouvons diviser les arbres syntaxiques d&rsquo;expression et d&rsquo;instruction en deux hiérarchies de classe séparées parce qu&rsquo;il n&rsquo;y a pas un seul endroit dans la grammaire qui autorise à la fois une expression et une instruction. Ce n&rsquo;était pas <em>entièrement</em> vrai, je suppose.</p>
 </aside>
-<p>Next up is the condition.</p>
+<p>La suivante est la condition.</p>
 <div class="codehilite"><pre class="insert-before">      initializer = expressionStatement();
     }
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
@@ -715,8 +516,7 @@ in <em>forStatement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>forStatement</em>()</div>
 
-<p>Again, we look for a semicolon to see if the clause has been omitted. The last
-clause is the increment.</p>
+<p>Encore une fois, nous cherchons un point-virgule pour voir si la clause a été omise. La dernière clause est l&rsquo;incrément.</p>
 <div class="codehilite"><pre class="insert-before">    consume(SEMICOLON, &quot;Expect ';' after loop condition.&quot;);
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
 in <em>forStatement</em>()</div>
@@ -731,10 +531,9 @@ in <em>forStatement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>forStatement</em>()</div>
 
-<p>It&rsquo;s similar to the condition clause except this one is terminated by the
-closing parenthesis. All that remains is the <span name="body">body</span>.</p>
+<p>C&rsquo;est similaire à la clause de condition sauf que celle-ci est terminée par la parenthèse fermante. Tout ce qui reste est le <span name="body">corps</span>.</p>
 <aside name="body">
-<p>Is it just me or does that sound morbid? &ldquo;All that remained<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>was the <em>body</em>&rdquo;.</p>
+<p>Est-ce juste moi ou est-ce que ça sonne morbide ? &ldquo;Tout ce qui restait<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>était le <em>corps</em>&rdquo;.</p>
 </aside>
 <div class="codehilite"><pre class="insert-before">    consume(RIGHT_PAREN, &quot;Expect ')' after for clauses.&quot;);
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
@@ -746,13 +545,8 @@ in <em>forStatement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>forStatement</em>()</div>
 
-<p>We&rsquo;ve parsed all of the various pieces of the <code>for</code> loop and the resulting AST
-nodes are sitting in a handful of Java local variables. This is where the
-desugaring comes in. We take those and use them to synthesize syntax tree nodes
-that express the semantics of the <code>for</code> loop, like the hand-desugared example I
-showed you earlier.</p>
-<p>The code is a little simpler if we work backward, so we start with the increment
-clause.</p>
+<p>Nous avons parsé toutes les pièces variées de la boucle <code>for</code> et les nœuds AST résultants sont assis dans une poignée de variables locales Java. C&rsquo;est là que le désucrage arrive. Nous prenons ceux-là et les utilisons pour synthétiser des nœuds d&rsquo;arbre syntaxique qui expriment la sémantique de la boucle <code>for</code>, comme l&rsquo;exemple désucré à la main que je vous ai montré plus tôt.</p>
+<p>Le code est un peu plus simple si nous travaillons à l&rsquo;envers, donc nous commençons avec la clause d&rsquo;incrément.</p>
 <div class="codehilite"><pre class="insert-before">    Stmt body = statement();
 
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
@@ -768,9 +562,7 @@ in <em>forStatement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>forStatement</em>()</div>
 
-<p>The increment, if there is one, executes after the body in each iteration of the
-loop. We do that by replacing the body with a little block that contains the
-original body followed by an expression statement that evaluates the increment.</p>
+<p>L&rsquo;incrément, s&rsquo;il y en a un, s&rsquo;exécute après le corps à chaque itération de la boucle. Nous faisons cela en remplaçant le corps par un petit bloc qui contient le corps original suivi par une instruction d&rsquo;expression qui évalue l&rsquo;incrément.</p>
 <div class="codehilite"><pre class="insert-before">    }
 
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
@@ -782,9 +574,7 @@ in <em>forStatement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>forStatement</em>()</div>
 
-<p>Next, we take the condition and the body and build the loop using a primitive
-<code>while</code> loop. If the condition is omitted, we jam in <code>true</code> to make an infinite
-loop.</p>
+<p>Ensuite, nous prenons la condition et le corps et construisons la boucle en utilisant une boucle primitive <code>while</code>. Si la condition est omise, nous bourrons <code>true</code> dedans pour faire une boucle infinie.</p>
 <div class="codehilite"><pre class="insert-before">    body = new Stmt.While(condition, body);
 
 </pre><div class="source-file"><em>lox/Parser.java</em><br>
@@ -797,15 +587,9 @@ in <em>forStatement</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Parser.java</em>, in <em>forStatement</em>()</div>
 
-<p>Finally, if there is an initializer, it runs once before the entire loop. We do
-that by, again, replacing the whole statement with a block that runs the
-initializer and then executes the loop.</p>
-<p>That&rsquo;s it. Our interpreter now supports C-style <code>for</code> loops and we didn&rsquo;t have
-to touch the Interpreter class at all. Since we desugared to nodes the
-interpreter already knows how to visit, there is no more work to do.</p>
-<p>Finally, Lox is powerful enough to entertain us, at least for a few minutes.
-Here&rsquo;s a tiny program to print the first 21 elements in the Fibonacci
-sequence:</p>
+<p>Finalement, s&rsquo;il y a un initialiseur, il tourne une fois avant la boucle entière. Nous faisons cela en, encore une fois, remplaçant l&rsquo;instruction entière par un bloc qui exécute l&rsquo;initialiseur et ensuite exécute la boucle.</p>
+<p>C&rsquo;est tout. Notre interpréteur supporte maintenant les boucles <code>for</code> de style C et nous n&rsquo;avons pas eu à toucher la classe Interpreter du tout. Puisque nous avons désucré vers des nœuds que l&rsquo;interpréteur sait déjà comment visiter, il n&rsquo;y a plus de travail à faire.</p>
+<p>Finalement, Lox est assez puissant pour nous divertir, au moins pour quelques minutes. Voici un programme minuscule pour imprimer les 21 premiers éléments dans la suite de Fibonacci :</p>
 <div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="n">0</span>;
 <span class="k">var</span> <span class="i">temp</span>;
 
@@ -816,73 +600,30 @@ sequence:</p>
 }
 </pre></div>
 <div class="challenges">
-<h2><a href="#challenges" id="challenges">Challenges</a></h2>
+<h2><a href="#défis" id="défis"><small>9&#8202;.&#8202;6</small>Défis</a></h2>
 <ol>
 <li>
-<p>A few chapters from now, when Lox supports first-class functions and dynamic
-dispatch, we technically won&rsquo;t <em>need</em> branching statements built into the
-language. Show how conditional execution can be implemented in terms of
-those. Name a language that uses this technique for its control flow.</p>
+<p>Quelques chapitres plus loin, quand Lox supportera les fonctions de première classe et le dispatch dynamique, nous n&rsquo;aurons techniquement pas <em>besoin</em> d&rsquo;instructions de branchement intégrées dans le langage. Montrez comment l&rsquo;exécution conditionnelle peut être implémentée en termes de celles-ci. Nommez un langage qui utilise cette technique pour son contrôle de flux.</p>
 </li>
 <li>
-<p>Likewise, looping can be implemented using those same tools, provided our
-interpreter supports an important optimization. What is it, and why is it
-necessary? Name a language that uses this technique for iteration.</p>
+<p>De même, le bouclage peut être implémenté en utilisant ces mêmes outils, pourvu que notre interpréteur supporte une optimisation importante. Quelle est-elle, et pourquoi est-elle nécessaire ? Nommez un langage qui utilise cette technique pour l&rsquo;itération.</p>
 </li>
 <li>
-<p>Unlike Lox, most other C-style languages also support <code>break</code> and <code>continue</code>
-statements inside loops. Add support for <code>break</code> statements.</p>
-<p>The syntax is a <code>break</code> keyword followed by a semicolon. It should be a
-syntax error to have a <code>break</code> statement appear outside of any enclosing
-loop. At runtime, a <code>break</code> statement causes execution to jump to the end of
-the nearest enclosing loop and proceeds from there. Note that the <code>break</code>
-may be nested inside other blocks and <code>if</code> statements that also need to be
-exited.</p>
+<p>Contrairement à Lox, la plupart des autres langages de style C supportent aussi les instructions <code>break</code> et <code>continue</code> à l&rsquo;intérieur des boucles. Ajoutez le support pour les instructions <code>break</code>.</p>
+<p>La syntaxe est un mot-clé <code>break</code> suivi par un point-virgule. Ce devrait être une erreur de syntaxe d&rsquo;avoir une instruction <code>break</code> apparaissant en dehors de toute boucle englobante. À l&rsquo;exécution, une instruction <code>break</code> fait sauter l&rsquo;exécution à la fin de la boucle englobante la plus proche et procède à partir de là. Notez que le <code>break</code> peut être imbriqué à l&rsquo;intérieur d&rsquo;autres blocs et instructions <code>if</code> qui ont aussi besoin d&rsquo;être sortis.</p>
 </li>
 </ol>
 </div>
 <div class="design-note">
-<h2><a href="#design-note" id="design-note">Design Note: Spoonfuls of Syntactic Sugar</a></h2>
-<p>When you design your own language, you choose how much syntactic sugar to pour
-into the grammar. Do you make an unsweetened health food where each semantic
-operation maps to a single syntactic unit, or some decadent dessert where every
-bit of behavior can be expressed ten different ways? Successful languages
-inhabit all points along this continuum.</p>
-<p>On the extreme acrid end are those with ruthlessly minimal syntax like Lisp,
-Forth, and Smalltalk. Lispers famously claim their language &ldquo;has no syntax&rdquo;,
-while Smalltalkers proudly show that you can fit the entire grammar on an index
-card. This tribe has the philosophy that the <em>language</em> doesn&rsquo;t need syntactic
-sugar. Instead, the minimal syntax and semantics it provides are powerful enough
-to let library code be as expressive as if it were part of the language itself.</p>
-<p>Near these are languages like C, Lua, and Go. They aim for simplicity and
-clarity over minimalism. Some, like Go, deliberately eschew both syntactic sugar
-and the kind of syntactic extensibility of the previous category. They want the
-syntax to get out of the way of the semantics, so they focus on keeping both the
-grammar and libraries simple. Code should be obvious more than beautiful.</p>
-<p>Somewhere in the middle you have languages like Java, C#, and Python. Eventually
-you reach Ruby, C++, Perl, and D<span class="em">&mdash;</span>languages which have stuffed so much syntax
-into their grammar, they are running out of punctuation characters on the
-keyboard.</p>
-<p>To some degree, location on the spectrum correlates with age. It&rsquo;s relatively
-easy to add bits of syntactic sugar in later releases. New syntax is a crowd
-pleaser, and it&rsquo;s less likely to break existing programs than mucking with the
-semantics. Once added, you can never take it away, so languages tend to sweeten
-with time. One of the main benefits of creating a new language from scratch is
-it gives you an opportunity to scrape off those accumulated layers of frosting
-and start over.</p>
-<p>Syntactic sugar has a bad rap among the PL intelligentsia. There&rsquo;s a real fetish
-for minimalism in that crowd. There is some justification for that. Poorly
-designed, unneeded syntax raises the cognitive load without adding enough
-expressiveness to carry its weight. Since there is always pressure to cram new
-features into the language, it takes discipline and a focus on simplicity to
-avoid bloat. Once you add some syntax, you&rsquo;re stuck with it, so it&rsquo;s smart to be
-parsimonious.</p>
-<p>At the same time, most successful languages do have fairly complex grammars, at
-least by the time they are widely used. Programmers spend a ton of time in their
-language of choice, and a few niceties here and there really can improve the
-comfort and efficiency of their work.</p>
-<p>Striking the right balance<span class="em">&mdash;</span>choosing the right level of sweetness for your
-language<span class="em">&mdash;</span>relies on your own sense of taste.</p>
+<h2><a href="#note-de-conception--cuillerées-de-sucre-syntaxique" id="note-de-conception--cuillerées-de-sucre-syntaxique"><small>9&#8202;.&#8202;7</small>Note de Conception : Cuillerées de Sucre Syntaxique</a></h2>
+<p>Quand vous concevez votre propre langage, vous choisissez combien de sucre syntaxique verser dans la grammaire. Faites-vous une nourriture saine non sucrée où chaque opération sémantique mappe vers une seule unité syntaxique, ou quelque dessert décadent où chaque bit de comportement peut être exprimé de dix façons différentes ? Les langages à succès habitent tous les points le long de ce continuum.</p>
+<p>À l&rsquo;extrémité acre extrême sont ceux avec une syntaxe impitoyablement minimale comme Lisp, Forth, et Smalltalk. Les Lisperiens prétendent fameusement que leur langage &ldquo;n&rsquo;a pas de syntaxe&rdquo;, alors que les Smalltalkers montrent fièrement que vous pouvez faire tenir la grammaire entière sur une fiche cartonnée. Cette tribu a la philosophie que le <em>langage</em> n&rsquo;a pas besoin de sucre syntaxique. Au lieu de cela, la syntaxe minimale et la sémantique qu&rsquo;il fournit sont assez puissantes pour laisser le code de bibliothèque être aussi expressif que s&rsquo;il faisait partie du langage lui-même.</p>
+<p>Près de ceux-ci sont des langages comme C, Lua, et Go. Ils visent la simplicité et la clarté par-dessus le minimalisme. Certains, comme Go, évitent délibérément à la fois le sucre syntaxique et le genre d&rsquo;extensibilité syntaxique de la catégorie précédente. Ils veulent que la syntaxe s&rsquo;écarte du chemin de la sémantique, donc ils se concentrent sur garder à la fois la grammaire et les bibliothèques simples. Le code devrait être évident plus que beau.</p>
+<p>Quelque part au milieu vous avez des langages comme Java, C#, et Python. Finalement vous atteignez Ruby, C++, Perl, et D<span class="em">&mdash;</span>des langages qui ont bourré tellement de syntaxe dans leur grammaire, qu&rsquo;ils manquent de caractères de ponctuation sur le clavier.</p>
+<p>À un certain degré, l&rsquo;emplacement sur le spectre corrèle avec l&rsquo;âge. C&rsquo;est relativement facile d&rsquo;ajouter des morceaux de sucre syntaxique dans des versions ultérieures. La nouvelle syntaxe plaît à la foule, et c&rsquo;est moins susceptible de casser les programmes existants que de tripatouiller la sémantique. Une fois ajouté, vous ne pouvez jamais l&rsquo;enlever, donc les langages tendent à s&rsquo;adoucir avec le temps. L&rsquo;un des bénéfices principaux de créer un nouveau langage depuis zéro est que cela vous donne une opportunité de racler ces couches accumulées de glaçage et de recommencer.</p>
+<p>Le sucre syntaxique a mauvaise réputation parmi l&rsquo;intelligentsia des langages de programmation. Il y a un vrai fétichisme pour le minimalisme dans cette foule. Il y a une certaine justification à cela. Une syntaxe mal conçue, inutile, élève la charge cognitive sans ajouter assez d&rsquo;expressivité pour porter son poids. Puisqu&rsquo;il y a toujours une pression pour entasser de nouvelles fonctionnalités dans le langage, cela prend de la discipline et une focalisation sur la simplicité pour éviter le ballonnement. Une fois que vous ajoutez une certaine syntaxe, vous êtes coincé avec, donc c&rsquo;est intelligent d&rsquo;être parcimonieux.</p>
+<p>En même temps, la plupart des langages à succès ont des grammaires passablement complexes, au moins au moment où ils sont largement utilisés. Les programmeurs passent une tonne de temps dans leur langage de choix, et quelques gentillesses ici et là peuvent vraiment améliorer le confort et l&rsquo;efficacité de leur travail.</p>
+<p>Frapper le bon équilibre<span class="em">&mdash;</span>choisir le bon niveau de douceur pour votre langage<span class="em">&mdash;</span>repose sur votre propre sens du goût.</p>
 </div>
 
 <footer>

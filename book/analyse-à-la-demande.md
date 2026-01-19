@@ -1,261 +1,178 @@
-> Literature is idiosyncratic arrangements in horizontal lines in only
-> twenty-six phonetic symbols, ten Arabic numbers, and about eight punctuation
-> marks.
+> La littérature est constituée d'arrangements idiosyncratiques en lignes horizontales de seulement vingt-six symboles phonétiques, dix chiffres arabes, et environ huit signes de ponctuation.
 >
 > <cite>Kurt Vonnegut, <em>Like Shaking Hands With God: A Conversation about Writing</em></cite>
 
-Our second interpreter, clox, has three phases -- scanner, compiler, and virtual
-machine. A data structure joins each pair of phases. Tokens flow from scanner to
-compiler, and chunks of bytecode from compiler to VM. We began our
-implementation near the end with [chunks][] and the [VM][]. Now, we're going to
-hop back to the beginning and build a scanner that makes tokens. In the
-[next chapter][], we'll tie the two ends together with our bytecode compiler.
+Notre second interpréteur, clox, a trois phases -- scanner, compilateur, et machine virtuelle. Une structure de données joint chaque paire de phases. Les tokens coulent du scanner au compilateur, et des morceaux de bytecode du compilateur vers la VM. Nous avons commencé notre implémentation près de la fin avec les [morceaux][chunks] et la [VM][]. Maintenant, nous allons sauter en arrière au début et construire un scanner qui fabrique des tokens. Dans le [prochain chapitre][next chapter], nous lierons les deux bouts ensemble avec notre compilateur bytecode.
 
-[chunks]: chunks-of-bytecode.html
-[vm]: a-virtual-machine.html
-[next chapter]: compiling-expressions.html
+[chunks]: morceaux-de-bytecode.html
+[vm]: machine-virtuelle.html
+[next chapter]: compilation-des-expressions.html
 
-<img src="image/scanning-on-demand/pipeline.png" alt="Source code &rarr; scanner &rarr; tokens &rarr; compiler &rarr; bytecode chunk &rarr; VM." />
+<img src="image/scanning-on-demand/pipeline.png" alt="Code source &rarr; scanner &rarr; tokens &rarr; compilateur &rarr; morceau de bytecode &rarr; VM." />
 
-I'll admit, this is not the most exciting chapter in the book. With two
-implementations of the same language, there's bound to be some redundancy. I did
-sneak in a few interesting differences compared to jlox's scanner. Read on to
-see what they are.
+J'admettrai, ce n'est pas le chapitre le plus excitant du livre. Avec deux implémentations du même langage, il y a forcément un peu de redondance. Je me suis faufilé dans quelques différences intéressantes comparées au scanner de jlox. Lisez la suite pour voir ce qu'elles sont.
 
-## Spinning Up the Interpreter
+## Démarrer l'interpréteur
 
-Now that we're building the front end, we can get clox running like a real
-interpreter. No more hand-authored chunks of bytecode. It's time for a REPL and
-script loading. Tear out most of the code in `main()` and replace it with:
+Maintenant que nous construisons le front end, nous pouvons faire tourner clox comme un vrai interpréteur. Plus de morceaux de bytecode écrits à la main. Il est temps pour un REPL et le chargement de script. Arrachez la plupart du code dans `main()` et remplacez-le par :
 
 ^code args (3 before, 2 after)
 
-If you pass <span name="args">no arguments</span> to the executable, you are
-dropped into the REPL. A single command line argument is understood to be the
-path to a script to run.
+Si vous ne passez <span name="args">aucun argument</span> à l'exécutable, vous êtes largué dans le REPL. Un unique argument de ligne de commande est compris comme étant le chemin vers un script à exécuter.
 
 <aside name="args">
 
-The code tests for one and two arguments, not zero and one, because the first
-argument in `argv` is always the name of the executable being run.
+Le code teste pour un et deux arguments, pas zéro et un, parce que le premier argument dans `argv` est toujours le nom de l'exécutable étant exécuté.
 
 </aside>
 
-We'll need a few system headers, so let's get them all out of the way.
+Nous aurons besoin de quelques en-têtes système, donc sortons-les tous du chemin.
 
 ^code main-includes (1 after)
 
-Next, we get the REPL up and REPL-ing.
+Ensuite, nous mettons le REPL debout et REPL-ant.
 
 ^code repl (1 before)
 
-A quality REPL handles input that spans multiple lines gracefully and doesn't
-have a hardcoded line length limit. This REPL here is a little more, ahem,
-austere, but it's fine for our purposes.
+Un REPL de qualité gère l'entrée qui s'étend sur de multiples lignes avec grâce et n'a pas une limite de longueur de ligne codée en dur. Ce REPL ici est un peu plus, hmm, austère, mais il est bien pour nos objectifs.
 
-The real work happens in `interpret()`. We'll get to that soon, but first let's
-take care of loading scripts.
+Le vrai travail se passe dans `interpret()`. Nous y arriverons bientôt, mais d'abord prenons soin de charger les scripts.
 
 ^code run-file
 
-We read the file and execute the resulting string of Lox source code. Then,
-based on the result of that, we set the exit code appropriately because we're
-scrupulous tool builders and care about little details like that.
+Nous lisons le fichier et exécutons la chaîne de code source Lox résultante. Ensuite, basé sur le résultat de cela, nous définissons le code de sortie de manière appropriée parce que nous sommes des constructeurs d'outils scrupuleux et nous nous soucions des petits détails comme ça.
 
-We also need to free the source code string because `readFile()` dynamically
-allocates it and passes ownership to its caller. That function looks like this:
+Nous avons aussi besoin de libérer la chaîne de code source parce que `readFile()` l'alloue dynamiquement et passe la propriété à son appelant. Cette fonction ressemble à ceci :
 
 <aside name="owner">
 
-C asks us not just to manage memory explicitly, but *mentally*. We programmers
-have to remember the ownership rules and hand-implement them throughout the
-program. Java just does it for us. C++ gives us tools to encode the policy
-directly so that the compiler validates it for us.
+C nous demande non seulement de gérer la mémoire explicitement, mais _mentalement_. Nous programmeurs devons nous souvenir des règles de propriété et les implémenter à la main à travers le programme. Java le fait juste pour nous. C++ nous donne des outils pour encoder la politique directement de sorte que le compilateur la valide pour nous.
 
-I like C's simplicity, but we pay a real price for it -- the language requires
-us to be more conscientious.
+J'aime la simplicité du C, mais nous payons un prix réel pour elle -- le langage exige de nous d'être plus consciencieux.
 
 </aside>
 
 ^code read-file
 
-Like a lot of C code, it takes more effort than it seems like it should,
-especially for a language expressly designed for operating systems. The
-difficult part is that we want to allocate a big enough string to read the whole
-file, but we don't know how big the file is until we've read it.
+Comme beaucoup de code C, cela prend plus d'effort qu'il semble que cela devrait, spécialement pour un langage expressément conçu pour les systèmes d'exploitation. La partie difficile est que nous voulons allouer une chaîne assez grande pour lire le fichier entier, mais nous ne savons pas combien le fichier est grand jusqu'à ce que nous l'ayons lu.
 
-The code here is the classic trick to solve that. We open the file, but before
-reading it, we seek to the very end using `fseek()`. Then we call `ftell()`
-which tells us how many bytes we are from the start of the file. Since we seeked
-(sought?) to the end, that's the size. We rewind back to the beginning, allocate
-a string of that <span name="one">size</span>, and read the whole file in a
-single batch.
+Le code ici est le truc classique pour résoudre ça. Nous ouvrons le fichier, mais avant de le lire, nous cherchons (seek) jusqu'à la toute fin en utilisant `fseek()`. Ensuite nous appelons `ftell()` qui nous dit à combien d'octets nous sommes du début du fichier. Puisque nous avons cherché jusqu'à la fin, c'est la taille. Nous rembobinons au début, allouons une chaîne de cette <span name="one">taille</span>, et lisons le fichier entier en un seul lot.
 
 <aside name="one">
 
-Well, that size *plus one*. Always gotta remember to make room for the null
-byte.
+Eh bien, cette taille _plus un_. Toujours se souvenir de faire de la place pour l'octet nul.
 
 </aside>
 
-So we're done, right? Not quite. These function calls, like most calls in the C
-standard library, can fail. If this were Java, the failures would be thrown as
-exceptions and automatically unwind the stack so we wouldn't *really* need to
-handle them. In C, if we don't check for them, they silently get ignored.
+Donc nous avons fini, n'est-ce pas ? Pas tout à fait. Ces appels de fonction, comme la plupart des appels dans la bibliothèque standard C, peuvent échouer. Si c'était du Java, les échecs seraient levés comme des exceptions et dérouleraient automatiquement la pile donc nous n'aurions pas _vraiment_ besoin de les gérer. En C, si nous ne vérifions pas pour eux, ils sont silencieusement ignorés.
 
-This isn't really a book on good C programming practice, but I hate to encourage
-bad style, so let's go ahead and handle the errors. It's good for us, like
-eating our vegetables or flossing.
+Ce n'est pas vraiment un livre sur les bonnes pratiques de programmation C, mais je déteste encourager le mauvais style, donc allons-y et gérons les erreurs. C'est bon pour nous, comme manger nos légumes ou passer le fil dentaire.
 
-Fortunately, we don't need to do anything particularly clever if a failure
-occurs. If we can't correctly read the user's script, all we can really do is
-tell the user and exit the interpreter gracefully. First of all, we might fail
-to open the file.
+Heureusement, nous n'avons pas besoin de faire quoi que ce soit de particulièrement intelligent si un échec se produit. Si nous ne pouvons pas lire correctement le script de l'utilisateur, tout ce que nous pouvons vraiment faire est de le dire à l'utilisateur et de quitter l'interpréteur avec grâce. D'abord, nous pourrions échouer à ouvrir le fichier.
 
 ^code no-file (1 before, 2 after)
 
-This can happen if the file doesn't exist or the user doesn't have access to it.
-It's pretty common -- people mistype paths all the time.
+Cela peut arriver si le fichier n'existe pas ou si l'utilisateur n'a pas accès à lui. C'est assez commun -- les gens font des fautes de frappe dans les chemins tout le temps.
 
-This failure is much rarer:
+Cet échec est beaucoup plus rare :
 
 ^code no-buffer (1 before, 1 after)
 
-If we can't even allocate enough memory to read the Lox script, the user's
-probably got bigger problems to worry about, but we should do our best to at
-least let them know.
+Si nous ne pouvons même pas allouer assez de mémoire pour lire le script Lox, l'utilisateur a probablement de plus gros problèmes dont s'inquiéter, mais nous devrions faire de notre mieux pour au moins leur faire savoir.
 
-Finally, the read itself may fail.
+Finalement, la lecture elle-même peut échouer.
 
 ^code no-read (1 before, 1 after)
 
-This is also unlikely. Actually, the <span name="printf"> calls</span> to
-`fseek()`, `ftell()`, and `rewind()` could theoretically fail too, but let's not
-go too far off in the weeds, shall we?
+C'est aussi improbable. En fait, les <span name="printf">appels</span> à `fseek()`, `ftell()`, et `rewind()` pourraient théoriquement échouer aussi, mais n'allons pas trop loin dans les mauvaises herbes, d'accord ?
 
 <aside name="printf">
 
-Even good old `printf()` can fail. Yup. How many times have you handled *that*
-error?
+Même le bon vieux `printf()` peut échouer. Ouaip. Combien de fois avez-vous géré _cette_ erreur ?
 
 </aside>
 
-### Opening the compilation pipeline
+### Ouvrir le pipeline de compilation
 
-We've got ourselves a string of Lox source code, so now we're ready to set up a
-pipeline to scan, compile, and execute it. It's driven by `interpret()`. Right
-now, that function runs our old hardcoded test chunk. Let's change it to
-something closer to its final incarnation.
+Nous avons nous-mêmes une chaîne de code source Lox, donc maintenant nous sommes prêts à mettre en place un pipeline pour la scanner, la compiler, et l'exécuter. C'est piloté par `interpret()`. En ce moment, cette fonction exécute notre vieux morceau de test écrit en dur. Changeons-la pour quelque chose de plus proche de son incarnation finale.
 
 ^code vm-interpret-h (1 before, 1 after)
 
-Where before we passed in a Chunk, now we pass in the string of source code.
-Here's the new implementation:
+Là où avant nous passions un Chunk, maintenant nous passons la chaîne de code source. Voici la nouvelle implémentation :
 
 ^code vm-interpret-c (1 after)
 
-We won't build the actual *compiler* yet in this chapter, but we can start
-laying out its structure. It lives in a new module.
+Nous ne construirons pas le _compilateur_ réel encore dans ce chapitre, mais nous pouvons commencer à disposer sa structure. Il vit dans un nouveau module.
 
 ^code vm-include-compiler (1 before, 1 after)
 
-For now, the one function in it is declared like so:
+Pour l'instant, la seule fonction dedans est déclarée comme ceci :
 
 ^code compiler-h
 
-That signature will change, but it gets us going.
+Cette signature changera, mais cela nous lance.
 
-The first phase of compilation is scanning -- the thing we're doing in this
-chapter -- so right now all the compiler does is set that up.
+La première phase de la compilation est le scan -- la chose que nous faisons dans ce chapitre -- donc en ce moment tout ce que le compilateur fait est de mettre cela en place.
 
 ^code compiler-c
 
-This will also grow in later chapters, naturally.
+Cela aussi grandira dans les chapitres ultérieurs, naturellement.
 
-### The scanner scans
+### Le scanner scanne
 
-There are still a few more feet of scaffolding to stand up before we can start
-writing useful code. First, a new header:
+Il y a encore quelques pieds de plus d'échafaudage à dresser avant que nous puissions commencer à écrire du code utile. D'abord, un nouvel en-tête :
 
 ^code scanner-h
 
-And its corresponding implementation:
+Et son implémentation correspondante :
 
 ^code scanner-c
 
-As our scanner chews through the user's source code, it tracks how far it's
-gone. Like we did with the VM, we wrap that state in a struct and then create a
-single top-level module variable of that type so we don't have to pass it around
-all of the various functions.
+Alors que notre scanner mâche à travers le code source de l'utilisateur, il suit jusqu'où il est allé. Comme nous l'avons fait avec la VM, nous enveloppons cet état dans une struct et ensuite créons une unique variable de module de haut niveau de ce type afin que nous n'ayons pas à la passer à tous les différentes fonctions.
 
-There are surprisingly few fields. The `start` pointer marks the beginning of
-the current lexeme being scanned, and `current` points to the current character
-being looked at.
+Il y a étonnamment peu de champs. Le pointeur `start` marque le début du lexème courant étant scanné, et `current` pointe vers le caractère courant étant regardé.
 
 <span name="fields"></span>
 
-<img src="image/scanning-on-demand/fields.png" alt="The start and current fields pointing at 'print bacon;'. Start points at 'b' and current points at 'o'." />
+<img src="image/scanning-on-demand/fields.png" alt="Les champs start et current pointant vers 'print bacon;'. Start pointe vers 'b' et current pointe vers 'o'." />
 
 <aside name="fields">
 
-Here, we are in the middle of scanning the identifier `bacon`. The current
-character is `o` and the character we most recently consumed is `c`.
+Ici, nous sommes au milieu du scan de l'identifiant `bacon`. Le caractère courant est `o` et le caractère que nous avons consommé le plus récemment est `c`.
 
 </aside>
 
-We have a `line` field to track what line the current lexeme is on for error
-reporting. That's it! We don't even keep a pointer to the beginning of the
-source code string. The scanner works its way through the code once and is done
-after that.
+Nous avons un champ `line` pour suivre sur quelle ligne est le lexème courant pour le rapport d'erreurs. C'est tout ! Nous ne gardons même pas un pointeur vers le début de la chaîne de code source. Le scanner travaille son chemin à travers le code une fois et a fini après ça.
 
-Since we have some state, we should initialize it.
+Puisque nous avons un peu d'état, nous devrions l'initialiser.
 
 ^code init-scanner
 
-We start at the very first character on the very first line, like a runner
-crouched at the starting line.
+Nous commençons au tout premier caractère sur la toute première ligne, comme un coureur accroupi sur la ligne de départ.
 
-## A Token at a Time
+## Un Token à la Fois
 
-In jlox, when the starting gun went off, the scanner raced ahead and eagerly
-scanned the whole program, returning a list of tokens. This would be a challenge
-in clox. We'd need some sort of growable array or list to store the tokens in.
-We'd need to manage allocating and freeing the tokens, and the collection
-itself. That's a lot of code, and a lot of memory churn.
+Dans jlox, quand le pistolet de départ partait, le scanner fonçait en avant et scannait avidement le programme entier, renvoyant une liste de tokens. Ce serait un défi dans clox. Nous aurions besoin d'une sorte de tableau ou liste grandissant pour stocker les tokens dedans. Nous aurions besoin de gérer l'allocation et la libération des tokens, et la collection elle-même. C'est beaucoup de code, et beaucoup de barattage de mémoire.
 
-At any point in time, the compiler needs only one or two tokens -- remember our
-grammar requires only a single token of lookahead -- so we don't need to keep
-them *all* around at the same time. Instead, the simplest solution is to not
-scan a token until the compiler needs one. When the scanner provides one, it
-returns the token by value. It doesn't need to dynamically allocate anything --
-it can just pass tokens around on the C stack.
+À n'importe quel point dans le temps, le compilateur a besoin seulement d'un ou deux tokens -- rappelez-vous notre grammaire exige seulement un unique token d'avance (lookahead) -- donc nous n'avons pas besoin de les garder _tous_ dans le coin au même moment. Au lieu de cela, la solution la plus simple est de ne pas scanner un token jusqu'à ce que le compilateur en ait besoin d'un. Quand le scanner en fournit un, il renvoie le token par valeur. Il n'a pas besoin d'allouer dynamiquement quoi que ce soit -- il peut juste passer les tokens autour sur la pile C.
 
-Unfortunately, we don't have a compiler yet that can ask the scanner for tokens,
-so the scanner will just sit there doing nothing. To kick it into action, we'll
-write some temporary code to drive it.
+Malheureusement, nous n'avons pas de compilateur encore qui peut demander des tokens au scanner, donc le scanner restera juste assis là à ne rien faire. Pour le botter en action, nous écrirons un peu de code temporaire pour le piloter.
 
 ^code dump-tokens (1 before, 1 after)
 
 <aside name="format">
 
-That `%.*s` in the format string is a neat feature. Usually, you set the output
-precision -- the number of characters to show -- by placing a number inside the
-format string. Using `*` instead lets you pass the precision as an argument. So
-that `printf()` call prints the first `token.length` characters of the string at
-`token.start`. We need to limit the length like that because the lexeme points
-into the original source string and doesn't have a terminator at the end.
+Ce `%.*s` dans la chaîne de format est une fonctionnalité chouette. Habituellement, vous définissez la précision de sortie -- le nombre de caractères à montrer -- en plaçant un nombre à l'intérieur de la chaîne de format. Utiliser `*` à la place vous laisse passer la précision comme un argument. Donc cet appel à `printf()` imprime les `token.length` premiers caractères de la chaîne à `token.start`. Nous avons besoin de limiter la longueur comme ça parce que le lexème pointe dans la chaîne source originale et n'a pas de terminateur à la fin.
 
 </aside>
 
-This loops indefinitely. Each turn through the loop, it scans one token and
-prints it. When it reaches a special "end of file" token or an error, it stops.
-For example, if we run the interpreter on this program:
+Ceci boucle indéfiniment. Chaque tour à travers la boucle, il scanne un token et l'imprime. Quand il atteint un token spécial "fin de fichier" ou une erreur, il s'arrête. Par exemple, si nous lançons l'interpréteur sur ce programme :
 
 ```lox
 print 1 + 2;
 ```
 
-It prints out:
+Il imprime :
 
 ```text
    1 31 'print'
@@ -266,101 +183,63 @@ It prints out:
    2 39 ''
 ```
 
-The first column is the line number, the second is the numeric value of the
-token <span name="token">type</span>, and then finally the lexeme. That last
-empty lexeme on line 2 is the EOF token.
+La première colonne est le numéro de ligne, la seconde est la valeur numérique du <span name="token">type</span> de token, et ensuite finalement le lexème. Ce dernier lexème vide sur la ligne 2 est le token EOF.
 
 <aside name="token">
 
-Yeah, the raw index of the token type isn't exactly human readable, but it's all
-C gives us.
+Ouais, l'index brut du type de token n'est pas exactement lisible par un humain, mais c'est tout ce que C nous donne.
 
 </aside>
 
-The goal for the rest of the chapter is to make that blob of code work by
-implementing this key function:
+Le but pour le reste du chapitre est de faire marcher ce blob de code en implémentant cette fonction clé :
 
 ^code scan-token-h (1 before, 2 after)
 
-Each call scans and returns the next token in the source code. A token looks
-like this:
+Chaque appel scanne et renvoie le prochain token dans le code source. Un token ressemble à ceci :
 
 ^code token-struct (1 before, 2 after)
 
-It's pretty similar to jlox's Token class. We have an enum identifying what type
-of token it is -- number, identifier, `+` operator, etc. The enum is virtually
-identical to the one in jlox, so let's just hammer out the whole thing.
+C'est assez similaire à la classe Token de jlox. Nous avons un enum identifiant quel type de token c'est -- nombre, identifiant, opérateur `+`, etc. L'enum est virtuellement identique à celui dans jlox, donc martelons juste la chose entière.
 
 ^code token-type (2 before, 2 after)
 
-Aside from prefixing all the names with `TOKEN_` (since C tosses enum names in
-the top-level namespace) the only difference is that extra `TOKEN_ERROR` type.
-What's that about?
+À part préfixer tous les noms avec `TOKEN_` (puisque C jette les noms d'enum dans l'espace de noms de haut niveau) la seule différence est ce type `TOKEN_ERROR` supplémentaire. C'est à propos de quoi ?
 
-There are only a couple of errors that get detected during scanning:
-unterminated strings and unrecognized characters. In jlox, the scanner reports
-those itself. In clox, the scanner produces a synthetic "error" token for that
-error and passes it over to the compiler. This way, the compiler knows an error
-occurred and can kick off error recovery before reporting it.
+Il y a seulement une couple d'erreurs qui sont détectées durant le scan : les chaînes non terminées et les caractères non reconnus. Dans jlox, le scanner rapporte celles-ci lui-même. Dans clox, le scanner produit un token "erreur" synthétique pour cette erreur et le passe au compilateur. De cette façon, le compilateur sait qu'une erreur s'est produite et peut déclencher la récupération d'erreur avant de la rapporter.
 
-The novel part in clox's Token type is how it represents the lexeme. In jlox,
-each Token stored the lexeme as its own separate little Java string. If we did
-that for clox, we'd have to figure out how to manage the memory for those
-strings. That's especially hard since we pass tokens by value
--- multiple tokens could point to the same lexeme string. Ownership gets weird.
+La partie nouvelle dans le type Token de clox est comment il représente le lexème. Dans jlox, chaque Token stockait le lexème comme sa propre petite chaîne Java séparée. Si nous faisions cela pour clox, nous devrions trouver comment gérer la mémoire pour ces chaînes. C'est spécialement dur puisque nous passons les tokens par valeur -- de multiples tokens pourraient pointer vers la même chaîne de lexème. La propriété devient bizarre.
 
-Instead, we use the original source string as our character store. We represent
-a lexeme by a pointer to its first character and the number of characters it
-contains. This means we don't need to worry about managing memory for lexemes at
-all and we can freely copy tokens around. As long as the main source code string
-<span name="outlive">outlives</span> all of the tokens, everything works fine.
+Au lieu de cela, nous utilisons la chaîne source originale comme notre stockage de caractères. Nous représentons un lexème par un pointeur vers son premier caractère et le nombre de caractères qu'il contient. Cela signifie que nous n'avons pas besoin de nous inquiéter de gérer la mémoire pour les lexèmes du tout et nous pouvons copier librement les tokens autour. Tant que la chaîne de code source principale <span name="outlive">survit</span> à tous les tokens, tout fonctionne bien.
 
 <aside name="outlive">
 
-I don't mean to sound flippant. We really do need to think about and ensure that
-the source string, which is created far away over in the "main" module, has a
-long enough lifetime. That's why `runFile()` doesn't free the string until
-`interpret()` finishes executing the code and returns.
+Je ne veux pas paraître désinvolte. Nous avons vraiment besoin de penser à et assurer que la chaîne source, qui est créée loin là-bas dans le module "main", a une durée de vie assez longue. C'est pourquoi `runFile()` ne libère pas la chaîne jusqu'à ce que `interpret()` finisse d'exécuter le code et revienne.
 
 </aside>
 
-### Scanning tokens
+### Scanner les tokens
 
-We're ready to scan some tokens. We'll work our way up to the complete
-implementation, starting with this:
+Nous sommes prêts à scanner quelques tokens. Nous travaillerons notre chemin vers l'implémentation complète, commençant avec ceci :
 
 ^code scan-token
 
-Since each call to this function scans a complete token, we know we are at the
-beginning of a new token when we enter the function. Thus, we set
-`scanner.start` to point to the current character so we remember where the
-lexeme we're about to scan starts.
+Puisque chaque appel à cette fonction scanne un token complet, nous savons que nous sommes au début d'un nouveau token quand nous entrons dans la fonction. Ainsi, nous définissons `scanner.start` pour pointer vers le caractère courant afin que nous nous souvenions où commence le lexème que nous sommes sur le point de scanner.
 
-Then we check to see if we've reached the end of the source code. If so, we
-return an EOF token and stop. This is a sentinel value that signals to the
-compiler to stop asking for more tokens.
+Ensuite nous vérifions pour voir si nous avons atteint la fin du code source. Si c'est le cas, nous renvoyons un token EOF et arrêtons. C'est une valeur sentinelle qui signale au compilateur d'arrêter de demander plus de tokens.
 
-If we aren't at the end, we do some... stuff... to scan the next token. But we
-haven't written that code yet. We'll get to that soon. If that code doesn't
-successfully scan and return a token, then we reach the end of the function.
-That must mean we're at a character that the scanner can't recognize, so we
-return an error token for that.
+Si nous ne sommes pas à la fin, nous faisons quelques... trucs... pour scanner le prochain token. Mais nous n'avons pas écrit ce code encore. Nous y arriverons bientôt. Si ce code ne scanne pas et ne renvoie pas avec succès un token, alors nous atteignons la fin de la fonction. Cela doit signifier que nous sommes à un caractère que le scanner ne peut pas reconnaître, donc nous renvoyons un token d'erreur pour cela.
 
-This function relies on a couple of helpers, most of which are familiar from
-jlox. First up:
+Cette fonction compte sur une couple d'aides, dont la plupart sont familières de jlox. D'abord :
 
 ^code is-at-end
 
-We require the source string to be a good null-terminated C string. If the
-current character is the null byte, then we've reached the end.
+Nous exigeons que la chaîne source soit une bonne chaîne C terminée par nul. Si le caractère courant est l'octet nul, alors nous avons atteint la fin.
 
-To create a token, we have this constructor-like function:
+Pour créer un token, nous avons cette fonction semblable à un constructeur :
 
 ^code make-token
 
-It uses the scanner's `start` and `current` pointers to capture the token's
-lexeme. It sets a couple of other obvious fields then returns the token. It has
-a sister function for returning error tokens.
+Elle utilise les pointeurs `start` et `current` du scanner pour capturer le lexème du token. Elle définit une couple d'autres champs évidents puis renvoie le token. Elle a une fonction sœur pour renvoyer les tokens d'erreur.
 
 ^code error-token
 
@@ -368,360 +247,226 @@ a sister function for returning error tokens.
 
 <aside name="axolotl">
 
-This part of the chapter is pretty dry, so here's a picture of an axolotl.
+Cette partie du chapitre est assez sèche, donc voici une image d'un axolotl.
 
-<img src="image/scanning-on-demand/axolotl.png" alt="A drawing of an axolotl." />
+<img src="image/scanning-on-demand/axolotl.png" alt="Un dessin d'un axolotl." />
 
 </aside>
 
-The only difference is that the "lexeme" points to the error message string
-instead of pointing into the user's source code. Again, we need to ensure that
-the error message sticks around long enough for the compiler to read it. In
-practice, we only ever call this function with C string literals. Those are
-constant and eternal, so we're fine.
+La seule différence est que le "lexème" pointe vers la chaîne de message d'erreur au lieu de pointer dans le code source de l'utilisateur. Encore une fois, nous avons besoin d'assurer que le message d'erreur reste dans le coin assez longtemps pour que le compilateur le lise. En pratique, nous appelons seulement jamais cette fonction avec des littéraux de chaîne C. Ceux-ci sont constants et éternels, donc nous sommes bien.
 
-What we have now is basically a working scanner for a language with an empty
-lexical grammar. Since the grammar has no productions, every character is an
-error. That's not exactly a fun language to program in, so let's fill in the
-rules.
+Ce que nous avons maintenant est basiquement un scanner fonctionnel pour un langage avec une grammaire lexicale vide. Puisque la grammaire n'a pas de productions, chaque caractère est une erreur. Ce n'est pas exactement un langage amusant dans lequel programmer, donc remplissons les règles.
 
-## A Lexical Grammar for Lox
+## Une Grammaire Lexicale pour Lox
 
-The simplest tokens are only a single character. We recognize those like so:
+Les tokens les plus simples sont seulement un caractère unique. Nous reconnaissons ceux-là comme ceci :
 
 ^code scan-char (1 before, 2 after)
 
-We read the next character from the source code, and then do a straightforward
-switch to see if it matches any of Lox's one-character lexemes. To read the next
-character, we use a new helper which consumes the current character and returns
-it.
+Nous lisons le prochain caractère depuis le code source, et ensuite faisons un switch direct pour voir s'il correspond à n'importe lequel des lexèmes à un caractère de Lox. Pour lire le prochain caractère, nous utilisons une nouvelle aide qui consomme le caractère courant et le renvoie.
 
 ^code advance
 
-Next up are the two-character punctuation tokens like `!=` and `>=`. Each of
-these also has a corresponding single-character token. That means that when we
-see a character like `!`, we don't know if we're in a `!` token or a `!=` until
-we look at the next character too. We handle those like so:
+Ensuite viennent les tokens de ponctuation à deux caractères comme `!=` et `>=`. Chacun de ceux-ci a aussi un token à un caractère correspondant. Cela signifie que quand nous voyons un caractère comme `!`, nous ne savons pas si nous sommes dans un token `!` ou un `!=` jusqu'à ce que nous regardions le caractère suivant aussi. Nous gérons ceux-là comme ceci :
 
 ^code two-char (1 before, 1 after)
 
-After consuming the first character, we look for an `=`. If found, we consume it
-and return the corresponding two-character token. Otherwise, we leave the
-current character alone (so it can be part of the *next* token) and return the
-appropriate one-character token.
+Après avoir consommé le premier caractère, nous cherchons un `=`. Si trouvé, nous le consommons et renvoyons le token correspondant à deux caractères. Sinon, nous laissons le caractère courant seul (pour qu'il puisse faire partie du _prochain_ token) et renvoyons le token à un caractère approprié.
 
-That logic for conditionally consuming the second character lives here:
+Cette logique pour consommer conditionnellement le second caractère vit ici :
 
 ^code match
 
-If the current character is the desired one, we advance and return `true`.
-Otherwise, we return `false` to indicate it wasn't matched.
+Si le caractère courant est celui désiré, nous avançons et renvoyons `true`. Sinon, nous renvoyons `false` pour indiquer qu'il n'a pas été correspondu.
 
-Now our scanner supports all of the punctuation-like tokens. Before we get to
-the longer ones, let's take a little side trip to handle characters that aren't
-part of a token at all.
+Maintenant notre scanner supporte tous les tokens de type ponctuation. Avant que nous arrivions aux plus longs, faisons un petit détour pour gérer les caractères qui ne font partie d'aucun token du tout.
 
-### Whitespace
+### Espace blanc
 
-Our scanner needs to handle spaces, tabs, and newlines, but those characters
-don't become part of any token's lexeme. We could check for those inside the
-main character switch in `scanToken()` but it gets a little tricky to ensure
-that the function still correctly finds the next token *after* the whitespace
-when you call it. We'd have to wrap the whole body of the function in a loop or
-something.
+Notre scanner a besoin de gérer les espaces, tabulations, et nouvelles lignes, mais ces caractères ne deviennent partie d'aucun lexème de token. Nous pourrions vérifier pour ceux-là à l'intérieur du switch de caractère principal dans `scanToken()` mais cela devient un peu délicat d'assurer que la fonction trouve encore correctement le prochain token _après_ l'espace blanc quand vous l'appelez. Nous devrions envelopper le corps entier de la fonction dans une boucle ou quelque chose.
 
-Instead, before starting the token, we shunt off to a separate function.
+Au lieu de cela, avant de commencer le token, nous dérivons vers une fonction séparée.
 
 ^code call-skip-whitespace (1 before, 1 after)
 
-This advances the scanner past any leading whitespace. After this call returns,
-we know the very next character is a meaningful one (or we're at the end of the
-source code).
+Ceci avance le scanner passé tout espace blanc de tête. Après que cet appel retourne, nous savons que le tout prochain caractère est un significatif (ou nous sommes à la fin du code source).
 
 ^code skip-whitespace
 
-It's sort of a separate mini-scanner. It loops, consuming every whitespace
-character it encounters. We need to be careful that it does *not* consume any
-*non*-whitespace characters. To support that, we use this:
+C'est une sorte de mini-scanner séparé. Il boucle, consommant chaque caractère d'espace blanc qu'il rencontre. Nous avons besoin d'être prudents qu'il ne consomme _pas_ de caractères _non_-espace blanc. Pour supporter cela, nous utilisons ceci :
 
 ^code peek
 
-This simply returns the current character, but doesn't consume it. The previous
-code handles all the whitespace characters except for newlines.
+Ceci renvoie simplement le caractère courant, mais ne le consomme pas. Le code précédent gère tous les caractères d'espace blanc excepté les nouvelles lignes.
 
 ^code newline (1 before, 2 after)
 
-When we consume one of those, we also bump the current line number.
+Quand nous consommons une de celles-là, nous augmentons aussi le numéro de ligne courant.
 
-### Comments
+### Commentaires
 
-Comments aren't technically "whitespace", if you want to get all precise with
-your terminology, but as far as Lox is concerned, they may as well be, so we
-skip those too.
+Les commentaires ne sont pas techniquement de "l'espace blanc", si vous voulez devenir tout précis avec votre terminologie, mais pour autant que Lox soit concerné, ils pourraient aussi bien en être, donc nous sautons ceux-là aussi.
 
 ^code comment (1 before, 2 after)
 
-Comments start with `//` in Lox, so as with `!=` and friends, we need a second
-character of lookahead. However, with `!=`, we still wanted to consume the `!`
-even if the `=` wasn't found. Comments are different. If we don't find a second
-`/`, then `skipWhitespace()` needs to not consume the *first* slash either.
+Les commentaires commencent avec `//` en Lox, donc comme avec `!=` et amis, nous avons besoin d'un second caractère d'avance. Cependant, avec `!=`, nous voulions toujours consommer le `!` même si le `=` n'était pas trouvé. Les commentaires sont différents. Si nous ne trouvons pas un second `/`, alors `skipWhitespace()` a besoin de ne pas consommer la _première_ barre oblique non plus.
 
-To handle that, we add:
+Pour gérer cela, nous ajoutons :
 
 ^code peek-next
 
-This is like `peek()` but for one character past the current one. If the current
-character and the next one are both `/`, we consume them and then any other
-characters until the next newline or the end of the source code.
+C'est comme `peek()` mais pour un caractère après le courant. Si le caractère courant et le suivant sont tous deux `/`, nous les consommons et ensuite n'importe quels autres caractères jusqu'à la prochaine nouvelle ligne ou la fin du code source.
 
-We use `peek()` to check for the newline but not consume it. That way, the
-newline will be the current character on the next turn of the outer loop in
-`skipWhitespace()` and we'll recognize it and increment `scanner.line`.
+Nous utilisons `peek()` pour vérifier la nouvelle ligne mais pas la consommer. De cette façon, la nouvelle ligne sera le caractère courant au prochain tour de la boucle extérieure dans `skipWhitespace()` et nous la reconnaîtrons et incrémenterons `scanner.line`.
 
-### Literal tokens
+### Tokens littéraux
 
-Number and string tokens are special because they have a runtime value
-associated with them. We'll start with strings because they are easy to
-recognize -- they always begin with a double quote.
+Les tokens nombre et chaîne sont spéciaux parce qu'ils ont une valeur d'exécution associée avec eux. Nous commencerons avec les chaînes parce qu'elles sont faciles à reconnaître -- elles commencent toujours avec un guillemet double.
 
 ^code scan-string (1 before, 1 after)
 
-That calls a new function.
+Cela appelle une nouvelle fonction.
 
 ^code string
 
-Similar to jlox, we consume characters until we reach the closing quote. We also
-track newlines inside the string literal. (Lox supports multi-line strings.)
-And, as ever, we gracefully handle running out of source code before we find the
-end quote.
+Similaire à jlox, nous consommons les caractères jusqu'à ce que nous atteignions le guillemet fermant. Nous suivons aussi les nouvelles lignes à l'intérieur du littéral de chaîne. (Lox supporte les chaînes multi-lignes.) Et, comme toujours, nous gérons avec grâce le fait de tomber à court de code source avant que nous trouvions le guillemet de fin.
 
-The main change here in clox is something that's *not* present. Again, it
-relates to memory management. In jlox, the Token class had a field of type
-Object to store the runtime value converted from the literal token's lexeme.
+Le changement principal ici dans clox est quelque chose qui n'est _pas_ présent. Encore une fois, cela se rapporte à la gestion de la mémoire. Dans jlox, la classe Token avait un champ de type Object pour stocker la valeur d'exécution convertie depuis le lexème du token littéral.
 
-Implementing that in C would require a lot of work. We'd need some sort of union
-and type tag to tell whether the token contains a string or double value. If
-it's a string, we'd need to manage the memory for the string's character array
-somehow.
+Implémenter cela en C exigerait beaucoup de travail. Nous aurions besoin d'une sorte d'union et d'étiquette de type pour dire si le token contient une chaîne ou une valeur double. Si c'est une chaîne, nous aurions besoin de gérer la mémoire pour le tableau de caractères de la chaîne d'une manière ou d'une autre.
 
-Instead of adding that complexity to the scanner, we defer <span
-name="convert">converting</span> the literal lexeme to a runtime value until
-later. In clox, tokens only store the lexeme -- the character sequence exactly
-as it appears in the user's source code. Later in the compiler, we'll convert
-that lexeme to a runtime value right when we are ready to store it in the
-chunk's constant table.
+Au lieu d'ajouter cette complexité au scanner, nous différons la <span name="convert">conversion</span> du lexème littéral en une valeur d'exécution jusqu'à plus tard. Dans clox, les tokens stockent seulement le lexème -- la séquence de caractères exactement comme elle apparaît dans le code source de l'utilisateur. Plus tard dans le compilateur, nous convertirons ce lexème en une valeur d'exécution juste quand nous sommes prêts à la stocker dans la table de constantes du morceau.
 
 <aside name="convert">
 
-Doing the lexeme-to-value conversion in the compiler does introduce some
-redundancy. The work to scan a number literal is awfully similar to the work
-required to convert a sequence of digit characters to a number value. But there
-isn't *that* much redundancy, it isn't in anything performance critical, and it
-keeps our scanner simpler.
+Faire la conversion lexème-vers-valeur dans le compilateur introduit vraiment un peu de redondance. Le travail pour scanner un littéral nombre est terriblement similaire au travail requis pour convertir une séquence de caractères chiffres en une valeur de nombre. Mais il n'y a pas _tant_ de redondance que ça, ce n'est pas dans quelque chose de critique en performance, et cela garde notre scanner plus simple.
 
 </aside>
 
-Next up, numbers. Instead of adding a switch case for each of the ten digits
-that can start a number, we handle them here:
+Ensuite, les nombres. Au lieu d'ajouter un cas switch pour chacun des dix chiffres qui peuvent commencer un nombre, nous les gérons ici :
 
 ^code scan-number (1 before, 2 after)
 
-That uses this obvious utility function:
+Cela utilise cette fonction utilitaire évidente :
 
 ^code is-digit
 
-We finish scanning the number using this:
+Nous finissons de scanner le nombre en utilisant ceci :
 
 ^code number
 
-It's virtually identical to jlox's version except, again, we don't convert the
-lexeme to a double yet.
+C'est virtuellement identique à la version de jlox excepté, encore une fois, que nous ne convertissons pas le lexème en un double encore.
 
-## Identifiers and Keywords
+## Identifiants et Mots-clés
 
-The last batch of tokens are identifiers, both user-defined and reserved. This
-section should be fun -- the way we recognize keywords in clox is quite
-different from how we did it in jlox, and touches on some important data
-structures.
+Le dernier lot de tokens sont les identifiants, à la fois définis par l'utilisateur et réservés. Cette section devrait être amusante -- la façon dont nous reconnaissons les mots-clés dans clox est assez différente de comment nous l'avons fait dans jlox, et touche à certaines structures de données importantes.
 
-First, though, we have to scan the lexeme. Names start with a letter or
-underscore.
+D'abord, cependant, nous devons scanner le lexème. Les noms commencent avec une lettre ou un souligné.
 
 ^code scan-identifier (1 before, 1 after)
 
-We recognize those using this:
+Nous reconnaissons ceux-là en utilisant ceci :
 
 ^code is-alpha
 
-Once we've found an identifier, we scan the rest of it here:
+Une fois que nous avons trouvé un identifiant, nous scannons le reste ici :
 
 ^code identifier
 
-After the first letter, we allow digits too, and we keep consuming alphanumerics
-until we run out of them. Then we produce a token with the proper type.
-Determining that "proper" type is the unique part of this chapter.
+Après la première lettre, nous autorisons les chiffres aussi, et nous continuons de consommer les alphanumériques jusqu'à ce que nous tombions à court. Ensuite nous produisons un token avec le type approprié. Déterminer ce type "approprié" est la partie unique de ce chapitre.
 
 ^code identifier-type
 
-Okay, I guess that's not very exciting yet. That's what it looks like if we
-have no reserved words at all. How should we go about recognizing keywords? In
-jlox, we stuffed them all in a Java Map and looked them up by name. We don't
-have any sort of hash table structure in clox, at least not yet.
+O.K., je suppose que ce n'est pas très excitant encore. C'est ce à quoi ça ressemble si nous n'avons aucun mot réservé du tout. Comment devrions-nous nous y prendre pour reconnaître les mots-clés ? Dans jlox, nous les bourrions tous dans une Map Java et les cherchions par nom. Nous n'avons aucune sorte de structure de table de hachage dans clox, au moins pas encore.
 
-A hash table would be overkill anyway. To look up a string in a hash <span
-name="hash">table</span>, we need to walk the string to calculate its hash code,
-find the corresponding bucket in the hash table, and then do a
-character-by-character equality comparison on any string it happens to find
-there.
+Une table de hachage serait exagérée de toute façon. Pour chercher une chaîne dans une <span name="hash">table</span> de hachage, nous avons besoin de parcourir la chaîne pour calculer son code de hachage, trouver le seau correspondant dans la table de hachage, et ensuite faire une comparaison d'égalité caractère par caractère sur n'importe quelle chaîne qu'elle trouve là.
 
 <aside name="hash">
 
-Don't worry if this is unfamiliar to you. When we get to [building our own hash
-table from scratch][hash], we'll learn all about it in exquisite detail.
+Ne vous inquiétez pas si ceci ne vous est pas familier. Quand nous arriverons à [construire notre propre table de hachage depuis zéro][hash], nous apprendrons tout à son sujet dans un détail exquis.
 
-[hash]: hash-tables.html
+[hash]: tables-de-hachage.html
 
 </aside>
 
-Let's say we've scanned the identifier "gorgonzola". How much work *should* we
-need to do to tell if that's a reserved word? Well, no Lox keyword starts with
-"g", so looking at the first character is enough to definitively answer no.
-That's a lot simpler than a hash table lookup.
+Disons que nous avons scanné l'identifiant "gorgonzola". Combien de travail _devrions_-nous avoir besoin de faire pour dire si c'est un mot réservé ? Eh bien, aucun mot-clé Lox ne commence par "g", donc regarder le premier caractère est suffisant pour répondre définitivement non. C'est beaucoup plus simple qu'une recherche dans une table de hachage.
 
-What about "cardigan"? We do have a keyword in Lox that starts with "c":
-"class". But the second character in "cardigan", "a", rules that out. What about
-"forest"? Since "for" is a keyword, we have to go farther in the string before
-we can establish that we don't have a reserved word. But, in most cases, only a
-character or two is enough to tell we've got a user-defined name on our hands.
-We should be able to recognize that and fail fast.
+Quoi à propos de "cardigan" ? Nous avons un mot-clé en Lox qui commence par "c" : "class". Mais le second caractère dans "cardigan", "a", écarte cela. Quoi à propos de "forest" ? Puisque "for" est un mot-clé, nous devons aller plus loin dans la chaîne avant que nous puissions établir que nous n'avons pas un mot réservé. Mais, dans la plupart des cas, seulement un caractère ou deux est suffisant pour dire que nous avons un nom défini par l'utilisateur sur les bras. Nous devrions être capables de reconnaître cela et d'échouer rapidement.
 
-Here's a visual representation of that branching character-inspection logic:
+Voici une représentation visuelle de cette logique d'inspection de caractère branchée :
 
 <span name="down"></span>
 
-<img src="image/scanning-on-demand/keywords.png" alt="A trie that contains all of Lox's keywords." />
+<img src="image/scanning-on-demand/keywords.png" alt="Un trie qui contient tous les mots-clés de Lox." />
 
 <aside name="down">
 
-Read down each chain of nodes and you'll see Lox's keywords emerge.
+Lisez vers le bas chaque chaîne de nœuds et vous verrez les mots-clés de Lox émerger.
 
 </aside>
 
-We start at the root node. If there is a child node whose letter matches the
-first character in the lexeme, we move to that node. Then repeat for the next
-letter in the lexeme and so on. If at any point the next letter in the lexeme
-doesn't match a child node, then the identifier must not be a keyword and we
-stop. If we reach a double-lined box, and we're at the last character of the
-lexeme, then we found a keyword.
+Nous commençons au nœud racine. S'il y a un nœud enfant dont la lettre correspond au premier caractère dans le lexème, nous bougeons vers ce nœud. Ensuite répétez pour la prochaine lettre dans le lexème et ainsi de suite. Si à n'importe quel point la prochaine lettre dans le lexème ne correspond pas à un nœud enfant, alors l'identifiant ne doit pas être un mot-clé et nous arrêtons. Si nous atteignons une boîte à double ligne, et que nous sommes au dernier caractère du lexème, alors nous avons trouvé un mot-clé.
 
-### Tries and state machines
+### Tries et machines à états
 
-This tree diagram is an example of a thing called a <span
-name="trie">[**trie**][trie]</span>. A trie stores a set of strings. Most other
-data structures for storing strings contain the raw character arrays and then
-wrap them inside some larger construct that helps you search faster. A trie is
-different. Nowhere in the trie will you find a whole string.
+Ce diagramme en arbre est un exemple d'une chose appelée un <span name="trie">[**trie**][trie]</span>. Un trie stocke un ensemble de chaînes. La plupart des autres structures de données pour stocker des chaînes contiennent les tableaux de caractères bruts et ensuite les enveloppent à l'intérieur de quelque plus grande construction qui vous aide à chercher plus vite. Un trie est différent. Nulle part dans le trie vous ne trouverez une chaîne entière.
 
 [trie]: https://en.wikipedia.org/wiki/Trie
 
 <aside name="trie">
 
-"Trie" is one of the most confusing names in CS. Edward Fredkin yanked it out of
-the middle of the word "retrieval", which means it should be pronounced like
-"tree". But, uh, there is already a pretty important data structure pronounced
-"tree" *which tries are a special case of*, so unless you never speak of these
-things out loud, no one can tell which one you're talking about. Thus, people
-these days often pronounce it like "try" to avoid the headache.
+"Trie" est un des noms les plus confus en informatique. Edward Fredkin l'a arraché du milieu du mot "retrieval" (récupération), ce qui signifie qu'il devrait être prononcé comme "tree" (arbre). Mais, euh, il y a déjà une structure de données assez importante prononcée "tree" _dont les tries sont un cas spécial_, donc à moins que vous ne parliez jamais de ces choses à voix haute, personne ne peut dire de laquelle vous parlez. Ainsi, les gens ces jours-ci le prononcent souvent comme "try" (essai) pour éviter le mal de tête.
 
 </aside>
 
-Instead, each string the trie "contains" is represented as a *path* through the
-tree of character nodes, as in our traversal above. Nodes that match the last
-character in a string have a special marker -- the double lined boxes in the
-illustration. That way, if your trie contains, say, "banquet" and "ban", you are
-able to tell that it does *not* contain "banque" -- the "e" node won't have that
-marker, while the "n" and "t" nodes will.
+Au lieu de cela, chaque chaîne que le trie "contient" est représentée comme un _chemin_ à travers l'arbre de nœuds de caractères, comme dans notre traversée ci-dessus. Les nœuds qui correspondent au dernier caractère dans une chaîne ont un marqueur spécial -- les boîtes à double ligne dans l'illustration. De cette façon, si votre trie contient, disons, "banquet" et "ban", vous êtes capable de dire qu'il ne contient _pas_ "banque" -- le nœud "e" n'aura pas ce marqueur, tandis que les nœuds "n" et "t" l'auront.
 
-Tries are a special case of an even more fundamental data structure: a
-[**deterministic finite automaton**][dfa] (**DFA**). You might also know these
-by other names: **finite state machine**, or just **state machine**. State
-machines are rad. They end up useful in everything from [game
-programming][state] to implementing networking protocols.
+Les tries sont un cas spécial d'une structure de données encore plus fondamentale : un [**automate fini déterministe**][dfa] (**AFD**). Vous pourriez aussi connaître ceux-ci par d'autres noms : **machine à états finis**, ou juste **machine à états**. Les machines à états sont rad. Elles finissent par être utiles dans tout, de la [programmation de jeux][state] à l'implémentation de protocoles réseau.
 
 [dfa]: https://en.wikipedia.org/wiki/Deterministic_finite_automaton
 [state]: http://gameprogrammingpatterns.com/state.html
 
-In a DFA, you have a set of *states* with *transitions* between them, forming a
-graph. At any point in time, the machine is "in" exactly one state. It gets to
-other states by following transitions. When you use a DFA for lexical analysis,
-each transition is a character that gets matched from the string. Each state
-represents a set of allowed characters.
+Dans un AFD, vous avez un ensemble d'_états_ avec des _transitions_ entre eux, formant un graphe. À n'importe quel point dans le temps, la machine est "dans" exactement un état. Elle va vers d'autres états en suivant des transitions. Quand vous utilisez un AFD pour l'analyse lexicale, chaque transition est un caractère qui est correspondu depuis la chaîne. Chaque état représente un ensemble de caractères autorisés.
 
-Our keyword tree is exactly a DFA that recognizes Lox keywords. But DFAs are
-more powerful than simple trees because they can be arbitrary *graphs*.
-Transitions can form cycles between states. That lets you recognize arbitrarily
-long strings. For example, here's a DFA that recognizes number literals:
+Notre arbre de mots-clés est exactement un AFD qui reconnaît les mots-clés Lox. Mais les AFD sont plus puissants que les simples arbres parce qu'ils peuvent être des _graphes_ arbitraires. Les transitions peuvent former des cycles entre états. Cela vous laisse reconnaître des chaînes arbitrairement longues. Par exemple, voici un AFD qui reconnaît les littéraux nombre :
 
 <span name="railroad"></span>
 
-<img src="image/scanning-on-demand/numbers.png" alt="A syntax diagram that recognizes integer and floating point literals." />
+<img src="image/scanning-on-demand/numbers.png" alt="Un diagramme syntaxique qui reconnaît les littéraux entiers et à virgule flottante." />
 
 <aside name="railroad">
 
-This style of diagram is called a [**syntax diagram**][syntax diagram] or the
-more charming **railroad diagram**. The latter name is because it looks
-something like a switching yard for trains.
+Ce style de diagramme est appelé un [**diagramme syntaxique**][syntax diagram] ou le plus charmant **diagramme ferroviaire**. Ce dernier nom est parce qu'il ressemble quelque peu à une cour de triage pour les trains.
 
-Back before Backus-Naur Form was a thing, this was one of the predominant ways
-of documenting a language's grammar. These days, we mostly use text, but there's
-something delightful about the official specification for a *textual language*
-relying on an *image*.
+Bien avant que la forme de Backus-Naur ne soit une chose, c'était une des manières prédominantes de documenter la grammaire d'un langage. De nos jours, nous utilisons surtout du texte, mais il y a quelque chose de délicieux à propos de la spécification officielle pour un _langage textuel_ reposant sur une _image_.
 
 [syntax diagram]: https://en.wikipedia.org/wiki/Syntax_diagram
 
 </aside>
 
-I've collapsed the nodes for the ten digits together to keep it more readable,
-but the basic process works the same -- you work through the path, entering
-nodes whenever you consume a corresponding character in the lexeme. If we were
-so inclined, we could construct one big giant DFA that does *all* of the lexical
-analysis for Lox, a single state machine that recognizes and spits out all of
-the tokens we need.
+J'ai effondré les nœuds pour les dix chiffres ensemble pour garder cela plus lisible, mais le processus de base fonctionne pareil -- vous travaillez à travers le chemin, entrant dans des nœuds chaque fois que vous consommez un caractère correspondant dans le lexème. Si nous étions ainsi enclins, nous pourrions construire un seul grand AFD géant qui fait _toute_ l'analyse lexicale pour Lox, une seule machine à états qui reconnaît et crache tous les tokens dont nous avons besoin.
 
-However, crafting that mega-DFA by <span name="regex">hand</span> would be
-challenging. That's why [Lex][] was created. You give it a simple textual
-description of your lexical grammar -- a bunch of regular expressions -- and it
-automatically generates a DFA for you and produces a pile of C code that
-implements it.
+Cependant, fabriquer ce méga-AFD à la <span name="regex">main</span> serait un défi. C'est pourquoi [Lex][] a été créé. Vous lui donnez une simple description textuelle de votre grammaire lexicale -- un tas d'expressions régulières -- et il génère automatiquement un AFD pour vous et produit une pile de code C qui l'implémente.
 
 [lex]: https://en.wikipedia.org/wiki/Lex_(software)
 
 <aside name="regex">
 
-This is also how most regular expression engines in programming languages and
-text editors work under the hood. They take your regex string and convert it to
-a DFA, which they then use to match strings.
+C'est aussi comme ça que la plupart des moteurs d'expressions régulières dans les langages de programmation et éditeurs de texte fonctionnent sous le capot. Ils prennent votre chaîne regex et la convertissent en un AFD, qu'ils utilisent ensuite pour correspondre des chaînes.
 
-If you want to learn the algorithm to convert a regular expression into a DFA,
-[the dragon book][dragon] has you covered.
+Si vous voulez apprendre l'algorithme pour convertir une expression régulière en un AFD, [le livre du dragon][dragon] vous couvre.
 
 [dragon]: https://en.wikipedia.org/wiki/Compilers:_Principles,_Techniques,_and_Tools
 
 </aside>
 
-We won't go down that road. We already have a perfectly serviceable hand-rolled
-scanner. We just need a tiny trie for recognizing keywords. How should we map
-that to code?
+Nous n'irons pas sur cette route. Nous avons déjà un scanner roulé à la main parfaitement utilisable. Nous avons juste besoin d'un minuscule trie pour reconnaître les mots-clés. Comment devrions-nous mapper cela au code ?
 
-The absolute simplest <span name="v8">solution</span> is to use a switch
-statement for each node with cases for each branch. We'll start with the root
-node and handle the easy keywords.
+La <span name="v8">solution</span> absolue la plus simple est d'utiliser une instruction switch pour chaque nœud avec des cas pour chaque branche. Nous commencerons avec le nœud racine et gérerons les mots-clés faciles.
 
 <aside name="v8">
 
-Simple doesn't mean dumb. The same approach is [essentially what V8 does][v8],
-and that's currently one of the world's most sophisticated, fastest language
-implementations.
+Simple ne veut pas dire bête. La même approche est [essentiellement ce que fait V8][v8], et c'est actuellement une des implémentations de langage les plus sophistiquées et les plus rapides du monde.
 
 [v8]: https://github.com/v8/v8/blob/e77eebfe3b747fb315bd3baad09bec0953e53e68/src/parsing/scanner.cc#L1643
 
@@ -729,66 +474,41 @@ implementations.
 
 ^code keywords (1 before, 1 after)
 
-These are the initial letters that correspond to a single keyword. If we see an
-"s", the only keyword the identifier could possibly be is `super`. It might not
-be, though, so we still need to check the rest of the letters too. In the tree
-diagram, this is basically that straight path hanging off the "s".
+Ce sont les lettres initiales qui correspondent à un seul mot-clé. Si nous voyons un "s", le seul mot-clé que l'identifiant pourrait possiblement être est `super`. Il pourrait ne pas l'être, cependant, donc nous avons encore besoin de vérifier le reste des lettres aussi. Dans le diagramme en arbre, c'est basiquement ce chemin droit pendant hors du "s".
 
-We won't roll a switch for each of those nodes. Instead, we have a utility
-function that tests the rest of a potential keyword's lexeme.
+Nous ne roulerons pas un switch pour chacun de ces nœuds. Au lieu de cela, nous avons une fonction utilitaire qui teste le reste du lexème d'un mot-clé potentiel.
 
 ^code check-keyword
 
-We use this for all of the unbranching paths in the tree. Once we've found a
-prefix that could only be one possible reserved word, we need to verify two
-things. The lexeme must be exactly as long as the keyword. If the first letter
-is "s", the lexeme could still be "sup" or "superb". And the remaining
-characters must match exactly -- "supar" isn't good enough.
+Nous utilisons cela pour tous les chemins sans embranchement dans l'arbre. Une fois que nous avons trouvé un préfixe qui pourrait seulement être un mot réservé possible, nous avons besoin de vérifier deux choses. Le lexème doit être exactement aussi long que le mot-clé. Si la première lettre est "s", le lexème pourrait encore être "sup" ou "superb". Et les caractères restants doivent correspondre exactement -- "supar" n'est pas assez bon.
 
-If we do have the right number of characters, and they're the ones we want, then
-it's a keyword, and we return the associated token type. Otherwise, it must be a
-normal identifier.
+Si nous avons le bon nombre de caractères, et qu'ils sont ceux que nous voulons, alors c'est un mot-clé, et nous renvoyons le type de token associé. Sinon, ce doit être un identifiant normal.
 
-We have a couple of keywords where the tree branches again after the first
-letter. If the lexeme starts with "f", it could be `false`, `for`, or `fun`. So
-we add another switch for the branches coming off the "f" node.
+Nous avons une couple de mots-clés où l'arbre branche encore après la première lettre. Si le lexème commence par "f", il pourrait être `false`, `for`, ou `fun`. Donc nous ajoutons un autre switch pour les branches venant du nœud "f".
 
 ^code keyword-f (1 before, 1 after)
 
-Before we switch, we need to check that there even *is* a second letter. "f" by
-itself is a valid identifier too, after all. The other letter that branches is
-"t".
+Avant que nous switchions, nous avons besoin de vérifier qu'il y a même une seconde lettre. "f" par lui-même est un identifiant valide aussi, après tout. L'autre lettre qui branche est "t".
 
 ^code keyword-t (1 before, 1 after)
 
-That's it. A couple of nested `switch` statements. Not only is this code <span
-name="short">short</span>, but it's very, very fast. It does the minimum amount
-of work required to detect a keyword, and bails out as soon as it can tell the
-identifier will not be a reserved one.
+C'est tout. Une couple d'instructions `switch` imbriquées. Non seulement ce code est <span name="short">court</span>, mais il est très, très rapide. Il fait le montant minimum de travail requis pour détecter un mot-clé, et se barre dès qu'il peut dire que l'identifiant ne sera pas un réservé.
 
-And with that, our scanner is complete.
+Et avec ça, notre scanner est complet.
 
 <aside name="short">
 
-We sometimes fall into the trap of thinking that performance comes from
-complicated data structures, layers of caching, and other fancy optimizations.
-But, many times, all that's required is to do less work, and I often find that
-writing the simplest code I can is sufficient to accomplish that.
+Nous tombons parfois dans le piège de penser que la performance vient de structures de données compliquées, de couches de cache, et d'autres optimisations fantaisistes. Mais, bien des fois, tout ce qui est requis est de faire moins de travail, et je trouve souvent qu'écrire le code le plus simple que je peux est suffisant pour accomplir cela.
 
 </aside>
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  Many newer languages support [**string interpolation**][interp]. Inside a
-    string literal, you have some sort of special delimiters -- most commonly
-    `${` at the beginning and `}` at the end. Between those delimiters, any
-    expression can appear. When the string literal is executed, the inner
-    expression is evaluated, converted to a string, and then merged with the
-    surrounding string literal.
+1.  Beaucoup de langages plus récents supportent l'[**interpolation de chaîne**][interp]. À l'intérieur d'un littéral de chaîne, vous avez une sorte de délimiteurs spéciaux -- le plus communément `${` au début et `}` à la fin. Entre ces délimiteurs, n'importe quelle expression peut apparaître. Quand le littéral de chaîne est exécuté, l'expression intérieure est évaluée, convertie en une chaîne, et ensuite fusionnée avec le littéral de chaîne environnant.
 
-    For example, if Lox supported string interpolation, then this...
+    Par exemple, si Lox supportait l'interpolation de chaîne, alors ceci...
 
     ```lox
     var drink = "Tea";
@@ -797,50 +517,37 @@ writing the simplest code I can is sufficient to accomplish that.
     print "${drink} will be ready in ${steep + cool} minutes.";
     ```
 
-    ...would print:
+    ...imprimerait :
 
     ```text
     Tea will be ready in 6 minutes.
     ```
 
-    What token types would you define to implement a scanner for string
-    interpolation? What sequence of tokens would you emit for the above string
-    literal?
+    Quels types de token définiriez-vous pour implémenter un scanner pour l'interpolation de chaîne ? Quelle séquence de tokens émettriez-vous pour le littéral de chaîne ci-dessus ?
 
-    What tokens would you emit for:
+    Quels tokens émettriez-vous pour :
 
     ```text
     "Nested ${"interpolation?! Are you ${"mad?!"}"}"
     ```
 
-    Consider looking at other language implementations that support
-    interpolation to see how they handle it.
+    Considérez de regarder d'autres implémentations de langage qui supportent l'interpolation pour voir comment elles la gèrent.
 
-2.  Several languages use angle brackets for generics and also have a `>>` right
-    shift operator. This led to a classic problem in early versions of C++:
+2.  Plusieurs langages utilisent des chevrons pour les génériques et ont aussi un opérateur de décalage à droite `>>`. Cela a mené à un problème classique dans les premières versions de C++ :
 
     ```c++
     vector<vector<string>> nestedVectors;
     ```
 
-    This would produce a compile error because the `>>` was lexed to a single
-    right shift token, not two `>` tokens. Users were forced to avoid this by
-    putting a space between the closing angle brackets.
+    Cela produirait une erreur de compilation parce que le `>>` était lexé en un seul token de décalage à droite, pas deux tokens `>`. Les utilisateurs étaient forcés d'éviter cela en mettant un espace entre les chevrons fermants.
 
-    Later versions of C++ are smarter and can handle the above code. Java and C#
-    never had the problem. How do those languages specify and implement this?
+    Les versions ultérieures de C++ sont plus intelligentes et peuvent gérer le code ci-dessus. Java et C# n'ont jamais eu le problème. Comment ces langages spécifient-ils et implémentent-ils cela ?
 
-3.  Many languages, especially later in their evolution, define "contextual
-    keywords". These are identifiers that act like reserved words in some
-    contexts but can be normal user-defined identifiers in others.
+3.  Beaucoup de langages, particulièrement plus tard dans leur évolution, définissent des "mots-clés contextuels". Ce sont des identifiants qui agissent comme des mots réservés dans certains contextes mais peuvent être des identifiants normaux définis par l'utilisateur dans d'autres.
 
-    For example, `await` is a keyword inside an `async` method in C#, but
-    in other methods, you can use `await` as your own identifier.
+    Par exemple, `await` est un mot-clé à l'intérieur d'une méthode `async` en C#, mais dans d'autres méthodes, vous pouvez utiliser `await` comme votre propre identifiant.
 
-    Name a few contextual keywords from other languages, and the context where
-    they are meaningful. What are the pros and cons of having contextual
-    keywords? How would you implement them in your language's front end if you
-    needed to?
+    Nommez quelques mots-clés contextuels d'autres langages, et le contexte où ils sont significatifs. Quels sont les pour et les contre d'avoir des mots-clés contextuels ? Comment les implémenteriez-vous dans le front end de votre langage si vous en aviez besoin ?
 
 [interp]: https://en.wikipedia.org/wiki/String_interpolation
 

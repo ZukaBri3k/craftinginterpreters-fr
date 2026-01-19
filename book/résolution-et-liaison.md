@@ -1,135 +1,97 @@
-> Once in a while you find yourself in an odd situation. You get into it by
-> degrees and in the most natural way but, when you are right in the midst of
-> it, you are suddenly astonished and ask yourself how in the world it all came
-> about.
+> Une fois de temps en temps vous vous trouvez dans une situation étrange. Vous y entrez par
+> degrés et de la façon la plus naturelle mais, quand vous êtes juste au milieu de
+> celle-ci, vous êtes soudainement étonné et vous demandez comment diable tout cela est
+> arrivé.
 >
 > <cite>Thor Heyerdahl, <em>Kon-Tiki</em></cite>
 
-Oh, no! Our language implementation is taking on water! Way back when we [added
-variables and blocks][statements], we had scoping nice and tight. But when we
-[later added closures][functions], a hole opened in our formerly waterproof
-interpreter. Most real programs are unlikely to slip through this hole, but as
-language implementers, we take a sacred vow to care about correctness even in
-the deepest, dampest corners of the semantics.
+Oh, non ! Notre implémentation de langage prend l'eau ! Il y a longtemps quand nous avons [ajouté les variables et les blocs][statements], nous avions une portée propre et étanche. Mais quand nous avons [plus tard ajouté les fermetures][functions], un trou s'est ouvert dans notre interpréteur autrefois imperméable. La plupart des vrais programmes sont peu susceptibles de glisser à travers ce trou, mais en tant qu'implémenteurs de langage, nous faisons le vœu sacré de nous soucier de la correction même dans les coins les plus profonds, les plus humides de la sémantique.
 
 [statements]: statements-and-state.html
 [functions]: functions.html
 
-We will spend this entire chapter exploring that leak, and then carefully
-patching it up. In the process, we will gain a more rigorous understanding of
-lexical scoping as used by Lox and other languages in the C tradition. We'll
-also get a chance to learn about *semantic analysis* -- a powerful technique for
-extracting meaning from the user's source code without having to run it.
+Nous passerons ce chapitre entier à explorer cette fuite, et ensuite à la colmater soigneusement. Dans le processus, nous gagnerons une compréhension plus rigoureuse de la portée lexicale telle qu'utilisée par Lox et d'autres langages dans la tradition C. Nous aurons aussi une chance d'apprendre à propos de l'_analyse sémantique_ -- une technique puissante pour extraire du sens du code source de l'utilisateur sans avoir à l'exécuter.
 
-## Static Scope
+## Portée Statique
 
-A quick refresher: Lox, like most modern languages, uses *lexical* scoping. This
-means that you can figure out which declaration a variable name refers to just
-by reading the text of the program. For example:
+Un rafraîchissement rapide : Lox, comme la plupart des langages modernes, utilise une portée _lexicale_. Cela signifie que vous pouvez deviner à quelle déclaration un nom de variable fait référence juste en lisant le texte du programme. Par exemple :
 
 ```lox
-var a = "outer";
+var a = "externe";
 {
-  var a = "inner";
+  var a = "interne";
   print a;
 }
 ```
 
-Here, we know that the `a` being printed is the variable declared on the
-previous line, and not the global one. Running the program doesn't -- *can't* --
-affect this. The scope rules are part of the *static* semantics of the language,
-which is why they're also called *static scope*.
+Ici, nous savons que le `a` qui est imprimé est la variable déclarée sur la ligne précédente, et non la globale. Exécuter le programme n'affecte pas -- ne _peut pas_ affecter -- cela. Les règles de portée font partie de la sémantique _statique_ du langage, ce qui est pourquoi elles sont aussi appelées _portée statique_.
 
-I haven't spelled out those scope rules, but now is the time for <span
-name="precise">precision</span>:
+Je n'ai pas épelé ces règles de portée, mais maintenant est le moment pour la <span name="precise">précision</span> :
 
 <aside name="precise">
 
-This is still nowhere near as precise as a real language specification. Those
-docs must be so explicit that even a Martian or an outright malicious programmer
-would be forced to implement the correct semantics provided they followed the
-letter of the spec.
+Ceci n'est toujours nulle part aussi précis qu'une vraie spécification de langage. Ces docs doivent être si explicites que même un Martien ou un programmeur carrément malicieux serait forcé d'implémenter la sémantique correcte pourvu qu'il suive la lettre de la spec.
 
-That exactitude is important when a language may be implemented by competing
-companies who want their product to be incompatible with the others to lock
-customers onto their platform. For this book, we can thankfully ignore those
-kinds of shady shenanigans.
+Cette exactitude est importante quand un langage peut être implémenté par des entreprises concurrentes qui veulent que leur produit soit incompatible avec les autres pour verrouiller les clients sur leur plateforme. Pour ce livre, nous pouvons heureusement ignorer ces types de manigances louches.
 
 </aside>
 
-**A variable usage refers to the preceding declaration with the same name in the
-innermost scope that encloses the expression where the variable is used.**
+**Un usage de variable fait référence à la déclaration précédente avec le même nom dans la portée la plus interne qui entoure l'expression où la variable est utilisée.**
 
-There's a lot to unpack in that:
+Il y a beaucoup à déballer là-dedans :
 
-*   I say "variable usage" instead of "variable expression" to cover both
-    variable expressions and assignments. Likewise with "expression where the
-    variable is used".
+- Je dis "usage de variable" au lieu de "expression de variable" pour couvrir à la fois les expressions de variable et les affectations. De même avec "expression où la variable est utilisée".
 
-*   "Preceding" means appearing before *in the program text*.
+- "Précédente" signifie apparaissant avant _dans le texte du programme_.
 
     ```lox
-    var a = "outer";
+    var a = "externe";
     {
       print a;
-      var a = "inner";
+      var a = "interne";
     }
     ```
 
-    Here, the `a` being printed is the outer one since it appears <span
-    name="hoisting">before</span> the `print` statement that uses it. In most
-    cases, in straight line code, the declaration preceding in *text* will also
-    precede the usage in *time*. But that's not always true. As we'll see,
-    functions may defer a chunk of code such that its *dynamic temporal*
-    execution no longer mirrors the *static textual* ordering.
+    Ici, le `a` qui est imprimé est l'externe puisqu'il apparaît <span name="hoisting">avant</span> l'instruction `print` qui l'utilise. Dans la plupart des cas, dans du code en ligne droite, la déclaration précédant dans le _texte_ précédera aussi l'usage dans le _temps_. Mais ce n'est pas toujours vrai. Comme nous le verrons, les fonctions peuvent différer un morceau de code de telle sorte que son exécution _temporelle dynamique_ ne reflète plus l'ordre _textuel statique_.
 
-    <aside name="hoisting">
+      <aside name="hoisting">
 
-    In JavaScript, variables declared using `var` are implicitly "hoisted" to
-    the beginning of the block. Any use of that name in the block will refer to
-    that variable, even if the use appears before the declaration. When you
-    write this in JavaScript:
+    En JavaScript, les variables déclarées utilisant `var` sont implicitement "hissées" (hoisted) au début du bloc. Tout usage de ce nom dans le bloc fera référence à cette variable, même si l'usage apparaît avant la déclaration. Quand vous écrivez ceci en JavaScript :
 
     ```js
     {
-      console.log(a);
-      var a = "value";
+        console.log(a);
+        var a = "valeur";
     }
     ```
 
-    It behaves like:
+    Cela se comporte comme :
 
     ```js
     {
-      var a; // Hoist.
-      console.log(a);
-      a = "value";
+        var a; // Hissage.
+        console.log(a);
+        a = "valeur";
     }
     ```
 
-    That means that in some cases you can read a variable before its initializer
-    has run -- an annoying source of bugs. The alternate `let` syntax for
-    declaring variables was added later to address this problem.
+    Cela signifie que dans certains cas vous pouvez lire une variable avant que son initialiseur ait tourné -- une source ennuyeuse de bugs. La syntaxe alternative `let` pour déclarer des variables a été ajoutée plus tard pour adresser ce problème.
 
-    </aside>
+      </aside>
 
-*   "Innermost" is there because of our good friend shadowing. There may be more
-    than one variable with the given name in enclosing scopes, as in:
+- "La plus interne" est là à cause de notre bon ami le masquage (shadowing). Il peut y avoir plus d'une variable avec le nom donné dans les portées environnantes, comme dans :
 
     ```lox
-    var a = "outer";
+    var a = "externe";
     {
-      var a = "inner";
+      var a = "interne";
       print a;
     }
     ```
 
-    Our rule disambiguates this case by saying the innermost scope wins.
+    Notre règle désambiguïse ce cas en disant que la portée la plus interne gagne.
 
-Since this rule makes no mention of any runtime behavior, it implies that a
-variable expression always refers to the same declaration through the entire
-execution of the program. Our interpreter so far *mostly* implements the rule
-correctly. But when we added closures, an error snuck in.
+Puisque cette règle ne fait aucune mention d'aucun comportement à l'exécution, elle implique qu'une expression de variable fait toujours référence à la même déclaration à travers l'exécution entière du programme. Notre interpréteur jusqu'ici implémente _surtout_ la règle correctement. Mais quand nous avons ajouté les fermetures, une erreur s'est glissée.
 
 ```lox
 var a = "global";
@@ -139,103 +101,65 @@ var a = "global";
   }
 
   showA();
-  var a = "block";
+  var a = "bloc";
   showA();
 }
 ```
 
-<span name="tricky">Before</span> you type this in and run it, decide what you
-think it *should* print.
+<span name="tricky">Avant</span> que vous ne tapiez ceci et l'exécutiez, décidez ce que vous pensez qu'il _devrait_ imprimer.
 
 <aside name="tricky">
 
-I know, it's a totally pathological, contrived program. It's just *weird*. No
-reasonable person would ever write code like this. Alas, more of your life than
-you'd expect will be spent dealing with bizarro snippets of code like this if
-you stay in the programming language game for long.
+Je sais, c'est un programme totalement pathologique, artificiel. C'est juste _bizarre_. Aucune personne raisonnable n'écrirait jamais de code comme ça. Hélas, plus de votre vie que vous ne l'attendriez sera passée à gérer des snippets bizarres de code comme ça si vous restez dans le jeu des langages de programmation pour longtemps.
 
 </aside>
 
-OK... got it? If you're familiar with closures in other languages, you'll expect
-it to print "global" twice. The first call to `showA()` should definitely print
-"global" since we haven't even reached the declaration of the inner `a` yet. And
-by our rule that a variable expression always resolves to the same variable,
-that implies the second call to `showA()` should print the same thing.
+OK... vous l'avez ? Si vous êtes familier avec les fermetures dans d'autres langages, vous attendrez qu'il imprime "global" deux fois. Le premier appel à `showA()` devrait définitivement imprimer "global" puisque nous n'avons même pas encore atteint la déclaration du `a` interne. Et par notre règle qu'une expression de variable se résout toujours à la même variable, cela implique que le second appel à `showA()` devrait imprimer la même chose.
 
-Alas, it prints:
+Hélas, il imprime :
 
 ```text
 global
-block
+bloc
 ```
 
-Let me stress that this program never reassigns any variable and contains only a
-single `print` statement. Yet, somehow, that `print` statement for a
-never-assigned variable prints two different values at different points in time.
-We definitely broke something somewhere.
+Laissez-moi souligner que ce programme ne réassigne jamais aucune variable et contient seulement une seule instruction `print`. Pourtant, d'une certaine manière, cette instruction `print` pour une variable jamais assignée imprime deux valeurs différentes à différents points dans le temps. Nous avons définitivement cassé quelque chose quelque part.
 
-### Scopes and mutable environments
+### Portées et environnements mutables
 
-In our interpreter, environments are the dynamic manifestation of static scopes.
-The two mostly stay in sync with each other -- we create a new environment when
-we enter a new scope, and discard it when we leave the scope. There is one other
-operation we perform on environments: binding a variable in one. This is where
-our bug lies.
+Dans notre interpréteur, les environnements sont la manifestation dynamique des portées statiques. Les deux restent la plupart du temps synchronisés l'un avec l'autre -- nous créons un nouvel environnement quand nous entrons dans une nouvelle portée, et le jetons quand nous quittons la portée. Il y a une autre opération que nous effectuons sur les environnements : lier une variable dans l'un d'eux. C'est là que notre bug réside.
 
-Let's walk through that problematic example and see what the environments look
-like at each step. First, we declare `a` in the global scope.
+Parcourons cet exemple problématique et voyons à quoi ressemblent les environnements à chaque étape. D'abord, nous déclarons `a` dans la portée globale.
 
-<img src="image/resolving-and-binding/environment-1.png" alt="The global environment with 'a' defined in it." />
+<img src="image/resolving-and-binding/environment-1.png" alt="L'environnement global avec 'a' défini dedans." />
 
-That gives us a single environment with a single variable in it. Then we enter
-the block and execute the declaration of `showA()`.
+Cela nous donne un seul environnement avec une seule variable dedans. Ensuite nous entrons dans le bloc et exécutons la déclaration de `showA()`.
 
-<img src="image/resolving-and-binding/environment-2.png" alt="A block environment linking to the global one." />
+<img src="image/resolving-and-binding/environment-2.png" alt="Un environnement de bloc lié à celui global." />
 
-We get a new environment for the block. In that, we declare one name, `showA`,
-which is bound to the LoxFunction object we create to represent the function.
-That object has a `closure` field that captures the environment where the
-function was declared, so it has a reference back to the environment for the
-block.
+Nous obtenons un nouvel environnement pour le bloc. Dans celui-ci, nous déclarons un nom, `showA`, qui est lié à l'objet LoxFunction que nous créons pour représenter la fonction. Cet objet a un champ `closure` qui capture l'environnement où la fonction a été déclarée, donc il a une référence en arrière vers l'environnement pour le bloc.
 
-Now we call `showA()`.
+Maintenant nous appelons `showA()`.
 
-<img src="image/resolving-and-binding/environment-3.png" alt="An empty environment for showA()'s body linking to the previous two. 'a' is resolved in the global environment." />
+<img src="image/resolving-and-binding/environment-3.png" alt="Un environnement vide pour le corps de showA() lié aux deux précédents. 'a' est résolu dans l'environnement global." />
 
-The interpreter dynamically creates a new environment for the function body of
-`showA()`. It's empty since that function doesn't declare any variables. The
-parent of that environment is the function's closure -- the outer block
-environment.
+L'interpréteur crée dynamiquement un nouvel environnement pour le corps de la fonction `showA()`. Il est vide puisque cette fonction ne déclare aucune variable. Le parent de cet environnement est la fermeture de la fonction -- l'environnement du bloc externe.
 
-Inside the body of `showA()`, we print the value of `a`. The interpreter looks
-up this value by walking the chain of environments. It gets all the way
-to the global environment before finding it there and printing `"global"`.
-Great.
+À l'intérieur du corps de `showA()`, nous imprimons la valeur de `a`. L'interpréteur cherche cette valeur en parcourant la chaîne d'environnements. Il va tout le chemin jusqu'à l'environnement global avant de la trouver là et d'imprimer `"global"`. Super.
 
-Next, we declare the second `a`, this time inside the block.
+Ensuite, nous déclarons le second `a`, cette fois à l'intérieur du bloc.
 
-<img src="image/resolving-and-binding/environment-4.png" alt="The block environment has both 'a' and 'showA' now." />
+<img src="image/resolving-and-binding/environment-4.png" alt="L'environnement de bloc a à la fois 'a' et 'showA' maintenant." />
 
-It's in the same block -- the same scope -- as `showA()`, so it goes into the
-same environment, which is also the same environment `showA()`'s closure refers
-to. This is where it gets interesting. We call `showA()` again.
+C'est dans le même bloc -- la même portée -- que `showA()`, donc il va dans le même environnement, qui est aussi le même environnement auquel la fermeture de `showA()` fait référence. C'est là que ça devient intéressant. Nous appelons `showA()` à nouveau.
 
-<img src="image/resolving-and-binding/environment-5.png" alt="An empty environment for showA()'s body linking to the previous two. 'a' is resolved in the block environment." />
+<img src="image/resolving-and-binding/environment-5.png" alt="Un environnement vide pour le corps de showA() lié aux deux précédents. 'a' est résolu dans l'environnement de bloc." />
 
-We create a new empty environment for the body of `showA()` again, wire it up to
-that closure, and run the body. When the interpreter walks the chain of
-environments to find `a`, it now discovers the *new* `a` in the block
-environment. Boo.
+Nous créons un nouvel environnement vide pour le corps de `showA()` encore une fois, le branchons à cette fermeture, et lançons le corps. Quand l'interpréteur parcourt la chaîne d'environnements pour trouver `a`, il découvre maintenant le _nouveau_ `a` dans l'environnement de bloc. Bouh.
 
-I chose to implement environments in a way that I hoped would agree with your
-informal intuition around scopes. We tend to consider all of the code within a
-block as being within the same scope, so our interpreter uses a single
-environment to represent that. Each environment is a mutable hash table. When a
-new local variable is declared, it gets added to the existing environment for
-that scope.
+J'ai choisi d'implémenter les environnements d'une façon dont j'espérais qu'elle s'accorderait avec votre intuition informelle autour des portées. Nous avons tendance à considérer tout le code à l'intérieur d'un bloc comme étant à l'intérieur de la même portée, donc notre interpréteur utilise un seul environnement pour représenter cela. Chaque environnement est une table de hachage mutable. Quand une nouvelle variable locale est déclarée, elle est ajoutée à l'environnement existant pour cette portée.
 
-That intuition, like many in life, isn't quite right. A block is not necessarily
-all the same scope. Consider:
+Cette intuition, comme beaucoup dans la vie, n'est pas tout à fait juste. Un bloc n'est pas nécessairement tout la même portée. Considérez :
 
 ```lox
 {
@@ -246,746 +170,466 @@ all the same scope. Consider:
 }
 ```
 
-At the first marked line, only `a` is in scope. At the second line, both `a` and
-`b` are. If you define a "scope" to be a set of declarations, then those are
-clearly not the same scope -- they don't contain the same declarations. It's
-like each `var` statement <span name="split">splits</span> the block into two
-separate scopes, the scope before the variable is declared and the one after,
-which includes the new variable.
+À la première ligne marquée, seul `a` est dans la portée. À la seconde ligne, les deux `a` et `b` le sont. Si vous définissez une "portée" comme étant un ensemble de déclarations, alors celles-ci ne sont clairement pas la même portée -- elles ne contiennent pas les mêmes déclarations. C'est comme si chaque instruction `var` <span name="split">scindait</span> le bloc en deux portées séparées, la portée avant que la variable ne soit déclarée et celle après, qui inclut la nouvelle variable.
 
 <aside name="split">
 
-Some languages make this split explicit. In Scheme and ML, when you declare a
-local variable using `let`, you also delineate the subsequent code where the new
-variable is in scope. There is no implicit "rest of the block".
+Certains langages rendent cette scission explicite. En Scheme et ML, quand vous déclarez une variable locale utilisant `let`, vous délimitez aussi le code subséquent où la nouvelle variable est dans la portée. Il n'y a pas de "reste du bloc" implicite.
 
 </aside>
 
-But in our implementation, environments do act like the entire block is one
-scope, just a scope that changes over time. Closures do not like that. When a
-function is declared, it captures a reference to the current environment. The
-function *should* capture a frozen snapshot of the environment *as it existed at
-the moment the function was declared*. But instead, in the Java code, it has a
-reference to the actual mutable environment object. When a variable is later
-declared in the scope that environment corresponds to, the closure sees the new
-variable, even though the declaration does *not* precede the function.
+Mais dans notre implémentation, les environnements agissent bien comme si le bloc entier était une seule portée, juste une portée qui change au fil du temps. Les fermetures n'aiment pas ça. Quand une fonction est déclarée, elle capture une référence à l'environnement courant. La fonction _devrait_ capturer un instantané figé de l'environnement _tel qu'il existait au moment où la fonction a été déclarée_. Mais au lieu de cela, dans le code Java, elle a une référence à l'objet environnement mutable réel. Quand une variable est plus tard déclarée dans la portée à laquelle cet environnement correspond, la fermeture voit la nouvelle variable, même si la déclaration ne précède _pas_ la fonction.
 
-### Persistent environments
+### Environnements persistants
 
-There is a style of programming that uses what are called **persistent data
-structures**. Unlike the squishy data structures you're familiar with in
-imperative programming, a persistent data structure can never be directly
-modified. Instead, any "modification" to an existing structure produces a <span
-name="copy">brand</span> new object that contains all of the original data and
-the new modification. The original is left unchanged.
+Il y a un style de programmation qui utilise ce qu'on appelle des **structures de données persistantes**. Contrairement aux structures de données molles avec lesquelles vous êtes familier en programmation impérative, une structure de données persistante ne peut jamais être directement modifiée. Au lieu de cela, toute "modification" à une structure existante produit un <span name="copy">tout</span> nouvel objet qui contient toutes les données originales et la nouvelle modification. L'original est laissé inchangé.
 
 <aside name="copy">
 
-This sounds like it might waste tons of memory and time copying the structure
-for each operation. In practice, persistent data structures share most of their
-data between the different "copies".
+Cela sonne comme si ça pouvait gaspiller des tonnes de mémoire et de temps à copier la structure pour chaque opération. En pratique, les structures de données persistantes partagent la plupart de leurs données entre les différentes "copies".
 
 </aside>
 
-If we were to apply that technique to Environment, then every time you declared
-a variable it would return a *new* environment that contained all of the
-previously declared variables along with the one new name. Declaring a variable
-would do the implicit "split" where you have an environment before the variable
-is declared and one after:
+Si nous devions appliquer cette technique à Environment, alors chaque fois que vous déclariez une variable cela renverrait un _nouvel_ environnement qui contenait toutes les variables précédemment déclarées avec le nouveau nom. Déclarer une variable ferait la "scission" implicite où vous avez un environnement avant que la variable ne soit déclarée et un après :
 
-<img src="image/resolving-and-binding/split.png" alt="Separate environments before and after the variable is declared." />
+<img src="image/resolving-and-binding/split.png" alt="Environnements séparés avant et après que la variable soit déclarée." />
 
-A closure retains a reference to the Environment instance in play when the
-function was declared. Since any later declarations in that block would produce
-new Environment objects, the closure wouldn't see the new variables and our bug
-would be fixed.
+Une fermeture retient une référence à l'instance Environment en jeu quand la fonction a été déclarée. Puisque toutes les déclarations ultérieures dans ce bloc produiraient de nouveaux objets Environment, la fermeture ne verrait pas les nouvelles variables et notre bug serait corrigé.
 
-This is a legit way to solve the problem, and it's the classic way to implement
-environments in Scheme interpreters. We could do that for Lox, but it would mean
-going back and changing a pile of existing code.
+C'est une façon légitime de résoudre le problème, et c'est la façon classique d'implémenter les environnements dans les interpréteurs Scheme. Nous pourrions faire cela pour Lox, mais cela signifierait revenir en arrière et changer une pile de code existant.
 
-I won't drag you through that. We'll keep the way we represent environments the
-same. Instead of making the data more statically structured, we'll bake the
-static resolution into the access *operation* itself.
+Je ne vous traînerai pas à travers ça. Nous garderons la façon dont nous représentons les environnements la même. Au lieu de rendre les données plus statiquement structurées, nous cuirons la résolution statique dans l'_opération_ d'accès elle-même.
 
-## Semantic Analysis
+## Analyse Sémantique
 
-Our interpreter **resolves** a variable -- tracks down which declaration it
-refers to -- each and every time the variable expression is evaluated. If that
-variable is swaddled inside a loop that runs a thousand times, that variable
-gets re-resolved a thousand times.
+Notre interpréteur **résout** une variable -- traque à quelle déclaration elle fait référence -- chaque fois que l'expression de variable est évaluée. Si cette variable est emmaillotée à l'intérieur d'une boucle qui tourne mille fois, cette variable est re-résolue mille fois.
 
-We know static scope means that a variable usage always resolves to the same
-declaration, which can be determined just by looking at the text. Given that,
-why are we doing it dynamically every time? Doing so doesn't just open the hole
-that leads to our annoying bug, it's also needlessly slow.
+Nous savons que la portée statique signifie qu'un usage de variable se résout toujours à la même déclaration, ce qui peut être déterminé juste en regardant le texte. Étant donné cela, pourquoi le faisons-nous dynamiquement à chaque fois ? Le faire n'ouvre pas seulement le trou qui mène à notre bug ennuyeux, c'est aussi inutilement lent.
 
-A better solution is to resolve each variable use *once*. Write a chunk of code
-that inspects the user's program, finds every variable mentioned, and figures
-out which declaration each refers to. This process is an example of a **semantic
-analysis**. Where a parser tells only if a program is grammatically correct (a
-*syntactic* analysis), semantic analysis goes farther and starts to figure out
-what pieces of the program actually mean. In this case, our analysis will
-resolve variable bindings. We'll know not just that an expression *is* a
-variable, but *which* variable it is.
+Une meilleure solution est de résoudre chaque utilisation de variable _une fois_. Écrire un morceau de code qui inspecte le programme de l'utilisateur, trouve chaque variable mentionnée, et devine à quelle déclaration chacune fait référence. Ce processus est un exemple d'une **analyse sémantique**. Là où un parseur dit seulement si un programme est grammaticalement correct (une analyse _syntaxique_), l'analyse sémantique va plus loin et commence à deviner ce que les pièces du programme signifient réellement. Dans ce cas, notre analyse résoudra les liaisons de variables. Nous saurons non seulement qu'une expression _est_ une variable, mais _quelle_ variable elle est.
 
-There are a lot of ways we could store the binding between a variable and its
-declaration. When we get to the C interpreter for Lox, we'll have a *much* more
-efficient way of storing and accessing local variables. But for jlox, I want to
-minimize the collateral damage we inflict on our existing codebase. I'd hate to
-throw out a bunch of mostly fine code.
+Il y a beaucoup de façons dont nous pourrions stocker la liaison entre une variable et sa déclaration. Quand nous arriverons à l'interpréteur C pour Lox, nous aurons une façon _beaucoup_ plus efficace de stocker et d'accéder aux variables locales. Mais pour jlox, je veux minimiser les dommages collatéraux que nous infligeons à notre base de code existante. Je détesterais jeter un tas de code surtout bon.
 
-Instead, we'll store the resolution in a way that makes the most out of our
-existing Environment class. Recall how the accesses of `a` are interpreted in
-the problematic example.
+Au lieu de cela, nous stockerons la résolution d'une façon qui tire le meilleur parti de notre classe Environment existante. Rappelez-vous comment les accès de `a` sont interprétés dans l'exemple problématique.
 
-<img src="image/resolving-and-binding/environment-3.png" alt="An empty environment for showA()'s body linking to the previous two. 'a' is resolved in the global environment." />
+<img src="image/resolving-and-binding/environment-3.png" alt="Un environnement vide pour le corps de showA() lié aux deux précédents. 'a' est résolu dans l'environnement global." />
 
-In the first (correct) evaluation, we look at three environments in the chain
-before finding the global declaration of `a`. Then, when the inner `a` is later
-declared in a block scope, it shadows the global one.
+Dans la première évaluation (correcte), nous regardons trois environnements dans la chaîne avant de trouver la déclaration globale de `a`. Ensuite, quand le `a` interne est plus tard déclaré dans une portée de bloc, il masque le global.
 
-<img src="image/resolving-and-binding/environment-5.png" alt="An empty environment for showA()'s body linking to the previous two. 'a' is resolved in the block environment." />
+<img src="image/resolving-and-binding/environment-5.png" alt="Un environnement vide pour le corps de showA() lié aux deux précédents. 'a' est résolu dans l'environnement de bloc." />
 
-The next lookup walks the chain, finds `a` in the *second* environment and
-stops there. Each environment corresponds to a single lexical scope where
-variables are declared. If we could ensure a variable lookup always walked the
-*same* number of links in the environment chain, that would ensure that it
-found the same variable in the same scope every time.
+La recherche suivante parcourt la chaîne, trouve `a` dans le _second_ environnement et s'arrête là. Chaque environnement correspond à une seule portée lexicale où les variables sont déclarées. Si nous pouvions nous assurer qu'une recherche de variable parcourait toujours le _même_ nombre de liens dans la chaîne d'environnement, cela assurerait qu'elle trouve la même variable dans la même portée à chaque fois.
 
-To "resolve" a variable usage, we only need to calculate how many "hops" away
-the declared variable will be in the environment chain. The interesting question
-is *when* to do this calculation -- or, put differently, where in our
-interpreter's implementation do we stuff the code for it?
+Pour "résoudre" un usage de variable, nous avons seulement besoin de calculer à combien de "sauts" la variable déclarée sera dans la chaîne d'environnement. La question intéressante est _quand_ faire ce calcul -- ou, mis différemment, où dans l'implémentation de notre interpréteur bourrons-nous le code pour cela ?
 
-Since we're calculating a static property based on the structure of the source
-code, the obvious answer is in the parser. That is the traditional home, and is
-where we'll put it later in clox. It would work here too, but I want an excuse to
-show you another technique. We'll write our resolver as a separate pass.
+Puisque nous calculons une propriété statique basée sur la structure du code source, la réponse évidente est dans le parseur. C'est la maison traditionnelle, et c'est où nous la mettrons plus tard dans clox. Cela marcherait ici aussi, mais je veux une excuse pour vous montrer une autre technique. Nous écrirons notre résolveur comme une passe séparée.
 
-### A variable resolution pass
+### Une passe de résolution de variable
 
-After the parser produces the syntax tree, but before the interpreter starts
-executing it, we'll do a single walk over the tree to resolve all of the
-variables it contains. Additional passes between parsing and execution are
-common. If Lox had static types, we could slide a type checker in there.
-Optimizations are often implemented in separate passes like this too. Basically,
-any work that doesn't rely on state that's only available at runtime can be done
-in this way.
+Après que le parseur produit l'arbre syntaxique, mais avant que l'interpréteur ne commence à l'exécuter, nous ferons une seule marche sur l'arbre pour résoudre toutes les variables qu'il contient. Des passes supplémentaires entre le parsing et l'exécution sont courantes. Si Lox avait des types statiques, nous pourrions glisser un vérificateur de type là-dedans. Les optimisations sont souvent implémentées dans des passes séparées comme ça aussi. Fondamentalement, tout travail qui ne repose pas sur l'état qui est seulement disponible à l'exécution peut être fait de cette façon.
 
-Our variable resolution pass works like a sort of mini-interpreter. It walks the
-tree, visiting each node, but a static analysis is different from a dynamic
-execution:
+Notre passe de résolution de variable fonctionne comme une sorte de mini-interpréteur. Elle parcourt l'arbre, visitant chaque nœud, mais une analyse statique est différente d'une exécution dynamique :
 
-*   **There are no side effects.** When the static analysis visits a print
-    statement, it doesn't actually print anything. Calls to native functions or
-    other operations that reach out to the outside world are stubbed out and
-    have no effect.
+- **Il n'y a pas d'effets de bord.** Quand l'analyse statique visite une instruction print, elle n'imprime rien réellement. Les appels aux fonctions natives ou autres opérations qui atteignent le monde extérieur sont bouchonnés et n'ont aucun effet.
 
-*   **There is no control flow.** Loops are visited only <span
-    name="fix">once</span>. Both branches are visited in `if` statements. Logic
-    operators are not short-circuited.
+- **Il n'y a pas de contrôle de flux.** Les boucles sont visitées seulement <span name="fix">une fois</span>. Les deux branches sont visitées dans les instructions `if`. Les opérateurs logiques ne sont pas court-circuités.
 
 <aside name="fix">
 
-Variable resolution touches each node once, so its performance is *O(n)* where
-*n* is the number of syntax tree nodes. More sophisticated analyses may have
-greater complexity, but most are carefully designed to be linear or not far from
-it. It's an embarrassing faux pas if your compiler gets exponentially slower as
-the user's program grows.
+La résolution de variable touche chaque nœud une fois, donc sa performance est _O(n)_ où _n_ est le nombre de nœuds d'arbre syntaxique. Des analyses plus sophistiquées peuvent avoir une plus grande complexité, mais la plupart sont soigneusement conçues pour être linéaires ou pas loin de l'être. C'est un faux pas embarrassant si votre compilateur devient exponentiellement plus lent à mesure que le programme de l'utilisateur grandit.
 
 </aside>
 
-## A Resolver Class
+## Une Classe Résolveur
 
-Like everything in Java, our variable resolution pass is embodied in a class.
+Comme tout en Java, notre passe de résolution de variable est incarnée dans une classe.
 
 ^code resolver
 
-Since the resolver needs to visit every node in the syntax tree, it implements
-the visitor abstraction we already have in place. Only a few kinds of nodes are
-interesting when it comes to resolving variables:
+Puisque le résolveur a besoin de visiter chaque nœud dans l'arbre syntaxique, il implémente l'abstraction visiteur que nous avons déjà en place. Seuls quelques types de nœuds sont intéressants quand il s'agit de résoudre les variables :
 
-*   A block statement introduces a new scope for the statements it contains.
+- Une instruction de bloc introduit une nouvelle portée pour les instructions qu'elle contient.
 
-*   A function declaration introduces a new scope for its body and binds its
-    parameters in that scope.
+- Une déclaration de fonction introduit une nouvelle portée pour son corps et lie ses paramètres dans cette portée.
 
-*   A variable declaration adds a new variable to the current scope.
+- Une déclaration de variable ajoute une nouvelle variable à la portée courante.
 
-*   Variable and assignment expressions need to have their variables resolved.
+- Les expressions de variable et d'affectation ont besoin d'avoir leurs variables résolues.
 
-The rest of the nodes don't do anything special, but we still need to implement
-visit methods for them that traverse into their subtrees. Even though a `+`
-expression doesn't *itself* have any variables to resolve, either of its
-operands might.
+Le reste des nœuds ne fait rien de spécial, mais nous avons toujours besoin d'implémenter des méthodes visit pour eux qui traversent dans leurs sous-arbres. Même si une expression `+` n'a _elle-même_ aucune variable à résoudre, l'un ou l'autre de ses opérandes pourrait en avoir.
 
-### Resolving blocks
+### Résoudre les blocs
 
-We start with blocks since they create the local scopes where all the magic
-happens.
+Nous commençons avec les blocs puisqu'ils créent les portées locales où toute la magie se produit.
 
 ^code visit-block-stmt
 
-This begins a new scope, traverses into the statements inside the block, and
-then discards the scope. The fun stuff lives in those helper methods. We start
-with the simple one.
+Ceci commence une nouvelle portée, traverse dans les instructions à l'intérieur du bloc, et ensuite jette la portée. Le truc fun vit dans ces méthodes assistantes. Nous commençons avec la simple.
 
 ^code resolve-statements
 
-This walks a list of statements and resolves each one. It in turn calls:
+Ceci parcourt une liste d'instructions et résout chacune. Elle appelle à son tour :
 
 ^code resolve-stmt
 
-While we're at it, let's add another overload that we'll need later for
-resolving an expression.
+Pendant que nous y sommes, ajoutons une autre surcharge dont nous aurons besoin plus tard pour résoudre une expression.
 
 ^code resolve-expr
 
-These methods are similar to the `evaluate()` and `execute()` methods in
-Interpreter -- they turn around and apply the Visitor pattern to the given
-syntax tree node.
+Ces méthodes sont similaires aux méthodes `evaluate()` et `execute()` dans Interpreter -- elles se retournent et appliquent le pattern Visitor au nœud d'arbre syntaxique donné.
 
-The real interesting behavior is around scopes. A new block scope is created
-like so:
+Le vrai comportement intéressant est autour des portées. Une nouvelle portée de bloc est créée comme ceci :
 
 ^code begin-scope
 
-Lexical scopes nest in both the interpreter and the resolver. They behave like a
-stack. The interpreter implements that stack using a linked list -- the chain of
-Environment objects. In the resolver, we use an actual Java Stack.
+Les portées lexicales s'imbriquent à la fois dans l'interpréteur et le résolveur. Elles se comportent comme une pile. L'interpréteur implémente cette pile en utilisant une liste chaînée -- la chaîne d'objets Environment. Dans le résolveur, nous utilisons une Stack Java réelle.
 
 ^code scopes-field (1 before, 2 after)
 
-This field keeps track of the stack of scopes currently, uh, in scope. Each
-element in the stack is a Map representing a single block scope. Keys, as in
-Environment, are variable names. The values are Booleans, for a reason I'll
-explain soon.
+Ce champ garde une trace de la pile de portées actuellement, uh, dans la portée. Chaque élément dans la pile est une Map représentant une seule portée de bloc. Les clés, comme dans Environment, sont des noms de variable. Les valeurs sont des Booléens, pour une raison que j'expliquerai bientôt.
 
-The scope stack is only used for local block scopes. Variables declared at the
-top level in the global scope are not tracked by the resolver since they are
-more dynamic in Lox. When resolving a variable, if we can't find it in the stack
-of local scopes, we assume it must be global.
+La pile de portée est seulement utilisée pour les portées de bloc locales. Les variables déclarées au niveau supérieur dans la portée globale ne sont pas suivies par le résolveur puisqu'elles sont plus dynamiques dans Lox. Quand nous résolvons une variable, si nous ne pouvons pas la trouver dans la pile de portées locales, nous supposons qu'elle doit être globale.
 
-Since scopes are stored in an explicit stack, exiting one is straightforward.
+Puisque les portées sont stockées dans une pile explicite, en sortir une est direct.
 
 ^code end-scope
 
-Now we can push and pop a stack of empty scopes. Let's put some things in them.
+Maintenant nous pouvons empiler et dépiler une pile de portées vides. Mettons des choses dedans.
 
-### Resolving variable declarations
+### Résoudre les déclarations de variable
 
-Resolving a variable declaration adds a new entry to the current innermost
-scope's map. That seems simple, but there's a little dance we need to do.
+Résoudre une déclaration de variable ajoute une nouvelle entrée à la map de la portée la plus interne actuelle. Cela semble simple, mais il y a une petite danse que nous devons faire.
 
 ^code visit-var-stmt
 
-We split binding into two steps, declaring then defining, in order to handle
-funny edge cases like this:
+Nous divisons la liaison en deux étapes, déclarer puis définir, afin de gérer des cas limites drôles comme celui-ci :
 
 ```lox
-var a = "outer";
+var a = "externe";
 {
   var a = a;
 }
 ```
 
-What happens when the initializer for a local variable refers to a variable with
-the same name as the variable being declared? We have a few options:
+Qu'arrive-t-il quand l'initialiseur pour une variable locale fait référence à une variable avec le même nom que la variable étant déclarée ? Nous avons quelques options :
 
-1.  **Run the initializer, then put the new variable in scope.** Here, the new
-    local `a` would be initialized with "outer", the value of the *global* one.
-    In other words, the previous declaration would desugar to:
+1.  **Lancer l'initialiseur, puis mettre la nouvelle variable dans la portée.** Ici, la nouvelle locale `a` serait initialisée avec "externe", la valeur de la _globale_. En d'autres termes, la déclaration précédente se "désucrerait" en :
 
     ```lox
-    var temp = a; // Run the initializer.
-    var a;        // Declare the variable.
-    a = temp;     // Initialize it.
+    var temp = a; // Lance l'initialiseur.
+    var a;        // Déclare la variable.
+    a = temp;     // L'initialise.
     ```
 
-2.  **Put the new variable in scope, then run the initializer.** This means you
-    could observe a variable before it's initialized, so we would need to figure
-    out what value it would have then. Probably `nil`. That means the new local
-    `a` would be re-initialized to its own implicitly initialized value, `nil`.
-    Now the desugaring would look like:
+2.  **Mettre la nouvelle variable dans la portée, puis lancer l'initialiseur.** Cela signifie que vous pourriez observer une variable avant qu'elle soit initialisée, donc nous aurions besoin de deviner quelle valeur elle aurait alors. Probablement `nil`. Cela signifie que la nouvelle locale `a` serait ré-initialisée à sa propre valeur implicitement initialisée, `nil`. Maintenant le "désucrage" ressemblerait à :
 
     ```lox
-    var a; // Define the variable.
-    a = a; // Run the initializer.
+    var a; // Définit la variable.
+    a = a; // Lance l'initialiseur.
     ```
 
-3.  **Make it an error to reference a variable in its initializer.** Have the
-    interpreter fail either at compile time or runtime if an initializer
-    mentions the variable being initialized.
+3.  **Faire une erreur de référencer une variable dans son initialiseur.** Faire échouer l'interpréteur soit à la compilation soit à l'exécution si un initialiseur mentionne la variable étant initialisée.
 
-Do either of those first two options look like something a user actually
-*wants*? Shadowing is rare and often an error, so initializing a shadowing
-variable based on the value of the shadowed one seems unlikely to be deliberate.
+Est-ce que l'une ou l'autre de ces deux premières options ressemble à quelque chose qu'un utilisateur _veut_ réellement ? Le masquage est rare et souvent une erreur, donc initialiser une variable masquante basée sur la valeur de la masquée semble peu susceptible d'être délibéré.
 
-The second option is even less useful. The new variable will *always* have the
-value `nil`. There is never any point in mentioning it by name. You could use an
-explicit `nil` instead.
+La seconde option est encore moins utile. La nouvelle variable aura _toujours_ la valeur `nil`. Il n'y a jamais aucun intérêt à la mentionner par son nom. Vous pourriez utiliser un `nil` explicite à la place.
 
-Since the first two options are likely to mask user errors, we'll take the
-third. Further, we'll make it a compile error instead of a runtime one. That
-way, the user is alerted to the problem before any code is run.
+Puisque les deux premières options sont susceptibles de masquer des erreurs utilisateur, nous prendrons la troisième. De plus, nous en ferons une erreur de compilation au lieu d'une à l'exécution. De cette façon, l'utilisateur est alerté du problème avant qu'aucun code ne soit lancé.
 
-In order to do that, as we visit expressions, we need to know if we're inside
-the initializer for some variable. We do that by splitting binding into two
-steps. The first is **declaring** it.
+Afin de faire cela, alors que nous visitons les expressions, nous avons besoin de savoir si nous sommes à l'intérieur de l'initialiseur pour une certaine variable. Nous faisons cela en divisant la liaison en deux étapes. La première est de la **déclarer**.
 
 ^code declare
 
-Declaration adds the variable to the innermost scope so that it shadows any
-outer one and so that we know the variable exists. We mark it as "not ready yet"
-by binding its name to `false` in the scope map. The value associated with a key
-in the scope map represents whether or not we have finished resolving that
-variable's initializer.
+La déclaration ajoute la variable à la portée la plus interne pour qu'elle masque toute externe et pour que nous sachions que la variable existe. Nous la marquons comme "pas encore prête" en liant son nom à `false` dans la map de portée. La valeur associée à une clé dans la map de portée représente si oui ou non nous avons fini de résoudre l'initialiseur de cette variable.
 
-After declaring the variable, we resolve its initializer expression in that same
-scope where the new variable now exists but is unavailable. Once the initializer
-expression is done, the variable is ready for prime time. We do that by
-**defining** it.
+Après avoir déclaré la variable, nous résolvons son expression d'initialiseur dans cette même portée où la nouvelle variable existe maintenant mais est indisponible. Une fois que l'expression d'initialiseur est finie, la variable est prête pour le prime time. Nous faisons cela en la **définissant**.
 
 ^code define
 
-We set the variable's value in the scope map to `true` to mark it as fully
-initialized and available for use. It's alive! 
+Nous mettons la valeur de la variable dans la map de portée à `true` pour la marquer comme pleinement initialisée et disponible pour l'utilisation. Elle est vivante !
 
-### Resolving variable expressions
+### Résoudre les expressions de variable
 
-Variable declarations -- and function declarations, which we'll get to -- write
-to the scope maps. Those maps are read when we resolve variable expressions.
+Les déclarations de variable -- et les déclarations de fonction, auxquelles nous arriverons -- écrivent dans les maps de portée. Ces maps sont lues quand nous résolvons les expressions de variable.
 
 ^code visit-variable-expr
 
-First, we check to see if the variable is being accessed inside its own
-initializer. This is where the values in the scope map come into play. If the
-variable exists in the current scope but its value is `false`, that means we
-have declared it but not yet defined it. We report that error.
+D'abord, nous vérifions pour voir si la variable est accédée à l'intérieur de son propre initialiseur. C'est là que les valeurs dans la map de portée entrent en jeu. Si la variable existe dans la portée courante mais que sa valeur est `false`, cela signifie que nous l'avons déclarée mais pas encore définie. Nous rapportons cette erreur.
 
-After that check, we actually resolve the variable itself using this helper:
+Après cette vérification, nous résolvons réellement la variable elle-même en utilisant cet assistant :
 
 ^code resolve-local
 
-This looks, for good reason, a lot like the code in Environment for evaluating a
-variable. We start at the innermost scope and work outwards, looking in each map
-for a matching name. If we find the variable, we resolve it, passing in the
-number of scopes between the current innermost scope and the scope where the
-variable was found. So, if the variable was found in the current scope, we
-pass in 0. If it's in the immediately enclosing scope, 1. You get the idea.
+Ceci ressemble, pour une bonne raison, beaucoup au code dans Environment pour évaluer une variable. Nous commençons à la portée la plus interne et travaillons vers l'extérieur, cherchant dans chaque map un nom correspondant. Si nous trouvons la variable, nous la résolvons, en passant le nombre de portées entre la portée la plus interne courante et la portée où la variable a été trouvée. Donc, si la variable a été trouvée dans la portée courante, nous passons 0. Si c'est dans la portée immédiatement englobante, 1. Vous avez l'idée.
 
-If we walk through all of the block scopes and never find the variable, we leave
-it unresolved and assume it's global. We'll get to the implementation of that
-`resolve()` method a little later. For now, let's keep on cranking through the
-other syntax nodes.
+Si nous parcourons toutes les portées de bloc et ne trouvons jamais la variable, nous la laissons non résolue et supposons qu'elle est globale. Nous arriverons à l'implémentation de cette méthode `resolve()` un peu plus tard. Pour l'instant, continuons à mouliner à travers les autres nœuds de syntaxe.
 
-### Resolving assignment expressions
+### Résoudre les expressions d'affectation
 
-The other expression that references a variable is assignment. Resolving one
-looks like this:
+L'autre expression qui référence une variable est l'affectation. En résoudre une ressemble à ceci :
 
 ^code visit-assign-expr
 
-First, we resolve the expression for the assigned value in case it also contains
-references to other variables. Then we use our existing `resolveLocal()` method
-to resolve the variable that's being assigned to.
+D'abord, nous résolvons l'expression pour la valeur assignée au cas où elle contient aussi des références à d'autres variables. Ensuite nous utilisons notre méthode `resolveLocal()` existante pour résoudre la variable à qui on assigne.
 
-### Resolving function declarations
+### Résoudre les déclarations de fonction
 
-Finally, functions. Functions both bind names and introduce a scope. The name of
-the function itself is bound in the surrounding scope where the function is
-declared. When we step into the function's body, we also bind its parameters
-into that inner function scope.
+Finalement, les fonctions. Les fonctions lient à la fois des noms et introduisent une portée. Le nom de la fonction elle-même est lié dans la portée environnante où la fonction est déclarée. Quand nous entrons dans le corps de la fonction, nous lions aussi ses paramètres dans cette portée de fonction interne.
 
 ^code visit-function-stmt
 
-Similar to `visitVariableStmt()`, we declare and define the name of the function
-in the current scope. Unlike variables, though, we define the name eagerly,
-before resolving the function's body. This lets a function recursively refer to
-itself inside its own body.
+Similaire à `visitVariableStmt()`, nous déclarons et définissons le nom de la fonction dans la portée courante. Contrairement aux variables, cependant, nous définissons le nom avidement, avant de résoudre le corps de la fonction. Cela laisse une fonction faire référence récursivement à elle-même à l'intérieur de son propre corps.
 
-Then we resolve the function's body using this:
+Ensuite nous résolvons le corps de la fonction en utilisant ceci :
 
 ^code resolve-function
 
-It's a separate method since we will also use it for resolving Lox methods when
-we add classes later. It creates a new scope for the body and then binds
-variables for each of the function's parameters.
+C'est une méthode séparée puisque nous l'utiliserons aussi pour résoudre les méthodes Lox quand nous ajouterons les classes plus tard. Elle crée une nouvelle portée pour le corps et ensuite lie les variables pour chacun des paramètres de la fonction.
 
-Once that's ready, it resolves the function body in that scope. This is
-different from how the interpreter handles function declarations. At *runtime*,
-declaring a function doesn't do anything with the function's body. The body
-doesn't get touched until later when the function is called. In a *static*
-analysis, we immediately traverse into the body right then and there.
+Une fois que c'est prêt, elle résout le corps de la fonction dans cette portée. C'est différent de comment l'interpréteur gère les déclarations de fonction. À l'_exécution_, déclarer une fonction ne fait rien avec le corps de la fonction. Le corps n'est pas touché jusqu'à plus tard quand la fonction est appelée. Dans une analyse _statique_, nous traversons immédiatement dans le corps ici et maintenant.
 
-### Resolving the other syntax tree nodes
+### Résoudre les autres nœuds d'arbre syntaxique
 
-That covers the interesting corners of the grammars. We handle every place where
-a variable is declared, read, or written, and every place where a scope is
-created or destroyed. Even though they aren't affected by variable resolution,
-we also need visit methods for all of the other syntax tree nodes in order to
-recurse into their subtrees. <span name="boring">Sorry</span> this bit is
-boring, but bear with me. We'll go kind of "top down" and start with statements.
+Cela couvre les coins intéressants des grammaires. Nous gérons chaque endroit où une variable est déclarée, lue, ou écrite, et chaque endroit où une portée est créée ou détruite. Même s'ils ne sont pas affectés par la résolution de variable, nous avons aussi besoin de méthodes visit pour tous les autres nœuds d'arbre syntaxique afin de récurser dans leurs sous-arbres. <span name="boring">Désolé</span> ce morceau est ennuyeux, mais supportez-moi. Nous allons aller genre "de haut en bas" et commencer avec les instructions.
 
 <aside name="boring">
 
-I did say the book would have every single line of code for these interpreters.
-I didn't say they'd all be exciting.
+J'ai bien dit que le livre aurait chaque ligne de code unique pour ces interpréteurs. Je n'ai pas dit qu'elles seraient toutes excitantes.
 
 </aside>
 
-An expression statement contains a single expression to traverse.
+Une instruction d'expression contient une seule expression à traverser.
 
 ^code visit-expression-stmt
 
-An if statement has an expression for its condition and one or two statements
-for the branches.
+Une instruction if a une expression pour sa condition et une ou deux instructions pour les branches.
 
 ^code visit-if-stmt
 
-Here, we see how resolution is different from interpretation. When we resolve an
-`if` statement, there is no control flow. We resolve the condition and *both*
-branches. Where a dynamic execution steps only into the branch that *is* run, a
-static analysis is conservative -- it analyzes any branch that *could* be run.
-Since either one could be reached at runtime, we resolve both.
+Ici, nous voyons comment la résolution est différente de l'interprétation. Quand nous résolvons une instruction `if`, il n'y a pas de contrôle de flux. Nous résolvons la condition et les _deux_ branches. Là où une exécution dynamique entre seulement dans la branche qui _est_ lancée, une analyse statique est conservatrice -- elle analyse toute branche qui _pourrait_ être lancée. Puisque l'une ou l'autre pourrait être atteinte à l'exécution, nous résolvons les deux.
 
-Like expression statements, a `print` statement contains a single subexpression.
+Comme les instructions d'expression, une instruction `print` contient une seule sous-expression.
 
 ^code visit-print-stmt
 
-Same deal for return.
+Même affaire pour return.
 
 ^code visit-return-stmt
 
-As in `if` statements, with a `while` statement, we resolve its condition and
-resolve the body exactly once.
+Comme dans les instructions `if`, avec une instruction `while`, nous résolvons sa condition et résolvons le corps exactement une fois.
 
 ^code visit-while-stmt
 
-That covers all the statements. On to expressions...
+Cela couvre toutes les instructions. Passons aux expressions...
 
-Our old friend the binary expression. We traverse into and resolve both
-operands.
+Notre vieil ami l'expression binaire. Nous traversons dedans et résolvons les deux opérandes.
 
 ^code visit-binary-expr
 
-Calls are similar -- we walk the argument list and resolve them all. The thing
-being called is also an expression (usually a variable expression), so that gets
-resolved too.
+Les appels sont similaires -- nous parcourons la liste d'arguments et les résolvons tous. La chose étant appelée est aussi une expression (habituellement une expression de variable), donc cela se fait résoudre aussi.
 
 ^code visit-call-expr
 
-Parentheses are easy.
+Les parenthèses sont faciles.
 
 ^code visit-grouping-expr
 
-Literals are easiest of all.
+Les littéraux sont les plus faciles de tous.
 
 ^code visit-literal-expr
 
-A literal expression doesn't mention any variables and doesn't contain any
-subexpressions so there is no work to do.
+Une expression littérale ne mentionne aucune variable et ne contient aucune sous-expression donc il n'y a pas de travail à faire.
 
-Since a static analysis does no control flow or short-circuiting, logical
-expressions are exactly the same as other binary operators.
+Puisqu'une analyse statique ne fait aucun contrôle de flux ou court-circuitage, les expressions logiques sont exactement les mêmes que les autres opérateurs binaires.
 
 ^code visit-logical-expr
 
-And, finally, the last node. We resolve its one operand.
+Et, finalement, le dernier nœud. Nous résolvons son unique opérande.
 
 ^code visit-unary-expr
 
-With all of these visit methods, the Java compiler should be satisfied that
-Resolver fully implements Stmt.Visitor and Expr.Visitor. Now is a good time to
-take a break, have a snack, maybe a little nap.
+Avec toutes ces méthodes visit, le compilateur Java devrait être satisfait que Resolver implémente pleinement Stmt.Visitor et Expr.Visitor. Maintenant est un bon moment pour prendre une pause, prendre un en-cas, peut-être une petite sieste.
 
-## Interpreting Resolved Variables
+## Interpréter les Variables Résolues
 
-Let's see what our resolver is good for. Each time it visits a variable, it
-tells the interpreter how many scopes there are between the current scope and
-the scope where the variable is defined. At runtime, this corresponds exactly to
-the number of *environments* between the current one and the enclosing one where
-the interpreter can find the variable's value. The resolver hands that number to
-the interpreter by calling this:
+Voyons à quoi notre résolveur est bon. Chaque fois qu'il visite une variable, il dit à l'interpréteur combien de portées il y a entre la portée courante et la portée où la variable est définie. À l'exécution, cela correspond exactement au nombre d'_environnements_ entre le courant et l'englobant où l'interpréteur peut trouver la valeur de la variable. Le résolveur passe ce nombre à l'interpréteur en appelant ceci :
 
 ^code resolve
 
-We want to store the resolution information somewhere so we can use it when the
-variable or assignment expression is later executed, but where? One obvious
-place is right in the syntax tree node itself. That's a fine approach, and
-that's where many compilers store the results of analyses like this.
+Nous voulons stocker l'information de résolution quelque part pour que nous puissions l'utiliser quand l'expression de variable ou d'affectation est plus tard exécutée, mais où ? Un endroit évident est juste dans le nœud d'arbre syntaxique lui-même. C'est une approche correcte, et c'est où beaucoup de compilateurs stockent les résultats d'analyses comme celle-ci.
 
-We could do that, but it would require mucking around with our syntax tree
-generator. Instead, we'll take another common approach and store it off to the
-<span name="side">side</span> in a map that associates each syntax tree node
-with its resolved data.
+Nous pourrions faire cela, mais cela exigerait de trifouiller avec notre générateur d'arbre syntaxique. Au lieu de cela, nous prendrons une autre approche courante et le stockerons sur le <span name="side">côté</span> dans une map qui associe chaque nœud d'arbre syntaxique avec ses données résolues.
 
 <aside name="side">
 
-I *think* I've heard this map called a "side table" since it's a tabular data
-structure that stores data separately from the objects it relates to. But
-whenever I try to Google for that term, I get pages about furniture.
+Je _pense_ que j'ai entendu cette map être appelée une "table latérale" (side table) puisque c'est une structure de données tabulaire qui stocke des données séparément des objets auxquels elle se rapporte. Mais chaque fois que j'essaie de Googler ce terme, j'obtiens des pages sur des meubles.
 
 </aside>
 
-Interactive tools like IDEs often incrementally reparse and re-resolve parts of
-the user's program. It may be hard to find all of the bits of state that need
-recalculating when they're hiding in the foliage of the syntax tree. A benefit
-of storing this data outside of the nodes is that it makes it easy to *discard*
-it -- simply clear the map.
+Les outils interactifs comme les IDEs re-parsent et re-résolvent souvent incrémentalement des parties du programme de l'utilisateur. Il peut être difficile de trouver tous les bouts d'état qui ont besoin d'être recalculés quand ils se cachent dans le feuillage de l'arbre syntaxique. Un bénéfice de stocker ces données en dehors des nœuds est que cela rend facile de les _jeter_ -- effacez simplement la map.
 
 ^code locals-field (1 before, 2 after)
 
-You might think we'd need some sort of nested tree structure to avoid getting
-confused when there are multiple expressions that reference the same variable,
-but each expression node is its own Java object with its own unique identity. A
-single monolithic map doesn't have any trouble keeping them separated.
+Vous pourriez penser que nous aurions besoin d'une sorte de structure d'arbre imbriquée pour éviter d'être confus quand il y a plusieurs expressions qui référencent la même variable, mais chaque nœud d'expression est son propre objet Java avec sa propre identité unique. Une seule map monolithique n'a aucun mal à les garder séparés.
 
-As usual, using a collection requires us to import a couple of names.
+Comme d'habitude, utiliser une collection exige de nous d'importer une paire de noms.
 
 ^code import-hash-map (1 before, 1 after)
 
-And:
+Et :
 
 ^code import-map (1 before, 2 after)
 
-### Accessing a resolved variable
+### Accéder à une variable résolue
 
-Our interpreter now has access to each variable's resolved location. Finally, we
-get to make use of that. We replace the visit method for variable expressions
-with this:
+Notre interpréteur a maintenant accès à la localisation résolue de chaque variable. Finalement, nous arrivons à faire usage de cela. Nous remplaçons la méthode visit pour les expressions de variable par ceci :
 
 ^code call-look-up-variable (1 before, 1 after)
 
-That delegates to:
+Cela délègue à :
 
 ^code look-up-variable
 
-There are a couple of things going on here. First, we look up the resolved
-distance in the map. Remember that we resolved only *local* variables. Globals
-are treated specially and don't end up in the map (hence the name `locals`). So,
-if we don't find a distance in the map, it must be global. In that case, we
-look it up, dynamically, directly in the global environment. That throws a
-runtime error if the variable isn't defined.
+Il y a une paire de choses qui se passent ici. D'abord, nous cherchons la distance résolue dans la map. Rappelez-vous que nous avons résolu seulement les variables _locales_. Les globales sont traitées spécialement et ne finissent pas dans la map (d'où le nom `locals`). Donc, si nous ne trouvons pas une distance dans la map, elle doit être globale. Dans ce cas, nous la cherchons, dynamiquement, directement dans l'environnement global. Cela lance une erreur d'exécution si la variable n'est pas définie.
 
-If we *do* get a distance, we have a local variable, and we get to take
-advantage of the results of our static analysis. Instead of calling `get()`, we
-call this new method on Environment:
+Si nous _obtenons_ une distance, nous avons une variable locale, et nous arrivons à tirer avantage des résultats de notre analyse statique. Au lieu d'appeler `get()`, nous appelons cette nouvelle méthode sur Environment :
 
 ^code get-at
 
-The old `get()` method dynamically walks the chain of enclosing environments,
-scouring each one to see if the variable might be hiding in there somewhere. But
-now we know exactly which environment in the chain will have the variable. We
-reach it using this helper method:
+La vieille méthode `get()` parcourt dynamiquement la chaîne d'environnements englobants, récurant chacun pour voir si la variable pourrait se cacher là-dedans quelque part. Mais maintenant nous savons exactement quel environnement dans la chaîne aura la variable. Nous l'atteignons en utilisant cette méthode assistante :
 
 ^code ancestor
 
-This walks a fixed number of hops up the parent chain and returns the
-environment there. Once we have that, `getAt()` simply returns the value of the
-variable in that environment's map. It doesn't even have to check to see if the
-variable is there -- we know it will be because the resolver already found it
-before.
+Ceci marche un nombre fixe de sauts vers le haut de la chaîne parente et renvoie l'environnement là. Une fois que nous avons cela, `getAt()` renvoie simplement la valeur de la variable dans la map de cet environnement. Il n'a même pas à vérifier pour voir si la variable est là -- nous savons qu'elle le sera parce que le résolveur l'a déjà trouvée avant.
 
 <aside name="coupled">
 
-The way the interpreter assumes the variable is in that map feels like flying
-blind. The interpreter code trusts that the resolver did its job and resolved
-the variable correctly. This implies a deep coupling between these two classes.
-In the resolver, each line of code that touches a scope must have its exact
-match in the interpreter for modifying an environment.
+La façon dont l'interpréteur suppose que la variable est dans cette map ressemble à voler à l'aveugle. Le code de l'interpréteur fait confiance à ce que le résolveur a fait son travail et a résolu la variable correctement. Cela implique un couplage profond entre ces deux classes. Dans le résolveur, chaque ligne de code qui touche une portée doit avoir sa correspondance exacte dans l'interpréteur pour modifier un environnement.
 
-I felt that coupling firsthand because as I wrote the code for the book, I
-ran into a couple of subtle bugs where the resolver and interpreter code were
-slightly out of sync. Tracking those down was difficult. One tool to make that
-easier is to have the interpreter explicitly assert -- using Java's assert
-statements or some other validation tool -- the contract it expects the resolver
-to have already upheld.
+J'ai senti ce couplage de première main parce qu'alors que j'écrivais le code pour le livre, je suis tombé sur une paire de bugs subtils où le code du résolveur et de l'interpréteur étaient légèrement désynchronisés. Traquer ceux-là était difficile. Un outil pour rendre cela plus facile est d'avoir l'interpréteur ASSERT explicitement -- en utilisant les instructions assert de Java ou un autre outil de validation -- le contrat qu'il attend que le résolveur ait déjà soutenu.
 
 </aside>
 
-### Assigning to a resolved variable
+### Assigner à une variable résolue
 
-We can also use a variable by assigning to it. The changes to visiting an
-assignment expression are similar.
+Nous pouvons aussi utiliser une variable en l'assignant. Les changements pour visiter une expression d'affectation sont similaires.
 
 ^code resolved-assign (2 before, 1 after)
 
-Again, we look up the variable's scope distance. If not found, we assume it's
-global and handle it the same way as before. Otherwise, we call this new method:
+Encore une fois, nous cherchons la distance de portée de la variable. Si non trouvée, nous supposons qu'elle est globale et la gérons de la même façon qu'avant. Sinon, nous appelons cette nouvelle méthode :
 
 ^code assign-at
 
-As `getAt()` is to `get()`, `assignAt()` is to `assign()`. It walks a fixed
-number of environments, and then stuffs the new value in that map.
+Comme `getAt()` est à `get()`, `assignAt()` est à `assign()`. Elle parcourt un nombre fixe d'environnements, et ensuite bourre la nouvelle valeur dans cette map.
 
-Those are the only changes to Interpreter. This is why I chose a representation
-for our resolved data that was minimally invasive. All of the rest of the nodes
-continue working as they did before. Even the code for modifying environments is
-unchanged.
+Ce sont les seuls changements à Interpreter. C'est pourquoi j'ai choisi une représentation pour nos données résolues qui était minimalement invasive. Tout le reste des nœuds continue de fonctionner comme ils le faisaient avant. Même le code pour modifier les environnements est inchangé.
 
-### Running the resolver
+### Lancer le résolveur
 
-We do need to actually *run* the resolver, though. We insert the new pass after
-the parser does its magic.
+Nous avons besoin de _lancer_ réellement le résolveur, cependant. Nous insérons la nouvelle passe après que le parseur ait fait sa magie.
 
 ^code create-resolver (3 before, 1 after)
 
-We don't run the resolver if there are any parse errors. If the code has a
-syntax error, it's never going to run, so there's little value in resolving it.
-If the syntax is clean, we tell the resolver to do its thing. The resolver has a
-reference to the interpreter and pokes the resolution data directly into it as
-it walks over variables. When the interpreter runs next, it has everything it
-needs.
+Nous ne lançons pas le résolveur s'il y a des erreurs de parsing. Si le code a une erreur de syntaxe, il ne va jamais tourner, donc il y a peu de valeur à le résoudre. Si la syntaxe est propre, nous disons au résolveur de faire son truc. Le résolveur a une référence à l'interpréteur et pousse les données de résolution directement dedans alors qu'il marche sur les variables. Quand l'interpréteur tourne ensuite, il a tout ce dont il a besoin.
 
-At least, that's true if the resolver *succeeds*. But what about errors during
-resolution?
+Au moins, c'est vrai si le résolveur _réussit_. Mais qu'en est-il des erreurs pendant la résolution ?
 
-## Resolution Errors
+## Erreurs de Résolution
 
-Since we are doing a semantic analysis pass, we have an opportunity to make
-Lox's semantics more precise, and to help users catch bugs early before running
-their code. Take a look at this bad boy:
+Puisque nous faisons une passe d'analyse sémantique, nous avons une opportunité de rendre la sémantique de Lox plus précise, et d'aider les utilisateurs à attraper des bugs tôt avant de lancer leur code. Jetez un œil à ce mauvais garçon :
 
 ```lox
 fun bad() {
-  var a = "first";
+  var a = "premier";
   var a = "second";
 }
 ```
 
-We do allow declaring multiple variables with the same name in the *global*
-scope, but doing so in a local scope is probably a mistake. If they knew the
-variable already existed, they would have assigned to it instead of using `var`.
-And if they *didn't* know it existed, they probably didn't intend to overwrite
-the previous one.
+Nous permettons bien de déclarer plusieurs variables avec le même nom dans la portée _globale_, mais faire ainsi dans une portée locale est probablement une erreur. S'ils savaient que la variable existait déjà, ils l'auraient assignée au lieu d'utiliser `var`. Et s'ils ne savaient _pas_ qu'elle existait, ils n'avaient probablement pas l'intention d'écraser la précédente.
 
-We can detect this mistake statically while resolving.
+Nous pouvons détecter cette erreur statiquement pendant la résolution.
 
 ^code duplicate-variable (1 before, 1 after)
 
-When we declare a variable in a local scope, we already know the names of every
-variable previously declared in that same scope. If we see a collision, we
-report an error.
+Quand nous déclarons une variable dans une portée locale, nous connaissons déjà les noms de chaque variable précédemment déclarée dans cette même portée. Si nous voyons une collision, nous rapportons une erreur.
 
-### Invalid return errors
+### Erreurs de retour invalide
 
-Here's another nasty little script:
+Voici un autre petit script méchant :
 
 ```lox
-return "at top level";
+return "au niveau supérieur";
 ```
 
-This executes a `return` statement, but it's not even inside a function at all.
-It's top-level code. I don't know what the user *thinks* is going to happen, but
-I don't think we want Lox to allow this.
+Ceci exécute une instruction `return`, mais ce n'est même pas à l'intérieur d'une fonction du tout. C'est du code de niveau supérieur. Je ne sais pas ce que l'utilisateur _pense_ qu'il va arriver, mais je ne pense pas que nous voulons que Lox permette cela.
 
-We can extend the resolver to detect this statically. Much like we track scopes
-as we walk the tree, we can track whether or not the code we are currently
-visiting is inside a function declaration.
+Nous pouvons étendre le résolveur pour détecter cela statiquement. Tout comme nous suivons les portées alors que nous parcourons l'arbre, nous pouvons suivre si oui ou non le code que nous visitons actuellement est à l'intérieur d'une déclaration de fonction.
 
 ^code function-type-field (1 before, 2 after)
 
-Instead of a bare Boolean, we use this funny enum:
+Au lieu d'un Booléen nu, nous utilisons cet enum drôle :
 
 ^code function-type
 
-It seems kind of dumb now, but we'll add a couple more cases to it later and
-then it will make more sense. When we resolve a function declaration, we pass
-that in.
+Cela semble un peu bête maintenant, mais nous lui ajouterons une paire de cas en plus plus tard et alors cela aura plus de sens. Quand nous résolvons une déclaration de fonction, nous passons cela dedans.
 
 ^code pass-function-type (2 before, 1 after)
 
-Over in `resolveFunction()`, we take that parameter and store it in the field
-before resolving the body.
+Là-bas dans `resolveFunction()`, nous prenons ce paramètre et le stockons dans le champ avant de résoudre le corps.
 
 ^code set-current-function (1 after)
 
-We stash the previous value of the field in a local variable first. Remember,
-Lox has local functions, so you can nest function declarations arbitrarily
-deeply. We need to track not just that we're in a function, but *how many* we're
-in.
+Nous planquons la valeur précédente du champ dans une variable locale d'abord. Rappelez-vous, Lox a des fonctions locales, donc vous pouvez imbriquer des déclarations de fonction arbitrairement profondément. Nous avons besoin de suivre non seulement que nous sommes dans une fonction, mais dans _combien_ nous sommes.
 
-We could use an explicit stack of FunctionType values for that, but instead
-we'll piggyback on the JVM. We store the previous value in a local on the Java
-stack. When we're done resolving the function body, we restore the field to that
-value.
+Nous pourrions utiliser une pile explicite de valeurs FunctionType pour cela, mais au lieu de cela nous ferons du ferroutage sur la JVM. Nous stockons la valeur précédente dans une locale sur la pile Java. Quand nous avons fini de résoudre le corps de la fonction, nous restaurons le champ à cette valeur.
 
 ^code restore-current-function (1 before, 1 after)
 
-Now that we can always tell whether or not we're inside a function declaration,
-we check that when resolving a `return` statement.
+Maintenant que nous pouvons toujours dire si oui ou non nous sommes à l'intérieur d'une déclaration de fonction, nous vérifions cela quand nous résolvons une instruction `return`.
 
 ^code return-from-top (1 before, 1 after)
 
-Neat, right?
+Propre, non ?
 
-There's one more piece. Back in the main Lox class that stitches everything
-together, we are careful to not run the interpreter if any parse errors are
-encountered. That check runs *before* the resolver so that we don't try to
-resolve syntactically invalid code.
+Il y a une pièce de plus. De retour dans la classe principale Lox qui coud tout ensemble, nous faisons attention de ne pas lancer l'interpréteur si des erreurs de parsing sont rencontrées. Cette vérification tourne _avant_ le résolveur pour que nous n'essayions pas de résoudre du code syntaxiquement invalide.
 
-But we also need to skip the interpreter if there are resolution errors, so we
-add *another* check.
+Mais nous avons aussi besoin de sauter l'interpréteur s'il y a des erreurs de résolution, donc nous ajoutons _une autre_ vérification.
 
 ^code resolution-error (1 before, 2 after)
 
-You could imagine doing lots of other analysis in here. For example, if we added
-`break` statements to Lox, we would probably want to ensure they are only used
-inside loops.
+Vous pourriez imaginer faire beaucoup d'autres analyses ici. Par exemple, si nous ajoutions des instructions `break` à Lox, nous voudrions probablement nous assurer qu'elles sont uniquement utilisées à l'intérieur de boucles.
 
-We could go farther and report warnings for code that isn't necessarily *wrong*
-but probably isn't useful. For example, many IDEs will warn if you have
-unreachable code after a `return` statement, or a local variable whose value is
-never read. All of that would be pretty easy to add to our static visiting pass,
-or as <span name="separate">separate</span> passes.
+Nous pourrions aller plus loin et rapporter des avertissements pour du code qui n'est pas nécessairement _faux_ mais n'est probablement pas utile. Par exemple, beaucoup d'IDEs avertiront si vous avez du code inatteignable après une instruction `return`, ou une variable locale dont la valeur n'est jamais lue. Tout cela serait assez facile à ajouter à notre passe de visite statique, ou comme des passes <span name="separate">séparées</span>.
 
 <aside name="separate">
 
-The choice of how many different analyses to lump into a single pass is
-difficult. Many small isolated passes, each with their own responsibility, are
-simpler to implement and maintain. However, there is a real runtime cost to
-traversing the syntax tree itself, so bundling multiple analyses into a single
-pass is usually faster.
+Le choix de combien d'analyses différentes regrouper dans une seule passe est difficile. Beaucoup de petites passes isolées, chacune avec sa propre responsabilité, sont plus simples à implémenter et maintenir. Cependant, il y a un coût réel à l'exécution à traverser l'arbre syntaxique lui-même, donc empaqueter plusieurs analyses dans une seule passe est habituellement plus rapide.
 
 </aside>
 
-But, for now, we'll stick with that limited amount of analysis. The important
-part is that we fixed that one weird annoying edge case bug, though it might be
-surprising that it took this much work to do it.
+Mais, pour l'instant, nous resterons avec cette quantité limitée d'analyse. La partie importante est que nous avons corrigé ce bizarre bug de cas limite ennuyeux, bien qu'il puisse être surprenant que cela ait pris autant de travail pour le faire.
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  Why is it safe to eagerly define the variable bound to a function's name
-    when other variables must wait until after they are initialized before they
-    can be used?
+1.  Pourquoi est-il sûr de définir avidement la variable liée au nom d'une fonction quand d'autres variables doivent attendre jusqu'après qu'elles soient initialisées avant qu'elles puissent être utilisées ?
 
-1.  How do other languages you know handle local variables that refer to the
-    same name in their initializer, like:
+2.  Comment d'autres langages que vous connaissez gèrent-ils les variables locales qui font référence au même nom dans leur initialiseur, comme :
 
     ```lox
-    var a = "outer";
+    var a = "externe";
     {
       var a = a;
     }
     ```
 
-    Is it a runtime error? Compile error? Allowed? Do they treat global
-    variables differently? Do you agree with their choices? Justify your answer.
+    Est-ce une erreur d'exécution ? Erreur de compilation ? Autorisé ? Traitent-ils les variables globales différemment ? Êtes-vous d'accord avec leurs choix ? Justifiez votre réponse.
 
-1.  Extend the resolver to report an error if a local variable is never used.
+3.  Étendez le résolveur pour rapporter une erreur si une variable locale n'est jamais utilisée.
 
-1.  Our resolver calculates *which* environment the variable is found in, but
-    it's still looked up by name in that map. A more efficient environment
-    representation would store local variables in an array and look them up by
-    index.
+4.  Notre résolveur calcule dans _quel_ environnement la variable est trouvée, mais elle est toujours cherchée par nom dans cette map. Une représentation d'environnement plus efficace stockerait les variables locales dans un tableau et les chercherait par index.
 
-    Extend the resolver to associate a unique index for each local variable
-    declared in a scope. When resolving a variable access, look up both the
-    scope the variable is in and its index and store that. In the interpreter,
-    use that to quickly access a variable by its index instead of using a map.
+    Étendez le résolveur pour associer un index unique pour chaque variable locale déclarée dans une portée. Quand vous résolvez un accès de variable, cherchez à la fois la portée dans laquelle la variable est et son index et stockez cela. Dans l'interpréteur, utilisez cela pour accéder rapidement à une variable par son index au lieu d'utiliser une map.
 
 </div>

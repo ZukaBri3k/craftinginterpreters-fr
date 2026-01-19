@@ -37,13 +37,12 @@
 <h3><a href="#top">Résolution et liaison<small>11</small></a></h3>
 
 <ul>
-    <li><a href="#static-scope"><small>11.1</small> Static Scope</a></li>
-    <li><a href="#semantic-analysis"><small>11.2</small> Semantic Analysis</a></li>
-    <li><a href="#a-resolver-class"><small>11.3</small> A Resolver Class</a></li>
-    <li><a href="#interpreting-resolved-variables"><small>11.4</small> Interpreting Resolved Variables</a></li>
-    <li><a href="#resolution-errors"><small>11.5</small> Resolution Errors</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
+    <li><a href="#portée-statique"><small>11.1</small> Portée Statique</a></li>
+    <li><a href="#analyse-sémantique"><small>11.2</small> Analyse Sémantique</a></li>
+    <li><a href="#une-classe-résolveur"><small>11.3</small> Une Classe Résolveur</a></li>
+    <li><a href="#interpréter-les-variables-résolues"><small>11.4</small> Interpréter les Variables Résolues</a></li>
+    <li><a href="#erreurs-de-résolution"><small>11.5</small> Erreurs de Résolution</a></li>
+    <li><a href="#défis"><small>11.6</small> Défis</a></li>
 </ul>
 
 
@@ -68,13 +67,12 @@
 <h3><a href="#top">Résolution et liaison<small>11</small></a></h3>
 
 <ul>
-    <li><a href="#static-scope"><small>11.1</small> Static Scope</a></li>
-    <li><a href="#semantic-analysis"><small>11.2</small> Semantic Analysis</a></li>
-    <li><a href="#a-resolver-class"><small>11.3</small> A Resolver Class</a></li>
-    <li><a href="#interpreting-resolved-variables"><small>11.4</small> Interpreting Resolved Variables</a></li>
-    <li><a href="#resolution-errors"><small>11.5</small> Resolution Errors</a></li>
-    <li class="divider"></li>
-    <li class="end-part"><a href="#challenges">Challenges</a></li>
+    <li><a href="#portée-statique"><small>11.1</small> Portée Statique</a></li>
+    <li><a href="#analyse-sémantique"><small>11.2</small> Analyse Sémantique</a></li>
+    <li><a href="#une-classe-résolveur"><small>11.3</small> Une Classe Résolveur</a></li>
+    <li><a href="#interpréter-les-variables-résolues"><small>11.4</small> Interpréter les Variables Résolues</a></li>
+    <li><a href="#erreurs-de-résolution"><small>11.5</small> Erreurs de Résolution</a></li>
+    <li><a href="#défis"><small>11.6</small> Défis</a></li>
 </ul>
 
 
@@ -93,108 +91,74 @@
   <h1>Résolution et liaison</h1>
 
 <blockquote>
-<p>Once in a while you find yourself in an odd situation. You get into it by
-degrees and in the most natural way but, when you are right in the midst of
-it, you are suddenly astonished and ask yourself how in the world it all came
-about.</p>
+<p>Une fois de temps en temps vous vous trouvez dans une situation étrange. Vous y entrez par
+degrés et de la façon la plus naturelle mais, quand vous êtes juste au milieu de
+celle-ci, vous êtes soudainement étonné et vous demandez comment diable tout cela est
+arrivé.</p>
 <p><cite>Thor Heyerdahl, <em>Kon-Tiki</em></cite></p>
 </blockquote>
-<p>Oh, no! Our language implementation is taking on water! Way back when we <a href="statements-and-state.html">added
-variables and blocks</a>, we had scoping nice and tight. But when we
-<a href="functions.html">later added closures</a>, a hole opened in our formerly waterproof
-interpreter. Most real programs are unlikely to slip through this hole, but as
-language implementers, we take a sacred vow to care about correctness even in
-the deepest, dampest corners of the semantics.</p>
-<p>We will spend this entire chapter exploring that leak, and then carefully
-patching it up. In the process, we will gain a more rigorous understanding of
-lexical scoping as used by Lox and other languages in the C tradition. We&rsquo;ll
-also get a chance to learn about <em>semantic analysis</em><span class="em">&mdash;</span>a powerful technique for
-extracting meaning from the user&rsquo;s source code without having to run it.</p>
-<h2><a href="#static-scope" id="static-scope"><small>11&#8202;.&#8202;1</small>Static Scope</a></h2>
-<p>A quick refresher: Lox, like most modern languages, uses <em>lexical</em> scoping. This
-means that you can figure out which declaration a variable name refers to just
-by reading the text of the program. For example:</p>
-<div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;outer&quot;</span>;
+<p>Oh, non ! Notre implémentation de langage prend l&rsquo;eau ! Il y a longtemps quand nous avons <a href="statements-and-state.html">ajouté les variables et les blocs</a>, nous avions une portée propre et étanche. Mais quand nous avons <a href="functions.html">plus tard ajouté les fermetures</a>, un trou s&rsquo;est ouvert dans notre interpréteur autrefois imperméable. La plupart des vrais programmes sont peu susceptibles de glisser à travers ce trou, mais en tant qu&rsquo;implémenteurs de langage, nous faisons le vœu sacré de nous soucier de la correction même dans les coins les plus profonds, les plus humides de la sémantique.</p>
+<p>Nous passerons ce chapitre entier à explorer cette fuite, et ensuite à la colmater soigneusement. Dans le processus, nous gagnerons une compréhension plus rigoureuse de la portée lexicale telle qu&rsquo;utilisée par Lox et d&rsquo;autres langages dans la tradition C. Nous aurons aussi une chance d&rsquo;apprendre à propos de l&rsquo;<em>analyse sémantique</em><span class="em">&mdash;</span>une technique puissante pour extraire du sens du code source de l&rsquo;utilisateur sans avoir à l&rsquo;exécuter.</p>
+<h2><a href="#portée-statique" id="portée-statique"><small>11&#8202;.&#8202;1</small>Portée Statique</a></h2>
+<p>Un rafraîchissement rapide : Lox, comme la plupart des langages modernes, utilise une portée <em>lexicale</em>. Cela signifie que vous pouvez deviner à quelle déclaration un nom de variable fait référence juste en lisant le texte du programme. Par exemple :</p>
+<div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;externe&quot;</span>;
 {
-  <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;inner&quot;</span>;
+  <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;interne&quot;</span>;
   <span class="k">print</span> <span class="i">a</span>;
 }
 </pre></div>
-<p>Here, we know that the <code>a</code> being printed is the variable declared on the
-previous line, and not the global one. Running the program doesn&rsquo;t<span class="em">&mdash;</span><em>can&rsquo;t</em><span class="em">&mdash;</span>affect this. The scope rules are part of the <em>static</em> semantics of the language,
-which is why they&rsquo;re also called <em>static scope</em>.</p>
-<p>I haven&rsquo;t spelled out those scope rules, but now is the time for <span
-name="precise">precision</span>:</p>
+<p>Ici, nous savons que le <code>a</code> qui est imprimé est la variable déclarée sur la ligne précédente, et non la globale. Exécuter le programme n&rsquo;affecte pas<span class="em">&mdash;</span>ne <em>peut pas</em> affecter<span class="em">&mdash;</span>cela. Les règles de portée font partie de la sémantique <em>statique</em> du langage, ce qui est pourquoi elles sont aussi appelées <em>portée statique</em>.</p>
+<p>Je n&rsquo;ai pas épelé ces règles de portée, mais maintenant est le moment pour la <span name="precise">précision</span> :</p>
 <aside name="precise">
-<p>This is still nowhere near as precise as a real language specification. Those
-docs must be so explicit that even a Martian or an outright malicious programmer
-would be forced to implement the correct semantics provided they followed the
-letter of the spec.</p>
-<p>That exactitude is important when a language may be implemented by competing
-companies who want their product to be incompatible with the others to lock
-customers onto their platform. For this book, we can thankfully ignore those
-kinds of shady shenanigans.</p>
+<p>Ceci n&rsquo;est toujours nulle part aussi précis qu&rsquo;une vraie spécification de langage. Ces docs doivent être si explicites que même un Martien ou un programmeur carrément malicieux serait forcé d&rsquo;implémenter la sémantique correcte pourvu qu&rsquo;il suive la lettre de la spec.</p>
+<p>Cette exactitude est importante quand un langage peut être implémenté par des entreprises concurrentes qui veulent que leur produit soit incompatible avec les autres pour verrouiller les clients sur leur plateforme. Pour ce livre, nous pouvons heureusement ignorer ces types de manigances louches.</p>
 </aside>
-<p><strong>A variable usage refers to the preceding declaration with the same name in the
-innermost scope that encloses the expression where the variable is used.</strong></p>
-<p>There&rsquo;s a lot to unpack in that:</p>
+<p><strong>Un usage de variable fait référence à la déclaration précédente avec le même nom dans la portée la plus interne qui entoure l&rsquo;expression où la variable est utilisée.</strong></p>
+<p>Il y a beaucoup à déballer là-dedans :</p>
 <ul>
 <li>
-<p>I say &ldquo;variable usage&rdquo; instead of &ldquo;variable expression&rdquo; to cover both
-variable expressions and assignments. Likewise with &ldquo;expression where the
-variable is used&rdquo;.</p>
+<p>Je dis &ldquo;usage de variable&rdquo; au lieu de &ldquo;expression de variable&rdquo; pour couvrir à la fois les expressions de variable et les affectations. De même avec &ldquo;expression où la variable est utilisée&rdquo;.</p>
 </li>
 <li>
-<p>&ldquo;Preceding&rdquo; means appearing before <em>in the program text</em>.</p>
-<div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;outer&quot;</span>;
+<p>&ldquo;Précédente&rdquo; signifie apparaissant avant <em>dans le texte du programme</em>.</p>
+<div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;externe&quot;</span>;
 {
   <span class="k">print</span> <span class="i">a</span>;
-  <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;inner&quot;</span>;
+  <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;interne&quot;</span>;
 }
 </pre></div>
-<p>Here, the <code>a</code> being printed is the outer one since it appears <span
-name="hoisting">before</span> the <code>print</code> statement that uses it. In most
-cases, in straight line code, the declaration preceding in <em>text</em> will also
-precede the usage in <em>time</em>. But that&rsquo;s not always true. As we&rsquo;ll see,
-functions may defer a chunk of code such that its <em>dynamic temporal</em>
-execution no longer mirrors the <em>static textual</em> ordering.</p>
-<aside name="hoisting">
-<p>In JavaScript, variables declared using <code>var</code> are implicitly &ldquo;hoisted&rdquo; to
-the beginning of the block. Any use of that name in the block will refer to
-that variable, even if the use appears before the declaration. When you
-write this in JavaScript:</p>
+<p>Ici, le <code>a</code> qui est imprimé est l&rsquo;externe puisqu&rsquo;il apparaît <span name="hoisting">avant</span> l&rsquo;instruction <code>print</code> qui l&rsquo;utilise. Dans la plupart des cas, dans du code en ligne droite, la déclaration précédant dans le <em>texte</em> précédera aussi l&rsquo;usage dans le <em>temps</em>. Mais ce n&rsquo;est pas toujours vrai. Comme nous le verrons, les fonctions peuvent différer un morceau de code de telle sorte que son exécution <em>temporelle dynamique</em> ne reflète plus l&rsquo;ordre <em>textuel statique</em>.</p>
+<pre><code>&lt;aside name="hoisting"&gt;
+</code></pre>
+<p>En JavaScript, les variables déclarées utilisant <code>var</code> sont implicitement &ldquo;hissées&rdquo; (hoisted) au début du bloc. Tout usage de ce nom dans le bloc fera référence à cette variable, même si l&rsquo;usage apparaît avant la déclaration. Quand vous écrivez ceci en JavaScript :</p>
 <div class="codehilite"><pre>{
-  <span class="i">console</span>.<span class="i">log</span>(<span class="i">a</span>);
-  <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;value&quot;</span>;
+    <span class="i">console</span>.<span class="i">log</span>(<span class="i">a</span>);
+    <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;valeur&quot;</span>;
 }
 </pre></div>
-<p>It behaves like:</p>
+<p>Cela se comporte comme :</p>
 <div class="codehilite"><pre>{
-  <span class="k">var</span> <span class="i">a</span>; <span class="c">// Hoist.</span>
-  <span class="i">console</span>.<span class="i">log</span>(<span class="i">a</span>);
-  <span class="i">a</span> = <span class="s">&quot;value&quot;</span>;
+    <span class="k">var</span> <span class="i">a</span>; <span class="c">// Hissage.</span>
+    <span class="i">console</span>.<span class="i">log</span>(<span class="i">a</span>);
+    <span class="i">a</span> = <span class="s">&quot;valeur&quot;</span>;
 }
 </pre></div>
-<p>That means that in some cases you can read a variable before its initializer
-has run<span class="em">&mdash;</span>an annoying source of bugs. The alternate <code>let</code> syntax for
-declaring variables was added later to address this problem.</p>
-</aside></li>
+<p>Cela signifie que dans certains cas vous pouvez lire une variable avant que son initialiseur ait tourné<span class="em">&mdash;</span>une source ennuyeuse de bugs. La syntaxe alternative <code>let</code> pour déclarer des variables a été ajoutée plus tard pour adresser ce problème.</p>
+<pre><code>&lt;/aside&gt;
+</code></pre>
+</li>
 <li>
-<p>&ldquo;Innermost&rdquo; is there because of our good friend shadowing. There may be more
-than one variable with the given name in enclosing scopes, as in:</p>
-<div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;outer&quot;</span>;
+<p>&ldquo;La plus interne&rdquo; est là à cause de notre bon ami le masquage (shadowing). Il peut y avoir plus d&rsquo;une variable avec le nom donné dans les portées environnantes, comme dans :</p>
+<div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;externe&quot;</span>;
 {
-  <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;inner&quot;</span>;
+  <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;interne&quot;</span>;
   <span class="k">print</span> <span class="i">a</span>;
 }
 </pre></div>
-<p>Our rule disambiguates this case by saying the innermost scope wins.</p>
+<p>Notre règle désambiguïse ce cas en disant que la portée la plus interne gagne.</p>
 </li>
 </ul>
-<p>Since this rule makes no mention of any runtime behavior, it implies that a
-variable expression always refers to the same declaration through the entire
-execution of the program. Our interpreter so far <em>mostly</em> implements the rule
-correctly. But when we added closures, an error snuck in.</p>
+<p>Puisque cette règle ne fait aucune mention d&rsquo;aucun comportement à l&rsquo;exécution, elle implique qu&rsquo;une expression de variable fait toujours référence à la même déclaration à travers l&rsquo;exécution entière du programme. Notre interpréteur jusqu&rsquo;ici implémente <em>surtout</em> la règle correctement. Mais quand nous avons ajouté les fermetures, une erreur s&rsquo;est glissée.</p>
 <div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;global&quot;</span>;
 {
   <span class="k">fun</span> <span class="i">showA</span>() {
@@ -202,71 +166,33 @@ correctly. But when we added closures, an error snuck in.</p>
   }
 
   <span class="i">showA</span>();
-  <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;block&quot;</span>;
+  <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;bloc&quot;</span>;
   <span class="i">showA</span>();
 }
 </pre></div>
-<p><span name="tricky">Before</span> you type this in and run it, decide what you
-think it <em>should</em> print.</p>
+<p><span name="tricky">Avant</span> que vous ne tapiez ceci et l&rsquo;exécutiez, décidez ce que vous pensez qu&rsquo;il <em>devrait</em> imprimer.</p>
 <aside name="tricky">
-<p>I know, it&rsquo;s a totally pathological, contrived program. It&rsquo;s just <em>weird</em>. No
-reasonable person would ever write code like this. Alas, more of your life than
-you&rsquo;d expect will be spent dealing with bizarro snippets of code like this if
-you stay in the programming language game for long.</p>
+<p>Je sais, c&rsquo;est un programme totalement pathologique, artificiel. C&rsquo;est juste <em>bizarre</em>. Aucune personne raisonnable n&rsquo;écrirait jamais de code comme ça. Hélas, plus de votre vie que vous ne l&rsquo;attendriez sera passée à gérer des snippets bizarres de code comme ça si vous restez dans le jeu des langages de programmation pour longtemps.</p>
 </aside>
-<p>OK<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>got it? If you&rsquo;re familiar with closures in other languages, you&rsquo;ll expect
-it to print &ldquo;global&rdquo; twice. The first call to <code>showA()</code> should definitely print
-&ldquo;global&rdquo; since we haven&rsquo;t even reached the declaration of the inner <code>a</code> yet. And
-by our rule that a variable expression always resolves to the same variable,
-that implies the second call to <code>showA()</code> should print the same thing.</p>
-<p>Alas, it prints:</p>
+<p>OK<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span>vous l&rsquo;avez ? Si vous êtes familier avec les fermetures dans d&rsquo;autres langages, vous attendrez qu&rsquo;il imprime &ldquo;global&rdquo; deux fois. Le premier appel à <code>showA()</code> devrait définitivement imprimer &ldquo;global&rdquo; puisque nous n&rsquo;avons même pas encore atteint la déclaration du <code>a</code> interne. Et par notre règle qu&rsquo;une expression de variable se résout toujours à la même variable, cela implique que le second appel à <code>showA()</code> devrait imprimer la même chose.</p>
+<p>Hélas, il imprime :</p>
 <div class="codehilite"><pre>global
-block
+bloc
 </pre></div>
-<p>Let me stress that this program never reassigns any variable and contains only a
-single <code>print</code> statement. Yet, somehow, that <code>print</code> statement for a
-never-assigned variable prints two different values at different points in time.
-We definitely broke something somewhere.</p>
-<h3><a href="#scopes-and-mutable-environments" id="scopes-and-mutable-environments"><small>11&#8202;.&#8202;1&#8202;.&#8202;1</small>Scopes and mutable environments</a></h3>
-<p>In our interpreter, environments are the dynamic manifestation of static scopes.
-The two mostly stay in sync with each other<span class="em">&mdash;</span>we create a new environment when
-we enter a new scope, and discard it when we leave the scope. There is one other
-operation we perform on environments: binding a variable in one. This is where
-our bug lies.</p>
-<p>Let&rsquo;s walk through that problematic example and see what the environments look
-like at each step. First, we declare <code>a</code> in the global scope.</p><img src="image/resolving-and-binding/environment-1.png" alt="The global environment with 'a' defined in it." />
-<p>That gives us a single environment with a single variable in it. Then we enter
-the block and execute the declaration of <code>showA()</code>.</p><img src="image/resolving-and-binding/environment-2.png" alt="A block environment linking to the global one." />
-<p>We get a new environment for the block. In that, we declare one name, <code>showA</code>,
-which is bound to the LoxFunction object we create to represent the function.
-That object has a <code>closure</code> field that captures the environment where the
-function was declared, so it has a reference back to the environment for the
-block.</p>
-<p>Now we call <code>showA()</code>.</p><img src="image/resolving-and-binding/environment-3.png" alt="An empty environment for showA()'s body linking to the previous two. 'a' is resolved in the global environment." />
-<p>The interpreter dynamically creates a new environment for the function body of
-<code>showA()</code>. It&rsquo;s empty since that function doesn&rsquo;t declare any variables. The
-parent of that environment is the function&rsquo;s closure<span class="em">&mdash;</span>the outer block
-environment.</p>
-<p>Inside the body of <code>showA()</code>, we print the value of <code>a</code>. The interpreter looks
-up this value by walking the chain of environments. It gets all the way
-to the global environment before finding it there and printing <code>"global"</code>.
-Great.</p>
-<p>Next, we declare the second <code>a</code>, this time inside the block.</p><img src="image/resolving-and-binding/environment-4.png" alt="The block environment has both 'a' and 'showA' now." />
-<p>It&rsquo;s in the same block<span class="em">&mdash;</span>the same scope<span class="em">&mdash;</span>as <code>showA()</code>, so it goes into the
-same environment, which is also the same environment <code>showA()</code>&rsquo;s closure refers
-to. This is where it gets interesting. We call <code>showA()</code> again.</p><img src="image/resolving-and-binding/environment-5.png" alt="An empty environment for showA()'s body linking to the previous two. 'a' is resolved in the block environment." />
-<p>We create a new empty environment for the body of <code>showA()</code> again, wire it up to
-that closure, and run the body. When the interpreter walks the chain of
-environments to find <code>a</code>, it now discovers the <em>new</em> <code>a</code> in the block
-environment. Boo.</p>
-<p>I chose to implement environments in a way that I hoped would agree with your
-informal intuition around scopes. We tend to consider all of the code within a
-block as being within the same scope, so our interpreter uses a single
-environment to represent that. Each environment is a mutable hash table. When a
-new local variable is declared, it gets added to the existing environment for
-that scope.</p>
-<p>That intuition, like many in life, isn&rsquo;t quite right. A block is not necessarily
-all the same scope. Consider:</p>
+<p>Laissez-moi souligner que ce programme ne réassigne jamais aucune variable et contient seulement une seule instruction <code>print</code>. Pourtant, d&rsquo;une certaine manière, cette instruction <code>print</code> pour une variable jamais assignée imprime deux valeurs différentes à différents points dans le temps. Nous avons définitivement cassé quelque chose quelque part.</p>
+<h3><a href="#portées-et-environnements-mutables" id="portées-et-environnements-mutables"><small>11&#8202;.&#8202;1&#8202;.&#8202;1</small>Portées et environnements mutables</a></h3>
+<p>Dans notre interpréteur, les environnements sont la manifestation dynamique des portées statiques. Les deux restent la plupart du temps synchronisés l&rsquo;un avec l&rsquo;autre<span class="em">&mdash;</span>nous créons un nouvel environnement quand nous entrons dans une nouvelle portée, et le jetons quand nous quittons la portée. Il y a une autre opération que nous effectuons sur les environnements : lier une variable dans l&rsquo;un d&rsquo;eux. C&rsquo;est là que notre bug réside.</p>
+<p>Parcourons cet exemple problématique et voyons à quoi ressemblent les environnements à chaque étape. D&rsquo;abord, nous déclarons <code>a</code> dans la portée globale.</p><img src="image/resolving-and-binding/environment-1.png" alt="L'environnement global avec 'a' défini dedans." />
+<p>Cela nous donne un seul environnement avec une seule variable dedans. Ensuite nous entrons dans le bloc et exécutons la déclaration de <code>showA()</code>.</p><img src="image/resolving-and-binding/environment-2.png" alt="Un environnement de bloc lié à celui global." />
+<p>Nous obtenons un nouvel environnement pour le bloc. Dans celui-ci, nous déclarons un nom, <code>showA</code>, qui est lié à l&rsquo;objet LoxFunction que nous créons pour représenter la fonction. Cet objet a un champ <code>closure</code> qui capture l&rsquo;environnement où la fonction a été déclarée, donc il a une référence en arrière vers l&rsquo;environnement pour le bloc.</p>
+<p>Maintenant nous appelons <code>showA()</code>.</p><img src="image/resolving-and-binding/environment-3.png" alt="Un environnement vide pour le corps de showA() lié aux deux précédents. 'a' est résolu dans l'environnement global." />
+<p>L&rsquo;interpréteur crée dynamiquement un nouvel environnement pour le corps de la fonction <code>showA()</code>. Il est vide puisque cette fonction ne déclare aucune variable. Le parent de cet environnement est la fermeture de la fonction<span class="em">&mdash;</span>l&rsquo;environnement du bloc externe.</p>
+<p>À l&rsquo;intérieur du corps de <code>showA()</code>, nous imprimons la valeur de <code>a</code>. L&rsquo;interpréteur cherche cette valeur en parcourant la chaîne d&rsquo;environnements. Il va tout le chemin jusqu&rsquo;à l&rsquo;environnement global avant de la trouver là et d&rsquo;imprimer <code>"global"</code>. Super.</p>
+<p>Ensuite, nous déclarons le second <code>a</code>, cette fois à l&rsquo;intérieur du bloc.</p><img src="image/resolving-and-binding/environment-4.png" alt="L'environnement de bloc a à la fois 'a' et 'showA' maintenant." />
+<p>C&rsquo;est dans le même bloc<span class="em">&mdash;</span>la même portée<span class="em">&mdash;</span>que <code>showA()</code>, donc il va dans le même environnement, qui est aussi le même environnement auquel la fermeture de <code>showA()</code> fait référence. C&rsquo;est là que ça devient intéressant. Nous appelons <code>showA()</code> à nouveau.</p><img src="image/resolving-and-binding/environment-5.png" alt="Un environnement vide pour le corps de showA() lié aux deux précédents. 'a' est résolu dans l'environnement de bloc." />
+<p>Nous créons un nouvel environnement vide pour le corps de <code>showA()</code> encore une fois, le branchons à cette fermeture, et lançons le corps. Quand l&rsquo;interpréteur parcourt la chaîne d&rsquo;environnements pour trouver <code>a</code>, il découvre maintenant le <em>nouveau</em> <code>a</code> dans l&rsquo;environnement de bloc. Bouh.</p>
+<p>J&rsquo;ai choisi d&rsquo;implémenter les environnements d&rsquo;une façon dont j&rsquo;espérais qu&rsquo;elle s&rsquo;accorderait avec votre intuition informelle autour des portées. Nous avons tendance à considérer tout le code à l&rsquo;intérieur d&rsquo;un bloc comme étant à l&rsquo;intérieur de la même portée, donc notre interpréteur utilise un seul environnement pour représenter cela. Chaque environnement est une table de hachage mutable. Quand une nouvelle variable locale est déclarée, elle est ajoutée à l&rsquo;environnement existant pour cette portée.</p>
+<p>Cette intuition, comme beaucoup dans la vie, n&rsquo;est pas tout à fait juste. Un bloc n&rsquo;est pas nécessairement tout la même portée. Considérez :</p>
 <div class="codehilite"><pre>{
   <span class="k">var</span> <span class="i">a</span>;
   <span class="c">// 1.</span>
@@ -274,126 +200,46 @@ all the same scope. Consider:</p>
   <span class="c">// 2.</span>
 }
 </pre></div>
-<p>At the first marked line, only <code>a</code> is in scope. At the second line, both <code>a</code> and
-<code>b</code> are. If you define a &ldquo;scope&rdquo; to be a set of declarations, then those are
-clearly not the same scope<span class="em">&mdash;</span>they don&rsquo;t contain the same declarations. It&rsquo;s
-like each <code>var</code> statement <span name="split">splits</span> the block into two
-separate scopes, the scope before the variable is declared and the one after,
-which includes the new variable.</p>
+<p>À la première ligne marquée, seul <code>a</code> est dans la portée. À la seconde ligne, les deux <code>a</code> et <code>b</code> le sont. Si vous définissez une &ldquo;portée&rdquo; comme étant un ensemble de déclarations, alors celles-ci ne sont clairement pas la même portée<span class="em">&mdash;</span>elles ne contiennent pas les mêmes déclarations. C&rsquo;est comme si chaque instruction <code>var</code> <span name="split">scindait</span> le bloc en deux portées séparées, la portée avant que la variable ne soit déclarée et celle après, qui inclut la nouvelle variable.</p>
 <aside name="split">
-<p>Some languages make this split explicit. In Scheme and ML, when you declare a
-local variable using <code>let</code>, you also delineate the subsequent code where the new
-variable is in scope. There is no implicit &ldquo;rest of the block&rdquo;.</p>
+<p>Certains langages rendent cette scission explicite. En Scheme et ML, quand vous déclarez une variable locale utilisant <code>let</code>, vous délimitez aussi le code subséquent où la nouvelle variable est dans la portée. Il n&rsquo;y a pas de &ldquo;reste du bloc&rdquo; implicite.</p>
 </aside>
-<p>But in our implementation, environments do act like the entire block is one
-scope, just a scope that changes over time. Closures do not like that. When a
-function is declared, it captures a reference to the current environment. The
-function <em>should</em> capture a frozen snapshot of the environment <em>as it existed at
-the moment the function was declared</em>. But instead, in the Java code, it has a
-reference to the actual mutable environment object. When a variable is later
-declared in the scope that environment corresponds to, the closure sees the new
-variable, even though the declaration does <em>not</em> precede the function.</p>
-<h3><a href="#persistent-environments" id="persistent-environments"><small>11&#8202;.&#8202;1&#8202;.&#8202;2</small>Persistent environments</a></h3>
-<p>There is a style of programming that uses what are called <strong>persistent data
-structures</strong>. Unlike the squishy data structures you&rsquo;re familiar with in
-imperative programming, a persistent data structure can never be directly
-modified. Instead, any &ldquo;modification&rdquo; to an existing structure produces a <span
-name="copy">brand</span> new object that contains all of the original data and
-the new modification. The original is left unchanged.</p>
+<p>Mais dans notre implémentation, les environnements agissent bien comme si le bloc entier était une seule portée, juste une portée qui change au fil du temps. Les fermetures n&rsquo;aiment pas ça. Quand une fonction est déclarée, elle capture une référence à l&rsquo;environnement courant. La fonction <em>devrait</em> capturer un instantané figé de l&rsquo;environnement <em>tel qu&rsquo;il existait au moment où la fonction a été déclarée</em>. Mais au lieu de cela, dans le code Java, elle a une référence à l&rsquo;objet environnement mutable réel. Quand une variable est plus tard déclarée dans la portée à laquelle cet environnement correspond, la fermeture voit la nouvelle variable, même si la déclaration ne précède <em>pas</em> la fonction.</p>
+<h3><a href="#environnements-persistants" id="environnements-persistants"><small>11&#8202;.&#8202;1&#8202;.&#8202;2</small>Environnements persistants</a></h3>
+<p>Il y a un style de programmation qui utilise ce qu&rsquo;on appelle des <strong>structures de données persistantes</strong>. Contrairement aux structures de données molles avec lesquelles vous êtes familier en programmation impérative, une structure de données persistante ne peut jamais être directement modifiée. Au lieu de cela, toute &ldquo;modification&rdquo; à une structure existante produit un <span name="copy">tout</span> nouvel objet qui contient toutes les données originales et la nouvelle modification. L&rsquo;original est laissé inchangé.</p>
 <aside name="copy">
-<p>This sounds like it might waste tons of memory and time copying the structure
-for each operation. In practice, persistent data structures share most of their
-data between the different &ldquo;copies&rdquo;.</p>
+<p>Cela sonne comme si ça pouvait gaspiller des tonnes de mémoire et de temps à copier la structure pour chaque opération. En pratique, les structures de données persistantes partagent la plupart de leurs données entre les différentes &ldquo;copies&rdquo;.</p>
 </aside>
-<p>If we were to apply that technique to Environment, then every time you declared
-a variable it would return a <em>new</em> environment that contained all of the
-previously declared variables along with the one new name. Declaring a variable
-would do the implicit &ldquo;split&rdquo; where you have an environment before the variable
-is declared and one after:</p><img src="image/resolving-and-binding/split.png" alt="Separate environments before and after the variable is declared." />
-<p>A closure retains a reference to the Environment instance in play when the
-function was declared. Since any later declarations in that block would produce
-new Environment objects, the closure wouldn&rsquo;t see the new variables and our bug
-would be fixed.</p>
-<p>This is a legit way to solve the problem, and it&rsquo;s the classic way to implement
-environments in Scheme interpreters. We could do that for Lox, but it would mean
-going back and changing a pile of existing code.</p>
-<p>I won&rsquo;t drag you through that. We&rsquo;ll keep the way we represent environments the
-same. Instead of making the data more statically structured, we&rsquo;ll bake the
-static resolution into the access <em>operation</em> itself.</p>
-<h2><a href="#semantic-analysis" id="semantic-analysis"><small>11&#8202;.&#8202;2</small>Semantic Analysis</a></h2>
-<p>Our interpreter <strong>resolves</strong> a variable<span class="em">&mdash;</span>tracks down which declaration it
-refers to<span class="em">&mdash;</span>each and every time the variable expression is evaluated. If that
-variable is swaddled inside a loop that runs a thousand times, that variable
-gets re-resolved a thousand times.</p>
-<p>We know static scope means that a variable usage always resolves to the same
-declaration, which can be determined just by looking at the text. Given that,
-why are we doing it dynamically every time? Doing so doesn&rsquo;t just open the hole
-that leads to our annoying bug, it&rsquo;s also needlessly slow.</p>
-<p>A better solution is to resolve each variable use <em>once</em>. Write a chunk of code
-that inspects the user&rsquo;s program, finds every variable mentioned, and figures
-out which declaration each refers to. This process is an example of a <strong>semantic
-analysis</strong>. Where a parser tells only if a program is grammatically correct (a
-<em>syntactic</em> analysis), semantic analysis goes farther and starts to figure out
-what pieces of the program actually mean. In this case, our analysis will
-resolve variable bindings. We&rsquo;ll know not just that an expression <em>is</em> a
-variable, but <em>which</em> variable it is.</p>
-<p>There are a lot of ways we could store the binding between a variable and its
-declaration. When we get to the C interpreter for Lox, we&rsquo;ll have a <em>much</em> more
-efficient way of storing and accessing local variables. But for jlox, I want to
-minimize the collateral damage we inflict on our existing codebase. I&rsquo;d hate to
-throw out a bunch of mostly fine code.</p>
-<p>Instead, we&rsquo;ll store the resolution in a way that makes the most out of our
-existing Environment class. Recall how the accesses of <code>a</code> are interpreted in
-the problematic example.</p><img src="image/resolving-and-binding/environment-3.png" alt="An empty environment for showA()'s body linking to the previous two. 'a' is resolved in the global environment." />
-<p>In the first (correct) evaluation, we look at three environments in the chain
-before finding the global declaration of <code>a</code>. Then, when the inner <code>a</code> is later
-declared in a block scope, it shadows the global one.</p><img src="image/resolving-and-binding/environment-5.png" alt="An empty environment for showA()'s body linking to the previous two. 'a' is resolved in the block environment." />
-<p>The next lookup walks the chain, finds <code>a</code> in the <em>second</em> environment and
-stops there. Each environment corresponds to a single lexical scope where
-variables are declared. If we could ensure a variable lookup always walked the
-<em>same</em> number of links in the environment chain, that would ensure that it
-found the same variable in the same scope every time.</p>
-<p>To &ldquo;resolve&rdquo; a variable usage, we only need to calculate how many &ldquo;hops&rdquo; away
-the declared variable will be in the environment chain. The interesting question
-is <em>when</em> to do this calculation<span class="em">&mdash;</span>or, put differently, where in our
-interpreter&rsquo;s implementation do we stuff the code for it?</p>
-<p>Since we&rsquo;re calculating a static property based on the structure of the source
-code, the obvious answer is in the parser. That is the traditional home, and is
-where we&rsquo;ll put it later in clox. It would work here too, but I want an excuse to
-show you another technique. We&rsquo;ll write our resolver as a separate pass.</p>
-<h3><a href="#a-variable-resolution-pass" id="a-variable-resolution-pass"><small>11&#8202;.&#8202;2&#8202;.&#8202;1</small>A variable resolution pass</a></h3>
-<p>After the parser produces the syntax tree, but before the interpreter starts
-executing it, we&rsquo;ll do a single walk over the tree to resolve all of the
-variables it contains. Additional passes between parsing and execution are
-common. If Lox had static types, we could slide a type checker in there.
-Optimizations are often implemented in separate passes like this too. Basically,
-any work that doesn&rsquo;t rely on state that&rsquo;s only available at runtime can be done
-in this way.</p>
-<p>Our variable resolution pass works like a sort of mini-interpreter. It walks the
-tree, visiting each node, but a static analysis is different from a dynamic
-execution:</p>
+<p>Si nous devions appliquer cette technique à Environment, alors chaque fois que vous déclariez une variable cela renverrait un <em>nouvel</em> environnement qui contenait toutes les variables précédemment déclarées avec le nouveau nom. Déclarer une variable ferait la &ldquo;scission&rdquo; implicite où vous avez un environnement avant que la variable ne soit déclarée et un après :</p><img src="image/resolving-and-binding/split.png" alt="Environnements séparés avant et après que la variable soit déclarée." />
+<p>Une fermeture retient une référence à l&rsquo;instance Environment en jeu quand la fonction a été déclarée. Puisque toutes les déclarations ultérieures dans ce bloc produiraient de nouveaux objets Environment, la fermeture ne verrait pas les nouvelles variables et notre bug serait corrigé.</p>
+<p>C&rsquo;est une façon légitime de résoudre le problème, et c&rsquo;est la façon classique d&rsquo;implémenter les environnements dans les interpréteurs Scheme. Nous pourrions faire cela pour Lox, mais cela signifierait revenir en arrière et changer une pile de code existant.</p>
+<p>Je ne vous traînerai pas à travers ça. Nous garderons la façon dont nous représentons les environnements la même. Au lieu de rendre les données plus statiquement structurées, nous cuirons la résolution statique dans l&rsquo;<em>opération</em> d&rsquo;accès elle-même.</p>
+<h2><a href="#analyse-sémantique" id="analyse-sémantique"><small>11&#8202;.&#8202;2</small>Analyse Sémantique</a></h2>
+<p>Notre interpréteur <strong>résout</strong> une variable<span class="em">&mdash;</span>traque à quelle déclaration elle fait référence<span class="em">&mdash;</span>chaque fois que l&rsquo;expression de variable est évaluée. Si cette variable est emmaillotée à l&rsquo;intérieur d&rsquo;une boucle qui tourne mille fois, cette variable est re-résolue mille fois.</p>
+<p>Nous savons que la portée statique signifie qu&rsquo;un usage de variable se résout toujours à la même déclaration, ce qui peut être déterminé juste en regardant le texte. Étant donné cela, pourquoi le faisons-nous dynamiquement à chaque fois ? Le faire n&rsquo;ouvre pas seulement le trou qui mène à notre bug ennuyeux, c&rsquo;est aussi inutilement lent.</p>
+<p>Une meilleure solution est de résoudre chaque utilisation de variable <em>une fois</em>. Écrire un morceau de code qui inspecte le programme de l&rsquo;utilisateur, trouve chaque variable mentionnée, et devine à quelle déclaration chacune fait référence. Ce processus est un exemple d&rsquo;une <strong>analyse sémantique</strong>. Là où un parseur dit seulement si un programme est grammaticalement correct (une analyse <em>syntaxique</em>), l&rsquo;analyse sémantique va plus loin et commence à deviner ce que les pièces du programme signifient réellement. Dans ce cas, notre analyse résoudra les liaisons de variables. Nous saurons non seulement qu&rsquo;une expression <em>est</em> une variable, mais <em>quelle</em> variable elle est.</p>
+<p>Il y a beaucoup de façons dont nous pourrions stocker la liaison entre une variable et sa déclaration. Quand nous arriverons à l&rsquo;interpréteur C pour Lox, nous aurons une façon <em>beaucoup</em> plus efficace de stocker et d&rsquo;accéder aux variables locales. Mais pour jlox, je veux minimiser les dommages collatéraux que nous infligeons à notre base de code existante. Je détesterais jeter un tas de code surtout bon.</p>
+<p>Au lieu de cela, nous stockerons la résolution d&rsquo;une façon qui tire le meilleur parti de notre classe Environment existante. Rappelez-vous comment les accès de <code>a</code> sont interprétés dans l&rsquo;exemple problématique.</p><img src="image/resolving-and-binding/environment-3.png" alt="Un environnement vide pour le corps de showA() lié aux deux précédents. 'a' est résolu dans l'environnement global." />
+<p>Dans la première évaluation (correcte), nous regardons trois environnements dans la chaîne avant de trouver la déclaration globale de <code>a</code>. Ensuite, quand le <code>a</code> interne est plus tard déclaré dans une portée de bloc, il masque le global.</p><img src="image/resolving-and-binding/environment-5.png" alt="Un environnement vide pour le corps de showA() lié aux deux précédents. 'a' est résolu dans l'environnement de bloc." />
+<p>La recherche suivante parcourt la chaîne, trouve <code>a</code> dans le <em>second</em> environnement et s&rsquo;arrête là. Chaque environnement correspond à une seule portée lexicale où les variables sont déclarées. Si nous pouvions nous assurer qu&rsquo;une recherche de variable parcourait toujours le <em>même</em> nombre de liens dans la chaîne d&rsquo;environnement, cela assurerait qu&rsquo;elle trouve la même variable dans la même portée à chaque fois.</p>
+<p>Pour &ldquo;résoudre&rdquo; un usage de variable, nous avons seulement besoin de calculer à combien de &ldquo;sauts&rdquo; la variable déclarée sera dans la chaîne d&rsquo;environnement. La question intéressante est <em>quand</em> faire ce calcul<span class="em">&mdash;</span>ou, mis différemment, où dans l&rsquo;implémentation de notre interpréteur bourrons-nous le code pour cela ?</p>
+<p>Puisque nous calculons une propriété statique basée sur la structure du code source, la réponse évidente est dans le parseur. C&rsquo;est la maison traditionnelle, et c&rsquo;est où nous la mettrons plus tard dans clox. Cela marcherait ici aussi, mais je veux une excuse pour vous montrer une autre technique. Nous écrirons notre résolveur comme une passe séparée.</p>
+<h3><a href="#une-passe-de-résolution-de-variable" id="une-passe-de-résolution-de-variable"><small>11&#8202;.&#8202;2&#8202;.&#8202;1</small>Une passe de résolution de variable</a></h3>
+<p>Après que le parseur produit l&rsquo;arbre syntaxique, mais avant que l&rsquo;interpréteur ne commence à l&rsquo;exécuter, nous ferons une seule marche sur l&rsquo;arbre pour résoudre toutes les variables qu&rsquo;il contient. Des passes supplémentaires entre le parsing et l&rsquo;exécution sont courantes. Si Lox avait des types statiques, nous pourrions glisser un vérificateur de type là-dedans. Les optimisations sont souvent implémentées dans des passes séparées comme ça aussi. Fondamentalement, tout travail qui ne repose pas sur l&rsquo;état qui est seulement disponible à l&rsquo;exécution peut être fait de cette façon.</p>
+<p>Notre passe de résolution de variable fonctionne comme une sorte de mini-interpréteur. Elle parcourt l&rsquo;arbre, visitant chaque nœud, mais une analyse statique est différente d&rsquo;une exécution dynamique :</p>
 <ul>
 <li>
-<p><strong>There are no side effects.</strong> When the static analysis visits a print
-statement, it doesn&rsquo;t actually print anything. Calls to native functions or
-other operations that reach out to the outside world are stubbed out and
-have no effect.</p>
+<p><strong>Il n&rsquo;y a pas d&rsquo;effets de bord.</strong> Quand l&rsquo;analyse statique visite une instruction print, elle n&rsquo;imprime rien réellement. Les appels aux fonctions natives ou autres opérations qui atteignent le monde extérieur sont bouchonnés et n&rsquo;ont aucun effet.</p>
 </li>
 <li>
-<p><strong>There is no control flow.</strong> Loops are visited only <span
-name="fix">once</span>. Both branches are visited in <code>if</code> statements. Logic
-operators are not short-circuited.</p>
+<p><strong>Il n&rsquo;y a pas de contrôle de flux.</strong> Les boucles sont visitées seulement <span name="fix">une fois</span>. Les deux branches sont visitées dans les instructions <code>if</code>. Les opérateurs logiques ne sont pas court-circuités.</p>
 </li>
 </ul>
 <aside name="fix">
-<p>Variable resolution touches each node once, so its performance is <em>O(n)</em> where
-<em>n</em> is the number of syntax tree nodes. More sophisticated analyses may have
-greater complexity, but most are carefully designed to be linear or not far from
-it. It&rsquo;s an embarrassing faux pas if your compiler gets exponentially slower as
-the user&rsquo;s program grows.</p>
+<p>La résolution de variable touche chaque nœud une fois, donc sa performance est <em>O(n)</em> où <em>n</em> est le nombre de nœuds d&rsquo;arbre syntaxique. Des analyses plus sophistiquées peuvent avoir une plus grande complexité, mais la plupart sont soigneusement conçues pour être linéaires ou pas loin de l&rsquo;être. C&rsquo;est un faux pas embarrassant si votre compilateur devient exponentiellement plus lent à mesure que le programme de l&rsquo;utilisateur grandit.</p>
 </aside>
-<h2><a href="#a-resolver-class" id="a-resolver-class"><small>11&#8202;.&#8202;3</small>A Resolver Class</a></h2>
-<p>Like everything in Java, our variable resolution pass is embodied in a class.</p>
+<h2><a href="#une-classe-résolveur" id="une-classe-résolveur"><small>11&#8202;.&#8202;3</small>Une Classe Résolveur</a></h2>
+<p>Comme tout en Java, notre passe de résolution de variable est incarnée dans une classe.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 create new file</div>
 <pre><span class="k">package</span> <span class="i">com.craftinginterpreters.lox</span>;
@@ -413,31 +259,24 @@ create new file</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, create new file</div>
 
-<p>Since the resolver needs to visit every node in the syntax tree, it implements
-the visitor abstraction we already have in place. Only a few kinds of nodes are
-interesting when it comes to resolving variables:</p>
+<p>Puisque le résolveur a besoin de visiter chaque nœud dans l&rsquo;arbre syntaxique, il implémente l&rsquo;abstraction visiteur que nous avons déjà en place. Seuls quelques types de nœuds sont intéressants quand il s&rsquo;agit de résoudre les variables :</p>
 <ul>
 <li>
-<p>A block statement introduces a new scope for the statements it contains.</p>
+<p>Une instruction de bloc introduit une nouvelle portée pour les instructions qu&rsquo;elle contient.</p>
 </li>
 <li>
-<p>A function declaration introduces a new scope for its body and binds its
-parameters in that scope.</p>
+<p>Une déclaration de fonction introduit une nouvelle portée pour son corps et lie ses paramètres dans cette portée.</p>
 </li>
 <li>
-<p>A variable declaration adds a new variable to the current scope.</p>
+<p>Une déclaration de variable ajoute une nouvelle variable à la portée courante.</p>
 </li>
 <li>
-<p>Variable and assignment expressions need to have their variables resolved.</p>
+<p>Les expressions de variable et d&rsquo;affectation ont besoin d&rsquo;avoir leurs variables résolues.</p>
 </li>
 </ul>
-<p>The rest of the nodes don&rsquo;t do anything special, but we still need to implement
-visit methods for them that traverse into their subtrees. Even though a <code>+</code>
-expression doesn&rsquo;t <em>itself</em> have any variables to resolve, either of its
-operands might.</p>
-<h3><a href="#resolving-blocks" id="resolving-blocks"><small>11&#8202;.&#8202;3&#8202;.&#8202;1</small>Resolving blocks</a></h3>
-<p>We start with blocks since they create the local scopes where all the magic
-happens.</p>
+<p>Le reste des nœuds ne fait rien de spécial, mais nous avons toujours besoin d&rsquo;implémenter des méthodes visit pour eux qui traversent dans leurs sous-arbres. Même si une expression <code>+</code> n&rsquo;a <em>elle-même</em> aucune variable à résoudre, l&rsquo;un ou l&rsquo;autre de ses opérandes pourrait en avoir.</p>
+<h3><a href="#résoudre-les-blocs" id="résoudre-les-blocs"><small>11&#8202;.&#8202;3&#8202;.&#8202;1</small>Résoudre les blocs</a></h3>
+<p>Nous commençons avec les blocs puisqu&rsquo;ils créent les portées locales où toute la magie se produit.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>Resolver</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -450,9 +289,7 @@ add after <em>Resolver</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>Resolver</em>()</div>
 
-<p>This begins a new scope, traverses into the statements inside the block, and
-then discards the scope. The fun stuff lives in those helper methods. We start
-with the simple one.</p>
+<p>Ceci commence une nouvelle portée, traverse dans les instructions à l&rsquo;intérieur du bloc, et ensuite jette la portée. Le truc fun vit dans ces méthodes assistantes. Nous commençons avec la simple.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>Resolver</em>()</div>
 <pre>  <span class="t">void</span> <span class="i">resolve</span>(<span class="t">List</span>&lt;<span class="t">Stmt</span>&gt; <span class="i">statements</span>) {
@@ -463,7 +300,7 @@ add after <em>Resolver</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>Resolver</em>()</div>
 
-<p>This walks a list of statements and resolves each one. It in turn calls:</p>
+<p>Ceci parcourt une liste d&rsquo;instructions et résout chacune. Elle appelle à son tour :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>visitBlockStmt</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">void</span> <span class="i">resolve</span>(<span class="t">Stmt</span> <span class="i">stmt</span>) {
@@ -472,8 +309,7 @@ add after <em>visitBlockStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>visitBlockStmt</em>()</div>
 
-<p>While we&rsquo;re at it, let&rsquo;s add another overload that we&rsquo;ll need later for
-resolving an expression.</p>
+<p>Pendant que nous y sommes, ajoutons une autre surcharge dont nous aurons besoin plus tard pour résoudre une expression.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>resolve</em>(Stmt stmt)</div>
 <pre>  <span class="k">private</span> <span class="t">void</span> <span class="i">resolve</span>(<span class="t">Expr</span> <span class="i">expr</span>) {
@@ -482,11 +318,8 @@ add after <em>resolve</em>(Stmt stmt)</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>resolve</em>(Stmt stmt)</div>
 
-<p>These methods are similar to the <code>evaluate()</code> and <code>execute()</code> methods in
-Interpreter<span class="em">&mdash;</span>they turn around and apply the Visitor pattern to the given
-syntax tree node.</p>
-<p>The real interesting behavior is around scopes. A new block scope is created
-like so:</p>
+<p>Ces méthodes sont similaires aux méthodes <code>evaluate()</code> et <code>execute()</code> dans Interpreter<span class="em">&mdash;</span>elles se retournent et appliquent le pattern Visitor au nœud d&rsquo;arbre syntaxique donné.</p>
+<p>Le vrai comportement intéressant est autour des portées. Une nouvelle portée de bloc est créée comme ceci :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>resolve</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">void</span> <span class="i">beginScope</span>() {
@@ -495,9 +328,7 @@ add after <em>resolve</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>resolve</em>()</div>
 
-<p>Lexical scopes nest in both the interpreter and the resolver. They behave like a
-stack. The interpreter implements that stack using a linked list<span class="em">&mdash;</span>the chain of
-Environment objects. In the resolver, we use an actual Java Stack.</p>
+<p>Les portées lexicales s&rsquo;imbriquent à la fois dans l&rsquo;interpréteur et le résolveur. Elles se comportent comme une pile. L&rsquo;interpréteur implémente cette pile en utilisant une liste chaînée<span class="em">&mdash;</span>la chaîne d&rsquo;objets Environment. Dans le résolveur, nous utilisons une Stack Java réelle.</p>
 <div class="codehilite"><pre class="insert-before">  private final Interpreter interpreter;
 </pre><div class="source-file"><em>lox/Resolver.java</em><br>
 in class <em>Resolver</em></div>
@@ -508,15 +339,9 @@ in class <em>Resolver</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, in class <em>Resolver</em></div>
 
-<p>This field keeps track of the stack of scopes currently, uh, in scope. Each
-element in the stack is a Map representing a single block scope. Keys, as in
-Environment, are variable names. The values are Booleans, for a reason I&rsquo;ll
-explain soon.</p>
-<p>The scope stack is only used for local block scopes. Variables declared at the
-top level in the global scope are not tracked by the resolver since they are
-more dynamic in Lox. When resolving a variable, if we can&rsquo;t find it in the stack
-of local scopes, we assume it must be global.</p>
-<p>Since scopes are stored in an explicit stack, exiting one is straightforward.</p>
+<p>Ce champ garde une trace de la pile de portées actuellement, uh, dans la portée. Chaque élément dans la pile est une Map représentant une seule portée de bloc. Les clés, comme dans Environment, sont des noms de variable. Les valeurs sont des Booléens, pour une raison que j&rsquo;expliquerai bientôt.</p>
+<p>La pile de portée est seulement utilisée pour les portées de bloc locales. Les variables déclarées au niveau supérieur dans la portée globale ne sont pas suivies par le résolveur puisqu&rsquo;elles sont plus dynamiques dans Lox. Quand nous résolvons une variable, si nous ne pouvons pas la trouver dans la pile de portées locales, nous supposons qu&rsquo;elle doit être globale.</p>
+<p>Puisque les portées sont stockées dans une pile explicite, en sortir une est direct.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>beginScope</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">void</span> <span class="i">endScope</span>() {
@@ -525,10 +350,9 @@ add after <em>beginScope</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>beginScope</em>()</div>
 
-<p>Now we can push and pop a stack of empty scopes. Let&rsquo;s put some things in them.</p>
-<h3><a href="#resolving-variable-declarations" id="resolving-variable-declarations"><small>11&#8202;.&#8202;3&#8202;.&#8202;2</small>Resolving variable declarations</a></h3>
-<p>Resolving a variable declaration adds a new entry to the current innermost
-scope&rsquo;s map. That seems simple, but there&rsquo;s a little dance we need to do.</p>
+<p>Maintenant nous pouvons empiler et dépiler une pile de portées vides. Mettons des choses dedans.</p>
+<h3><a href="#résoudre-les-déclarations-de-variable" id="résoudre-les-déclarations-de-variable"><small>11&#8202;.&#8202;3&#8202;.&#8202;2</small>Résoudre les déclarations de variable</a></h3>
+<p>Résoudre une déclaration de variable ajoute une nouvelle entrée à la map de la portée la plus interne actuelle. Cela semble simple, mais il y a une petite danse que nous devons faire.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>visitBlockStmt</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -543,53 +367,35 @@ add after <em>visitBlockStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>visitBlockStmt</em>()</div>
 
-<p>We split binding into two steps, declaring then defining, in order to handle
-funny edge cases like this:</p>
-<div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;outer&quot;</span>;
+<p>Nous divisons la liaison en deux étapes, déclarer puis définir, afin de gérer des cas limites drôles comme celui-ci :</p>
+<div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;externe&quot;</span>;
 {
   <span class="k">var</span> <span class="i">a</span> = <span class="i">a</span>;
 }
 </pre></div>
-<p>What happens when the initializer for a local variable refers to a variable with
-the same name as the variable being declared? We have a few options:</p>
+<p>Qu&rsquo;arrive-t-il quand l&rsquo;initialiseur pour une variable locale fait référence à une variable avec le même nom que la variable étant déclarée ? Nous avons quelques options :</p>
 <ol>
 <li>
-<p><strong>Run the initializer, then put the new variable in scope.</strong> Here, the new
-local <code>a</code> would be initialized with &ldquo;outer&rdquo;, the value of the <em>global</em> one.
-In other words, the previous declaration would desugar to:</p>
-<div class="codehilite"><pre><span class="k">var</span> <span class="i">temp</span> = <span class="i">a</span>; <span class="c">// Run the initializer.</span>
-<span class="k">var</span> <span class="i">a</span>;        <span class="c">// Declare the variable.</span>
-<span class="i">a</span> = <span class="i">temp</span>;     <span class="c">// Initialize it.</span>
+<p><strong>Lancer l&rsquo;initialiseur, puis mettre la nouvelle variable dans la portée.</strong> Ici, la nouvelle locale <code>a</code> serait initialisée avec &ldquo;externe&rdquo;, la valeur de la <em>globale</em>. En d&rsquo;autres termes, la déclaration précédente se &ldquo;désucrerait&rdquo; en :</p>
+<div class="codehilite"><pre><span class="k">var</span> <span class="i">temp</span> = <span class="i">a</span>; <span class="c">// Lance l&#39;initialiseur.</span>
+<span class="k">var</span> <span class="i">a</span>;        <span class="c">// Déclare la variable.</span>
+<span class="i">a</span> = <span class="i">temp</span>;     <span class="c">// L&#39;initialise.</span>
 </pre></div>
 </li>
 <li>
-<p><strong>Put the new variable in scope, then run the initializer.</strong> This means you
-could observe a variable before it&rsquo;s initialized, so we would need to figure
-out what value it would have then. Probably <code>nil</code>. That means the new local
-<code>a</code> would be re-initialized to its own implicitly initialized value, <code>nil</code>.
-Now the desugaring would look like:</p>
-<div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span>; <span class="c">// Define the variable.</span>
-<span class="i">a</span> = <span class="i">a</span>; <span class="c">// Run the initializer.</span>
+<p><strong>Mettre la nouvelle variable dans la portée, puis lancer l&rsquo;initialiseur.</strong> Cela signifie que vous pourriez observer une variable avant qu&rsquo;elle soit initialisée, donc nous aurions besoin de deviner quelle valeur elle aurait alors. Probablement <code>nil</code>. Cela signifie que la nouvelle locale <code>a</code> serait ré-initialisée à sa propre valeur implicitement initialisée, <code>nil</code>. Maintenant le &ldquo;désucrage&rdquo; ressemblerait à :</p>
+<div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span>; <span class="c">// Définit la variable.</span>
+<span class="i">a</span> = <span class="i">a</span>; <span class="c">// Lance l&#39;initialiseur.</span>
 </pre></div>
 </li>
 <li>
-<p><strong>Make it an error to reference a variable in its initializer.</strong> Have the
-interpreter fail either at compile time or runtime if an initializer
-mentions the variable being initialized.</p>
+<p><strong>Faire une erreur de référencer une variable dans son initialiseur.</strong> Faire échouer l&rsquo;interpréteur soit à la compilation soit à l&rsquo;exécution si un initialiseur mentionne la variable étant initialisée.</p>
 </li>
 </ol>
-<p>Do either of those first two options look like something a user actually
-<em>wants</em>? Shadowing is rare and often an error, so initializing a shadowing
-variable based on the value of the shadowed one seems unlikely to be deliberate.</p>
-<p>The second option is even less useful. The new variable will <em>always</em> have the
-value <code>nil</code>. There is never any point in mentioning it by name. You could use an
-explicit <code>nil</code> instead.</p>
-<p>Since the first two options are likely to mask user errors, we&rsquo;ll take the
-third. Further, we&rsquo;ll make it a compile error instead of a runtime one. That
-way, the user is alerted to the problem before any code is run.</p>
-<p>In order to do that, as we visit expressions, we need to know if we&rsquo;re inside
-the initializer for some variable. We do that by splitting binding into two
-steps. The first is <strong>declaring</strong> it.</p>
+<p>Est-ce que l&rsquo;une ou l&rsquo;autre de ces deux premières options ressemble à quelque chose qu&rsquo;un utilisateur <em>veut</em> réellement ? Le masquage est rare et souvent une erreur, donc initialiser une variable masquante basée sur la valeur de la masquée semble peu susceptible d&rsquo;être délibéré.</p>
+<p>La seconde option est encore moins utile. La nouvelle variable aura <em>toujours</em> la valeur <code>nil</code>. Il n&rsquo;y a jamais aucun intérêt à la mentionner par son nom. Vous pourriez utiliser un <code>nil</code> explicite à la place.</p>
+<p>Puisque les deux premières options sont susceptibles de masquer des erreurs utilisateur, nous prendrons la troisième. De plus, nous en ferons une erreur de compilation au lieu d&rsquo;une à l&rsquo;exécution. De cette façon, l&rsquo;utilisateur est alerté du problème avant qu&rsquo;aucun code ne soit lancé.</p>
+<p>Afin de faire cela, alors que nous visitons les expressions, nous avons besoin de savoir si nous sommes à l&rsquo;intérieur de l&rsquo;initialiseur pour une certaine variable. Nous faisons cela en divisant la liaison en deux étapes. La première est de la <strong>déclarer</strong>.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>endScope</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">void</span> <span class="i">declare</span>(<span class="t">Token</span> <span class="i">name</span>) {
@@ -601,15 +407,8 @@ add after <em>endScope</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>endScope</em>()</div>
 
-<p>Declaration adds the variable to the innermost scope so that it shadows any
-outer one and so that we know the variable exists. We mark it as &ldquo;not ready yet&rdquo;
-by binding its name to <code>false</code> in the scope map. The value associated with a key
-in the scope map represents whether or not we have finished resolving that
-variable&rsquo;s initializer.</p>
-<p>After declaring the variable, we resolve its initializer expression in that same
-scope where the new variable now exists but is unavailable. Once the initializer
-expression is done, the variable is ready for prime time. We do that by
-<strong>defining</strong> it.</p>
+<p>La déclaration ajoute la variable à la portée la plus interne pour qu&rsquo;elle masque toute externe et pour que nous sachions que la variable existe. Nous la marquons comme &ldquo;pas encore prête&rdquo; en liant son nom à <code>false</code> dans la map de portée. La valeur associée à une clé dans la map de portée représente si oui ou non nous avons fini de résoudre l&rsquo;initialiseur de cette variable.</p>
+<p>Après avoir déclaré la variable, nous résolvons son expression d&rsquo;initialiseur dans cette même portée où la nouvelle variable existe maintenant mais est indisponible. Une fois que l&rsquo;expression d&rsquo;initialiseur est finie, la variable est prête pour le prime time. Nous faisons cela en la <strong>définissant</strong>.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>declare</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">void</span> <span class="i">define</span>(<span class="t">Token</span> <span class="i">name</span>) {
@@ -619,11 +418,9 @@ add after <em>declare</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>declare</em>()</div>
 
-<p>We set the variable&rsquo;s value in the scope map to <code>true</code> to mark it as fully
-initialized and available for use. It&rsquo;s alive! </p>
-<h3><a href="#resolving-variable-expressions" id="resolving-variable-expressions"><small>11&#8202;.&#8202;3&#8202;.&#8202;3</small>Resolving variable expressions</a></h3>
-<p>Variable declarations<span class="em">&mdash;</span>and function declarations, which we&rsquo;ll get to<span class="em">&mdash;</span>write
-to the scope maps. Those maps are read when we resolve variable expressions.</p>
+<p>Nous mettons la valeur de la variable dans la map de portée à <code>true</code> pour la marquer comme pleinement initialisée et disponible pour l&rsquo;utilisation. Elle est vivante !</p>
+<h3><a href="#résoudre-les-expressions-de-variable" id="résoudre-les-expressions-de-variable"><small>11&#8202;.&#8202;3&#8202;.&#8202;3</small>Résoudre les expressions de variable</a></h3>
+<p>Les déclarations de variable<span class="em">&mdash;</span>et les déclarations de fonction, auxquelles nous arriverons<span class="em">&mdash;</span>écrivent dans les maps de portée. Ces maps sont lues quand nous résolvons les expressions de variable.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>visitVarStmt</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -640,11 +437,8 @@ add after <em>visitVarStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>visitVarStmt</em>()</div>
 
-<p>First, we check to see if the variable is being accessed inside its own
-initializer. This is where the values in the scope map come into play. If the
-variable exists in the current scope but its value is <code>false</code>, that means we
-have declared it but not yet defined it. We report that error.</p>
-<p>After that check, we actually resolve the variable itself using this helper:</p>
+<p>D&rsquo;abord, nous vérifions pour voir si la variable est accédée à l&rsquo;intérieur de son propre initialiseur. C&rsquo;est là que les valeurs dans la map de portée entrent en jeu. Si la variable existe dans la portée courante mais que sa valeur est <code>false</code>, cela signifie que nous l&rsquo;avons déclarée mais pas encore définie. Nous rapportons cette erreur.</p>
+<p>Après cette vérification, nous résolvons réellement la variable elle-même en utilisant cet assistant :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>define</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">void</span> <span class="i">resolveLocal</span>(<span class="t">Expr</span> <span class="i">expr</span>, <span class="t">Token</span> <span class="i">name</span>) {
@@ -658,19 +452,10 @@ add after <em>define</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>define</em>()</div>
 
-<p>This looks, for good reason, a lot like the code in Environment for evaluating a
-variable. We start at the innermost scope and work outwards, looking in each map
-for a matching name. If we find the variable, we resolve it, passing in the
-number of scopes between the current innermost scope and the scope where the
-variable was found. So, if the variable was found in the current scope, we
-pass in 0. If it&rsquo;s in the immediately enclosing scope, 1. You get the idea.</p>
-<p>If we walk through all of the block scopes and never find the variable, we leave
-it unresolved and assume it&rsquo;s global. We&rsquo;ll get to the implementation of that
-<code>resolve()</code> method a little later. For now, let&rsquo;s keep on cranking through the
-other syntax nodes.</p>
-<h3><a href="#resolving-assignment-expressions" id="resolving-assignment-expressions"><small>11&#8202;.&#8202;3&#8202;.&#8202;4</small>Resolving assignment expressions</a></h3>
-<p>The other expression that references a variable is assignment. Resolving one
-looks like this:</p>
+<p>Ceci ressemble, pour une bonne raison, beaucoup au code dans Environment pour évaluer une variable. Nous commençons à la portée la plus interne et travaillons vers l&rsquo;extérieur, cherchant dans chaque map un nom correspondant. Si nous trouvons la variable, nous la résolvons, en passant le nombre de portées entre la portée la plus interne courante et la portée où la variable a été trouvée. Donc, si la variable a été trouvée dans la portée courante, nous passons 0. Si c&rsquo;est dans la portée immédiatement englobante, 1. Vous avez l&rsquo;idée.</p>
+<p>Si nous parcourons toutes les portées de bloc et ne trouvons jamais la variable, nous la laissons non résolue et supposons qu&rsquo;elle est globale. Nous arriverons à l&rsquo;implémentation de cette méthode <code>resolve()</code> un peu plus tard. Pour l&rsquo;instant, continuons à mouliner à travers les autres nœuds de syntaxe.</p>
+<h3><a href="#résoudre-les-expressions-daffectation" id="résoudre-les-expressions-daffectation"><small>11&#8202;.&#8202;3&#8202;.&#8202;4</small>Résoudre les expressions d&rsquo;affectation</a></h3>
+<p>L&rsquo;autre expression qui référence une variable est l&rsquo;affectation. En résoudre une ressemble à ceci :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>visitVarStmt</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -682,14 +467,9 @@ add after <em>visitVarStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>visitVarStmt</em>()</div>
 
-<p>First, we resolve the expression for the assigned value in case it also contains
-references to other variables. Then we use our existing <code>resolveLocal()</code> method
-to resolve the variable that&rsquo;s being assigned to.</p>
-<h3><a href="#resolving-function-declarations" id="resolving-function-declarations"><small>11&#8202;.&#8202;3&#8202;.&#8202;5</small>Resolving function declarations</a></h3>
-<p>Finally, functions. Functions both bind names and introduce a scope. The name of
-the function itself is bound in the surrounding scope where the function is
-declared. When we step into the function&rsquo;s body, we also bind its parameters
-into that inner function scope.</p>
+<p>D&rsquo;abord, nous résolvons l&rsquo;expression pour la valeur assignée au cas où elle contient aussi des références à d&rsquo;autres variables. Ensuite nous utilisons notre méthode <code>resolveLocal()</code> existante pour résoudre la variable à qui on assigne.</p>
+<h3><a href="#résoudre-les-déclarations-de-fonction" id="résoudre-les-déclarations-de-fonction"><small>11&#8202;.&#8202;3&#8202;.&#8202;5</small>Résoudre les déclarations de fonction</a></h3>
+<p>Finalement, les fonctions. Les fonctions lient à la fois des noms et introduisent une portée. Le nom de la fonction elle-même est lié dans la portée environnante où la fonction est déclarée. Quand nous entrons dans le corps de la fonction, nous lions aussi ses paramètres dans cette portée de fonction interne.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>visitBlockStmt</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -703,11 +483,8 @@ add after <em>visitBlockStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>visitBlockStmt</em>()</div>
 
-<p>Similar to <code>visitVariableStmt()</code>, we declare and define the name of the function
-in the current scope. Unlike variables, though, we define the name eagerly,
-before resolving the function&rsquo;s body. This lets a function recursively refer to
-itself inside its own body.</p>
-<p>Then we resolve the function&rsquo;s body using this:</p>
+<p>Similaire à <code>visitVariableStmt()</code>, nous déclarons et définissons le nom de la fonction dans la portée courante. Contrairement aux variables, cependant, nous définissons le nom avidement, avant de résoudre le corps de la fonction. Cela laisse une fonction faire référence récursivement à elle-même à l&rsquo;intérieur de son propre corps.</p>
+<p>Ensuite nous résolvons le corps de la fonction en utilisant ceci :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>resolve</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">void</span> <span class="i">resolveFunction</span>(<span class="t">Stmt</span>.<span class="t">Function</span> <span class="i">function</span>) {
@@ -722,26 +499,14 @@ add after <em>resolve</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>resolve</em>()</div>
 
-<p>It&rsquo;s a separate method since we will also use it for resolving Lox methods when
-we add classes later. It creates a new scope for the body and then binds
-variables for each of the function&rsquo;s parameters.</p>
-<p>Once that&rsquo;s ready, it resolves the function body in that scope. This is
-different from how the interpreter handles function declarations. At <em>runtime</em>,
-declaring a function doesn&rsquo;t do anything with the function&rsquo;s body. The body
-doesn&rsquo;t get touched until later when the function is called. In a <em>static</em>
-analysis, we immediately traverse into the body right then and there.</p>
-<h3><a href="#resolving-the-other-syntax-tree-nodes" id="resolving-the-other-syntax-tree-nodes"><small>11&#8202;.&#8202;3&#8202;.&#8202;6</small>Resolving the other syntax tree nodes</a></h3>
-<p>That covers the interesting corners of the grammars. We handle every place where
-a variable is declared, read, or written, and every place where a scope is
-created or destroyed. Even though they aren&rsquo;t affected by variable resolution,
-we also need visit methods for all of the other syntax tree nodes in order to
-recurse into their subtrees. <span name="boring">Sorry</span> this bit is
-boring, but bear with me. We&rsquo;ll go kind of &ldquo;top down&rdquo; and start with statements.</p>
+<p>C&rsquo;est une méthode séparée puisque nous l&rsquo;utiliserons aussi pour résoudre les méthodes Lox quand nous ajouterons les classes plus tard. Elle crée une nouvelle portée pour le corps et ensuite lie les variables pour chacun des paramètres de la fonction.</p>
+<p>Une fois que c&rsquo;est prêt, elle résout le corps de la fonction dans cette portée. C&rsquo;est différent de comment l&rsquo;interpréteur gère les déclarations de fonction. À l&rsquo;<em>exécution</em>, déclarer une fonction ne fait rien avec le corps de la fonction. Le corps n&rsquo;est pas touché jusqu&rsquo;à plus tard quand la fonction est appelée. Dans une analyse <em>statique</em>, nous traversons immédiatement dans le corps ici et maintenant.</p>
+<h3><a href="#résoudre-les-autres-nœuds-darbre-syntaxique" id="résoudre-les-autres-nœuds-darbre-syntaxique"><small>11&#8202;.&#8202;3&#8202;.&#8202;6</small>Résoudre les autres nœuds d&rsquo;arbre syntaxique</a></h3>
+<p>Cela couvre les coins intéressants des grammaires. Nous gérons chaque endroit où une variable est déclarée, lue, ou écrite, et chaque endroit où une portée est créée ou détruite. Même s&rsquo;ils ne sont pas affectés par la résolution de variable, nous avons aussi besoin de méthodes visit pour tous les autres nœuds d&rsquo;arbre syntaxique afin de récurser dans leurs sous-arbres. <span name="boring">Désolé</span> ce morceau est ennuyeux, mais supportez-moi. Nous allons aller genre &ldquo;de haut en bas&rdquo; et commencer avec les instructions.</p>
 <aside name="boring">
-<p>I did say the book would have every single line of code for these interpreters.
-I didn&rsquo;t say they&rsquo;d all be exciting.</p>
+<p>J&rsquo;ai bien dit que le livre aurait chaque ligne de code unique pour ces interpréteurs. Je n&rsquo;ai pas dit qu&rsquo;elles seraient toutes excitantes.</p>
 </aside>
-<p>An expression statement contains a single expression to traverse.</p>
+<p>Une instruction d&rsquo;expression contient une seule expression à traverser.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>visitBlockStmt</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -752,8 +517,7 @@ add after <em>visitBlockStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>visitBlockStmt</em>()</div>
 
-<p>An if statement has an expression for its condition and one or two statements
-for the branches.</p>
+<p>Une instruction if a une expression pour sa condition et une ou deux instructions pour les branches.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>visitFunctionStmt</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -766,12 +530,8 @@ add after <em>visitFunctionStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>visitFunctionStmt</em>()</div>
 
-<p>Here, we see how resolution is different from interpretation. When we resolve an
-<code>if</code> statement, there is no control flow. We resolve the condition and <em>both</em>
-branches. Where a dynamic execution steps only into the branch that <em>is</em> run, a
-static analysis is conservative<span class="em">&mdash;</span>it analyzes any branch that <em>could</em> be run.
-Since either one could be reached at runtime, we resolve both.</p>
-<p>Like expression statements, a <code>print</code> statement contains a single subexpression.</p>
+<p>Ici, nous voyons comment la résolution est différente de l&rsquo;interprétation. Quand nous résolvons une instruction <code>if</code>, il n&rsquo;y a pas de contrôle de flux. Nous résolvons la condition et les <em>deux</em> branches. Là où une exécution dynamique entre seulement dans la branche qui <em>est</em> lancée, une analyse statique est conservatrice<span class="em">&mdash;</span>elle analyse toute branche qui <em>pourrait</em> être lancée. Puisque l&rsquo;une ou l&rsquo;autre pourrait être atteinte à l&rsquo;exécution, nous résolvons les deux.</p>
+<p>Comme les instructions d&rsquo;expression, une instruction <code>print</code> contient une seule sous-expression.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>visitIfStmt</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -782,7 +542,7 @@ add after <em>visitIfStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>visitIfStmt</em>()</div>
 
-<p>Same deal for return.</p>
+<p>Même affaire pour return.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>visitPrintStmt</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -796,8 +556,7 @@ add after <em>visitPrintStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>visitPrintStmt</em>()</div>
 
-<p>As in <code>if</code> statements, with a <code>while</code> statement, we resolve its condition and
-resolve the body exactly once.</p>
+<p>Comme dans les instructions <code>if</code>, avec une instruction <code>while</code>, nous résolvons sa condition et résolvons le corps exactement une fois.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>visitVarStmt</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -809,9 +568,8 @@ add after <em>visitVarStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>visitVarStmt</em>()</div>
 
-<p>That covers all the statements. On to expressions<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
-<p>Our old friend the binary expression. We traverse into and resolve both
-operands.</p>
+<p>Cela couvre toutes les instructions. Passons aux expressions<span class="ellipse">&thinsp;.&thinsp;.&thinsp;.&nbsp;</span></p>
+<p>Notre vieil ami l&rsquo;expression binaire. Nous traversons dedans et résolvons les deux opérandes.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>visitAssignExpr</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -823,9 +581,7 @@ add after <em>visitAssignExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>visitAssignExpr</em>()</div>
 
-<p>Calls are similar<span class="em">&mdash;</span>we walk the argument list and resolve them all. The thing
-being called is also an expression (usually a variable expression), so that gets
-resolved too.</p>
+<p>Les appels sont similaires<span class="em">&mdash;</span>nous parcourons la liste d&rsquo;arguments et les résolvons tous. La chose étant appelée est aussi une expression (habituellement une expression de variable), donc cela se fait résoudre aussi.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>visitBinaryExpr</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -841,7 +597,7 @@ add after <em>visitBinaryExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>visitBinaryExpr</em>()</div>
 
-<p>Parentheses are easy.</p>
+<p>Les parenthèses sont faciles.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>visitCallExpr</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -852,7 +608,7 @@ add after <em>visitCallExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>visitCallExpr</em>()</div>
 
-<p>Literals are easiest of all.</p>
+<p>Les littéraux sont les plus faciles de tous.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>visitGroupingExpr</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -862,10 +618,8 @@ add after <em>visitGroupingExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>visitGroupingExpr</em>()</div>
 
-<p>A literal expression doesn&rsquo;t mention any variables and doesn&rsquo;t contain any
-subexpressions so there is no work to do.</p>
-<p>Since a static analysis does no control flow or short-circuiting, logical
-expressions are exactly the same as other binary operators.</p>
+<p>Une expression littérale ne mentionne aucune variable et ne contient aucune sous-expression donc il n&rsquo;y a pas de travail à faire.</p>
+<p>Puisqu&rsquo;une analyse statique ne fait aucun contrôle de flux ou court-circuitage, les expressions logiques sont exactement les mêmes que les autres opérateurs binaires.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>visitLiteralExpr</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -877,7 +631,7 @@ add after <em>visitLiteralExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>visitLiteralExpr</em>()</div>
 
-<p>And, finally, the last node. We resolve its one operand.</p>
+<p>Et, finalement, le dernier nœud. Nous résolvons son unique opérande.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>visitLogicalExpr</em>()</div>
 <pre>  <span class="a">@Override</span>
@@ -888,16 +642,9 @@ add after <em>visitLogicalExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>visitLogicalExpr</em>()</div>
 
-<p>With all of these visit methods, the Java compiler should be satisfied that
-Resolver fully implements Stmt.Visitor and Expr.Visitor. Now is a good time to
-take a break, have a snack, maybe a little nap.</p>
-<h2><a href="#interpreting-resolved-variables" id="interpreting-resolved-variables"><small>11&#8202;.&#8202;4</small>Interpreting Resolved Variables</a></h2>
-<p>Let&rsquo;s see what our resolver is good for. Each time it visits a variable, it
-tells the interpreter how many scopes there are between the current scope and
-the scope where the variable is defined. At runtime, this corresponds exactly to
-the number of <em>environments</em> between the current one and the enclosing one where
-the interpreter can find the variable&rsquo;s value. The resolver hands that number to
-the interpreter by calling this:</p>
+<p>Avec toutes ces méthodes visit, le compilateur Java devrait être satisfait que Resolver implémente pleinement Stmt.Visitor et Expr.Visitor. Maintenant est un bon moment pour prendre une pause, prendre un en-cas, peut-être une petite sieste.</p>
+<h2><a href="#interpréter-les-variables-résolues" id="interpréter-les-variables-résolues"><small>11&#8202;.&#8202;4</small>Interpréter les Variables Résolues</a></h2>
+<p>Voyons à quoi notre résolveur est bon. Chaque fois qu&rsquo;il visite une variable, il dit à l&rsquo;interpréteur combien de portées il y a entre la portée courante et la portée où la variable est définie. À l&rsquo;exécution, cela correspond exactement au nombre d&rsquo;<em>environnements</em> entre le courant et l&rsquo;englobant où l&rsquo;interpréteur peut trouver la valeur de la variable. Le résolveur passe ce nombre à l&rsquo;interpréteur en appelant ceci :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>execute</em>()</div>
 <pre>  <span class="t">void</span> <span class="i">resolve</span>(<span class="t">Expr</span> <span class="i">expr</span>, <span class="t">int</span> <span class="i">depth</span>) {
@@ -906,24 +653,12 @@ add after <em>execute</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>execute</em>()</div>
 
-<p>We want to store the resolution information somewhere so we can use it when the
-variable or assignment expression is later executed, but where? One obvious
-place is right in the syntax tree node itself. That&rsquo;s a fine approach, and
-that&rsquo;s where many compilers store the results of analyses like this.</p>
-<p>We could do that, but it would require mucking around with our syntax tree
-generator. Instead, we&rsquo;ll take another common approach and store it off to the
-<span name="side">side</span> in a map that associates each syntax tree node
-with its resolved data.</p>
+<p>Nous voulons stocker l&rsquo;information de résolution quelque part pour que nous puissions l&rsquo;utiliser quand l&rsquo;expression de variable ou d&rsquo;affectation est plus tard exécutée, mais où ? Un endroit évident est juste dans le nœud d&rsquo;arbre syntaxique lui-même. C&rsquo;est une approche correcte, et c&rsquo;est où beaucoup de compilateurs stockent les résultats d&rsquo;analyses comme celle-ci.</p>
+<p>Nous pourrions faire cela, mais cela exigerait de trifouiller avec notre générateur d&rsquo;arbre syntaxique. Au lieu de cela, nous prendrons une autre approche courante et le stockerons sur le <span name="side">côté</span> dans une map qui associe chaque nœud d&rsquo;arbre syntaxique avec ses données résolues.</p>
 <aside name="side">
-<p>I <em>think</em> I&rsquo;ve heard this map called a &ldquo;side table&rdquo; since it&rsquo;s a tabular data
-structure that stores data separately from the objects it relates to. But
-whenever I try to Google for that term, I get pages about furniture.</p>
+<p>Je <em>pense</em> que j&rsquo;ai entendu cette map être appelée une &ldquo;table latérale&rdquo; (side table) puisque c&rsquo;est une structure de données tabulaire qui stocke des données séparément des objets auxquels elle se rapporte. Mais chaque fois que j&rsquo;essaie de Googler ce terme, j&rsquo;obtiens des pages sur des meubles.</p>
 </aside>
-<p>Interactive tools like IDEs often incrementally reparse and re-resolve parts of
-the user&rsquo;s program. It may be hard to find all of the bits of state that need
-recalculating when they&rsquo;re hiding in the foliage of the syntax tree. A benefit
-of storing this data outside of the nodes is that it makes it easy to <em>discard</em>
-it<span class="em">&mdash;</span>simply clear the map.</p>
+<p>Les outils interactifs comme les IDEs re-parsent et re-résolvent souvent incrémentalement des parties du programme de l&rsquo;utilisateur. Il peut être difficile de trouver tous les bouts d&rsquo;état qui ont besoin d&rsquo;être recalculés quand ils se cachent dans le feuillage de l&rsquo;arbre syntaxique. Un bénéfice de stocker ces données en dehors des nœuds est que cela rend facile de les <em>jeter</em><span class="em">&mdash;</span>effacez simplement la map.</p>
 <div class="codehilite"><pre class="insert-before">  private Environment environment = globals;
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
 in class <em>Interpreter</em></div>
@@ -934,11 +669,8 @@ in class <em>Interpreter</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in class <em>Interpreter</em></div>
 
-<p>You might think we&rsquo;d need some sort of nested tree structure to avoid getting
-confused when there are multiple expressions that reference the same variable,
-but each expression node is its own Java object with its own unique identity. A
-single monolithic map doesn&rsquo;t have any trouble keeping them separated.</p>
-<p>As usual, using a collection requires us to import a couple of names.</p>
+<p>Vous pourriez penser que nous aurions besoin d&rsquo;une sorte de structure d&rsquo;arbre imbriquée pour éviter d&rsquo;être confus quand il y a plusieurs expressions qui référencent la même variable, mais chaque nœud d&rsquo;expression est son propre objet Java avec sa propre identité unique. Une seule map monolithique n&rsquo;a aucun mal à les garder séparés.</p>
+<p>Comme d&rsquo;habitude, utiliser une collection exige de nous d&rsquo;importer une paire de noms.</p>
 <div class="codehilite"><pre class="insert-before">import java.util.ArrayList;
 </pre><div class="source-file"><em>lox/Interpreter.java</em></div>
 <pre class="insert"><span class="k">import</span> <span class="i">java.util.HashMap</span>;
@@ -946,7 +678,7 @@ single monolithic map doesn&rsquo;t have any trouble keeping them separated.</p>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em></div>
 
-<p>And:</p>
+<p>Et :</p>
 <div class="codehilite"><pre class="insert-before">import java.util.List;
 </pre><div class="source-file"><em>lox/Interpreter.java</em></div>
 <pre class="insert"><span class="k">import</span> <span class="i">java.util.Map</span>;
@@ -956,10 +688,8 @@ class Interpreter implements Expr.Visitor&lt;Object&gt;,
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em></div>
 
-<h3><a href="#accessing-a-resolved-variable" id="accessing-a-resolved-variable"><small>11&#8202;.&#8202;4&#8202;.&#8202;1</small>Accessing a resolved variable</a></h3>
-<p>Our interpreter now has access to each variable&rsquo;s resolved location. Finally, we
-get to make use of that. We replace the visit method for variable expressions
-with this:</p>
+<h3><a href="#accéder-&agrave;-une-variable-résolue" id="accéder-&agrave;-une-variable-résolue"><small>11&#8202;.&#8202;4&#8202;.&#8202;1</small>Accéder &agrave; une variable résolue</a></h3>
+<p>Notre interpréteur a maintenant accès à la localisation résolue de chaque variable. Finalement, nous arrivons à faire usage de cela. Nous remplaçons la méthode visit pour les expressions de variable par ceci :</p>
 <div class="codehilite"><pre class="insert-before">  public Object visitVariableExpr(Expr.Variable expr) {
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
 in <em>visitVariableExpr</em>()<br>
@@ -969,7 +699,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitVariableExpr</em>(), replace 1 line</div>
 
-<p>That delegates to:</p>
+<p>Cela délègue à :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Interpreter.java</em><br>
 add after <em>visitVariableExpr</em>()</div>
 <pre>  <span class="k">private</span> <span class="t">Object</span> <span class="i">lookUpVariable</span>(<span class="t">Token</span> <span class="i">name</span>, <span class="t">Expr</span> <span class="i">expr</span>) {
@@ -983,15 +713,8 @@ add after <em>visitVariableExpr</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, add after <em>visitVariableExpr</em>()</div>
 
-<p>There are a couple of things going on here. First, we look up the resolved
-distance in the map. Remember that we resolved only <em>local</em> variables. Globals
-are treated specially and don&rsquo;t end up in the map (hence the name <code>locals</code>). So,
-if we don&rsquo;t find a distance in the map, it must be global. In that case, we
-look it up, dynamically, directly in the global environment. That throws a
-runtime error if the variable isn&rsquo;t defined.</p>
-<p>If we <em>do</em> get a distance, we have a local variable, and we get to take
-advantage of the results of our static analysis. Instead of calling <code>get()</code>, we
-call this new method on Environment:</p>
+<p>Il y a une paire de choses qui se passent ici. D&rsquo;abord, nous cherchons la distance résolue dans la map. Rappelez-vous que nous avons résolu seulement les variables <em>locales</em>. Les globales sont traitées spécialement et ne finissent pas dans la map (d&rsquo;où le nom <code>locals</code>). Donc, si nous ne trouvons pas une distance dans la map, elle doit être globale. Dans ce cas, nous la cherchons, dynamiquement, directement dans l&rsquo;environnement global. Cela lance une erreur d&rsquo;exécution si la variable n&rsquo;est pas définie.</p>
+<p>Si nous <em>obtenons</em> une distance, nous avons une variable locale, et nous arrivons à tirer avantage des résultats de notre analyse statique. Au lieu d&rsquo;appeler <code>get()</code>, nous appelons cette nouvelle méthode sur Environment :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Environment.java</em><br>
 add after <em>define</em>()</div>
 <pre>  <span class="t">Object</span> <span class="i">getAt</span>(<span class="t">int</span> <span class="i">distance</span>, <span class="t">String</span> <span class="i">name</span>) {
@@ -1000,10 +723,7 @@ add after <em>define</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Environment.java</em>, add after <em>define</em>()</div>
 
-<p>The old <code>get()</code> method dynamically walks the chain of enclosing environments,
-scouring each one to see if the variable might be hiding in there somewhere. But
-now we know exactly which environment in the chain will have the variable. We
-reach it using this helper method:</p>
+<p>La vieille méthode <code>get()</code> parcourt dynamiquement la chaîne d&rsquo;environnements englobants, récurant chacun pour voir si la variable pourrait se cacher là-dedans quelque part. Mais maintenant nous savons exactement quel environnement dans la chaîne aura la variable. Nous l&rsquo;atteignons en utilisant cette méthode assistante :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Environment.java</em><br>
 add after <em>define</em>()</div>
 <pre>  <span class="t">Environment</span> <span class="i">ancestor</span>(<span class="t">int</span> <span class="i">distance</span>) {
@@ -1017,27 +737,13 @@ add after <em>define</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Environment.java</em>, add after <em>define</em>()</div>
 
-<p>This walks a fixed number of hops up the parent chain and returns the
-environment there. Once we have that, <code>getAt()</code> simply returns the value of the
-variable in that environment&rsquo;s map. It doesn&rsquo;t even have to check to see if the
-variable is there<span class="em">&mdash;</span>we know it will be because the resolver already found it
-before.</p>
+<p>Ceci marche un nombre fixe de sauts vers le haut de la chaîne parente et renvoie l&rsquo;environnement là. Une fois que nous avons cela, <code>getAt()</code> renvoie simplement la valeur de la variable dans la map de cet environnement. Il n&rsquo;a même pas à vérifier pour voir si la variable est là<span class="em">&mdash;</span>nous savons qu&rsquo;elle le sera parce que le résolveur l&rsquo;a déjà trouvée avant.</p>
 <aside name="coupled">
-<p>The way the interpreter assumes the variable is in that map feels like flying
-blind. The interpreter code trusts that the resolver did its job and resolved
-the variable correctly. This implies a deep coupling between these two classes.
-In the resolver, each line of code that touches a scope must have its exact
-match in the interpreter for modifying an environment.</p>
-<p>I felt that coupling firsthand because as I wrote the code for the book, I
-ran into a couple of subtle bugs where the resolver and interpreter code were
-slightly out of sync. Tracking those down was difficult. One tool to make that
-easier is to have the interpreter explicitly assert<span class="em">&mdash;</span>using Java&rsquo;s assert
-statements or some other validation tool<span class="em">&mdash;</span>the contract it expects the resolver
-to have already upheld.</p>
+<p>La façon dont l&rsquo;interpréteur suppose que la variable est dans cette map ressemble à voler à l&rsquo;aveugle. Le code de l&rsquo;interpréteur fait confiance à ce que le résolveur a fait son travail et a résolu la variable correctement. Cela implique un couplage profond entre ces deux classes. Dans le résolveur, chaque ligne de code qui touche une portée doit avoir sa correspondance exacte dans l&rsquo;interpréteur pour modifier un environnement.</p>
+<p>J&rsquo;ai senti ce couplage de première main parce qu&rsquo;alors que j&rsquo;écrivais le code pour le livre, je suis tombé sur une paire de bugs subtils où le code du résolveur et de l&rsquo;interpréteur étaient légèrement désynchronisés. Traquer ceux-là était difficile. Un outil pour rendre cela plus facile est d&rsquo;avoir l&rsquo;interpréteur ASSERT explicitement<span class="em">&mdash;</span>en utilisant les instructions assert de Java ou un autre outil de validation<span class="em">&mdash;</span>le contrat qu&rsquo;il attend que le résolveur ait déjà soutenu.</p>
 </aside>
-<h3><a href="#assigning-to-a-resolved-variable" id="assigning-to-a-resolved-variable"><small>11&#8202;.&#8202;4&#8202;.&#8202;2</small>Assigning to a resolved variable</a></h3>
-<p>We can also use a variable by assigning to it. The changes to visiting an
-assignment expression are similar.</p>
+<h3><a href="#assigner-&agrave;-une-variable-résolue" id="assigner-&agrave;-une-variable-résolue"><small>11&#8202;.&#8202;4&#8202;.&#8202;2</small>Assigner &agrave; une variable résolue</a></h3>
+<p>Nous pouvons aussi utiliser une variable en l&rsquo;assignant. Les changements pour visiter une expression d&rsquo;affectation sont similaires.</p>
 <div class="codehilite"><pre class="insert-before">  public Object visitAssignExpr(Expr.Assign expr) {
     Object value = evaluate(expr.value);
 </pre><div class="source-file"><em>lox/Interpreter.java</em><br>
@@ -1056,8 +762,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Interpreter.java</em>, in <em>visitAssignExpr</em>(), replace 1 line</div>
 
-<p>Again, we look up the variable&rsquo;s scope distance. If not found, we assume it&rsquo;s
-global and handle it the same way as before. Otherwise, we call this new method:</p>
+<p>Encore une fois, nous cherchons la distance de portée de la variable. Si non trouvée, nous supposons qu&rsquo;elle est globale et la gérons de la même façon qu&rsquo;avant. Sinon, nous appelons cette nouvelle méthode :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Environment.java</em><br>
 add after <em>getAt</em>()</div>
 <pre>  <span class="t">void</span> <span class="i">assignAt</span>(<span class="t">int</span> <span class="i">distance</span>, <span class="t">Token</span> <span class="i">name</span>, <span class="t">Object</span> <span class="i">value</span>) {
@@ -1066,15 +771,10 @@ add after <em>getAt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Environment.java</em>, add after <em>getAt</em>()</div>
 
-<p>As <code>getAt()</code> is to <code>get()</code>, <code>assignAt()</code> is to <code>assign()</code>. It walks a fixed
-number of environments, and then stuffs the new value in that map.</p>
-<p>Those are the only changes to Interpreter. This is why I chose a representation
-for our resolved data that was minimally invasive. All of the rest of the nodes
-continue working as they did before. Even the code for modifying environments is
-unchanged.</p>
-<h3><a href="#running-the-resolver" id="running-the-resolver"><small>11&#8202;.&#8202;4&#8202;.&#8202;3</small>Running the resolver</a></h3>
-<p>We do need to actually <em>run</em> the resolver, though. We insert the new pass after
-the parser does its magic.</p>
+<p>Comme <code>getAt()</code> est à <code>get()</code>, <code>assignAt()</code> est à <code>assign()</code>. Elle parcourt un nombre fixe d&rsquo;environnements, et ensuite bourre la nouvelle valeur dans cette map.</p>
+<p>Ce sont les seuls changements à Interpreter. C&rsquo;est pourquoi j&rsquo;ai choisi une représentation pour nos données résolues qui était minimalement invasive. Tout le reste des nœuds continue de fonctionner comme ils le faisaient avant. Même le code pour modifier les environnements est inchangé.</p>
+<h3><a href="#lancer-le-résolveur" id="lancer-le-résolveur"><small>11&#8202;.&#8202;4&#8202;.&#8202;3</small>Lancer le résolveur</a></h3>
+<p>Nous avons besoin de <em>lancer</em> réellement le résolveur, cependant. Nous insérons la nouvelle passe après que le parseur ait fait sa magie.</p>
 <div class="codehilite"><pre class="insert-before">    // Stop if there was a syntax error.
     if (hadError) return;
 
@@ -1087,29 +787,17 @@ in <em>run</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Lox.java</em>, in <em>run</em>()</div>
 
-<p>We don&rsquo;t run the resolver if there are any parse errors. If the code has a
-syntax error, it&rsquo;s never going to run, so there&rsquo;s little value in resolving it.
-If the syntax is clean, we tell the resolver to do its thing. The resolver has a
-reference to the interpreter and pokes the resolution data directly into it as
-it walks over variables. When the interpreter runs next, it has everything it
-needs.</p>
-<p>At least, that&rsquo;s true if the resolver <em>succeeds</em>. But what about errors during
-resolution?</p>
-<h2><a href="#resolution-errors" id="resolution-errors"><small>11&#8202;.&#8202;5</small>Resolution Errors</a></h2>
-<p>Since we are doing a semantic analysis pass, we have an opportunity to make
-Lox&rsquo;s semantics more precise, and to help users catch bugs early before running
-their code. Take a look at this bad boy:</p>
+<p>Nous ne lançons pas le résolveur s&rsquo;il y a des erreurs de parsing. Si le code a une erreur de syntaxe, il ne va jamais tourner, donc il y a peu de valeur à le résoudre. Si la syntaxe est propre, nous disons au résolveur de faire son truc. Le résolveur a une référence à l&rsquo;interpréteur et pousse les données de résolution directement dedans alors qu&rsquo;il marche sur les variables. Quand l&rsquo;interpréteur tourne ensuite, il a tout ce dont il a besoin.</p>
+<p>Au moins, c&rsquo;est vrai si le résolveur <em>réussit</em>. Mais qu&rsquo;en est-il des erreurs pendant la résolution ?</p>
+<h2><a href="#erreurs-de-résolution" id="erreurs-de-résolution"><small>11&#8202;.&#8202;5</small>Erreurs de Résolution</a></h2>
+<p>Puisque nous faisons une passe d&rsquo;analyse sémantique, nous avons une opportunité de rendre la sémantique de Lox plus précise, et d&rsquo;aider les utilisateurs à attraper des bugs tôt avant de lancer leur code. Jetez un œil à ce mauvais garçon :</p>
 <div class="codehilite"><pre><span class="k">fun</span> <span class="i">bad</span>() {
-  <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;first&quot;</span>;
+  <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;premier&quot;</span>;
   <span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;second&quot;</span>;
 }
 </pre></div>
-<p>We do allow declaring multiple variables with the same name in the <em>global</em>
-scope, but doing so in a local scope is probably a mistake. If they knew the
-variable already existed, they would have assigned to it instead of using <code>var</code>.
-And if they <em>didn&rsquo;t</em> know it existed, they probably didn&rsquo;t intend to overwrite
-the previous one.</p>
-<p>We can detect this mistake statically while resolving.</p>
+<p>Nous permettons bien de déclarer plusieurs variables avec le même nom dans la portée <em>globale</em>, mais faire ainsi dans une portée locale est probablement une erreur. S&rsquo;ils savaient que la variable existait déjà, ils l&rsquo;auraient assignée au lieu d&rsquo;utiliser <code>var</code>. Et s&rsquo;ils ne savaient <em>pas</em> qu&rsquo;elle existait, ils n&rsquo;avaient probablement pas l&rsquo;intention d&rsquo;écraser la précédente.</p>
+<p>Nous pouvons détecter cette erreur statiquement pendant la résolution.</p>
 <div class="codehilite"><pre class="insert-before">    Map&lt;String, Boolean&gt; scope = scopes.peek();
 </pre><div class="source-file"><em>lox/Resolver.java</em><br>
 in <em>declare</em>()</div>
@@ -1122,19 +810,13 @@ in <em>declare</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, in <em>declare</em>()</div>
 
-<p>When we declare a variable in a local scope, we already know the names of every
-variable previously declared in that same scope. If we see a collision, we
-report an error.</p>
-<h3><a href="#invalid-return-errors" id="invalid-return-errors"><small>11&#8202;.&#8202;5&#8202;.&#8202;1</small>Invalid return errors</a></h3>
-<p>Here&rsquo;s another nasty little script:</p>
-<div class="codehilite"><pre><span class="k">return</span> <span class="s">&quot;at top level&quot;</span>;
+<p>Quand nous déclarons une variable dans une portée locale, nous connaissons déjà les noms de chaque variable précédemment déclarée dans cette même portée. Si nous voyons une collision, nous rapportons une erreur.</p>
+<h3><a href="#erreurs-de-retour-invalide" id="erreurs-de-retour-invalide"><small>11&#8202;.&#8202;5&#8202;.&#8202;1</small>Erreurs de retour invalide</a></h3>
+<p>Voici un autre petit script méchant :</p>
+<div class="codehilite"><pre><span class="k">return</span> <span class="s">&quot;au niveau supérieur&quot;</span>;
 </pre></div>
-<p>This executes a <code>return</code> statement, but it&rsquo;s not even inside a function at all.
-It&rsquo;s top-level code. I don&rsquo;t know what the user <em>thinks</em> is going to happen, but
-I don&rsquo;t think we want Lox to allow this.</p>
-<p>We can extend the resolver to detect this statically. Much like we track scopes
-as we walk the tree, we can track whether or not the code we are currently
-visiting is inside a function declaration.</p>
+<p>Ceci exécute une instruction <code>return</code>, mais ce n&rsquo;est même pas à l&rsquo;intérieur d&rsquo;une fonction du tout. C&rsquo;est du code de niveau supérieur. Je ne sais pas ce que l&rsquo;utilisateur <em>pense</em> qu&rsquo;il va arriver, mais je ne pense pas que nous voulons que Lox permette cela.</p>
+<p>Nous pouvons étendre le résolveur pour détecter cela statiquement. Tout comme nous suivons les portées alors que nous parcourons l&rsquo;arbre, nous pouvons suivre si oui ou non le code que nous visitons actuellement est à l&rsquo;intérieur d&rsquo;une déclaration de fonction.</p>
 <div class="codehilite"><pre class="insert-before">  private final Stack&lt;Map&lt;String, Boolean&gt;&gt; scopes = new Stack&lt;&gt;();
 </pre><div class="source-file"><em>lox/Resolver.java</em><br>
 in class <em>Resolver</em></div>
@@ -1145,7 +827,7 @@ in class <em>Resolver</em></div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, in class <em>Resolver</em></div>
 
-<p>Instead of a bare Boolean, we use this funny enum:</p>
+<p>Au lieu d&rsquo;un Booléen nu, nous utilisons cet enum drôle :</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 add after <em>Resolver</em>()</div>
 <pre>  <span class="k">private</span> <span class="k">enum</span> <span class="t">FunctionType</span> {
@@ -1155,9 +837,7 @@ add after <em>Resolver</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, add after <em>Resolver</em>()</div>
 
-<p>It seems kind of dumb now, but we&rsquo;ll add a couple more cases to it later and
-then it will make more sense. When we resolve a function declaration, we pass
-that in.</p>
+<p>Cela semble un peu bête maintenant, mais nous lui ajouterons une paire de cas en plus plus tard et alors cela aura plus de sens. Quand nous résolvons une déclaration de fonction, nous passons cela dedans.</p>
 <div class="codehilite"><pre class="insert-before">    define(stmt.name);
 
 </pre><div class="source-file"><em>lox/Resolver.java</em><br>
@@ -1168,8 +848,7 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, in <em>visitFunctionStmt</em>(), replace 1 line</div>
 
-<p>Over in <code>resolveFunction()</code>, we take that parameter and store it in the field
-before resolving the body.</p>
+<p>Là-bas dans <code>resolveFunction()</code>, nous prenons ce paramètre et le stockons dans le champ avant de résoudre le corps.</p>
 <div class="codehilite"><div class="source-file"><em>lox/Resolver.java</em><br>
 method <em>resolveFunction</em>()<br>
 replace 1 line</div>
@@ -1182,14 +861,8 @@ replace 1 line</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, method <em>resolveFunction</em>(), replace 1 line</div>
 
-<p>We stash the previous value of the field in a local variable first. Remember,
-Lox has local functions, so you can nest function declarations arbitrarily
-deeply. We need to track not just that we&rsquo;re in a function, but <em>how many</em> we&rsquo;re
-in.</p>
-<p>We could use an explicit stack of FunctionType values for that, but instead
-we&rsquo;ll piggyback on the JVM. We store the previous value in a local on the Java
-stack. When we&rsquo;re done resolving the function body, we restore the field to that
-value.</p>
+<p>Nous planquons la valeur précédente du champ dans une variable locale d&rsquo;abord. Rappelez-vous, Lox a des fonctions locales, donc vous pouvez imbriquer des déclarations de fonction arbitrairement profondément. Nous avons besoin de suivre non seulement que nous sommes dans une fonction, mais dans <em>combien</em> nous sommes.</p>
+<p>Nous pourrions utiliser une pile explicite de valeurs FunctionType pour cela, mais au lieu de cela nous ferons du ferroutage sur la JVM. Nous stockons la valeur précédente dans une locale sur la pile Java. Quand nous avons fini de résoudre le corps de la fonction, nous restaurons le champ à cette valeur.</p>
 <div class="codehilite"><pre class="insert-before">    endScope();
 </pre><div class="source-file"><em>lox/Resolver.java</em><br>
 in <em>resolveFunction</em>()</div>
@@ -1198,8 +871,7 @@ in <em>resolveFunction</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, in <em>resolveFunction</em>()</div>
 
-<p>Now that we can always tell whether or not we&rsquo;re inside a function declaration,
-we check that when resolving a <code>return</code> statement.</p>
+<p>Maintenant que nous pouvons toujours dire si oui ou non nous sommes à l&rsquo;intérieur d&rsquo;une déclaration de fonction, nous vérifions cela quand nous résolvons une instruction <code>return</code>.</p>
 <div class="codehilite"><pre class="insert-before">  public Void visitReturnStmt(Stmt.Return stmt) {
 </pre><div class="source-file"><em>lox/Resolver.java</em><br>
 in <em>visitReturnStmt</em>()</div>
@@ -1211,13 +883,9 @@ in <em>visitReturnStmt</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Resolver.java</em>, in <em>visitReturnStmt</em>()</div>
 
-<p>Neat, right?</p>
-<p>There&rsquo;s one more piece. Back in the main Lox class that stitches everything
-together, we are careful to not run the interpreter if any parse errors are
-encountered. That check runs <em>before</em> the resolver so that we don&rsquo;t try to
-resolve syntactically invalid code.</p>
-<p>But we also need to skip the interpreter if there are resolution errors, so we
-add <em>another</em> check.</p>
+<p>Propre, non ?</p>
+<p>Il y a une pièce de plus. De retour dans la classe principale Lox qui coud tout ensemble, nous faisons attention de ne pas lancer l&rsquo;interpréteur si des erreurs de parsing sont rencontrées. Cette vérification tourne <em>avant</em> le résolveur pour que nous n&rsquo;essayions pas de résoudre du code syntaxiquement invalide.</p>
+<p>Mais nous avons aussi besoin de sauter l&rsquo;interpréteur s&rsquo;il y a des erreurs de résolution, donc nous ajoutons <em>une autre</em> vérification.</p>
 <div class="codehilite"><pre class="insert-before">    resolver.resolve(statements);
 </pre><div class="source-file"><em>lox/Lox.java</em><br>
 in <em>run</em>()</div>
@@ -1231,55 +899,33 @@ in <em>run</em>()</div>
 </pre></div>
 <div class="source-file-narrow"><em>lox/Lox.java</em>, in <em>run</em>()</div>
 
-<p>You could imagine doing lots of other analysis in here. For example, if we added
-<code>break</code> statements to Lox, we would probably want to ensure they are only used
-inside loops.</p>
-<p>We could go farther and report warnings for code that isn&rsquo;t necessarily <em>wrong</em>
-but probably isn&rsquo;t useful. For example, many IDEs will warn if you have
-unreachable code after a <code>return</code> statement, or a local variable whose value is
-never read. All of that would be pretty easy to add to our static visiting pass,
-or as <span name="separate">separate</span> passes.</p>
+<p>Vous pourriez imaginer faire beaucoup d&rsquo;autres analyses ici. Par exemple, si nous ajoutions des instructions <code>break</code> à Lox, nous voudrions probablement nous assurer qu&rsquo;elles sont uniquement utilisées à l&rsquo;intérieur de boucles.</p>
+<p>Nous pourrions aller plus loin et rapporter des avertissements pour du code qui n&rsquo;est pas nécessairement <em>faux</em> mais n&rsquo;est probablement pas utile. Par exemple, beaucoup d&rsquo;IDEs avertiront si vous avez du code inatteignable après une instruction <code>return</code>, ou une variable locale dont la valeur n&rsquo;est jamais lue. Tout cela serait assez facile à ajouter à notre passe de visite statique, ou comme des passes <span name="separate">séparées</span>.</p>
 <aside name="separate">
-<p>The choice of how many different analyses to lump into a single pass is
-difficult. Many small isolated passes, each with their own responsibility, are
-simpler to implement and maintain. However, there is a real runtime cost to
-traversing the syntax tree itself, so bundling multiple analyses into a single
-pass is usually faster.</p>
+<p>Le choix de combien d&rsquo;analyses différentes regrouper dans une seule passe est difficile. Beaucoup de petites passes isolées, chacune avec sa propre responsabilité, sont plus simples à implémenter et maintenir. Cependant, il y a un coût réel à l&rsquo;exécution à traverser l&rsquo;arbre syntaxique lui-même, donc empaqueter plusieurs analyses dans une seule passe est habituellement plus rapide.</p>
 </aside>
-<p>But, for now, we&rsquo;ll stick with that limited amount of analysis. The important
-part is that we fixed that one weird annoying edge case bug, though it might be
-surprising that it took this much work to do it.</p>
+<p>Mais, pour l&rsquo;instant, nous resterons avec cette quantité limitée d&rsquo;analyse. La partie importante est que nous avons corrigé ce bizarre bug de cas limite ennuyeux, bien qu&rsquo;il puisse être surprenant que cela ait pris autant de travail pour le faire.</p>
 <div class="challenges">
-<h2><a href="#challenges" id="challenges">Challenges</a></h2>
+<h2><a href="#défis" id="défis"><small>11&#8202;.&#8202;6</small>Défis</a></h2>
 <ol>
 <li>
-<p>Why is it safe to eagerly define the variable bound to a function&rsquo;s name
-when other variables must wait until after they are initialized before they
-can be used?</p>
+<p>Pourquoi est-il sûr de définir avidement la variable liée au nom d&rsquo;une fonction quand d&rsquo;autres variables doivent attendre jusqu&rsquo;après qu&rsquo;elles soient initialisées avant qu&rsquo;elles puissent être utilisées ?</p>
 </li>
 <li>
-<p>How do other languages you know handle local variables that refer to the
-same name in their initializer, like:</p>
-<div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;outer&quot;</span>;
+<p>Comment d&rsquo;autres langages que vous connaissez gèrent-ils les variables locales qui font référence au même nom dans leur initialiseur, comme :</p>
+<div class="codehilite"><pre><span class="k">var</span> <span class="i">a</span> = <span class="s">&quot;externe&quot;</span>;
 {
   <span class="k">var</span> <span class="i">a</span> = <span class="i">a</span>;
 }
 </pre></div>
-<p>Is it a runtime error? Compile error? Allowed? Do they treat global
-variables differently? Do you agree with their choices? Justify your answer.</p>
+<p>Est-ce une erreur d&rsquo;exécution ? Erreur de compilation ? Autorisé ? Traitent-ils les variables globales différemment ? Êtes-vous d&rsquo;accord avec leurs choix ? Justifiez votre réponse.</p>
 </li>
 <li>
-<p>Extend the resolver to report an error if a local variable is never used.</p>
+<p>Étendez le résolveur pour rapporter une erreur si une variable locale n&rsquo;est jamais utilisée.</p>
 </li>
 <li>
-<p>Our resolver calculates <em>which</em> environment the variable is found in, but
-it&rsquo;s still looked up by name in that map. A more efficient environment
-representation would store local variables in an array and look them up by
-index.</p>
-<p>Extend the resolver to associate a unique index for each local variable
-declared in a scope. When resolving a variable access, look up both the
-scope the variable is in and its index and store that. In the interpreter,
-use that to quickly access a variable by its index instead of using a map.</p>
+<p>Notre résolveur calcule dans <em>quel</em> environnement la variable est trouvée, mais elle est toujours cherchée par nom dans cette map. Une représentation d&rsquo;environnement plus efficace stockerait les variables locales dans un tableau et les chercherait par index.</p>
+<p>Étendez le résolveur pour associer un index unique pour chaque variable locale déclarée dans une portée. Quand vous résolvez un accès de variable, cherchez à la fois la portée dans laquelle la variable est et son index et stockez cela. Dans l&rsquo;interpréteur, utilisez cela pour accéder rapidement à une variable par son index au lieu d&rsquo;utiliser une map.</p>
 </li>
 </ol>
 </div>

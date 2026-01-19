@@ -1,148 +1,87 @@
-> Logic, like whiskey, loses its beneficial effect when taken in too large
-> quantities.
+> La logique, comme le whisky, perd son effet bénéfique quand prise en trop larges
+> quantités.
 >
 > <cite>Edward John Moreton Drax Plunkett, Lord Dunsany</cite>
 
-Compared to [last chapter's][statements] grueling marathon, today is a
-lighthearted frolic through a daisy meadow. But while the work is easy, the
-reward is surprisingly large.
+Comparé au marathon épuisant du [dernier chapitre][statements], aujourd'hui est une gambade légère à travers une prairie de marguerites. Mais alors que le travail est facile, la récompense est étonnamment grande.
 
 [statements]: statements-and-state.html
 
-Right now, our interpreter is little more than a calculator. A Lox program can
-only do a fixed amount of work before completing. To make it run twice as long
-you have to make the source code twice as lengthy. We're about to fix that. In
-this chapter, our interpreter takes a big step towards the programming
-language major leagues: *Turing-completeness*.
+Pour l'instant, notre interpréteur est un peu plus qu'une calculatrice. Un programme Lox peut seulement faire une quantité fixe de travail avant de se terminer. Pour le faire tourner deux fois plus longtemps, vous devez rendre le code source deux fois plus long. Nous sommes sur le point de corriger cela. Dans ce chapitre, notre interpréteur fait un grand pas vers les ligues majeures des langages de programmation : la _Turing-complétude_.
 
-## Turing Machines (Briefly)
+## Machines de Turing (Brièvement)
 
-In the early part of last century, mathematicians stumbled into a series of
-confusing <span name="paradox">paradoxes</span> that led them to doubt the
-stability of the foundation they had built their work upon. To address that
-[crisis][], they went back to square one. Starting from a handful of axioms,
-logic, and set theory, they hoped to rebuild mathematics on top of an
-impervious foundation.
+Au début du siècle dernier, les mathématiciens ont trébuché sur une série de <span name="paradox">paradoxes</span> confus qui les ont menés à douter de la stabilité de la fondation sur laquelle ils avaient construit leur travail. Pour adresser cette [crise][crisis], ils sont retournés à la case départ. En partant d'une poignée d'axiomes, de logique, et de théorie des ensembles, ils espéraient reconstruire les mathématiques au-dessus d'une fondation imperméable.
 
 [crisis]: https://en.wikipedia.org/wiki/Foundations_of_mathematics#Foundational_crisis
 
 <aside name="paradox">
 
-The most famous is [**Russell's paradox**][russell]. Initially, set theory
-allowed you to define any sort of set. If you could describe it in English, it
-was valid. Naturally, given mathematicians' predilection for self-reference,
-sets can contain other sets. So Russell, rascal that he was, came up with:
+Le plus célèbre est le [**paradoxe de Russell**][russell]. Initialement, la théorie des ensembles vous permettait de définir n'importe quelle sorte d'ensemble. Si vous pouviez le décrire en anglais, c'était valide. Naturellement, étant donné la prédilection des mathématiciens pour l'auto-référence, les ensembles peuvent contenir d'autres ensembles. Donc Russell, coquin qu'il était, est arrivé avec :
 
-*R is the set of all sets that do not contain themselves.*
+_R est l'ensemble de tous les ensembles qui ne se contiennent pas eux-mêmes._
 
-Does R contain itself? If it doesn't, then according to the second half of the
-definition it should. But if it does, then it no longer meets the definition.
-Cue mind exploding.
+Est-ce que R se contient lui-même ? S'il ne le fait pas, alors selon la seconde moitié de la définition il le devrait. Mais s'il le fait, alors il ne respecte plus la définition. Cerveau qui explose.
 
-[russell]: https://en.wikipedia.org/wiki/Russell%27s_paradox
+[russell]: https://fr.wikipedia.org/wiki/Paradoxe_de_Russell
 
 </aside>
 
-They wanted to rigorously answer questions like, "Can all true statements be
-proven?", "Can we [compute][] all functions that we can define?", or even the
-more general question, "What do we mean when we claim a function is
-'computable'?"
+Ils voulaient répondre rigoureusement à des questions comme, "Toutes les instructions vraies peuvent-elles être prouvées ?", "Pouvons-nous [calculer][compute] toutes les fonctions que nous pouvons définir ?", ou même la question plus générale, "Que voulons-nous dire quand nous prétendons qu'une fonction est 'calculable' ?"
 
 [compute]: https://en.wikipedia.org/wiki/Computable_function
 
-They presumed the answer to the first two questions would be "yes". All that
-remained was to prove it. It turns out that the answer to both is "no", and
-astonishingly, the two questions are deeply intertwined. This is a fascinating
-corner of mathematics that touches fundamental questions about what brains are
-able to do and how the universe works. I can't do it justice here.
+Ils présumaient que la réponse aux deux premières questions serait "oui". Tout ce qui restait était de le prouver. Il s'avère que la réponse aux deux est "non", et étonnamment, les deux questions sont profondément entrelacées. C'est un coin fascinant des mathématiques qui touche aux questions fondamentales sur ce que les cerveaux sont capables de faire et comment l'univers fonctionne. Je ne peux pas lui rendre justice ici.
 
-What I do want to note is that in the process of proving that the answer to the
-first two questions is "no", Alan Turing and Alonzo Church devised a precise
-answer to the last question -- a definition of what kinds of functions are <span
-name="uncomputable">computable</span>. They each crafted a tiny system with a
-minimum set of machinery that is still powerful enough to compute any of a
-(very) large class of functions.
+Ce que je veux noter est que dans le processus de prouver que la réponse aux deux premières questions est "non", Alan Turing et Alonzo Church ont conçu une réponse précise à la dernière question -- une définition de quels types de fonctions sont <span name="uncomputable">calculables</span>. Ils ont chacun fabriqué un système minuscule avec un ensemble minimum de machinerie qui est encore assez puissant pour calculer n'importe laquelle d'une (très) grande classe de fonctions.
 
 <aside name="uncomputable">
 
-They proved the answer to the first question is "no" by showing that the
-function that returns the truth value of a given statement is *not* a computable
-one.
+Ils ont prouvé que la réponse à la première question est "non" en montrant que la fonction qui renvoie la valeur de vérité d'une instruction donnée n'est _pas_ calculable.
 
 </aside>
 
-These are now considered the "computable functions". Turing's system is called a
-<span name="turing">**Turing machine**</span>. Church's is the **lambda
-calculus**. Both are still widely used as the basis for models of computation
-and, in fact, many modern functional programming languages use the lambda
-calculus at their core.
+Celles-ci sont maintenant considérées comme les "fonctions calculables". Le système de Turing est appelé une <span name="turing">**machine de Turing**</span>. Celui de Church est le **lambda-calcul**. Les deux sont encore largement utilisés comme base pour les modèles de calcul et, en fait, beaucoup de langages de programmation fonctionnels modernes utilisent le lambda-calcul à leur cœur.
 
 <aside name="turing">
 
-Turing called his inventions "a-machines" for "automatic". He wasn't so
-self-aggrandizing as to put his *own* name on them. Later mathematicians did
-that for him. That's how you get famous while still retaining some modesty.
+Turing appelait ses inventions "a-machines" pour "automatique". Il n'était pas auto-glorifiant au point de mettre son _propre_ nom dessus. Plus tard les mathématiciens ont fait ça pour lui. C'est comme ça qu'on devient célèbre tout en gardant un peu de modestie.
 
 </aside>
 
-<img src="image/control-flow/turing-machine.png" alt="A Turing machine." />
+<img src="image/control-flow/turing-machine.png" alt="Une machine de Turing." />
 
-Turing machines have better name recognition -- there's no Hollywood film about
-Alonzo Church yet -- but the two formalisms are [equivalent in power][thesis].
-In fact, any programming language with some minimal level of expressiveness is
-powerful enough to compute *any* computable function.
+Les machines de Turing ont une meilleure reconnaissance de nom -- il n'y a pas encore de film hollywoodien sur Alonzo Church -- mais les deux formalismes sont [équivalents en puissance][thesis]. En fait, n'importe quel langage de programmation avec un certain niveau minimal d'expressivité est assez puissant pour calculer _n'importe quelle_ fonction calculable.
 
 [thesis]: https://en.wikipedia.org/wiki/Church%E2%80%93Turing_thesis
 
-You can prove that by writing a simulator for a Turing machine in your language.
-Since Turing proved his machine can compute any computable function, by
-extension, that means your language can too. All you need to do is translate the
-function into a Turing machine, and then run that on your simulator.
+Vous pouvez prouver cela en écrivant un simulateur pour une machine de Turing dans votre langage. Puisque Turing a prouvé que sa machine peut calculer n'importe quelle fonction calculable, par extension, cela signifie que votre langage le peut aussi. Tout ce que vous avez besoin de faire est de traduire la fonction en une machine de Turing, et ensuite d'exécuter cela sur votre simulateur.
 
-If your language is expressive enough to do that, it's considered
-**Turing-complete**. Turing machines are pretty dang simple, so it doesn't take
-much power to do this. You basically need arithmetic, a little control flow,
-and the ability to allocate and use (theoretically) arbitrary amounts of memory.
-We've got the first. By the end of this chapter, we'll have the <span
-name="memory">second</span>.
+Si votre langage est assez expressif pour faire cela, il est considéré **Turing-complet**. Les machines de Turing sont assez simples, donc ça ne prend pas beaucoup de puissance pour faire cela. Vous avez fondamentalement besoin d'arithmétique, d'un peu de contrôle de flux, et de la capacité d'allouer et d'utiliser (théoriquement) des quantités arbitraires de mémoire. Nous avons la première. À la fin de ce chapitre, nous aurons la <span name="memory">seconde</span>.
 
 <aside name="memory">
 
-We *almost* have the third too. You can create and concatenate strings of
-arbitrary size, so you can *store* unbounded memory. But we don't have any way
-to access parts of a string.
+Nous avons _presque_ la troisième aussi. Vous pouvez créer et concaténer des chaînes de taille arbitraire, donc vous pouvez _stocker_ une mémoire illimitée. Mais nous n'avons aucun moyen d'accéder aux parties d'une chaîne.
 
 </aside>
 
-## Conditional Execution
+## Exécution Conditionnelle
 
-Enough history, let's jazz up our language. We can divide control flow roughly
-into two kinds:
+Assez d'histoire, allons jazzer notre langage. Nous pouvons diviser le contrôle de flux grossièrement en deux types :
 
-*   **Conditional** or **branching control flow** is used to *not* execute
-    some piece of code. Imperatively, you can think of it as jumping *ahead*
-    over a region of code.
+- Le **contrôle de flux conditionnel** ou **de branchement** est utilisé pour _ne pas_ exécuter un certain morceau de code. Impérativement, vous pouvez penser à cela comme sauter _par-dessus_ une région de code.
 
-*   **Looping control flow** executes a chunk of code more than once. It jumps
-    *back* so that you can do something again. Since you don't usually want
-    *infinite* loops, it typically has some conditional logic to know when to
-    stop looping as well.
+- Le **contrôle de flux de boucle** exécute un morceau de code plus d'une fois. Il saute en _arrière_ pour que vous puissiez faire quelque chose à nouveau. Puisque vous ne voulez généralement pas de boucles _infinies_, il a typiquement une certaine logique conditionnelle pour savoir quand arrêter de boucler aussi.
 
-Branching is simpler, so we'll start there. C-derived languages have two main
-conditional execution features, the `if` statement and the perspicaciously named
-"conditional" <span name="ternary">operator</span> (`?:`). An `if` statement
-lets you conditionally execute statements and the conditional operator lets you
-conditionally execute expressions.
+Le branchement est plus simple, donc nous commencerons là. Les langages dérivés de C ont deux fonctionnalités principales d'exécution conditionnelle, l'instruction `if` et l'<span name="ternary">opérateur</span> "conditionnel" nommé avec perspicacité (`?:`). Une instruction `if` vous laisse exécuter conditionnellement des instructions et l'opérateur conditionnel vous laisse exécuter conditionnellement des expressions.
 
 <aside name="ternary">
 
-The conditional operator is also called the "ternary" operator because it's the
-only operator in C that takes three operands.
+L'opérateur conditionnel est aussi appelé l'opérateur "ternaire" parce que c'est le seul opérateur en C qui prend trois opérandes.
 
 </aside>
 
-For simplicity's sake, Lox doesn't have a conditional operator, so let's get our
-`if` statement on. Our statement grammar gets a new production.
+Pour la simplicité, Lox n'a pas d'opérateur conditionnel, donc allons-y avec notre instruction `if`. Notre grammaire d'instructions obtient une nouvelle production.
 
 <span name="semicolon"></span>
 
@@ -158,149 +97,97 @@ ifStmt         → "if" "(" expression ")" statement
 
 <aside name="semicolon">
 
-The semicolons in the rules aren't quoted, which means they are part of the
-grammar metasyntax, not Lox's syntax. A block does not have a `;` at the end and
-an `if` statement doesn't either, unless the then or else statement happens to
-be one that ends in a semicolon.
+Les points-virgules dans les règles ne sont pas cités, ce qui signifie qu'ils font partie de la métasyntaxe de grammaire, pas de la syntaxe de Lox. Un bloc n'a pas de `;` à la fin et une instruction `if` non plus, à moins que l'instruction then ou else se trouve être une qui finit par un point-virgule.
 
 </aside>
 
-An `if` statement has an expression for the condition, then a statement to execute
-if the condition is truthy. Optionally, it may also have an `else` keyword and a
-statement to execute if the condition is falsey. The <span name="if-ast">syntax
-tree node</span> has fields for each of those three pieces.
+Une instruction `if` a une expression pour la condition, puis une instruction à exécuter si la condition est truthy ("vraie"). Optionnellement, elle peut aussi avoir un mot-clé `else` et une instruction à exécuter si la condition est falsey ("fausse"). Le <span name="if-ast">nœud d'arbre syntaxique</span> a des champs pour chacune de ces trois pièces.
 
 ^code if-ast (1 before, 1 after)
 
 <aside name="if-ast">
 
-The generated code for the new node is in [Appendix II][appendix-if].
+Le code généré pour le nouveau nœud est dans l'[Annexe II][appendix-if].
 
 [appendix-if]: appendix-ii.html#if-statement
 
 </aside>
 
-Like other statements, the parser recognizes an `if` statement by the leading
-`if` keyword.
+Comme les autres instructions, le parseur reconnaît une instruction `if` par le mot-clé `if` de tête.
 
 ^code match-if (1 before, 1 after)
 
-When it finds one, it calls this new method to parse the rest:
+Quand il en trouve un, il appelle cette nouvelle méthode pour parser le reste :
 
 ^code if-statement
 
 <aside name="parens">
 
-The parentheses around the condition are only half useful. You need some kind of
-delimiter *between* the condition and the then statement, otherwise the parser
-can't tell when it has reached the end of the condition expression. But the
-*opening* parenthesis after `if` doesn't do anything useful. Dennis Ritchie put
-it there so he could use `)` as the ending delimiter without having unbalanced
-parentheses.
+Les parenthèses autour de la condition sont seulement à moitié utiles. Vous avez besoin d'une sorte de délimiteur _entre_ la condition et l'instruction then, sinon le parseur ne peut pas dire quand il a atteint la fin de l'expression de condition. Mais la parenthèse _ouvrante_ après `if` ne fait rien d'utile. Dennis Ritchie l'a mise là pour qu'il puisse utiliser `)` comme délimiteur de fin sans avoir de parenthèses non balancées.
 
-Other languages like Lua and some BASICs use a keyword like `then` as the ending
-delimiter and don't have anything before the condition. Go and Swift instead
-require the statement to be a braced block. That lets them use the `{` at the
-beginning of the statement to tell when the condition is done.
+D'autres langages comme Lua et certains BASICs utilisent un mot-clé comme `then` comme délimiteur de fin et n'ont rien avant la condition. Go et Swift exigent à la place que l'instruction soit un bloc entre accolades. Cela leur permet d'utiliser le `{` au début de l'instruction pour dire quand la condition est finie.
 
 </aside>
 
-As usual, the parsing code hews closely to the grammar. It detects an else
-clause by looking for the preceding `else` keyword. If there isn't one, the
-`elseBranch` field in the syntax tree is `null`.
+Comme d'habitude, le code de parsing colle de près à la grammaire. Il détecte une clause else en cherchant le mot-clé `else` précédent. S'il n'y en a pas, le champ `elseBranch` dans l'arbre syntaxique est `null`.
 
-That seemingly innocuous optional else has, in fact, opened up an ambiguity in
-our grammar. Consider:
+Ce else optionnel apparemment inoffensif a, en fait, ouvert une ambiguïté dans notre grammaire. Considérez :
 
 ```lox
 if (first) if (second) whenTrue(); else whenFalse();
 ```
 
-Here's the riddle: Which `if` statement does that else clause belong to? This
-isn't just a theoretical question about how we notate our grammar. It actually
-affects how the code executes:
+Voici l'énigme : À quelle instruction `if` cette clause else appartient-elle ? Ce n'est pas juste une question théorique sur la façon dont nous notons notre grammaire. Cela affecte réellement comment le code s'exécute :
 
-*   If we attach the else to the first `if` statement, then `whenFalse()` is
-    called if `first` is falsey, regardless of what value `second` has.
+- Si nous attachons le else à la première instruction `if`, alors `whenFalse()` est appelée si `first` est falsey, peu importe quelle valeur `second` a.
 
-*   If we attach it to the second `if` statement, then `whenFalse()` is only
-    called if `first` is truthy and `second` is falsey.
+- Si nous l'attachons à la seconde instruction `if`, alors `whenFalse()` est seulement appelée si `first` est truthy et `second` est falsey.
 
-Since else clauses are optional, and there is no explicit delimiter marking the
-end of the `if` statement, the grammar is ambiguous when you nest `if`s in this
-way. This classic pitfall of syntax is called the **[dangling else][]** problem.
+Puisque les clauses else sont optionnelles, et qu'il n'y a pas de délimiteur explicite marquant la fin de l'instruction `if`, la grammaire est ambiguë quand vous imbriquez des `if`s de cette façon. Ce piège classique de syntaxe est appelé le problème du **[dangling else][dangling else]** (else pendant).
 
 [dangling else]: https://en.wikipedia.org/wiki/Dangling_else
 
 <span name="else"></span>
 
-<img class="above" src="image/control-flow/dangling-else.png" alt="Two ways the else can be interpreted." />
+<img class="above" src="image/control-flow/dangling-else.png" alt="Deux façons dont le else peut être interprété." />
 
 <aside name="else">
 
-Here, formatting highlights the two ways the else could be parsed. But note that
-since whitespace characters are ignored by the parser, this is only a guide to
-the human reader.
+Ici, le formatage souligne les deux façons dont le else pourrait être parsé. Mais notez que puisque les caractères d'espacement sont ignorés par le parseur, c'est seulement un guide pour le lecteur humain.
 
 </aside>
 
-It *is* possible to define a context-free grammar that avoids the ambiguity
-directly, but it requires splitting most of the statement rules into pairs, one
-that allows an `if` with an `else` and one that doesn't. It's annoying.
+Il _est_ possible de définir une grammaire hors-contexte qui évite l'ambiguïté directement, mais elle exige de diviser la plupart des règles d'instruction en paires, une qui permet un `if` avec un `else` et une qui ne le permet pas. C'est ennuyeux.
 
-Instead, most languages and parsers avoid the problem in an ad hoc way. No
-matter what hack they use to get themselves out of the trouble, they always
-choose the same interpretation -- the `else` is bound to the nearest `if` that
-precedes it.
+Au lieu de cela, la plupart des langages et parseurs évitent le problème d'une manière ad hoc. Peu importe quel hack ils utilisent pour se sortir du pétrin, ils choisissent toujours la même interprétation -- le `else` est lié au `if` le plus proche qui le précède.
 
-Our parser conveniently does that already. Since `ifStatement()` eagerly looks
-for an `else` before returning, the innermost call to a nested series will claim
-the else clause for itself before returning to the outer `if` statements.
+Notre parseur fait commodément cela déjà. Puisque `ifStatement()` cherche avidement un `else` avant de retourner, l'appel le plus interne à une série imbriquée réclamera la clause else pour lui-même avant de retourner aux instructions `if` externes.
 
-Syntax in hand, we are ready to interpret.
+Syntaxe en main, nous sommes prêts à interpréter.
 
 ^code visit-if
 
-The interpreter implementation is a thin wrapper around the self-same Java code.
-It evaluates the condition. If truthy, it executes the then branch. Otherwise,
-if there is an else branch, it executes that.
+L'implémentation de l'interpréteur est une fine enveloppe autour du code Java lui-même. Elle évalue la condition. Si truthy, elle exécute la branche then. Sinon, s'il y a une branche else, elle exécute celle-là.
 
-If you compare this code to how the interpreter handles other syntax we've
-implemented, the part that makes control flow special is that Java `if`
-statement. Most other syntax trees always evaluate their subtrees. Here, we may
-not evaluate the then or else statement. If either of those has a side effect,
-the choice not to evaluate it becomes user visible.
+Si vous comparez ce code à la façon dont l'interpréteur gère d'autres syntaxes que nous avons implémentées, la partie qui rend le contrôle de flux spécial est cette instruction `if` Java. La plupart des autres arbres syntaxiques évaluent toujours leurs sous-arbres. Ici, nous pouvons ne pas évaluer l'instruction then ou else. Si l'une ou l'autre a un effet de bord, le choix de ne pas l'évaluer devient visible par l'utilisateur.
 
-## Logical Operators
+## Opérateurs Logiques
 
-Since we don't have the conditional operator, you might think we're done with
-branching, but no. Even without the ternary operator, there are two other
-operators that are technically control flow constructs -- the logical operators
-`and` and `or`.
+Puisque nous n'avons pas l'opérateur conditionnel, vous pourriez penser que nous en avons fini avec le branchement, mais non. Même sans l'opérateur ternaire, il y a deux autres opérateurs qui sont techniquement des constructions de contrôle de flux -- les opérateurs logiques `and` et `or`.
 
-These aren't like other binary operators because they **short-circuit**. If,
-after evaluating the left operand, we know what the result of the logical
-expression must be, we don't evaluate the right operand. For example:
+Ceux-ci ne sont pas comme les autres opérateurs binaires parce qu'ils **court-circuitent**. Si, après avoir évalué l'opérande gauche, nous savons quel doit être le résultat de l'expression logique, nous n'évaluons pas l'opérande droit. Par exemple :
 
 ```lox
 false and sideEffect();
 ```
 
-For an `and` expression to evaluate to something truthy, both operands must be
-truthy. We can see as soon as we evaluate the left `false` operand that that
-isn't going to be the case, so there's no need to evaluate `sideEffect()` and it
-gets skipped.
+Pour qu'une expression `and` s'évalue en quelque chose de truthy, les deux opérandes doivent être truthy. Nous pouvons voir dès que nous évaluons l'opérande gauche `false` que ça ne va pas être le cas, donc il n'y a pas besoin d'évaluer `sideEffect()` et il est sauté.
 
-This is why we didn't implement the logical operators with the other binary
-operators. Now we're ready. The two new operators are low in the precedence
-table. Similar to `||` and `&&` in C, they each have their <span
-name="logical">own</span> precedence with `or` lower than `and`. We slot them
-right between `assignment` and `equality`.
+C'est pourquoi nous n'avons pas implémenté les opérateurs logiques avec les autres opérateurs binaires. Maintenant nous sommes prêts. Les deux nouveaux opérateurs sont bas dans la table de précédence. Similaire à `||` et `&&` en C, ils ont chacun leur <span name="logical">propre</span> précédence avec `or` plus bas que `and`. Nous les glissons juste entre `assignment` et `equality`.
 
 <aside name="logical">
 
-I've always wondered why they don't have the same precedence, like the various
-comparison or equality operators do.
+Je me suis toujours demandé pourquoi ils n'ont pas la même précédence, comme le font les divers opérateurs de comparaison ou d'égalité.
 
 </aside>
 
@@ -312,86 +199,62 @@ logic_or       → logic_and ( "or" logic_and )* ;
 logic_and      → equality ( "and" equality )* ;
 ```
 
-Instead of falling back to `equality`, `assignment` now cascades to `logic_or`.
-The two new rules, `logic_or` and `logic_and`, are <span
-name="same">similar</span> to other binary operators. Then `logic_and` calls
-out to `equality` for its operands, and we chain back to the rest of the
-expression rules.
+Au lieu de se replier sur `equality`, `assignment` cascade maintenant vers `logic_or`. Les deux nouvelles règles, `logic_or` et `logic_and`, sont <span name="same">similaires</span> aux autres opérateurs binaires. Puis `logic_and` appelle `equality` pour ses opérandes, et nous rechaînons vers le reste des règles d'expression.
 
 <aside name="same">
 
-The *syntax* doesn't care that they short-circuit. That's a semantic concern.
+La _syntaxe_ se fiche qu'ils court-circuitent. C'est une préoccupation sémantique.
 
 </aside>
 
-We could reuse the existing Expr.Binary class for these two new expressions
-since they have the same fields. But then `visitBinaryExpr()` would have to
-check to see if the operator is one of the logical operators and use a different
-code path to handle the short circuiting. I think it's cleaner to define a <span
-name="logical-ast">new class</span> for these operators so that they get their
-own visit method.
+Nous pourrions réutiliser la classe Expr.Binary existante pour ces deux nouvelles expressions puisqu'elles ont les mêmes champs. Mais alors `visitBinaryExpr()` devrait vérifier pour voir si l'opérateur est l'un des opérateurs logiques et utiliser un chemin de code différent pour gérer le court-circuitage. Je pense que c'est plus propre de définir une <span name="logical-ast">nouvelle classe</span> pour ces opérateurs pour qu'ils obtiennent leur propre méthode visit.
 
 ^code logical-ast (1 before, 1 after)
 
 <aside name="logical-ast">
 
-The generated code for the new node is in [Appendix II][appendix-logical].
+Le code généré pour le nouveau nœud est dans l'[Annexe II][appendix-logical].
 
 [appendix-logical]: appendix-ii.html#logical-expression
 
 </aside>
 
-To weave the new expressions into the parser, we first change the parsing code
-for assignment to call `or()`.
+Pour tisser les nouvelles expressions dans le parseur, nous changeons d'abord le code de parsing pour l'affectation pour appeler `or()`.
 
 ^code or-in-assignment (1 before, 2 after)
 
-The code to parse a series of `or` expressions mirrors other binary operators.
+Le code pour parser une série d'expressions `or` reflète les autres opérateurs binaires.
 
 ^code or
 
-Its operands are the next higher level of precedence, the new `and` expression.
+Ses opérandes sont le niveau de précédence immédiatement supérieur, la nouvelle expression `and`.
 
 ^code and
 
-That calls `equality()` for its operands, and with that, the expression parser
-is all tied back together again. We're ready to interpret.
+Cela appelle `equality()` pour ses opérandes, et avec cela, le parseur d'expression est tout relié ensemble à nouveau. Nous sommes prêts à interpréter.
 
 ^code visit-logical
 
-If you compare this to the [earlier chapter's][evaluating] `visitBinaryExpr()`
-method, you can see the difference. Here, we evaluate the left operand first. We
-look at its value to see if we can short-circuit. If not, and only then, do we
-evaluate the right operand.
+Si vous comparez cela à la méthode `visitBinaryExpr()` du [chapitre précédent][evaluating], vous pouvez voir la différence. Ici, nous évaluons l'opérande gauche d'abord. Nous regardons sa valeur pour voir si nous pouvons cour-circuiter. Si non, et seulement alors, nous évaluons l'opérande droit.
 
 [evaluating]: evaluating-expressions.html
 
-The other interesting piece here is deciding what actual value to return. Since
-Lox is dynamically typed, we allow operands of any type and use truthiness to
-determine what each operand represents. We apply similar reasoning to the
-result. Instead of promising to literally return `true` or `false`, a logic
-operator merely guarantees it will return a value with appropriate truthiness.
+L'autre morceau intéressant ici est de décider quelle valeur réelle renvoyer. Puisque Lox est typé dynamiquement, nous autorisons des opérandes de n'importe quel type et utilisons la véracité (truthiness) pour déterminer ce que chaque opérande représente. Nous appliquons un raisonnement similaire au résultat. Au lieu de promettre de renvoyer littéralement `true` ou `false`, un opérateur logique garantit simplement qu'il renverra une valeur avec la véracité appropriée.
 
-Fortunately, we have values with proper truthiness right at hand -- the results
-of the operands themselves. So we use those. For example:
+Heureusement, nous avons des valeurs avec la bonne véracité juste sous la main -- les résultats des opérandes eux-mêmes. Donc nous utilisons ceux-là. Par exemple :
 
 ```lox
-print "hi" or 2; // "hi".
-print nil or "yes"; // "yes".
+print "salut" or 2; // "salut".
+print nil or "oui"; // "oui".
 ```
 
-On the first line, `"hi"` is truthy, so the `or` short-circuits and returns
-that. On the second line, `nil` is falsey, so it evaluates and returns the
-second operand, `"yes"`.
+Sur la première ligne, `"salut"` est truthy, donc le `or` court-circuite et renvoie ça. Sur la seconde ligne, `nil` est falsey, donc il évalue et renvoie le second opérande, `"oui"`.
 
-That covers all of the branching primitives in Lox. We're ready to jump ahead to
-loops. You see what I did there? *Jump. Ahead.* Get it? See, it's like a
-reference to... oh, forget it.
+Cela couvre toutes les primitives de branchement dans Lox. Nous sommes prêts à sauter en avant vers les boucles. Vous voyez ce que j'ai fait là ? _Sauter. En avant._ Vous avez compris ? Voyez, c'est comme une référence à... oh, oubliez ça.
 
-## While Loops
+## Boucles While
 
-Lox features two looping control flow statements, `while` and `for`. The `while`
-loop is the simpler one, so we'll start there. Its grammar is the same as in C.
+Lox propose deux instructions de contrôle de flux de boucle, `while` et `for`. La boucle `while` est la plus simple, donc nous commencerons là. Sa grammaire est la même qu'en C.
 
 ```ebnf
 statement      → exprStmt
@@ -403,55 +266,43 @@ statement      → exprStmt
 whileStmt      → "while" "(" expression ")" statement ;
 ```
 
-We add another clause to the statement rule that points to the new rule for
-while. It takes a `while` keyword, followed by a parenthesized condition
-expression, then a statement for the body. That new grammar rule gets a <span
-name="while-ast">syntax tree node</span>.
+Nous ajoutons une autre clause à la règle statement qui pointe vers la nouvelle règle pour while. Elle prend un mot-clé `while`, suivi par une expression de condition parenthésée, puis une instruction pour le corps. Cette nouvelle règle de grammaire obtient un <span name="while-ast">nœud d'arbre syntaxique</span>.
 
 ^code while-ast (1 before, 1 after)
 
 <aside name="while-ast">
 
-The generated code for the new node is in [Appendix II][appendix-while].
+Le code généré pour le nouveau nœud est dans l'[Annexe II][appendix-while].
 
 [appendix-while]: appendix-ii.html#while-statement
 
 </aside>
 
-The node stores the condition and body. Here you can see why it's nice to have
-separate base classes for expressions and statements. The field declarations
-make it clear that the condition is an expression and the body is a statement.
+Le nœud stocke la condition et le corps. Ici vous pouvez voir pourquoi c'est agréable d'avoir des classes de base séparées pour les expressions et les instructions. Les déclarations de champ rendent clair que la condition est une expression et le corps est une instruction.
 
-Over in the parser, we follow the same process we used for `if` statements.
-First, we add another case in `statement()` to detect and match the leading
-keyword.
+Là-bas dans le parseur, nous suivons le même processus que nous avons utilisé pour les instructions `if`. D'abord, nous ajoutons un autre cas dans `statement()` pour détecter et matcher le mot-clé de tête.
 
 ^code match-while (1 before, 1 after)
 
-That delegates the real work to this method:
+Cela délègue le vrai travail à cette méthode :
 
 ^code while-statement
 
-The grammar is dead simple and this is a straight translation of it to Java.
-Speaking of translating straight to Java, here's how we execute the new syntax:
+La grammaire est simple à mourir et c'est une traduction directe de celle-ci vers Java. En parlant de traduire directement vers Java, voici comment nous exécutons la nouvelle syntaxe :
 
 ^code visit-while
 
-Like the visit method for `if`, this visitor uses the corresponding Java
-feature. This method isn't complex, but it makes Lox much more powerful. We can
-finally write a program whose running time isn't strictly bound by the length of
-the source code.
+Comme la méthode visit pour `if`, ce visiteur utilise la fonctionnalité Java correspondante. Cette méthode n'est pas complexe, mais elle rend Lox beaucoup plus puissant. Nous pouvons enfin écrire un programme dont le temps d'exécution n'est pas strictement lié par la longueur du code source.
 
-## For Loops
+## Boucles For
 
-We're down to the last control flow construct, <span name="for">Ye Olde</span>
-C-style `for` loop. I probably don't need to remind you, but it looks like this:
+Nous sommes enfin à la dernière construction de contrôle de flux, <span name="for">Ye Olde</span> boucle `for` de style C. Je n'ai probablement pas besoin de vous rappeler, mais ça ressemble à ça :
 
 ```lox
 for (var i = 0; i < 10; i = i + 1) print i;
 ```
 
-In grammarese, that's:
+En grammairien, c'est :
 
 ```ebnf
 statement      → exprStmt
@@ -468,61 +319,33 @@ forStmt        → "for" "(" ( varDecl | exprStmt | ";" )
 
 <aside name="for">
 
-Most modern languages have a higher-level looping statement for iterating over
-arbitrary user-defined sequences. C# has `foreach`, Java has "enhanced for",
-even C++ has range-based `for` statements now. Those offer cleaner syntax than
-C's `for` statement by implicitly calling into an iteration protocol that the
-object being looped over supports.
+La plupart des langages modernes ont une instruction de boucle de plus haut niveau pour itérer sur des séquences arbitraires définies par l'utilisateur. C# a `foreach`, Java a le "enhanced for", même C++ a des instructions `for` basées sur l'intervalle maintenant. Celles-là offrent une syntaxe plus propre que l'instruction `for` du C en appelant implicitement un protocole d'itération que l'objet sur lequel on boucle supporte.
 
-I love those. For Lox, though, we're limited by building up the interpreter a
-chapter at a time. We don't have objects and methods yet, so we have no way of
-defining an iteration protocol that the `for` loop could use. So we'll stick
-with the old school C `for` loop. Think of it as "vintage". The fixie of control
-flow statements.
+Je les adore. Pour Lox, cependant, nous sommes limités par la construction de l'interpréteur un chapitre à la fois. Nous n'avons pas encore d'objets et de méthodes, donc nous n'avons aucun moyen de définir un protocole d'itération que la boucle `for` pourrait utiliser. Donc nous allons rester avec la boucle `for` C vieille école. Pensez-y comme "vintage". Le fixie des instructions de contrôle de flux.
 
 </aside>
 
-Inside the parentheses, you have three clauses separated by semicolons:
+À l'intérieur des parenthèses, vous avez trois clauses séparées par des points-virgules :
 
-1.  The first clause is the *initializer*. It is executed exactly once, before
-    anything else. It's usually an expression, but for convenience, we also
-    allow a variable declaration. In that case, the variable is scoped to the
-    rest of the `for` loop -- the other two clauses and the body.
+1.  La première clause est l'_initialiseur_. Elle est exécutée exactement une fois, avant tout le reste. C'est habituellement une expression, mais pour la commodité, nous autorisons aussi une déclaration de variable. Dans ce cas, la variable est portée au reste de la boucle `for` -- les deux autres clauses et le corps.
 
-2.  Next is the *condition*. As in a `while` loop, this expression controls when
-    to exit the loop. It's evaluated once at the beginning of each iteration,
-    including the first. If the result is truthy, it executes the loop body.
-    Otherwise, it bails.
+2.  Ensuite est la _condition_. Comme dans une boucle `while`, cette expression contrôle quand sortir de la boucle. Elle est évaluée une fois au début de chaque itération, incluant la première. Si le résultat est truthy, elle exécute le corps de la boucle. Sinon, elle se tire.
 
-3.  The last clause is the *increment*. It's an arbitrary expression that does
-    some work at the end of each loop iteration. The result of the expression is
-    discarded, so it must have a side effect to be useful. In practice, it
-    usually increments a variable.
+3.  La dernière clause est l'_incrément_. C'est une expression arbitraire qui fait un peu de travail à la fin de chaque itération de boucle. Le résultat de l'expression est rejeté, donc elle doit avoir un effet de bord pour être utile. En pratique, elle incrémente habituellement une variable.
 
-Any of these clauses can be omitted. Following the closing parenthesis is a
-statement for the body, which is typically a block.
+N'importe laquelle de ces clauses peut être omise. Suivant la parenthèse fermante est une instruction pour le corps, qui est typiquement un bloc.
 
-### Desugaring
+### Désucrage
 
-That's a lot of machinery, but note that none of it does anything you couldn't
-do with the statements we already have. If `for` loops didn't support
-initializer clauses, you could just put the initializer expression before the
-`for` statement. Without an increment clause, you could simply put the increment
-expression at the end of the body yourself.
+C'est beaucoup de machinerie, mais notez qu'aucune partie ne fait quelque chose que vous ne pourriez pas faire avec les instructions que nous avons déjà. Si les boucles `for` ne supportaient pas de clauses d'initialiseur, vous pourriez juste mettre l'expression d'initialiseur avant l'instruction `for`. Sans une clause d'incrément, vous pourriez simplement mettre l'expression d'incrément à la fin du corps vous-même.
 
-In other words, Lox doesn't *need* `for` loops, they just make some common code
-patterns more pleasant to write. These kinds of features are called <span
-name="sugar">**syntactic sugar**</span>. For example, the previous `for` loop
-could be rewritten like so:
+En d'autres termes, Lox n'a pas _besoin_ de boucles `for`, elles rendent juste certains motifs de code courants plus plaisants à écrire. Ces types de fonctionnalités sont appelés du <span name="sugar">**sucre syntaxique**</span>. Par exemple, la boucle `for` précédente pourrait être réécrite comme ceci :
 
 <aside name="sugar">
 
-This delightful turn of phrase was coined by Peter J. Landin in 1964 to describe
-how some of the nice expression forms supported by languages like ALGOL were a
-sweetener sprinkled over the more fundamental -- but presumably less palatable
--- lambda calculus underneath.
+Cette délicieuse tournure de phrase a été inventée par Peter J. Landin en 1964 pour décrire comment certaines des jolies formes d'expression supportées par des langages comme ALGOL étaient un édulcorant saupoudré sur le lambda-calcul plus fondamental -- mais présumément moins agréable au goût -- en dessous.
 
-<img class="above" src="image/control-flow/sugar.png" alt="Slightly more than a spoonful of sugar." />
+<img class="above" src="image/control-flow/sugar.png" alt="Légèrement plus qu'une cuillère de sucre." />
 
 </aside>
 
@@ -536,115 +359,77 @@ sweetener sprinkled over the more fundamental -- but presumably less palatable
 }
 ```
 
-This script has the exact same semantics as the previous one, though it's not as
-easy on the eyes. Syntactic sugar features like Lox's `for` loop make a language
-more pleasant and productive to work in. But, especially in sophisticated
-language implementations, every language feature that requires back-end support
-and optimization is expensive.
+Ce script a exactement la même sémantique que le précédent, bien qu'il ne soit pas aussi facile pour les yeux. Les fonctionnalités de sucre syntaxique comme la boucle `for` de Lox rendent un langage plus plaisant et productif pour y travailler. Mais, spécialement dans les implémentations de langage sophistiquées, chaque fonctionnalité de langage qui nécessite du support en back-end et de l'optimisation est coûteuse.
 
-We can have our cake and eat it too by <span
-name="caramel">**desugaring**</span>. That funny word describes a process where
-the front end takes code using syntax sugar and translates it to a more
-primitive form that the back end already knows how to execute.
+Nous pouvons avoir le beurre et l'argent du beurre en <span name="caramel">**désucrant**</span>. Ce mot drôle décrit un processus où le front end prend du code utilisant du sucre syntaxique et le traduit vers une forme plus primitive que le back end sait déjà comment exécuter.
 
 <aside name="caramel">
 
-Oh, how I wish the accepted term for this was "caramelization". Why introduce a
-metaphor if you aren't going to stick with it?
+Oh, combien je souhaite que le terme accepté pour cela fût "caramélisation". Pourquoi introduire une métaphore si vous n'allez pas rester avec ?
 
 </aside>
 
-We're going to desugar `for` loops to the `while` loops and other statements the
-interpreter already handles. In our simple interpreter, desugaring really
-doesn't save us much work, but it does give me an excuse to introduce you to the
-technique. So, unlike the previous statements, we *won't* add a new syntax tree
-node. Instead, we go straight to parsing. First, add an import we'll need soon.
+Nous allons désucrer les boucles `for` vers les boucles `while` et d'autres instructions que l'interpréteur gère déjà. Dans notre interpréteur simple, le désucrage ne nous économise vraiment pas beaucoup de travail, mais il me donne une excuse pour vous introduire à la technique. Donc, contrairement aux instructions précédentes, nous n'ajouterons _pas_ un nouveau nœud d'arbre syntaxique. Au lieu de cela, nous allons directement au parsing. D'abord, ajoutez un import dont nous aurons besoin bientôt.
 
 ^code import-arrays (1 before, 1 after)
 
-Like every statement, we start parsing a `for` loop by matching its keyword.
+Comme chaque instruction, nous commençons à parser une boucle `for` en matchant son mot-clé.
 
 ^code match-for (1 before, 1 after)
 
-Here is where it gets interesting. The desugaring is going to happen here, so
-we'll build this method a piece at a time, starting with the opening parenthesis
-before the clauses.
+C'est ici que ça devient intéressant. Le désucrage va se passer ici, donc nous construirons cette méthode un morceau à la fois, en commençant avec la parenthèse ouvrante avant les clauses.
 
 ^code for-statement
 
-The first clause following that is the initializer.
+La première clause suivant cela est l'initialiseur.
 
 ^code for-initializer (2 before, 1 after)
 
-If the token following the `(` is a semicolon then the initializer has been
-omitted. Otherwise, we check for a `var` keyword to see if it's a <span
-name="variable">variable</span> declaration. If neither of those matched, it
-must be an expression. We parse that and wrap it in an expression statement so
-that the initializer is always of type Stmt.
+Si le token suivant la `(` est un point-virgule alors l'initialiseur a été omis. Sinon, nous vérifions un mot-clé `var` pour voir si c'est une déclaration de <span name="variable">variable</span>. Si aucun de ceux-ci n'a matché, ce doit être une expression. Nous parsons cela et l'enveloppons dans une instruction d'expression pour que l'initialiseur soit toujours de type Stmt.
 
 <aside name="variable">
 
-In a previous chapter, I said we can split expression and statement syntax trees
-into two separate class hierarchies because there's no single place in the
-grammar that allows both an expression and a statement. That wasn't *entirely*
-true, I guess.
+Dans un chapitre précédent, j'ai dit que nous pouvons diviser les arbres syntaxiques d'expression et d'instruction en deux hiérarchies de classe séparées parce qu'il n'y a pas un seul endroit dans la grammaire qui autorise à la fois une expression et une instruction. Ce n'était pas _entièrement_ vrai, je suppose.
 
 </aside>
 
-Next up is the condition.
+La suivante est la condition.
 
 ^code for-condition (2 before, 1 after)
 
-Again, we look for a semicolon to see if the clause has been omitted. The last
-clause is the increment.
+Encore une fois, nous cherchons un point-virgule pour voir si la clause a été omise. La dernière clause est l'incrément.
 
 ^code for-increment (1 before, 1 after)
 
-It's similar to the condition clause except this one is terminated by the
-closing parenthesis. All that remains is the <span name="body">body</span>.
+C'est similaire à la clause de condition sauf que celle-ci est terminée par la parenthèse fermante. Tout ce qui reste est le <span name="body">corps</span>.
 
 <aside name="body">
 
-Is it just me or does that sound morbid? "All that remained... was the *body*".
+Est-ce juste moi ou est-ce que ça sonne morbide ? "Tout ce qui restait... était le _corps_".
 
 </aside>
 
 ^code for-body (1 before, 1 after)
 
-We've parsed all of the various pieces of the `for` loop and the resulting AST
-nodes are sitting in a handful of Java local variables. This is where the
-desugaring comes in. We take those and use them to synthesize syntax tree nodes
-that express the semantics of the `for` loop, like the hand-desugared example I
-showed you earlier.
+Nous avons parsé toutes les pièces variées de la boucle `for` et les nœuds AST résultants sont assis dans une poignée de variables locales Java. C'est là que le désucrage arrive. Nous prenons ceux-là et les utilisons pour synthétiser des nœuds d'arbre syntaxique qui expriment la sémantique de la boucle `for`, comme l'exemple désucré à la main que je vous ai montré plus tôt.
 
-The code is a little simpler if we work backward, so we start with the increment
-clause.
+Le code est un peu plus simple si nous travaillons à l'envers, donc nous commençons avec la clause d'incrément.
 
 ^code for-desugar-increment (2 before, 1 after)
 
-The increment, if there is one, executes after the body in each iteration of the
-loop. We do that by replacing the body with a little block that contains the
-original body followed by an expression statement that evaluates the increment.
+L'incrément, s'il y en a un, s'exécute après le corps à chaque itération de la boucle. Nous faisons cela en remplaçant le corps par un petit bloc qui contient le corps original suivi par une instruction d'expression qui évalue l'incrément.
 
 ^code for-desugar-condition (2 before, 1 after)
 
-Next, we take the condition and the body and build the loop using a primitive
-`while` loop. If the condition is omitted, we jam in `true` to make an infinite
-loop.
+Ensuite, nous prenons la condition et le corps et construisons la boucle en utilisant une boucle primitive `while`. Si la condition est omise, nous bourrons `true` dedans pour faire une boucle infinie.
 
 ^code for-desugar-initializer (2 before, 1 after)
 
-Finally, if there is an initializer, it runs once before the entire loop. We do
-that by, again, replacing the whole statement with a block that runs the
-initializer and then executes the loop.
+Finalement, s'il y a un initialiseur, il tourne une fois avant la boucle entière. Nous faisons cela en, encore une fois, remplaçant l'instruction entière par un bloc qui exécute l'initialiseur et ensuite exécute la boucle.
 
-That's it. Our interpreter now supports C-style `for` loops and we didn't have
-to touch the Interpreter class at all. Since we desugared to nodes the
-interpreter already knows how to visit, there is no more work to do.
+C'est tout. Notre interpréteur supporte maintenant les boucles `for` de style C et nous n'avons pas eu à toucher la classe Interpreter du tout. Puisque nous avons désucré vers des nœuds que l'interpréteur sait déjà comment visiter, il n'y a plus de travail à faire.
 
-Finally, Lox is powerful enough to entertain us, at least for a few minutes.
-Here's a tiny program to print the first 21 elements in the Fibonacci
-sequence:
+Finalement, Lox est assez puissant pour nous divertir, au moins pour quelques minutes. Voici un programme minuscule pour imprimer les 21 premiers éléments dans la suite de Fibonacci :
 
 ```lox
 var a = 0;
@@ -659,79 +444,36 @@ for (var b = 1; a < 10000; b = temp + b) {
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  A few chapters from now, when Lox supports first-class functions and dynamic
-    dispatch, we technically won't *need* branching statements built into the
-    language. Show how conditional execution can be implemented in terms of
-    those. Name a language that uses this technique for its control flow.
+1.  Quelques chapitres plus loin, quand Lox supportera les fonctions de première classe et le dispatch dynamique, nous n'aurons techniquement pas _besoin_ d'instructions de branchement intégrées dans le langage. Montrez comment l'exécution conditionnelle peut être implémentée en termes de celles-ci. Nommez un langage qui utilise cette technique pour son contrôle de flux.
 
-2.  Likewise, looping can be implemented using those same tools, provided our
-    interpreter supports an important optimization. What is it, and why is it
-    necessary? Name a language that uses this technique for iteration.
+2.  De même, le bouclage peut être implémenté en utilisant ces mêmes outils, pourvu que notre interpréteur supporte une optimisation importante. Quelle est-elle, et pourquoi est-elle nécessaire ? Nommez un langage qui utilise cette technique pour l'itération.
 
-3.  Unlike Lox, most other C-style languages also support `break` and `continue`
-    statements inside loops. Add support for `break` statements.
+3.  Contrairement à Lox, la plupart des autres langages de style C supportent aussi les instructions `break` et `continue` à l'intérieur des boucles. Ajoutez le support pour les instructions `break`.
 
-    The syntax is a `break` keyword followed by a semicolon. It should be a
-    syntax error to have a `break` statement appear outside of any enclosing
-    loop. At runtime, a `break` statement causes execution to jump to the end of
-    the nearest enclosing loop and proceeds from there. Note that the `break`
-    may be nested inside other blocks and `if` statements that also need to be
-    exited.
+    La syntaxe est un mot-clé `break` suivi par un point-virgule. Ce devrait être une erreur de syntaxe d'avoir une instruction `break` apparaissant en dehors de toute boucle englobante. À l'exécution, une instruction `break` fait sauter l'exécution à la fin de la boucle englobante la plus proche et procède à partir de là. Notez que le `break` peut être imbriqué à l'intérieur d'autres blocs et instructions `if` qui ont aussi besoin d'être sortis.
 
 </div>
 
 <div class="design-note">
 
-## Design Note: Spoonfuls of Syntactic Sugar
+## Note de Conception : Cuillerées de Sucre Syntaxique
 
-When you design your own language, you choose how much syntactic sugar to pour
-into the grammar. Do you make an unsweetened health food where each semantic
-operation maps to a single syntactic unit, or some decadent dessert where every
-bit of behavior can be expressed ten different ways? Successful languages
-inhabit all points along this continuum.
+Quand vous concevez votre propre langage, vous choisissez combien de sucre syntaxique verser dans la grammaire. Faites-vous une nourriture saine non sucrée où chaque opération sémantique mappe vers une seule unité syntaxique, ou quelque dessert décadent où chaque bit de comportement peut être exprimé de dix façons différentes ? Les langages à succès habitent tous les points le long de ce continuum.
 
-On the extreme acrid end are those with ruthlessly minimal syntax like Lisp,
-Forth, and Smalltalk. Lispers famously claim their language "has no syntax",
-while Smalltalkers proudly show that you can fit the entire grammar on an index
-card. This tribe has the philosophy that the *language* doesn't need syntactic
-sugar. Instead, the minimal syntax and semantics it provides are powerful enough
-to let library code be as expressive as if it were part of the language itself.
+À l'extrémité acre extrême sont ceux avec une syntaxe impitoyablement minimale comme Lisp, Forth, et Smalltalk. Les Lisperiens prétendent fameusement que leur langage "n'a pas de syntaxe", alors que les Smalltalkers montrent fièrement que vous pouvez faire tenir la grammaire entière sur une fiche cartonnée. Cette tribu a la philosophie que le _langage_ n'a pas besoin de sucre syntaxique. Au lieu de cela, la syntaxe minimale et la sémantique qu'il fournit sont assez puissantes pour laisser le code de bibliothèque être aussi expressif que s'il faisait partie du langage lui-même.
 
-Near these are languages like C, Lua, and Go. They aim for simplicity and
-clarity over minimalism. Some, like Go, deliberately eschew both syntactic sugar
-and the kind of syntactic extensibility of the previous category. They want the
-syntax to get out of the way of the semantics, so they focus on keeping both the
-grammar and libraries simple. Code should be obvious more than beautiful.
+Près de ceux-ci sont des langages comme C, Lua, et Go. Ils visent la simplicité et la clarté par-dessus le minimalisme. Certains, comme Go, évitent délibérément à la fois le sucre syntaxique et le genre d'extensibilité syntaxique de la catégorie précédente. Ils veulent que la syntaxe s'écarte du chemin de la sémantique, donc ils se concentrent sur garder à la fois la grammaire et les bibliothèques simples. Le code devrait être évident plus que beau.
 
-Somewhere in the middle you have languages like Java, C#, and Python. Eventually
-you reach Ruby, C++, Perl, and D -- languages which have stuffed so much syntax
-into their grammar, they are running out of punctuation characters on the
-keyboard.
+Quelque part au milieu vous avez des langages comme Java, C#, et Python. Finalement vous atteignez Ruby, C++, Perl, et D -- des langages qui ont bourré tellement de syntaxe dans leur grammaire, qu'ils manquent de caractères de ponctuation sur le clavier.
 
-To some degree, location on the spectrum correlates with age. It's relatively
-easy to add bits of syntactic sugar in later releases. New syntax is a crowd
-pleaser, and it's less likely to break existing programs than mucking with the
-semantics. Once added, you can never take it away, so languages tend to sweeten
-with time. One of the main benefits of creating a new language from scratch is
-it gives you an opportunity to scrape off those accumulated layers of frosting
-and start over.
+À un certain degré, l'emplacement sur le spectre corrèle avec l'âge. C'est relativement facile d'ajouter des morceaux de sucre syntaxique dans des versions ultérieures. La nouvelle syntaxe plaît à la foule, et c'est moins susceptible de casser les programmes existants que de tripatouiller la sémantique. Une fois ajouté, vous ne pouvez jamais l'enlever, donc les langages tendent à s'adoucir avec le temps. L'un des bénéfices principaux de créer un nouveau langage depuis zéro est que cela vous donne une opportunité de racler ces couches accumulées de glaçage et de recommencer.
 
-Syntactic sugar has a bad rap among the PL intelligentsia. There's a real fetish
-for minimalism in that crowd. There is some justification for that. Poorly
-designed, unneeded syntax raises the cognitive load without adding enough
-expressiveness to carry its weight. Since there is always pressure to cram new
-features into the language, it takes discipline and a focus on simplicity to
-avoid bloat. Once you add some syntax, you're stuck with it, so it's smart to be
-parsimonious.
+Le sucre syntaxique a mauvaise réputation parmi l'intelligentsia des langages de programmation. Il y a un vrai fétichisme pour le minimalisme dans cette foule. Il y a une certaine justification à cela. Une syntaxe mal conçue, inutile, élève la charge cognitive sans ajouter assez d'expressivité pour porter son poids. Puisqu'il y a toujours une pression pour entasser de nouvelles fonctionnalités dans le langage, cela prend de la discipline et une focalisation sur la simplicité pour éviter le ballonnement. Une fois que vous ajoutez une certaine syntaxe, vous êtes coincé avec, donc c'est intelligent d'être parcimonieux.
 
-At the same time, most successful languages do have fairly complex grammars, at
-least by the time they are widely used. Programmers spend a ton of time in their
-language of choice, and a few niceties here and there really can improve the
-comfort and efficiency of their work.
+En même temps, la plupart des langages à succès ont des grammaires passablement complexes, au moins au moment où ils sont largement utilisés. Les programmeurs passent une tonne de temps dans leur langage de choix, et quelques gentillesses ici et là peuvent vraiment améliorer le confort et l'efficacité de leur travail.
 
-Striking the right balance -- choosing the right level of sweetness for your
-language -- relies on your own sense of taste.
+Frapper le bon équilibre -- choisir le bon niveau de douceur pour votre langage -- repose sur votre propre sens du goût.
 
 </div>

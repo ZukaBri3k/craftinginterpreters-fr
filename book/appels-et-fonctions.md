@@ -1,199 +1,128 @@
-> Any problem in computer science can be solved with another level of
-> indirection. Except for the problem of too many layers of indirection.
+> Tout problème en informatique peut être résolu avec un autre niveau d'indirection. Sauf pour le problème de trop de couches d'indirection.
 >
 > <cite>David Wheeler</cite>
 
-This chapter is a beast. I try to break features into bite-sized pieces, but
-sometimes you gotta swallow the whole <span name="eat">meal</span>. Our next
-task is functions. We could start with only function declarations, but that's
-not very useful when you can't call them. We could do calls, but there's nothing
-to call. And all of the runtime support needed in the VM to support both of
-those isn't very rewarding if it isn't hooked up to anything you can see. So
-we're going to do it all. It's a lot, but we'll feel good when we're done.
+Ce chapitre est un monstre. J'essaie de briser les fonctionnalités en morceaux de la taille d'une bouchée, mais parfois vous devez avaler le <span name="eat">repas</span> entier. Notre tâche suivante est les fonctions. Nous pourrions commencer avec seulement les déclarations de fonction, mais ce n'est pas très utile quand vous ne pouvez pas les appeler. Nous pourrions faire les appels, mais il n'y a rien à appeler. Et tout le support runtime nécessaire dans la VM pour supporter ces deux est peu gratifiant s'il n'est pas accroché à quelque chose que vous pouvez voir. Donc nous allons tout faire. C'est beaucoup, mais nous nous sentirons bien quand nous aurons fini.
 
 <aside name="eat">
 
-Eating -- consumption -- is a weird metaphor for a creative act. But most of the
-biological processes that produce "output" are a little less, ahem, decorous.
+Manger -- la consommation -- est une métaphore bizarre pour un acte créatif. Mais la plupart des processus biologiques qui produisent de la "sortie" sont un peu moins, ahem, bienséants.
 
 </aside>
 
-## Function Objects
+## Objets Fonction
 
-The most interesting structural change in the VM is around the stack. We already
-*have* a stack for local variables and temporaries, so we're partway there. But
-we have no notion of a *call* stack. Before we can make much progress, we'll
-have to fix that. But first, let's write some code. I always feel better once I
-start moving. We can't do much without having some kind of representation for
-functions, so we'll start there. From the VM's perspective, what is a function?
+Le changement structurel le plus intéressant dans la VM est autour de la pile. Nous avons déjà _une_ pile pour les variables locales et les temporaires, donc nous y sommes en partie. Mais nous n'avons aucune notion d'une pile d'_appels_. Avant que nous puissions faire beaucoup de progrès, nous devrons réparer cela. Mais d'abord, écrivons un peu de code. Je me sens toujours mieux une fois que je commence à bouger. Nous ne pouvons pas faire grand-chose sans avoir quelque sorte de représentation pour les fonctions, donc nous commencerons là. De la perspective de la VM, qu'est-ce qu'une fonction ?
 
-A function has a body that can be executed, so that means some bytecode. We
-could compile the entire program and all of its function declarations into one
-big monolithic Chunk. Each function would have a pointer to the first
-instruction of its code inside the Chunk.
+Une fonction a un corps qui peut être exécuté, donc cela signifie du bytecode. Nous pourrions compiler le programme entier et toutes ses déclarations de fonction en un gros Chunk monolithique. Chaque fonction aurait un pointeur vers la première instruction de son code à l'intérieur du Chunk.
 
-This is roughly how compilation to native code works where you end up with one
-solid blob of machine code. But for our bytecode VM, we can do something a
-little higher level. I think a cleaner model is to give each function its own
-Chunk. We'll want some other metadata too, so let's go ahead and stuff it all in
-a struct now.
+C'est grosso modo comment la compilation vers du code natif fonctionne où vous finissez avec un blob solide de code machine. Mais pour notre VM à bytecode, nous pouvons faire quelque chose d'un peu plus haut niveau. Je pense qu'un modèle plus propre est de donner à chaque fonction son propre Chunk. Nous voudrons quelques autres métadonnées aussi, donc allons de l'avant et fourrons tout cela dans une structure maintenant.
 
 ^code obj-function (2 before, 2 after)
 
-Functions are first class in Lox, so they need to be actual Lox objects. Thus
-ObjFunction has the same Obj header that all object types share. The `arity`
-field stores the number of parameters the function expects. Then, in addition to
-the chunk, we store the function's <span name="name">name</span>. That will be
-handy for reporting readable runtime errors.
+Les fonctions sont de première classe dans Lox, donc elles ont besoin d'être de vrais objets Lox. Ainsi ObjFunction a le même en-tête Obj que tous les types objets partagent. Le champ `arity` stocke le nombre de paramètres que la fonction attend. Ensuite, en plus du fragment (chunk), nous stockons le <span name="name">nom</span> de la fonction. Cela sera pratique pour rapporter des erreurs d'exécution lisibles.
 
 <aside name="name">
 
-Humans don't seem to find numeric bytecode offsets particularly illuminating in
-crash dumps.
+Les humains ne semblent pas trouver les décalages de bytecode numériques particulièrement éclairants dans les vidages sur plantage.
 
 </aside>
 
-This is the first time the "object" module has needed to reference Chunk, so we
-get an include.
+C'est la première fois que le module "object" a eu besoin de référencer Chunk, donc nous obtenons une inclusion.
 
 ^code object-include-chunk (1 before, 1 after)
 
-Like we did with strings, we define some accessories to make Lox functions
-easier to work with in C. Sort of a poor man's object orientation. First, we'll
-declare a C function to create a new Lox function.
+Comme nous l'avons fait avec les chaînes, nous définissons quelques accessoires pour rendre les fonctions Lox plus faciles à travailler en C. Sorte d'orientation objet du pauvre. D'abord, nous déclarerons une fonction C pour créer une nouvelle fonction Lox.
 
 ^code new-function-h (3 before, 1 after)
 
-The implementation is over here:
+L'implémentation est par ici :
 
 ^code new-function
 
-We use our friend `ALLOCATE_OBJ()` to allocate memory and initialize the
-object's header so that the VM knows what type of object it is. Instead of
-passing in arguments to initialize the function like we did with ObjString, we
-set the function up in a sort of blank state -- zero arity, no name, and no
-code. That will get filled in later after the function is created.
+Nous utilisons notre ami `ALLOCATE_OBJ()` pour allouer la mémoire et initialiser l'en-tête de l'objet pour que la VM sache quel type d'objet c'est. Au lieu de passer des arguments pour initialiser la fonction comme nous l'avons fait avec ObjString, nous configurons la fonction dans une sorte d'état vide -- arité zéro, pas de nom, et pas de code. Cela sera rempli plus tard après que la fonction est créée.
 
-Since we have a new kind of object, we need a new object type in the enum.
+Puisque nous avons un nouveau genre d'objet, nous avons besoin d'un nouveau type d'objet dans l'énumération.
 
 ^code obj-type-function (1 before, 2 after)
 
-When we're done with a function object, we must return the bits it borrowed back
-to the operating system.
+Quand nous avons fini avec un objet fonction, nous devons rendre les bits qu'il a empruntés au système d'exploitation.
 
 ^code free-function (1 before, 1 after)
 
-This switch case is <span name="free-name">responsible</span> for freeing the
-ObjFunction itself as well as any other memory it owns. Functions own their
-chunk, so we call Chunk's destructor-like function.
+Ce `switch case` est <span name="free-name">responsable</span> de libérer l'ObjFunction elle-même aussi bien que toute autre mémoire qu'elle possède. Les fonctions possèdent leur fragment, donc nous appelons la fonction de type destructeur de Chunk.
 
 <aside name="free-name">
 
-We don't need to explicitly free the function's name because it's an ObjString.
-That means we can let the garbage collector manage its lifetime for us. Or, at
-least, we'll be able to once we [implement a garbage collector][gc].
+Nous n'avons pas besoin de libérer explicitement le nom de la fonction parce que c'est une ObjString. Cela signifie que nous pouvons laisser le ramasse-miettes gérer sa durée de vie pour nous. Ou, au moins, nous pourrons une fois que nous [implémenterons un ramasse-miettes][gc].
 
 [gc]: garbage-collection.html
 
 </aside>
 
-Lox lets you print any object, and functions are first-class objects, so we
-need to handle them too.
+Lox vous laisse afficher n'importe quel objet, et les fonctions sont des objets de première classe, donc nous devons les gérer aussi.
 
 ^code print-function (1 before, 1 after)
 
-This calls out to:
+Cela appelle vers :
 
 ^code print-function-helper
 
-Since a function knows its name, it may as well say it.
+Puisqu'une fonction connaît son nom, elle peut aussi bien le dire.
 
-Finally, we have a couple of macros for converting values to functions. First,
-make sure your value actually *is* a function.
+Finalement, nous avons une couple de macros pour convertir des valeurs en fonctions. D'abord, assurez-vous que votre valeur _est_ réellement une fonction.
 
 ^code is-function (2 before, 1 after)
 
-Assuming that evaluates to true, you can then safely cast the Value to an
-ObjFunction pointer using this:
+Supposant que cela évalue à vrai, vous pouvez alors sûrement caster la Value vers un pointeur ObjFunction en utilisant ceci :
 
 ^code as-function (2 before, 1 after)
 
-With that, our object model knows how to represent functions. I'm feeling warmed
-up now. You ready for something a little harder?
+Avec ça, notre modèle objet sait comment représenter les fonctions. Je me sens chauffé maintenant. Vous êtes prêt pour quelque chose d'un peu plus dur ?
 
-## Compiling to Function Objects
+## Compiler vers des Objets Fonction
 
-Right now, our compiler assumes it is always compiling to one single chunk. With
-each function's code living in separate chunks, that gets more complex. When the
-compiler reaches a function declaration, it needs to emit code into the
-function's chunk when compiling its body. At the end of the function body, the
-compiler needs to return to the previous chunk it was working with.
+En ce moment, notre compilateur suppose qu'il compile toujours vers un seul fragment unique. Avec le code de chaque fonction vivant dans des fragments séparés, cela devient plus complexe. Quand le compilateur atteint une déclaration de fonction, il a besoin d'émettre du code dans le fragment de la fonction lors de la compilation de son corps. À la fin du corps de fonction, le compilateur a besoin de retourner au fragment précédent avec lequel il travaillait.
 
-That's fine for code inside function bodies, but what about code that isn't? The
-"top level" of a Lox program is also imperative code and we need a chunk to
-compile that into. We can simplify the compiler and VM by placing that top-level
-code inside an automatically defined function too. That way, the compiler is
-always within some kind of function body, and the VM always runs code by
-invoking a function. It's as if the entire program is <span
-name="wrap">wrapped</span> inside an implicit `main()` function.
+C'est bien pour le code à l'intérieur des corps de fonction, mais qu'en est-il du code qui ne l'est pas ? Le "niveau supérieur" (top level) d'un programme Lox est aussi du code impératif et nous avons besoin d'un fragment dans lequel compiler cela. Nous pouvons simplifier le compilateur et la VM en plaçant ce code de niveau supérieur à l'intérieur d'une fonction définie automatiquement aussi. De cette façon, le compilateur est toujours à l'intérieur de quelque sorte de corps de fonction, et la VM court toujours du code en invoquant une fonction. C'est comme si le programme entier était <span name="wrap">enveloppé</span> à l'intérieur d'une fonction implicite `main()`.
 
 <aside name="wrap">
 
-One semantic corner where that analogy breaks down is global variables. They
-have special scoping rules different from local variables, so in that way, the
-top level of a script isn't like a function body.
+Un coin sémantique où cette analogie s'effondre est les variables globales. Elles ont des règles de portée spéciales différentes des variables locales, donc de cette façon, le niveau supérieur d'un script n'est pas comme un corps de fonction.
 
 </aside>
 
-Before we get to user-defined functions, then, let's do the reorganization to
-support that implicit top-level function. It starts with the Compiler struct.
-Instead of pointing directly to a Chunk that the compiler writes to, it instead
-has a reference to the function object being built.
+Avant que nous arrivions aux fonctions définies par l'utilisateur, alors, faisons la réorganisation pour supporter cette fonction implicite de niveau supérieur. Cela commence avec la structure Compiler. Au lieu de pointer directement vers un Chunk auquel le compilateur écrit, il a au lieu de cela une référence vers l'objet fonction étant construit.
 
 ^code function-fields (1 before, 1 after)
 
-We also have a little FunctionType enum. This lets the compiler tell when it's
-compiling top-level code versus the body of a function. Most of the compiler
-doesn't care about this -- that's why it's a useful abstraction -- but in one or
-two places the distinction is meaningful. We'll get to one later.
+Nous avons aussi une petite énumération FunctionType. Cela laisse le compilateur dire quand il compile du code de niveau supérieur versus le corps d'une fonction. La plupart du compilateur ne se soucie pas de cela -- c'est pourquoi c'est une abstraction utile -- mais dans un ou deux endroits la distinction est significative. Nous en arriverons à un plus tard.
 
 ^code function-type-enum
 
-Every place in the compiler that was writing to the Chunk now needs to go
-through that `function` pointer. Fortunately, many <span
-name="current">chapters</span> ago, we encapsulated access to the chunk in the
-`currentChunk()` function. We only need to fix that and the rest of the compiler
-is happy.
+Chaque endroit dans le compilateur qui écrivait au Chunk a maintenant besoin de passer par ce pointeur `function`. Heureusement, il y a de nombreux <span name="current">chapitres</span>, nous avons encapsulé l'accès au fragment dans la fonction `currentChunk()`. Nous avons seulement besoin de réparer ça et le reste du compilateur est heureux.
 
 <aside name="current">
 
-It's almost like I had a crystal ball that could see into the future and knew
-we'd need to change the code later. But, really, it's because I wrote all the
-code for the book before any of the text.
+C'est presque comme si j'avais une boule de cristal qui pouvait voir dans le futur et savait que nous aurions besoin de changer le code plus tard. Mais, vraiment, c'est parce que j'ai écrit tout le code pour le livre avant n'importe lequel des textes.
 
 </aside>
 
 ^code current-chunk (1 before, 2 after)
 
-The current chunk is always the chunk owned by the function we're in the middle
-of compiling. Next, we need to actually create that function. Previously, the VM
-passed a Chunk to the compiler which filled it with code. Instead, the compiler
-will create and return a function that contains the compiled top-level code --
-which is all we support right now -- of the user's program.
+Le fragment courant est toujours le fragment possédé par la fonction que nous sommes au milieu de compiler. Ensuite, nous avons besoin de créer réellement cette fonction. Précédemment, la VM passait un Chunk au compilateur qui le remplissait avec du code. Au lieu de cela, le compilateur créera et renverra une fonction qui contient le code de niveau supérieur compilé -- ce qui est tout ce que nous supportons pour l'instant -- du programme de l'utilisateur.
 
-### Creating functions at compile time
+### Créer des fonctions au moment de la compilation
 
-We start threading this through in `compile()`, which is the main entry point
-into the compiler.
+Nous commençons à enfiler cela à travers `compile()`, qui est le point d'entrée principal dans le compilateur.
 
 ^code call-init-compiler (1 before, 2 after)
 
-There are a bunch of changes in how the compiler is initialized. First, we
-initialize the new Compiler fields.
+Il y a un tas de changements dans comment le compilateur est initialisé. D'abord, nous initialisons les nouveaux champs de Compiler.
 
 ^code init-compiler (1 after)
 
-Then we allocate a new function object to compile into.
+Ensuite nous allouons un nouvel objet fonction dans lequel compiler.
 
 ^code init-function (1 before, 1 after)
 
@@ -201,152 +130,97 @@ Then we allocate a new function object to compile into.
 
 <aside name="null">
 
-I know, it looks dumb to null the `function` field only to immediately assign it
-a value a few lines later. More garbage collection-related paranoia.
+Je sais, cela semble bête de mettre à null le champ `function` seulement pour lui assigner immédiatement une valeur quelques lignes plus tard. Plus de paranoïa liée au ramasse-miettes.
 
 </aside>
 
-Creating an ObjFunction in the compiler might seem a little strange. A function
-object is the *runtime* representation of a function, but here we are creating
-it at compile time. The way to think of it is that a function is similar to a
-string or number literal. It forms a bridge between the compile time and runtime
-worlds. When we get to function *declarations*, those really *are* literals
--- they are a notation that produces values of a built-in type. So the <span
-name="closure">compiler</span> creates function objects during compilation.
-Then, at runtime, they are simply invoked.
+Créer une ObjFunction dans le compilateur pourrait sembler un peu étrange. Un objet fonction est la représentation _runtime_ d'une fonction, mais ici nous le créons au moment de la compilation. La façon de penser à cela est qu'une fonction est similaire à un littéral chaîne ou nombre. Elle forme un pont entre les mondes de la compilation et de l'exécution. Quand nous arrivons aux _déclarations_ de fonction, celles-ci _sont_ réellement des littéraux -- c'est une notation qui produit des valeurs d'un type intégré. Donc le <span name="closure">compilateur</span> crée des objets fonction durant la compilation. Ensuite, à l'exécution, ils sont simplement invoqués.
 
 <aside name="closure">
 
-We can create functions at compile time because they contain only data available
-at compile time. The function's code, name, and arity are all fixed. When we add
-closures in the [next chapter][closures], which capture variables at runtime,
-the story gets more complex.
+Nous pouvons créer des fonctions au moment de la compilation parce qu'elles contiennent seulement des données disponibles à la compilation. Le code, le nom, et l'arité de la fonction sont tous fixes. Quand nous ajouterons les fermetures dans le [chapitre suivant][closures], qui capturent des variables à l'exécution, l'histoire devient plus complexe.
 
 [closures]: closures.html
 
 </aside>
 
-Here is another strange piece of code:
+Voici un autre morceau de code étrange :
 
 ^code init-function-slot (1 before, 1 after)
 
-Remember that the compiler's `locals` array keeps track of which stack slots are
-associated with which local variables or temporaries. From now on, the compiler
-implicitly claims stack slot zero for the VM's own internal use. We give it an
-empty name so that the user can't write an identifier that refers to it. I'll
-explain what this is about when it becomes useful.
+Rappelez-vous que le tableau `locals` du compilateur garde la trace de quels emplacements de pile sont associés avec quelles variables locales ou temporaires. À partir de maintenant, le compilateur réclame implicitement l'emplacement de pile zéro pour le propre usage interne de la VM. Nous lui donnons un nom vide pour que l'utilisateur ne puisse pas écrire un identifiant qui s'y réfère. J'expliquerai de quoi il s'agit quand cela deviendra utile.
 
-That's the initialization side. We also need a couple of changes on the other
-end when we finish compiling some code.
+C'est le côté initialisation. Nous avons aussi besoin d'une couple de changements à l'autre bout quand nous avons fini de compiler du code.
 
 ^code end-compiler (1 after)
 
-Previously, when `interpret()` called into the compiler, it passed in a Chunk to
-be written to. Now that the compiler creates the function object itself, we
-return that function. We grab it from the current compiler here:
+Précédemment, quand `interpret()` appelait vers le compilateur, il passait un Chunk pour y écrire. Maintenant que le compilateur crée l'objet fonction lui-même, nous renvoyons cette fonction. Nous l'attrapons depuis le compilateur courant ici :
 
 ^code end-function (1 before, 1 after)
 
-And then return it to `compile()` like so:
+Et ensuite la renvoyons à `compile()` comme ceci :
 
 ^code return-function (1 before, 1 after)
 
-Now is a good time to make another tweak in this function. Earlier, we added
-some diagnostic code to have the VM dump the disassembled bytecode so we could
-debug the compiler. We should fix that to keep working now that the generated
-chunk is wrapped in a function.
+Maintenant est un bon moment pour faire un autre ajustement dans cette fonction. Plus tôt, nous avions ajouté du code de diagnostic pour faire vider par la VM le bytecode désassemblé pour que nous puissions déboguer le compilateur. Nous devrions réparer cela pour qu'il continue de fonctionner maintenant que le fragment généré est enveloppé dans une fonction.
 
 ^code disassemble-end (2 before, 2 after)
 
-Notice the check in here to see if the function's name is `NULL`? User-defined
-functions have names, but the implicit function we create for the top-level code
-does not, and we need to handle that gracefully even in our own diagnostic code.
-Speaking of which:
+Remarquez la vérification là-dedans pour voir si le nom de la fonction est `NULL` ? Les fonctions définies par l'utilisateur ont des noms, mais la fonction implicite que nous créons pour le code de niveau supérieur n'en a pas, et nous avons besoin de gérer cela gracieusement même dans notre propre code de diagnostic. En parlant de quoi :
 
 ^code print-script (1 before, 1 after)
 
-There's no way for a *user* to get a reference to the top-level function and try
-to print it, but our `DEBUG_TRACE_EXECUTION` <span
-name="debug">diagnostic</span> code that prints the entire stack can and does.
+Il n'y a aucun moyen pour un _utilisateur_ d'obtenir une référence à la fonction de niveau supérieur et essayer de l'afficher, mais notre code de <span name="debug">diagnostic</span> `DEBUG_TRACE_EXECUTION` qui affiche la pile entière peut et le fait.
 
 <aside name="debug">
 
-It is no fun if the diagnostic code we use to find bugs itself causes the VM to
-segfault!
+Ce n'est pas drôle si le code de diagnostic que nous utilisons pour trouver des bugs cause lui-même la VM de segfault !
 
 </aside>
 
-Bumping up a level to `compile()`, we adjust its signature.
+Montant d'un niveau à `compile()`, nous ajustons sa signature.
 
 ^code compile-h (2 before, 2 after)
 
-Instead of taking a chunk, now it returns a function. Over in the
-implementation:
+Au lieu de prendre un fragment, maintenant elle renvoie une fonction. Par ici dans l'implémentation :
 
 ^code compile-signature (1 after)
 
-Finally we get to some actual code. We change the very end of the function to
-this:
+Finalement nous arrivons à du code réel. Nous changeons la toute fin de la fonction pour ceci :
 
 ^code call-end-compiler (4 before, 1 after)
 
-We get the function object from the compiler. If there were no compile errors,
-we return it. Otherwise, we signal an error by returning `NULL`. This way, the
-VM doesn't try to execute a function that may contain invalid bytecode.
+Nous obtenons l'objet fonction depuis le compilateur. S'il n'y avait pas d'erreurs de compilation, nous le renvoyons. Sinon, nous signalons une erreur en renvoyant `NULL`. De cette façon, la VM n'essaie pas d'exécuter une fonction qui peut contenir du bytecode invalide.
 
-Eventually, we will update `interpret()` to handle the new declaration of
-`compile()`, but first we have some other changes to make.
+Éventuellement, nous mettrons à jour `interpret()` pour gérer la nouvelle déclaration de `compile()`, mais d'abord nous avons quelques autres changements à faire.
 
-## Call Frames
+## Cadres d'Appel (Call Frames)
 
-It's time for a big conceptual leap. Before we can implement function
-declarations and calls, we need to get the VM ready to handle them. There are
-two main problems we need to worry about:
+Il est temps pour un grand bond conceptuel. Avant que nous puissions implémenter les déclarations et les appels de fonction, nous devons préparer la VM à les gérer. Il y a deux problèmes principaux dont nous devons nous soucier :
 
-### Allocating local variables
+### Allouer les variables locales
 
-The compiler allocates stack slots for local variables. How should that work
-when the set of local variables in a program is distributed across multiple
-functions?
+Le compilateur alloue des emplacements de pile pour les variables locales. Comment cela devrait-il marcher quand l'ensemble des variables locales dans un programme est distribué à travers de multiples fonctions ?
 
-One option would be to keep them totally separate. Each function would get its
-own dedicated set of slots in the VM stack that it would own <span
-name="static">forever</span>, even when the function isn't being called. Each
-local variable in the entire program would have a bit of memory in the VM that
-it keeps to itself.
+Une option serait de les garder totalement séparées. Chaque fonction obtiendrait son propre ensemble dédié d'emplacements dans la pile de la VM qu'elle posséderait pour <span name="static">toujours</span>, même quand la fonction n'est pas en train d'être appelée. Chaque variable locale dans le programme entier aurait un bout de mémoire dans la VM qu'elle garde pour elle-même.
 
 <aside name="static">
 
-It's basically what you'd get if you declared every local variable in a C
-program using `static`.
+C'est fondamentalement ce que vous obtiendriez si vous déclariez chaque variable locale dans un programme C en utilisant `static`.
 
 </aside>
 
-Believe it or not, early programming language implementations worked this way.
-The first Fortran compilers statically allocated memory for each variable. The
-obvious problem is that it's really inefficient. Most functions are not in the
-middle of being called at any point in time, so sitting on unused memory for
-them is wasteful.
+Croyez-le ou non, les premières implémentations de langages de programmation fonctionnaient de cette façon. Les premiers compilateurs Fortran allouaient statiquement la mémoire pour chaque variable. Le problème évident est que c'est vraiment inefficace. La plupart des fonctions ne sont pas au milieu d'être appelées à n'importe quel point dans le temps, donc s'asseoir sur de la mémoire inutilisée pour elles est du gaspillage.
 
-The more fundamental problem, though, is recursion. With recursion, you can be
-"in" multiple calls to the same function at the same time. Each needs its <span
-name="fortran">own</span> memory for its local variables. In jlox, we solved
-this by dynamically allocating memory for an environment each time a function
-was called or a block entered. In clox, we don't want that kind of performance
-cost on every function call.
+Le problème plus fondamental, cependant, est la récursivité. Avec la récursivité, vous pouvez être "dans" de multiples appels à la même fonction en même temps. Chacun a besoin de sa <span name="fortran">propre</span> mémoire pour ses variables locales. Dans jlox, nous avons résolu cela en allouant dynamiquement de la mémoire pour un environnement chaque fois qu'une fonction était appelée ou un bloc entré. Dans clox, nous ne voulons pas ce genre de coût de performance à chaque appel de fonction.
 
 <aside name="fortran">
 
-Fortran avoided this problem by disallowing recursion entirely. Recursion was
-considered an advanced, esoteric feature at the time.
+Fortran évitait ce problème en interdisant la récursivité entièrement. La récursivité était considérée comme une fonctionnalité avancée, ésotérique à l'époque.
 
 </aside>
 
-Instead, our solution lies somewhere between Fortran's static allocation and
-jlox's dynamic approach. The value stack in the VM works on the observation that
-local variables and temporaries behave in a last-in first-out fashion.
-Fortunately for us, that's still true even when you add function calls into the
-mix. Here's an example:
+Au lieu de cela, notre solution repose quelque part entre l'allocation statique de Fortran et l'approche dynamique de jlox. La pile de valeurs dans la VM fonctionne sur l'observation que les variables locales et les temporaires se comportent d'une façon dernier-récent premier-sorti (LIFO). Heureusement pour nous, c'est toujours vrai même quand vous ajoutez les appels de fonction dans le mélange. Voici un exemple :
 
 ```lox
 fun first() {
@@ -363,28 +237,17 @@ fun second() {
 first();
 ```
 
-Step through the program and look at which variables are in memory at each point
-in time:
+Parcourez le programme et regardez quelles variables sont en mémoire à chaque point dans le temps :
 
-<img src="image/calls-and-functions/calls.png" alt="Tracing through the execution of the previous program, showing the stack of variables at each step." />
+<img src="image/calls-and-functions/calls.png" alt="Traçage à travers l'exécution du programme précédent, montrant la pile de variables à chaque étape." />
 
-As execution flows through the two calls, every local variable obeys the
-principle that any variable declared after it will be discarded before the first
-variable needs to be. This is true even across calls. We know we'll be done with
-`c` and `d` before we are done with `a`. It seems we should be able to allocate
-local variables on the VM's value stack.
+Comme l'exécution coule à travers les deux appels, chaque variable locale obéit au principe que toute variable déclarée après elle sera jetée avant que la première variable ait besoin de l'être. C'est vrai même à travers les appels. Nous savons que nous aurons fini avec `c` et `d` avant que nous ayons fini avec `a`. Il semble que nous devrions être capables d'allouer les variables locales sur la pile de valeurs de la VM.
 
-Ideally, we still determine *where* on the stack each variable will go at
-compile time. That keeps the bytecode instructions for working with variables
-simple and fast. In the above example, we could <span
-name="imagine">imagine</span> doing so in a straightforward way, but that
-doesn't always work out. Consider:
+Idéalement, nous déterminons toujours _où_ sur la pile chaque variable ira au moment de la compilation. Cela garde les instructions bytecode pour travailler avec les variables simples et rapides. Dans l'exemple ci-dessus, nous pourrions <span name="imagine">imaginer</span> faire ainsi d'une manière directe, mais cela ne s'arrange pas toujours. Considérez :
 
 <aside name="imagine">
 
-I say "imagine" because the compiler can't actually figure this out. Because
-functions are first class in Lox, we can't determine which functions call which
-others at compile time.
+Je dis "imaginer" parce que le compilateur ne peut pas réellement déterminer cela. Parce que les fonctions sont de première classe dans Lox, nous ne pouvons pas déterminer quelles fonctions appellent lesquelles autres à la compilation.
 
 </aside>
 
@@ -404,412 +267,238 @@ fun second() {
 first();
 ```
 
-In the first call to `second()`, `c` and `d` would go into slots 1 and 2. But in
-the second call, we need to have made room for `b`, so `c` and `d` need to be in
-slots 2 and 3. Thus the compiler can't pin down an exact slot for each local
-variable across function calls. But *within* a given function, the *relative*
-locations of each local variable are fixed. Variable `d` is always in the slot
-right after `c`. This is the key insight.
+Dans le premier appel à `second()`, `c` et `d` iraient dans les emplacements 1 et 2. Mais dans le second appel, nous avons besoin d'avoir fait de la place pour `b`, donc `c` et `d` ont besoin d'être dans les emplacements 2 et 3. Ainsi le compilateur ne peut pas épingler un emplacement exact pour chaque variable locale à travers les appels de fonction. Mais _au sein_ d'une fonction donnée, les emplacements _relatifs_ de chaque variable locale sont fixes. La variable `d` est toujours dans l'emplacement juste après `c`. C'est l'intuition clé.
 
-When a function is called, we don't know where the top of the stack will be
-because it can be called from different contexts. But, wherever that top happens
-to be, we do know where all of the function's local variables will be relative
-to that starting point. So, like many problems, we solve our allocation problem
-with a level of indirection.
+Quand une fonction est appelée, nous ne savons pas où le sommet de la pile sera parce qu'elle peut être appelée depuis différents contextes. Mais, peu importe où ce sommet se trouve être, nous savons où toutes les variables locales de la fonction seront relativement à ce point de départ. Donc, comme beaucoup de problèmes, nous résolvons notre problème d'allocation avec un niveau d'indirection.
 
-At the beginning of each function call, the VM records the location of the first
-slot where that function's own locals begin. The instructions for working with
-local variables access them by a slot index relative to that, instead of
-relative to the bottom of the stack like they do today. At compile time, we
-calculate those relative slots. At runtime, we convert that relative slot to an
-absolute stack index by adding the function call's starting slot.
+Au début de chaque appel de fonction, la VM enregistre l'emplacement du premier emplacement où les propres locales de cette fonction commencent. Les instructions pour travailler avec les variables locales y accèdent par un index d'emplacement relatif à cela, au lieu de relatif au bas de la pile comme elles le font aujourd'hui. À la compilation, nous calculons ces emplacements relatifs. À l'exécution, nous convertissons cet emplacement relatif en un index de pile absolu en ajoutant l'emplacement de départ de l'appel de fonction.
 
-It's as if the function gets a "window" or "frame" within the larger stack where
-it can store its locals. The position of the **call frame** is determined at
-runtime, but within and relative to that region, we know where to find things.
+C'est comme si la fonction obtenait une "fenêtre" ou un "cadre" au sein de la plus grande pile où elle peut stocker ses locales. La position du **cadre d'appel** (call frame) est déterminée à l'exécution, mais au sein et relativement à cette région, nous savons où trouver les choses.
 
-<img src="image/calls-and-functions/window.png" alt="The stack at the two points when second() is called, with a window hovering over each one showing the pair of stack slots used by the function." />
+<img src="image/calls-and-functions/window.png" alt="La pile aux deux points quand second() est appelée, avec une fenêtre planant au-dessus de chacun montrant la paire d'emplacements de pile utilisée par la fonction." />
 
-The historical name for this recorded location where the function's locals start
-is a **frame pointer** because it points to the beginning of the function's call
-frame. Sometimes you hear **base pointer**, because it points to the base stack
-slot on top of which all of the function's variables live.
+Le nom historique pour cet emplacement enregistré où les locales de la fonction commencent est un **pointeur de cadre** parce qu'il pointe vers le début du cadre d'appel de la fonction. Parfois vous entendez **pointeur de base**, parce qu'il pointe vers l'emplacement de pile de base au-dessus duquel toutes les variables de la fonction vivent.
 
-That's the first piece of data we need to track. Every time we call a function,
-the VM determines the first stack slot where that function's variables begin.
+C'est le premier morceau de données que nous avons besoin de suivre. Chaque fois que nous appelons une fonction, la VM détermine le premier emplacement de pile où les variables de cette fonction commencent.
 
-### Return addresses
+### Adresses de retour
 
-Right now, the VM works its way through the instruction stream by incrementing
-the `ip` field. The only interesting behavior is around control flow
-instructions which offset the `ip` by larger amounts. *Calling* a function is
-pretty straightforward -- simply set `ip` to point to the first instruction in
-that function's chunk. But what about when the function is done?
+En ce moment, la VM travaille son chemin à travers le flux d'instruction en incrémentant le champ `ip`. Le seul comportement intéressant est autour des instructions de contrôle de flux qui décalent l'`ip` de montants plus grands. _Appeler_ une fonction est assez direct -- réglez simplement `ip` pour pointer vers la première instruction dans le fragment de cette fonction. Mais qu'en est-il quand la fonction est finie ?
 
-The VM needs to <span name="return">return</span> back to the chunk where the
-function was called from and resume execution at the instruction immediately
-after the call. Thus, for each function call, we need to track where we jump
-back to when the call completes. This is called a **return address** because
-it's the address of the instruction that the VM returns to after the call.
+La VM a besoin de <span name="return">retourner</span> au fragment où la fonction a été appelée et reprendre l'exécution à l'instruction immédiatement après l'appel. Ainsi, pour chaque appel de fonction, nous avons besoin de suivre où nous sautons en retour quand l'appel se complète. Ceci est appelé une **adresse de retour** parce que c'est l'adresse de l'instruction à laquelle la VM retourne après l'appel.
 
-Again, thanks to recursion, there may be multiple return addresses for a single
-function, so this is a property of each *invocation* and not the function
-itself.
+Encore, grâce à la récursivité, il peut y avoir de multiples adresses de retour pour une seule fonction, donc ceci est une propriété de chaque _invocation_ et non de la fonction elle-même.
 
 <aside name="return">
 
-The authors of early Fortran compilers had a clever trick for implementing
-return addresses. Since they *didn't* support recursion, any given function
-needed only a single return address at any point in time. So when a function was
-called at runtime, the program would *modify its own code* to change a jump
-instruction at the end of the function to jump back to its caller. Sometimes the
-line between genius and madness is hair thin.
+Les auteurs des premiers compilateurs Fortran avaient un truc malin pour implémenter les adresses de retour. Puisqu'ils ne supportaient _pas_ la récursivité, toute fonction donnée avait besoin seulement d'une seule adresse de retour à n'importe quel point dans le temps. Donc quand une fonction était appelée à l'exécution, le programme _modifiait son propre code_ pour changer une instruction de saut à la fin de la fonction pour sauter en retour vers son appelant. Parfois la ligne entre génie et folie est fine comme un cheveu.
 
 </aside>
 
-### The call stack
+### La pile d'appels
 
-So for each live function invocation -- each call that hasn't returned yet -- we
-need to track where on the stack that function's locals begin, and where the
-caller should resume. We'll put this, along with some other stuff, in a new
-struct.
+Donc pour chaque invocation de fonction vivante -- chaque appel qui n'a pas retourné encore -- nous avons besoin de suivre où sur la pile les locales de cette fonction commencent, et où l'appelant devrait reprendre. Nous mettrons cela, avec quelques autres trucs, dans une nouvelle structure.
 
 ^code call-frame (1 before, 2 after)
 
-A CallFrame represents a single ongoing function call. The `slots` field points
-into the VM's value stack at the first slot that this function can use. I gave
-it a plural name because -- thanks to C's weird "pointers are sort of arrays"
-thing -- we'll treat it like an array.
+Une CallFrame représente un seul appel de fonction en cours. Le champ `slots` pointe dans la pile de valeurs de la VM au premier emplacement que cette fonction peut utiliser. Je lui ai donné un nom pluriel parce que -- grâce au truc bizarre de C "les pointeurs sont en quelque sorte des tableaux" -- nous le traiterons comme un tableau.
 
-The implementation of return addresses is a little different from what I
-described above. Instead of storing the return address in the callee's frame,
-the caller stores its own `ip`. When we return from a function, the VM will jump
-to the `ip` of the caller's CallFrame and resume from there.
+L'implémentation des adresses de retour est un peu différente de ce que j'ai décrit ci-dessus. Au lieu de stocker l'adresse de retour dans le cadre de l'appelé, l'appelant stocke son propre `ip`. Quand nous retournons d'une fonction, la VM sautera à l'`ip` de la CallFrame de l'appelant et reprendra de là.
 
-I also stuffed a pointer to the function being called in here. We'll use that to
-look up constants and for a few other things.
+J'ai aussi fourré un pointeur vers la fonction étant appelée ici. Nous utiliserons cela pour rechercher des constantes et pour quelques autres choses.
 
-Each time a function is called, we create one of these structs. We could <span
-name="heap">dynamically</span> allocate them on the heap, but that's slow.
-Function calls are a core operation, so they need to be as fast as possible.
-Fortunately, we can make the same observation we made for variables: function
-calls have stack semantics. If `first()` calls `second()`, the call to
-`second()` will complete before `first()` does.
+Chaque fois qu'une fonction est appelée, nous créons une de ces structures. Nous pourrions les allouer <span name="heap">dynamiquement</span> sur le tas, mais c'est lent. Les appels de fonction sont une opération centrale, donc ils ont besoin d'être aussi rapides que possible. Heureusement, nous pouvons faire la même observation que nous avons faite pour les variables : les appels de fonction ont une sémantique de pile. Si `first()` appelle `second()`, l'appel à `second()` se complétera avant que `first()` ne le fasse.
 
 <aside name="heap">
 
-Many Lisp implementations dynamically allocate stack frames because it
-simplifies implementing [continuations][cont]. If your language supports
-continuations, then function calls do *not* always have stack semantics.
+Beaucoup d'implémentations Lisp allouent dynamiquement les cadres de pile parce que cela simplifie l'implémentation des [continuations][cont]. Si votre langage supporte les continuations, alors les appels de fonction n'ont _pas_ toujours une sémantique de pile.
 
-[cont]: https://en.wikipedia.org/wiki/Continuation
+[cont]: https://fr.wikipedia.org/wiki/Continuation
 
 </aside>
 
-So over in the VM, we create an array of these CallFrame structs up front and
-treat it as a stack, like we do with the value array.
+Donc là-bas dans la VM, nous créons un tableau de ces structures CallFrame à l'avance et le traitons comme une pile, comme nous le faisons avec le tableau de valeurs.
 
 ^code frame-array (1 before, 1 after)
 
-This array replaces the `chunk` and `ip` fields we used to have directly in the
-VM. Now each CallFrame has its own `ip` and its own pointer to the ObjFunction
-that it's executing. From there, we can get to the function's chunk.
+Ce tableau remplace les champs `chunk` et `ip` que nous avions l'habitude d'avoir directement dans la VM. Maintenant chaque CallFrame a son propre `ip` et son propre pointeur vers l'ObjFunction qu'elle exécute. De là, nous pouvons aller au fragment de la fonction.
 
-The new `frameCount` field in the VM stores the current height of the CallFrame
-stack -- the number of ongoing function calls. To keep clox simple, the array's
-capacity is fixed. This means, as in many language implementations, there is a
-maximum call depth we can handle. For clox, it's defined here:
+Le nouveau champ `frameCount` dans la VM stocke la hauteur courante de la pile CallFrame -- le nombre d'appels de fonction en cours. Pour garder clox simple, la capacité du tableau est fixe. Cela signifie, comme dans beaucoup d'implémentations de langage, qu'il existe une profondeur d'appel maximale que nous pouvons gérer. Pour clox, c'est défini ici :
 
 ^code frame-max (2 before, 2 after)
 
-We also redefine the value stack's <span name="plenty">size</span> in terms of
-that to make sure we have plenty of stack slots even in very deep call trees.
-When the VM starts up, the CallFrame stack is empty.
+Nous redéfinissons aussi la <span name="plenty">taille</span> de la pile de valeurs en termes de cela pour nous assurer que nous avons plein d'emplacements de pile même dans des arbres d'appel très profonds. Quand la VM démarre, la pile CallFrame est vide.
 
 <aside name="plenty">
 
-It is still possible to overflow the stack if enough function calls use enough
-temporaries in addition to locals. A robust implementation would guard against
-this, but I'm trying to keep things simple.
+Il est toujours possible de déborder la pile si assez d'appels de fonction utilisent assez de temporaires en plus des locales. Une implémentation robuste se garderait contre cela, mais j'essaie de garder les choses simples.
 
 </aside>
 
 ^code reset-frame-count (1 before, 1 after)
 
-The "vm.h" header needs access to ObjFunction, so we add an include.
+L'en-tête "vm.h" a besoin d'accéder à ObjFunction, donc nous ajoutons une inclusion.
 
 ^code vm-include-object (2 before, 1 after)
 
-Now we're ready to move over to the VM's implementation file. We've got some
-grunt work ahead of us. We've moved `ip` out of the VM struct and into
-CallFrame. We need to fix every line of code in the VM that touches `ip` to
-handle that. Also, the instructions that access local variables by stack slot
-need to be updated to do so relative to the current CallFrame's `slots` field.
+Maintenant nous sommes prêts à bouger vers le fichier d'implémentation de la VM. Nous avons du sale boulot devant nous. Nous avons déplacé le `ip` hors de la structure VM et dans CallFrame. Nous avons besoin de réparer chaque ligne de code dans la VM qui touche à `ip` pour gérer cela. Aussi, les instructions qui accèdent aux variables locales par emplacement de pile ont besoin d'être mises à jour pour le faire relativement au champ `slots` de la CallFrame courante.
 
-We'll start at the top and plow through it.
+Nous commencerons au sommet et labourerons à travers.
 
 ^code run (1 before, 1 after)
 
-First, we store the current topmost CallFrame in a <span
-name="local">local</span> variable inside the main bytecode execution function.
-Then we replace the bytecode access macros with versions that access `ip`
-through that variable.
+D'abord, nous stockons la CallFrame la plus haute courante dans une variable <span name="local">locale</span> à l'intérieur de la fonction principale d'exécution bytecode. Ensuite nous remplaçons les macros d'accès au bytecode par des versions qui accèdent à `ip` à travers cette variable.
 
 <aside name="local">
 
-We could access the current frame by going through the CallFrame array every
-time, but that's verbose. More importantly, storing the frame in a local
-variable encourages the C compiler to keep that pointer in a register. That
-speeds up access to the frame's `ip`. There's no *guarantee* that the compiler
-will do this, but there's a good chance it will.
+Nous pourrions accéder au cadre courant en passant par le tableau CallFrame chaque fois, mais c'est verbeux. Plus important, stocker le cadre dans une variable locale encourage le compilateur C à garder ce pointeur dans un registre. Cela accélère l'accès à l'`ip` du cadre. Il n'y a pas de _garantie_ que le compilateur fera cela, mais il y a une bonne chance qu'il le fasse.
 
 </aside>
 
-Now onto each instruction that needs a little tender loving care.
+Maintenant sur chaque instruction qui a besoin d'un peu d'amour et de soin.
 
 ^code push-local (2 before, 1 after)
 
-Previously, `OP_GET_LOCAL` read the given local slot directly from the VM's
-stack array, which meant it indexed the slot starting from the bottom of the
-stack. Now, it accesses the current frame's `slots` array, which means it
-accesses the given numbered slot relative to the beginning of that frame.
+Précédemment, `OP_GET_LOCAL` lisait l'emplacement local donné directement depuis le tableau de pile de la VM, ce qui signifiait qu'il indexait l'emplacement commençant depuis le bas de la pile. Maintenant, il accède au tableau `slots` du cadre courant, ce qui signifie qu'il accède à l'emplacement numéroté donné relativement au début de ce cadre.
 
-Setting a local variable works the same way.
+Régler une variable locale fonctionne de la même façon.
 
 ^code set-local (2 before, 1 after)
 
-The jump instructions used to modify the VM's `ip` field. Now, they do the same
-for the current frame's `ip`.
+Les instructions de saut avaient l'habitude de modifier le champ `ip` de la VM. Maintenant, elles font la même chose pour l'`ip` du cadre courant.
 
 ^code jump (2 before, 1 after)
 
-Same with the conditional jump:
+Même chose avec le saut conditionnel :
 
 ^code jump-if-false (2 before, 1 after)
 
-And our backward-jumping loop instruction:
+Et notre instruction de boucle sautant en arrière :
 
 ^code loop (2 before, 1 after)
 
-We have some diagnostic code that prints each instruction as it executes to help
-us debug our VM. That needs to work with the new structure too.
+Nous avons du code de diagnostic qui imprime chaque instruction comme elle s'exécute pour nous aider à déboguer notre VM. Cela a besoin de fonctionner avec la nouvelle structure aussi.
 
 ^code trace-execution (1 before, 1 after)
 
-Instead of passing in the VM's `chunk` and `ip` fields, now we read from the
-current CallFrame.
+Au lieu de passer les champs `chunk` et `ip` de la VM, maintenant nous lisons depuis la CallFrame courante.
 
-You know, that wasn't too bad, actually. Most instructions just use the macros
-so didn't need to be touched. Next, we jump up a level to the code that calls
-`run()`.
+Vous savez, ce n'était pas trop mal, en fait. La plupart des instructions utilisent juste les macros donc n'ont pas eu besoin d'être touchées. Ensuite, nous sautons d'un niveau au code qui appelle `run()`.
 
 ^code interpret-stub (1 before, 2 after)
 
-We finally get to wire up our earlier compiler changes to the back-end changes
-we just made. First, we pass the source code to the compiler. It returns us a
-new ObjFunction containing the compiled top-level code. If we get `NULL` back,
-it means there was some compile-time error which the compiler has already
-reported. In that case, we bail out since we can't run anything.
+Nous arrivons finalement à brancher nos changements de compilateur précédents aux changements back-end que nous venons de faire. D'abord, nous passons le code source au compilateur. Il nous renvoie une nouvelle ObjFunction contenant le code de niveau supérieur compilé. Si nous obtenons `NULL` en retour, cela signifie qu'il y a eu quelque erreur au moment de la compilation que le compilateur a déjà rapportée. Dans ce cas, nous abandonnons puisque nous ne pouvons rien exécuter.
 
-Otherwise, we store the function on the stack and prepare an initial CallFrame
-to execute its code. Now you can see why the compiler sets aside stack slot zero
--- that stores the function being called. In the new CallFrame, we point to the
-function, initialize its `ip` to point to the beginning of the function's
-bytecode, and set up its stack window to start at the very bottom of the VM's
-value stack.
+Sinon, nous stockons la fonction sur la pile et préparons une CallFrame initiale pour exécuter son code. Maintenant vous pouvez voir pourquoi le compilateur met de côté l'emplacement de pile zéro -- cela stocke la fonction étant appelée. Dans la nouvelle CallFrame, nous pointons vers la fonction, initialisons son `ip` pour pointer vers le début du bytecode de la fonction, et configurons sa fenêtre de pile pour commencer tout au bas de la pile de valeurs de la VM.
 
-This gets the interpreter ready to start executing code. After finishing, the VM
-used to free the hardcoded chunk. Now that the ObjFunction owns that code, we
-don't need to do that anymore, so the end of `interpret()` is simply this:
+Cela prépare l'interpréteur à commencer à exécuter du code. Après avoir fini, la VM avait l'habitude de libérer le fragment codé en dur. Maintenant que l'ObjFunction possède ce code, nous n'avons plus besoin de faire cela, donc la fin de `interpret()` est simplement ceci :
 
 ^code end-interpret (2 before, 1 after)
 
-The last piece of code referring to the old VM fields is `runtimeError()`. We'll
-revisit that later in the chapter, but for now let's change it to this:
+Le dernier morceau de code se référant aux vieux champs de la VM est `runtimeError()`. Nous revisiterons cela plus tard dans le chapitre, mais pour l'instant changeons-le pour ceci :
 
 ^code runtime-error-temp (2 before, 1 after)
 
-Instead of reading the chunk and `ip` directly from the VM, it pulls those from
-the topmost CallFrame on the stack. That should get the function working again
-and behaving as it did before.
+Au lieu de lire le fragment et l'`ip` directement depuis la VM, il tire ceux-ci depuis la CallFrame la plus haute sur la pile. Cela devrait faire fonctionner la fonction à nouveau et se comporter comme elle le faisait avant.
 
-Assuming we did all of that correctly, we got clox back to a runnable
-state. Fire it up and it does... exactly what it did before. We haven't added
-any new features yet, so this is kind of a let down. But all of the
-infrastructure is there and ready for us now. Let's take advantage of it.
+Supposant que nous avons fait tout cela correctement, nous avons ramené clox à un état exécutable. Démarrez-le et il fait... exactement ce qu'il faisait avant. Nous n'avons ajouté aucune nouvelle fonctionnalité encore, donc c'est un peu une déception. Mais toute l'infrastructure est là et prête pour nous maintenant. Tirons-en avantage.
 
-## Function Declarations
+## Déclarations de Fonction
 
-Before we can do call expressions, we need something to call, so we'll do
-function declarations first. The <span name="fun">fun</span> starts with a
-keyword.
+Avant que nous puissions faire des expressions d'appel, nous avons besoin de quelque chose à appeler, donc nous ferons les déclarations de fonction d'abord. Le <span name="fun">fun</span> commence avec un mot-clé.
 
 <aside name="fun">
 
-Yes, I am going to make a dumb joke about the `fun` keyword every time it
-comes up.
+Oui, je vais faire une blague bête sur le mot-clé `fun` à chaque fois qu'il apparaît.
 
 </aside>
 
 ^code match-fun (1 before, 1 after)
 
-That passes control to here:
+Cela passe le contrôle ici :
 
 ^code fun-declaration
 
-Functions are first-class values, and a function declaration simply creates and
-stores one in a newly declared variable. So we parse the name just like any
-other variable declaration. A function declaration at the top level will bind
-the function to a global variable. Inside a block or other function, a function
-declaration creates a local variable.
+Les fonctions sont des valeurs de première classe, et une déclaration de fonction crée et stocke simplement une dans une variable nouvellement déclarée. Donc nous analysons le nom juste comme n'importe quelle autre déclaration de variable. Une déclaration de fonction au niveau supérieur liera la fonction à une variable globale. À l'intérieur d'un bloc ou autre fonction, une déclaration de fonction crée une variable locale.
 
-In an earlier chapter, I explained how variables [get defined in two
-stages][stage]. This ensures you can't access a variable's value inside the
-variable's own initializer. That would be bad because the variable doesn't
-*have* a value yet.
+Dans un chapitre précédent, j'ai expliqué comment les variables [sont définies en deux étapes][stage]. Cela assure que vous ne pouvez pas accéder à la valeur d'une variable à l'intérieur de l'initialisateur de la variable elle-même. Cela serait mauvais parce que la variable n'a pas de valeur _encore_.
 
-[stage]: local-variables.html#another-scope-edge-case
+[stage]: variables-locales.html#un-autre-cas-limite-de-port%C3%A9e
 
-Functions don't suffer from this problem. It's safe for a function to refer to
-its own name inside its body. You can't *call* the function and execute the body
-until after it's fully defined, so you'll never see the variable in an
-uninitialized state. Practically speaking, it's useful to allow this in order to
-support recursive local functions.
+Les fonctions ne souffrent pas de ce problème. Il est sûr pour une fonction de se référer à son propre nom à l'intérieur de son corps. Vous ne pouvez pas _appeler_ la fonction et exécuter le corps jusqu'à ce qu'elle soit pleinement définie, donc vous ne verrez jamais la variable dans un état non initialisé. Pratiquement parlant, il est utile de permettre ceci afin de supporter les fonctions locales récursives.
 
-To make that work, we mark the function declaration's variable "initialized" as
-soon as we compile the name, before we compile the body. That way the name can
-be referenced inside the body without generating an error.
+Pour faire fonctionner cela, nous marquons la variable de la déclaration de fonction "initialisée" aussitôt que nous compilons le nom, avant que nous compilions le corps. De cette façon le nom peut être référencé à l'intérieur du corps sans générer une erreur.
 
-We do need one check, though.
+Nous avons besoin d'une vérification, cependant.
 
 ^code check-depth (1 before, 1 after)
 
-Before, we called `markInitialized()` only when we already knew we were in a
-local scope. Now, a top-level function declaration will also call this function.
-When that happens, there is no local variable to mark initialized -- the
-function is bound to a global variable.
+Avant, nous appelions `markInitialized()` seulement quand nous savions déjà que nous étions dans une portée locale. Maintenant, une déclaration de fonction de niveau supérieur appellera aussi cette fonction. Quand cela arrive, il n'y a pas de variable locale à marquer initialisée -- la fonction est liée à une variable globale.
 
-Next, we compile the function itself -- its parameter list and block body. For
-that, we use a separate helper function. That helper generates code that
-leaves the resulting function object on top of the stack. After that, we call
-`defineVariable()` to store that function back into the variable we declared for
-it.
+Ensuite, nous compilons la fonction elle-même -- sa liste de paramètres et son corps de bloc. Pour cela, nous utilisons une fonction aide séparée. Cette aide génère du code qui laisse l'objet fonction résultant au sommet de la pile. Après cela, nous appelons `defineVariable()` pour stocker cette fonction en retour dans la variable que nous avons déclarée pour elle.
 
-I split out the code to compile the parameters and body because we'll reuse it
-later for parsing method declarations inside classes. Let's build it
-incrementally, starting with this:
-
+J'ai séparé le code pour compiler les paramètres et le corps parce que nous le réutiliserons plus tard pour analyser les déclarations de méthode à l'intérieur des classes. Construisons-le incrémentalement, commençant avec ceci :
 ^code compile-function
 
 <aside name="no-end-scope">
 
-This `beginScope()` doesn't have a corresponding `endScope()` call. Because we
-end Compiler completely when we reach the end of the function body, there's no
-need to close the lingering outermost scope.
+Ce `beginScope()` n'a pas d'appel `endScope()` correspondant. Parce que nous terminons Compiler complètement quand nous atteignons la fin du corps de la fonction, il n'y a pas besoin de fermer la portée la plus extérieure persistante.
 
 </aside>
 
-For now, we won't worry about parameters. We parse an empty pair of parentheses
-followed by the body. The body starts with a left curly brace, which we parse
-here. Then we call our existing `block()` function, which knows how to compile
-the rest of a block including the closing brace.
+Pour l'instant, nous ne nous soucierons pas des paramètres. Nous analysons une paire vide de parenthèses suivies par le corps. Le corps commence avec une accolade gauche, que nous analysons ici. Ensuite nous appelons notre fonction `block()` existante, qui sait comment compiler le reste d'un bloc incluant l'accolade fermante.
 
-### A stack of compilers
+### Une pile de compilateurs
 
-The interesting parts are the compiler stuff at the top and bottom. The Compiler
-struct stores data like which slots are owned by which local variables, how many
-blocks of nesting we're currently in, etc. All of that is specific to a single
-function. But now the front end needs to handle compiling multiple functions
-<span name="nested">nested</span> within each other.
+Les parties intéressantes sont les trucs de compilateur au sommet et au bas. La structure Compiler stocke des données comme quels emplacements sont possédés par quelles variables locales, combien de blocs d'imbrication nous sommes actuellement dedans, etc. Tout cela est spécifique à une fonction unique. Mais maintenant le front end a besoin de gérer la compilation de multiples fonctions <span name="nested">imbriquées</span> les unes dans les autres.
 
 <aside name="nested">
 
-Remember that the compiler treats top-level code as the body of an implicit
-function, so as soon as we add *any* function declarations, we're in a world of
-nested functions.
+Rappelez-vous que le compilateur traite le code de niveau supérieur comme le corps d'une fonction implicite, donc aussitôt que nous ajoutons _n'importe quelles_ déclarations de fonction, nous sommes dans un monde de fonctions imbriquées.
 
 </aside>
 
-The trick for managing that is to create a separate Compiler for each function
-being compiled. When we start compiling a function declaration, we create a new
-Compiler on the C stack and initialize it. `initCompiler()` sets that Compiler
-to be the current one. Then, as we compile the body, all of the functions that
-emit bytecode write to the chunk owned by the new Compiler's function.
+Le truc pour gérer cela est de créer un Compiler séparé pour chaque fonction étant compilée. Quand nous commençons à compiler une déclaration de fonction, nous créons un nouveau Compiler sur la pile C et l'initialisons. `initCompiler()` règle ce Compiler pour être le courant. Ensuite, comme nous compilons le corps, toutes les fonctions qui émettent du bytecode écrivent au fragment possédé par la fonction du nouveau Compiler.
 
-After we reach the end of the function's block body, we call `endCompiler()`.
-That yields the newly compiled function object, which we store as a constant in
-the *surrounding* function's constant table. But, wait, how do we get back to
-the surrounding function? We lost it when `initCompiler()` overwrote the current
-compiler pointer.
+Après que nous atteignons la fin du corps de bloc de la fonction, nous appelons `endCompiler()`. Cela produit l'objet fonction nouvellement compilé, que nous stockons comme une constante dans la table des constantes de la fonction _enveloppante_. Mais, attendez, comment revenons-nous à la fonction enveloppante ? Nous l'avons perdue quand `initCompiler()` a écrasé le pointeur de compilateur courant.
 
-We fix that by treating the series of nested Compiler structs as a stack. Unlike
-the Value and CallFrame stacks in the VM, we won't use an array. Instead, we use
-a linked list. Each Compiler points back to the Compiler for the function that
-encloses it, all the way back to the root Compiler for the top-level code.
+Nous réparons cela en traitant la série de structures Compiler imbriquées comme une pile. Contrairement aux piles Value et CallFrame dans la VM, nous n'utiliserons pas un tableau. Au lieu de cela, nous utilisons une liste chaînée. Chaque Compiler pointe en arrière vers le Compiler pour la fonction qui l'entoure, tout le chemin de retour au Compiler racine pour le code de niveau supérieur.
 
 ^code enclosing-field (2 before, 1 after)
 
-Inside the Compiler struct, we can't reference the Compiler *typedef* since that
-declaration hasn't finished yet. Instead, we give a name to the struct itself
-and use that for the field's type. C is weird.
+À l'intérieur de la structure Compiler, nous ne pouvons pas référencer le _typedef_ Compiler puisque cette déclaration n'a pas fini encore. Au lieu de cela, nous donnons un nom à la structure elle-même et utilisons cela pour le type du champ. Le C est bizarre.
 
-When initializing a new Compiler, we capture the about-to-no-longer-be-current
-one in that pointer.
+Lors de l'initialisation d'un nouveau Compiler, nous capturons celui sur-le-point-de-ne-plus-être-courant dans ce pointeur.
 
 ^code store-enclosing (1 before, 1 after)
 
-Then when a Compiler finishes, it pops itself off the stack by restoring the
-previous compiler to be the new current one.
+Ensuite quand un Compiler finit, il se dépile lui-même de la pile en restaurant le compilateur précédent pour être le nouveau courant.
 
 ^code restore-enclosing (2 before, 1 after)
 
-Note that we don't even need to <span name="compiler">dynamically</span>
-allocate the Compiler structs. Each is stored as a local variable in the C stack
--- either in `compile()` or `function()`. The linked list of Compilers threads
-through the C stack. The reason we can get an unbounded number of them is
-because our compiler uses recursive descent, so `function()` ends up calling
-itself recursively when you have nested function declarations.
+Notez que nous n'avons même pas besoin d'allouer <span name="compiler">dynamiquement</span> les structures Compiler. Chacune est stockée comme une variable locale dans la pile C -- soit dans `compile()` ou `function()`. La liste chaînée de Compilers s'enfile à travers la pile C. La raison pour laquelle nous pouvons obtenir un nombre illimité d'entre eux est parce que notre compilateur utilise la descente récursive, donc `function()` finit par s'appeler elle-même récursivement quand vous avez des déclarations de fonction imbriquées.
 
 <aside name="compiler">
 
-Using the native stack for Compiler structs does mean our compiler has a
-practical limit on how deeply nested function declarations can be. Go too far
-and you could overflow the C stack. If we want the compiler to be more robust
-against pathological or even malicious code -- a real concern for tools like
-JavaScript VMs -- it would be good to have our compiler artificially limit the
-amount of function nesting it permits.
+Utiliser la pile native pour les structures Compiler signifie bien que notre compilateur a une limite pratique sur jusqu'à quelle profondeur les déclarations de fonction imbriquées peuvent être. Allez trop loin et vous pourriez déborder la pile C. Si nous voulons que le compilateur soit plus robuste contre le code pathologique ou même malveillant -- une vraie préoccupation pour des outils comme les VMs JavaScript -- il serait bon d'avoir notre compilateur limiter artificiellement la quantité d'imbrication de fonction qu'il permet.
 
 </aside>
 
-### Function parameters
+### Paramètres de fonction
 
-Functions aren't very useful if you can't pass arguments to them, so let's do
-parameters next.
+Les fonctions ne sont pas très utiles si vous ne pouvez pas leur passer des arguments, donc faisons les paramètres ensuite.
 
 ^code parameters (1 before, 1 after)
 
-Semantically, a parameter is simply a local variable declared in the outermost
-lexical scope of the function body. We get to use the existing compiler support
-for declaring named local variables to parse and compile parameters. Unlike
-local variables, which have initializers, there's no code here to initialize the
-parameter's value. We'll see how they are initialized later when we do argument
-passing in function calls.
+Sémantiquement, un paramètre est simplement une variable locale déclarée dans la portée lexicale la plus extérieure du corps de la fonction. Nous arrivons à utiliser le support existant du compilateur pour déclarer des variables locales nommées pour analyser et compiler les paramètres. Contrairement aux variables locales, qui ont des initialisateurs, il n'y a pas de code ici pour initialiser la valeur du paramètre. Nous verrons comment ils sont initialisés plus tard quand nous ferons le passage d'arguments dans les appels de fonction.
 
-While we're at it, we note the function's arity by counting how many parameters
-we parse. The other piece of metadata we store with a function is its name. When
-compiling a function declaration, we call `initCompiler()` right after we parse
-the function's name. That means we can grab the name right then from the
-previous token.
+Pendant que nous y sommes, nous notons l'arité de la fonction en comptant combien de paramètres nous analysons. L'autre morceau de métadonnée que nous stockons avec une fonction est son nom. Lors de la compilation d'une déclaration de fonction, nous appelons `initCompiler()` juste après que nous analysons le nom de la fonction. Cela signifie que nous pouvons attraper le nom juste là depuis le jeton précédent.
 
 ^code init-function-name (1 before, 2 after)
 
-Note that we're careful to create a copy of the name string. Remember, the
-lexeme points directly into the original source code string. That string may get
-freed once the code is finished compiling. The function object we create in the
-compiler outlives the compiler and persists until runtime. So it needs its own
-heap-allocated name string that it can keep around.
+Notez que nous faisons attention de créer une copie de la chaîne de nom. Rappelez-vous, le lexème pointe directement dans la chaîne de code source originale. Cette chaîne peut être libérée une fois que le code est fini de compiler. L'objet fonction que nous créons dans le compilateur survit au compilateur et persiste jusqu'à l'exécution. Donc il a besoin de sa propre chaîne de nom allouée sur le tas qu'il peut garder autour.
 
-Rad. Now we can compile function declarations, like this:
+Radical. Maintenant nous pouvons compiler les déclarations de fonction, comme ceci :
 
 ```lox
 fun areWeHavingItYet() {
@@ -819,66 +508,45 @@ fun areWeHavingItYet() {
 print areWeHavingItYet;
 ```
 
-We just can't do anything <span name="useful">useful</span> with them.
+Nous ne pouvons juste rien faire d'<span name="useful">utile</span> avec elles.
 
 <aside name="useful">
 
-We can print them! I guess that's not very useful, though.
+Nous pouvons les afficher ! Je devine que ce n'est pas très utile, cependant.
 
 </aside>
 
-## Function Calls
+## Appels de Fonction
 
-By the end of this section, we'll start to see some interesting behavior. The
-next step is calling functions. We don't usually think of it this way, but a
-function call expression is kind of an infix `(` operator. You have a
-high-precedence expression on the left for the thing being called -- usually
-just a single identifier. Then the `(` in the middle, followed by the argument
-expressions separated by commas, and a final `)` to wrap it up at the end.
+À la fin de cette section, nous commencerons à voir quelque comportement intéressant. L'étape suivante est d'appeler les fonctions. Nous ne pensons pas habituellement à cela de cette façon, mais une expression d'appel de fonction est une sorte d'opérateur `(` infixe. Vous avez une expression de haute priorité sur la gauche pour la chose étant appelée -- habituellement juste un identifiant simple. Ensuite la `(` au milieu, suivie par les expressions arguments séparées par des virgules, et une `)` finale pour envelopper le tout à la fin.
 
-That odd grammatical perspective explains how to hook the syntax into our
-parsing table.
+Cette perspective grammaticale étrange explique comment accrocher la syntaxe dans notre table d'analyse.
 
 ^code infix-left-paren (1 before, 1 after)
 
-When the parser encounters a left parenthesis following an expression, it
-dispatches to a new parser function.
+Quand l'analyseur rencontre une parenthèse gauche suivant une expression, il répartit vers une nouvelle fonction d'analyseur.
 
 ^code compile-call
 
-We've already consumed the `(` token, so next we compile the arguments using a
-separate `argumentList()` helper. That function returns the number of arguments
-it compiled. Each argument expression generates code that leaves its value on
-the stack in preparation for the call. After that, we emit a new `OP_CALL`
-instruction to invoke the function, using the argument count as an operand.
+Nous avons déjà consommé le jeton `(`, donc ensuite nous compilons les arguments en utilisant une aide `argumentList()` séparée. Cette fonction renvoie le nombre d'arguments qu'elle a compilés. Chaque expression argument génère du code qui laisse sa valeur sur la pile en préparation pour l'appel. Après cela, nous émettons une nouvelle instruction `OP_CALL` pour invoquer la fonction, utilisant le compte d'arguments comme un opérande.
 
-We compile the arguments using this friend:
+Nous compilons les arguments en utilisant cette amie :
 
 ^code argument-list
 
-That code should look familiar from jlox. We chew through arguments as long as
-we find commas after each expression. Once we run out, we consume the final
-closing parenthesis and we're done.
+Ce code devrait sembler familier de jlox. Nous mâchons à travers les arguments tant que nous trouvons des virgules après chaque expression. Une fois que nous sommes à court, nous consommons la parenthèse fermante finale et nous avons fini.
 
-Well, almost. Back in jlox, we added a compile-time check that you don't pass
-more than 255 arguments to a call. At the time, I said that was because clox
-would need a similar limit. Now you can see why -- since we stuff the argument
-count into the bytecode as a single-byte operand, we can only go up to 255. We
-need to verify that in this compiler too.
+Eh bien, presque. De retour dans jlox, nous avions ajouté une vérification à la compilation que vous ne passez pas plus de 255 arguments à un appel. À l'époque, j'ai dit que c'était parce que clox aurait besoin d'une limite similaire. Maintenant vous pouvez voir pourquoi -- puisque nous fourrons le compte d'arguments dans le bytecode comme un opérande d'un seul octet, nous ne pouvons aller que jusqu'à 255. Nous avons besoin de vérifier cela dans ce compilateur aussi.
 
 ^code arg-limit (1 before, 1 after)
 
-That's the front end. Let's skip over to the back end, with a quick stop in the
-middle to declare the new instruction.
+C'est le front end. Sautons vers le back end, avec un arrêt rapide au milieu pour déclarer la nouvelle instruction.
 
 ^code op-call (1 before, 1 after)
 
-### Binding arguments to parameters
+### Lier les arguments aux paramètres
 
-Before we get to the implementation, we should think about what the stack looks
-like at the point of a call and what we need to do from there. When we reach the
-call instruction, we have already executed the expression for the function being
-called, followed by its arguments. Say our program looks like this:
+Avant que nous n'arrivions à l'implémentation, nous devrions penser à ce à quoi la pile ressemble au point d'un appel et ce que nous devons faire à partir de là. Quand nous atteignons l'instruction d'appel, nous avons déjà exécuté l'expression pour la fonction étant appelée, suivie par ses arguments. Disons que notre programme ressemble à ceci :
 
 ```lox
 fun sum(a, b, c) {
@@ -888,195 +556,118 @@ fun sum(a, b, c) {
 print 4 + sum(5, 6, 7);
 ```
 
-If we pause the VM right on the `OP_CALL` instruction for that call to `sum()`,
-the stack looks like this:
+Si nous mettons la VM en pause juste sur l'instruction `OP_CALL` pour cet appel à `sum()`, la pile ressemble à ceci :
 
-<img src="image/calls-and-functions/argument-stack.png" alt="Stack: 4, fn sum, 5, 6, 7." />
+<img src="image/calls-and-functions/argument-stack.png" alt="Pile : 4, fn sum, 5, 6, 7." />
 
-Picture this from the perspective of `sum()` itself. When the compiler compiled
-`sum()`, it automatically allocated slot zero. Then, after that, it allocated
-local slots for the parameters `a`, `b`, and `c`, in order. To perform a call to
-`sum()`, we need a CallFrame initialized with the function being called and a
-region of stack slots that it can use. Then we need to collect the arguments
-passed to the function and get them into the corresponding slots for the
-parameters.
+Imaginez ceci de la perspective de `sum()` elle-même. Quand le compilateur a compilé `sum()`, il a automatiquement alloué l'emplacement zéro. Ensuite, après cela, il a alloué des emplacements locaux pour les paramètres `a`, `b`, et `c`, dans l'ordre. Pour effectuer un appel à `sum()`, nous avons besoin d'une CallFrame initialisée avec la fonction étant appelée et une région d'emplacements de pile qu'elle peut utiliser. Ensuite nous avons besoin de collecter les arguments passés à la fonction et les obtenir dans les emplacements correspondants pour les paramètres.
 
-When the VM starts executing the body of `sum()`, we want its stack window to
-look like this:
+Quand la VM commence à exécuter le corps de `sum()`, nous voulons que sa fenêtre de pile ressemble à ceci :
 
-<img src="image/calls-and-functions/parameter-window.png" alt="The same stack with the sum() function's call frame window surrounding fn sum, 5, 6, and 7." />
+<img src="image/calls-and-functions/parameter-window.png" alt="La même pile avec la fenêtre de cadre d'appel de la fonction sum() entourant fn sum, 5, 6, et 7." />
 
-Do you notice how the argument slots that the caller sets up and the parameter
-slots the callee needs are both in exactly the right order? How convenient! This
-is no coincidence. When I talked about each CallFrame having its own window into
-the stack, I never said those windows must be *disjoint*. There's nothing
-preventing us from overlapping them, like this:
+Remarquez-vous comment les emplacements d'argument que l'appelant configure et les emplacements de paramètre dont l'appelé a besoin sont tous deux dans exactement le bon ordre ? Quelle commodité ! Ce n'est pas une coïncidence. Quand j'ai parlé de chaque CallFrame ayant sa propre fenêtre dans la pile, je n'ai jamais dit que ces fenêtres doivent être _disjointes_. Il n'y a rien qui nous empêche de les chevaucher, comme ceci :
 
-<img src="image/calls-and-functions/overlapping-windows.png" alt="The same stack with the top-level call frame covering the entire stack and the sum() function's call frame window surrounding fn sum, 5, 6, and 7." />
+<img src="image/calls-and-functions/overlapping-windows.png" alt="La même pile avec le cadre d'appel de niveau supérieur couvrant la pile entière et la fenêtre de cadre d'appel de la fonction sum() entourant fn sum, 5, 6, et 7." />
 
-<span name="lua">The</span> top of the caller's stack contains the function
-being called followed by the arguments in order. We know the caller doesn't have
-any other slots above those in use because any temporaries needed when
-evaluating argument expressions have been discarded by now. The bottom of the
-callee's stack overlaps so that the parameter slots exactly line up with where
-the argument values already live.
+<span name="lua">Le</span> sommet de la pile de l'appelant contient la fonction étant appelée suivie par les arguments dans l'ordre. Nous savons que l'appelant n'a pas d'autres emplacements au-dessus de ceux-ci en usage parce que tous les temporaires nécessaires lors de l'évaluation des expressions arguments ont été jetés maintenant. Le bas de la pile de l'appelé chevauche de sorte que les emplacements paramètre s'alignent exactement avec où les valeurs argument vivent déjà.
 
 <aside name="lua">
 
-Different bytecode VMs and real CPU architectures have different *calling
-conventions*, which is the specific mechanism they use to pass arguments, store
-the return address, etc. The mechanism I use here is based on Lua's clean, fast
-virtual machine.
+Différentes VMs à bytecode et architectures CPU réelles ont différentes _conventions d'appel_, qui est le mécanisme spécifique qu'elles utilisent pour passer les arguments, stocker l'adresse de retour, etc. Le mécanisme que j'utilise ici est basé sur la machine virtuelle propre, rapide de Lua.
 
 </aside>
 
-This means that we don't need to do *any* work to "bind an argument to a
-parameter". There's no copying values between slots or across environments. The
-arguments are already exactly where they need to be. It's hard to beat that for
-performance.
+Cela signifie que nous n'avons pas besoin de faire _aucun_ travail pour "lier un argument à un paramètre". Il n'y a pas de copie de valeurs entre des emplacements ou à travers des environnements. Les arguments sont déjà exactement où ils ont besoin d'être. Il est dur de battre cela pour la performance.
 
-Time to implement the call instruction.
+Temps d'implémenter l'instruction d'appel.
 
 ^code interpret-call (1 before, 1 after)
 
-We need to know the function being called and the number of arguments passed to
-it. We get the latter from the instruction's operand. That also tells us where
-to find the function on the stack by counting past the argument slots from the
-top of the stack. We hand that data off to a separate `callValue()` function. If
-that returns `false`, it means the call caused some sort of runtime error. When
-that happens, we abort the interpreter.
+Nous avons besoin de connaître la fonction étant appelée et le nombre d'arguments passés à elle. Nous obtenons ce dernier du opérande de l'instruction. Cela nous dit aussi où trouver la fonction sur la pile en comptant passé les emplacements argument depuis le sommet de la pile. Nous remettons ces données à une fonction `callValue()` séparée. Si celle-ci renvoie `false`, cela signifie que l'appel a causé quelque sorte d'erreur d'exécution. Quand cela arrive, nous avortons l'interpréteur.
 
-If `callValue()` is successful, there will be a new frame on the CallFrame stack
-for the called function. The `run()` function has its own cached pointer to the
-current frame, so we need to update that.
+Si `callValue()` a du succès, il y aura un nouveau cadre sur la pile CallFrame pour la fonction appelée. La fonction `run()` a son propre pointeur mis en cache vers le cadre courant, donc nous avons besoin de mettre à jour cela.
 
 ^code update-frame-after-call (2 before, 1 after)
 
-Since the bytecode dispatch loop reads from that `frame` variable, when the VM
-goes to execute the next instruction, it will read the `ip` from the newly
-called function's CallFrame and jump to its code. The work for executing that
-call begins here:
+Puisque la boucle de répartition bytecode lit depuis cette variable `frame`, quand la VM va exécuter l'instruction suivante, elle lira l'`ip` depuis la CallFrame de la fonction nouvellement appelée et sautera vers son code. Le travail pour exécuter cet appel commence ici :
 
 ^code call-value
 
 <aside name="switch">
 
-Using a `switch` statement to check a single type is overkill now, but will make
-sense when we add cases to handle other callable types.
+Utiliser une instruction `switch` pour vérifier un type unique est excessif maintenant, mais aura du sens quand nous ajouterons des cas pour gérer d'autres types appelables.
 
 </aside>
 
-There's more going on here than just initializing a new CallFrame. Because Lox
-is dynamically typed, there's nothing to prevent a user from writing bad code
-like:
+Il y a plus qui se passe ici que juste initialiser une nouvelle CallFrame. Parce que Lox est typé dynamiquement, il n'y a rien pour empêcher un utilisateur d'écrire du mauvais code comme :
 
 ```lox
 var notAFunction = 123;
 notAFunction();
 ```
 
-If that happens, the runtime needs to safely report an error and halt. So the
-first thing we do is check the type of the value that we're trying to call. If
-it's not a function, we error out. Otherwise, the actual call happens here:
+Si cela arrive, le runtime a besoin de rapporter sûrement une erreur et s'arrêter. Donc la première chose que nous faisons est de vérifier le type de la valeur que nous essayons d'appeler. Si ce n'est pas une fonction, nous sortons en erreur. Sinon, l'appel réel arrive ici :
 
 ^code call
 
-This simply initializes the next CallFrame on the stack. It stores a pointer to
-the function being called and points the frame's `ip` to the beginning of the
-function's bytecode. Finally, it sets up the `slots` pointer to give the frame
-its window into the stack. The arithmetic there ensures that the arguments
-already on the stack line up with the function's parameters:
+Ceci initialise simplement la prochaine CallFrame sur la pile. Cela stocke un pointeur vers la fonction étant appelée et pointe l'`ip` du cadre vers le début du bytecode de la fonction. Finalement, cela configure le pointeur `slots` pour donner au cadre sa fenêtre dans la pile. L'arithmétique là assure que les arguments déjà sur la pile s'alignent avec les paramètres de la fonction :
 
-<img src="image/calls-and-functions/arithmetic.png" alt="The arithmetic to calculate frame-&gt;slots from stackTop and argCount." />
+<img src="image/calls-and-functions/arithmetic.png" alt="L'arithmétique pour calculer frame->slots à partir de stackTop et argCount." />
 
-The funny little `- 1` is to account for stack slot zero which the compiler set
-aside for when we add methods later. The parameters start at slot one so we
-make the window start one slot earlier to align them with the arguments.
+Le petit `- 1` rigolo est pour prendre en compte l'emplacement de pile zéro que le compilateur a mis de côté pour quand nous ajouterons les méthodes plus tard. Les paramètres commencent à l'emplacement un donc nous faisons commencer la fenêtre un emplacement plus tôt pour les aligner avec les arguments.
 
-Before we move on, let's add the new instruction to our disassembler.
+Avant que nous passions à autre chose, ajoutons la nouvelle instruction à notre désassembleur.
 
 ^code disassemble-call (1 before, 1 after)
 
-And one more quick side trip. Now that we have a handy function for initiating a
-CallFrame, we may as well use it to set up the first frame for executing the
-top-level code.
+Et un autre petit voyage rapide. Maintenant que nous avons une fonction pratique pour initier une CallFrame, nous pouvons aussi bien l'utiliser pour configurer le premier cadre pour exécuter le code de niveau supérieur.
 
 ^code interpret (1 before, 2 after)
 
-OK, now back to calls...
+OK, maintenant retour aux appels...
 
-### Runtime error checking
+### Vérification d'erreur à l'exécution
 
-The overlapping stack windows work based on the assumption that a call passes
-exactly one argument for each of the function's parameters. But, again, because
-Lox ain't statically typed, a foolish user could pass too many or too few
-arguments. In Lox, we've defined that to be a runtime error, which we report
-like so:
+Les fenêtres de pile chevauchantes fonctionnent basées sur l'hypothèse qu'un appel passe exactement un argument pour chacun des paramètres de la fonction. Mais, encore, parce que Lox n'est pas typé statiquement, un utilisateur insensé pourrait passer trop ou trop peu d'arguments. Dans Lox, nous avons défini cela comme étant une erreur d'exécution, que nous rapportons comme ceci :
 
 ^code check-arity (1 before, 1 after)
 
-Pretty straightforward. This is why we store the arity of each function inside
-the ObjFunction for it.
+Assez direct. C'est pourquoi nous stockons l'arité de chaque fonction à l'intérieur de l'ObjFunction pour elle.
 
-There's another error we need to report that's less to do with the user's
-foolishness than our own. Because the CallFrame array has a fixed size, we need
-to ensure a deep call chain doesn't overflow it.
+Il y a une autre erreur que nous devons rapporter qui a moins à voir avec la bêtise de l'utilisateur qu'avec la nôtre. Parce que le tableau CallFrame a une taille fixe, nous devons nous assurer qu'une chaîne d'appels profonde ne le déborde pas.
 
 ^code check-overflow (2 before, 1 after)
 
-In practice, if a program gets anywhere close to this limit, there's most likely
-a bug in some runaway recursive code.
+En pratique, si un programme arrive n'importe où près de cette limite, il y a très probablement un bug dans quelque code récursif emballé.
 
-### Printing stack traces
+### Afficher les traces de pile
 
-While we're on the subject of runtime errors, let's spend a little time making
-them more useful. Stopping on a runtime error is important to prevent the VM
-from crashing and burning in some ill-defined way. But simply aborting doesn't
-help the user fix their code that *caused* that error.
+Pendant que nous sommes sur le sujet des erreurs d'exécution, passons un peu de temps à les rendre plus utiles. S'arrêter sur une erreur d'exécution est important pour empêcher la VM de planter et brûler d'une manière mal définie. Mais simplement avorter n'aide pas l'utilisateur à réparer son code qui a _causé_ cette erreur.
 
-The classic tool to aid debugging runtime failures is a **stack trace** -- a
-print out of each function that was still executing when the program died, and
-where the execution was at the point that it died. Now that we have a call stack
-and we've conveniently stored each function's name, we can show that entire
-stack when a runtime error disrupts the harmony of the user's existence. It
-looks like this:
+L'outil classique pour aider à déboguer les échecs d'exécution est une **trace de pile** -- une impression de chaque fonction qui était encore en train d'exécuter quand le programme est mort, et où l'exécution était au point où il est mort. Maintenant que nous avons une pile d'appels et que nous avons commodément stocké le nom de chaque fonction, nous pouvons montrer cette pile entière quand une erreur d'exécution perturbe l'harmonie de l'existence de l'utilisateur. Cela ressemble à ceci :
 
 ^code runtime-error-stack (2 before, 2 after)
 
 <aside name="minus">
 
-The `- 1` is because the IP is already sitting on the next instruction to be
-executed but we want the stack trace to point to the previous failed
-instruction.
+Le `- 1` est parce que l'IP est déjà assis sur la prochaine instruction à être exécutée mais nous voulons que la trace de pile pointe vers l'instruction échouée précédente.
 
 </aside>
 
-After printing the error message itself, we walk the call stack from <span
-name="top">top</span> (the most recently called function) to bottom (the
-top-level code). For each frame, we find the line number that corresponds to the
-current `ip` inside that frame's function. Then we print that line number along
-with the function name.
+Après avoir affiché le message d'erreur lui-même, nous marchons la pile d'appels du <span name="top">haut</span> (la fonction la plus récemment appelée) au bas (le code de niveau supérieur). Pour chaque cadre, nous trouvons le numéro de ligne qui correspond à l'`ip` courant à l'intérieur de la fonction de ce cadre. Ensuite nous affichons ce numéro de ligne avec le nom de la fonction.
 
 <aside name="top">
 
-There is some disagreement on which order stack frames should be shown in a
-trace. Most put the innermost function as the first line and work their way
-towards the bottom of the stack. Python prints them out in the opposite order.
-So reading from top to bottom tells you how your program got to where it is, and
-the last line is where the error actually occurred.
+Il y a quelque désaccord sur dans quel ordre les cadres de pile devraient être montrés dans une trace. La plupart mettent la fonction la plus intérieure comme la première ligne et travaillent leur chemin vers le bas de la pile. Python les imprime dans l'ordre opposé. Donc lire de haut en bas vous dit comment votre programme est arrivé où il est, et la dernière ligne est où l'erreur s'est réellement produite.
 
-There's a logic to that style. It ensures you can always see the innermost
-function even if the stack trace is too long to fit on one screen. On the other
-hand, the "[inverted pyramid][]" from journalism tells us we should put the most
-important information *first* in a block of text. In a stack trace, that's the
-function where the error actually occurred. Most other language implementations
-do that.
+Il y a une logique à ce style. Cela assure que vous pouvez toujours voir la fonction la plus intérieure même si la trace de pile est trop longue pour tenir sur un écran. D'un autre côté, la "[pyramide inversée][inverted pyramid]" du journalisme nous dit que nous devrions mettre l'information la plus importante _d'abord_ dans un bloc de texte. Dans une trace de pile, c'est la fonction où l'erreur s'est réellement produite. La plupart des autres implémentations de langage font cela.
 
-[inverted pyramid]: https://en.wikipedia.org/wiki/Inverted_pyramid_(journalism)
+[inverted pyramid]: https://fr.wikipedia.org/wiki/Plan_de_la_pyramide_invers%C3%A9e
 
 </aside>
 
-For example, if you run this broken program:
+Par exemple, si vous exécutez ce programme cassé :
 
 ```lox
 fun a() { b(); }
@@ -1088,7 +679,7 @@ fun c() {
 a();
 ```
 
-It prints out:
+Il affiche :
 
 ```text
 Expected 0 arguments but got 2.
@@ -1098,41 +689,23 @@ Expected 0 arguments but got 2.
 [line 7] in script
 ```
 
-That doesn't look too bad, does it?
+Cela ne semble pas trop mal, n'est-ce pas ?
 
-### Returning from functions
+### Retourner des fonctions
 
-We're getting close. We can call functions, and the VM will execute them. But we
-can't *return* from them yet. We've had an `OP_RETURN` instruction for quite
-some time, but it's always had some kind of temporary code hanging out in it
-just to get us out of the bytecode loop. The time has arrived for a real
-implementation.
+Nous nous approchons. Nous pouvons appeler des fonctions, et la VM les exécutera. Mais nous ne pouvons pas _retourner_ d'elles encore. Nous avons eu une instruction `OP_RETURN` depuis pas mal de temps, mais elle a toujours eu quelque sorte de code temporaire traînant dedans juste pour nous sortir de la boucle bytecode. Le temps est arrivé pour une vraie implémentation.
 
 ^code interpret-return (1 before, 1 after)
 
-When a function returns a value, that value will be on top of the stack. We're
-about to discard the called function's entire stack window, so we pop that
-return value off and hang on to it. Then we discard the CallFrame for the
-returning function. If that was the very last CallFrame, it means we've finished
-executing the top-level code. The entire program is done, so we pop the main
-script function from the stack and then exit the interpreter.
+Quand une fonction renvoie une valeur, cette valeur sera au sommet de la pile. Nous sommes sur le point de jeter la fenêtre de pile entière de la fonction appelée, donc nous dépilons cette valeur de retour et nous y accrochons. Ensuite nous jetons la CallFrame pour la fonction retournante. Si c'était la toute dernière CallFrame, cela signifie que nous avons fini d'exécuter le code de niveau supérieur. Le programme entier est fini, donc nous dépilons la fonction de script principale de la pile et ensuite sortons de l'interpréteur.
 
-Otherwise, we discard all of the slots the callee was using for its parameters
-and local variables. That includes the same slots the caller used to pass the
-arguments. Now that the call is done, the caller doesn't need them anymore. This
-means the top of the stack ends up right at the beginning of the returning
-function's stack window.
+Sinon, nous jetons tous les emplacements que l'appelé utilisait pour ses paramètres et variables locales. Cela inclut les mêmes emplacements que l'appelant a utilisés pour passer les arguments. Maintenant que l'appel est fait, l'appelant n'en a plus besoin. Cela signifie que le sommet de la pile finit juste au début de la fenêtre de pile de la fonction retournante.
 
-We push the return value back onto the stack at that new, lower location. Then
-we update the `run()` function's cached pointer to the current frame. Just like
-when we began a call, on the next iteration of the bytecode dispatch loop, the
-VM will read `ip` from that frame, and execution will jump back to the caller,
-right where it left off, immediately after the `OP_CALL` instruction.
+Nous empilons la valeur de retour en arrière sur la pile à ce nouvel emplacement, plus bas. Ensuite nous mettons à jour le pointeur mis en cache de la fonction `run()` vers le cadre courant. Juste comme quand nous avons commencé un appel, à la prochaine itération de la boucle de répartition bytecode, la VM lira l'`ip` depuis ce cadre, et l'exécution sautera en retour vers l'appelant, juste où elle a laissé, immédiatement après l'instruction `OP_CALL`.
 
-<img src="image/calls-and-functions/return.png" alt="Each step of the return process: popping the return value, discarding the call frame, pushing the return value." />
+<img src="image/calls-and-functions/return.png" alt="Chaque étape du processus de retour : dépiler la valeur de retour, jeter le cadre d'appel, empiler la valeur de retour." />
 
-Note that we assume here that the function *did* actually return a value, but
-a function can implicitly return by reaching the end of its body:
+Notez que nous supposons ici que la fonction _a_ réellement renvoyé une valeur, mais une fonction peut implicitement retourner en atteignant la fin de son corps :
 
 ```lox
 fun noReturn() {
@@ -1143,50 +716,29 @@ fun noReturn() {
 print noReturn(); // ???
 ```
 
-We need to handle that correctly too. The language is specified to implicitly
-return `nil` in that case. To make that happen, we add this:
+Nous avons besoin de gérer cela correctement aussi. Le langage est spécifié pour retourner implicitement `nil` dans ce cas. Pour faire arriver cela, nous ajoutons ceci :
 
 ^code return-nil (1 before, 2 after)
 
-The compiler calls `emitReturn()` to write the `OP_RETURN` instruction at the
-end of a function body. Now, before that, it emits an instruction to push `nil`
-onto the stack. And with that, we have working function calls! They can even
-take parameters! It almost looks like we know what we're doing here.
+Le compilateur appelle `emitReturn()` pour écrire l'instruction `OP_RETURN` à la fin d'un corps de fonction. Maintenant, avant cela, il émet une instruction pour empiler `nil` sur la pile. Et avec ça, nous avons des appels de fonction fonctionnels ! Ils peuvent même prendre des paramètres ! Cela ressemble à presque que nous savons ce que nous faisons ici.
 
-## Return Statements
+## Instructions Return
 
-If you want a function that returns something other than the implicit `nil`, you
-need a `return` statement. Let's get that working.
+Si vous voulez une fonction qui renvoie quelque chose d'autre que le `nil` implicite, vous avez besoin d'une instruction `return`. Faisons fonctionner ça.
 
 ^code match-return (1 before, 1 after)
 
-When the compiler sees a `return` keyword, it goes here:
+Quand le compilateur voit un mot-clé `return`, il va ici :
 
 ^code return-statement
 
-The return value expression is optional, so the parser looks for a semicolon
-token to tell if a value was provided. If there is no return value, the
-statement implicitly returns `nil`. We implement that by calling `emitReturn()`,
-which emits an `OP_NIL` instruction. Otherwise, we compile the return value
-expression and return it with an `OP_RETURN` instruction.
+L'expression valeur de retour est optionnelle, donc l'analyseur cherche un jeton point-virgule pour dire si une valeur a été fournie. S'il n'y a pas de valeur de retour, l'instruction renvoie implicitement `nil`. Nous implémentons cela en appelant `emitReturn()`, qui émet une instruction `OP_NIL`. Sinon, nous compilons l'expression valeur de retour et la renvoyons avec une instruction `OP_RETURN`.
 
-This is the same `OP_RETURN` instruction we've already implemented -- we don't
-need any new runtime code. This is quite a difference from jlox. There, we had
-to use exceptions to unwind the stack when a `return` statement was executed.
-That was because you could return from deep inside some nested blocks. Since
-jlox recursively walks the AST, that meant there were a bunch of Java method
-calls we needed to escape out of.
+C'est la même instruction `OP_RETURN` que nous avons déjà implémentée -- nous n'avons pas besoin de nouveau code runtime. C'est tout une différence de jlox. Là, nous devions utiliser des exceptions pour dérouler la pile quand une instruction `return` était exécutée. C'était parce que vous pouviez retourner depuis le fond de quelques blocs imbriqués. Puisque jlox marche récursivement l'AST, cela signifiait qu'il y avait un tas d'appels de méthode Java desquels nous avions besoin d'échapper.
 
-Our bytecode compiler flattens that all out. We do recursive descent during
-parsing, but at runtime, the VM's bytecode dispatch loop is completely flat.
-There is no recursion going on at the C level at all. So returning, even from
-within some nested blocks, is as straightforward as returning from the end of
-the function's body.
+Notre compilateur bytecode aplatit tout cela. Nous faisons une descente récursive durant l'analyse, mais à l'exécution, la boucle de répartition bytecode de la VM est complètement plate. Il n'y a pas de récursivité se passant au niveau C du tout. Donc retourner, même depuis l'intérieur de quelques blocs imbriqués, est aussi direct que retourner depuis la fin du corps de la fonction.
 
-We're not totally done, though. The new `return` statement gives us a new
-compile error to worry about. Returns are useful for returning from functions
-but the top level of a Lox program is imperative code too. You shouldn't be able
-to <span name="worst">return</span> from there.
+Nous n'avons pas totalement fini, cependant. La nouvelle instruction `return` nous donne une nouvelle erreur de compilation dont il faut se soucier. Les retours sont utiles pour retourner depuis des fonctions mais le niveau supérieur d'un programme Lox est du code impératif aussi. Vous ne devriez pas être capable de <span name="worst">retourner</span> depuis là.
 
 ```lox
 return "What?!";
@@ -1194,156 +746,98 @@ return "What?!";
 
 <aside name="worst">
 
-Allowing `return` at the top level isn't the worst idea in the world. It would
-give you a natural way to terminate a script early. You could maybe even use a
-returned number to indicate the process's exit code.
+Permettre `return` au niveau supérieur n'est pas la pire idée du monde. Cela vous donnerait un moyen naturel de terminer un script tôt. Vous pourriez peut-être même utiliser un nombre retourné pour indiquer le code de sortie du processus.
 
 </aside>
 
-We've specified that it's a compile error to have a `return` statement outside
-of any function, which we implement like so:
+Nous avons spécifié que c'est une erreur de compilation d'avoir une instruction `return` en dehors de toute fonction, que nous implémentons comme ceci :
 
 ^code return-from-script (1 before, 1 after)
 
-This is one of the reasons we added that FunctionType enum to the compiler.
+C'est une des raisons pour lesquelles nous avons ajouté cette énumération FunctionType au compilateur.
 
-## Native Functions
+## Fonctions Natives
 
-Our VM is getting more powerful. We've got functions, calls, parameters,
-returns. You can define lots of different functions that can call each other in
-interesting ways. But, ultimately, they can't really *do* anything. The only
-user-visible thing a Lox program can do, regardless of its complexity, is print.
-To add more capabilities, we need to expose them to the user.
+Notre VM devient plus puissante. Nous avons des fonctions, des appels, des paramètres, des retours. Vous pouvez définir beaucoup de fonctions différentes qui peuvent s'appeler les unes les autres de façons intéressantes. Mais, ultimement, elles ne peuvent pas vraiment _faire_ quoi que ce soit. La seule chose visible par l'utilisateur qu'un programme Lox peut faire, indépendamment de sa complexité, est d'afficher. Pour ajouter plus de capacités, nous avons besoin de les exposer à l'utilisateur.
 
-A programming language implementation reaches out and touches the material world
-through **native functions**. If you want to be able to write programs that
-check the time, read user input, or access the file system, we need to add
-native functions -- callable from Lox but implemented in C -- that expose those
-capabilities.
+Une implémentation de langage de programmation tend la main et touche le monde matériel à travers des **fonctions natives**. Si vous voulez être capable d'écrire des programmes qui vérifient l'heure, lisent une entrée utilisateur, ou accèdent au système de fichiers, nous avons besoin d'ajouter des fonctions natives -- appelables depuis Lox mais implémentées en C -- qui exposent ces capacités.
 
-At the language level, Lox is fairly complete -- it's got closures, classes,
-inheritance, and other fun stuff. One reason it feels like a toy language is
-because it has almost no native capabilities. We could turn it into a real
-language by adding a long list of them.
+Au niveau du langage, Lox est passablement complet -- il a des fermetures, des classes, de l'héritage, et d'autres trucs amusants. Une raison pour laquelle il se sent comme un langage jouet est parce qu'il n'a presque pas de capacités natives. Nous pourrions le transformer en un vrai langage en ajoutant une longue liste d'entre elles.
 
-However, grinding through a pile of OS operations isn't actually very
-educational. Once you've seen how to bind one piece of C code to Lox, you get
-the idea. But you do need to see *one*, and even a single native function
-requires us to build out all the machinery for interfacing Lox with C. So we'll
-go through that and do all the hard work. Then, when that's done, we'll add one
-tiny native function just to prove that it works.
+Cependant, moudre à travers une pile d'opérations OS n'est pas réellement très éducatif. Une fois que vous avez vu comment lier un morceau de code C à Lox, vous avez l'idée. Mais vous avez besoin d'en voir _une_, et même une seule fonction native nous demande de construire toute la machinerie pour interfacer Lox avec C. Donc nous passerons à travers cela et ferons tout le travail dur. Ensuite, quand c'est fait, nous ajouterons une minuscule fonction native juste pour prouver que cela fonctionne.
 
-The reason we need new machinery is because, from the implementation's
-perspective, native functions are different from Lox functions. When they are
-called, they don't push a CallFrame, because there's no bytecode code for that
-frame to point to. They have no bytecode chunk. Instead, they somehow reference
-a piece of native C code.
+La raison pour laquelle nous avons besoin de nouvelle machinerie est parce que, de la perspective de l'implémentation, les fonctions natives sont différentes des fonctions Lox. Quand elles sont appelées, elles n'empilent pas de CallFrame, parce qu'il n'y a pas de code bytecode vers lequel ce cadre peut pointer. Elles n'ont pas de fragment bytecode. Au lieu de cela, elles référencent d'une manière ou d'une autre un morceau de code C natif.
 
-We handle this in clox by defining native functions as an entirely different
-object type.
+Nous gérons cela dans clox en définissant les fonctions natives comme un type d'objet entièrement différent.
 
 ^code obj-native (1 before, 2 after)
 
-The representation is simpler than ObjFunction -- merely an Obj header and a
-pointer to the C function that implements the native behavior. The native
-function takes the argument count and a pointer to the first argument on the
-stack. It accesses the arguments through that pointer. Once it's done, it
-returns the result value.
+La représentation est plus simple qu'ObjFunction -- simplement un en-tête Obj et un pointeur vers la fonction C qui implémente le comportement natif. La fonction native prend le compte d'arguments et un pointeur vers le premier argument sur la pile. Elle accède aux arguments à travers ce pointeur. Une fois qu'elle a fini, elle renvoie la valeur résultat.
 
-As always, a new object type carries some accoutrements with it. To create an
-ObjNative, we declare a constructor-like function.
+Comme toujours, un nouveau type d'objet transporte quelques accoutrements avec lui. Pour créer une ObjNative, nous déclarons une fonction de type constructeur.
 
 ^code new-native-h (1 before, 1 after)
 
-We implement that like so:
-
+Nous implémentons cela ainsi :
 ^code new-native
 
-The constructor takes a C function pointer to wrap in an ObjNative. It sets up
-the object header and stores the function. For the header, we need a new object
-type.
+Le constructeur prend un pointeur de fonction C pour l'envelopper dans une ObjNative. Il configure l'en-tête de l'objet et stocke la fonction. Pour l'en-tête, nous avons besoin d'un nouveau type d'objet.
 
 ^code obj-type-native (2 before, 2 after)
 
-The VM also needs to know how to deallocate a native function object.
+La VM a aussi besoin de savoir comment désallouer un objet fonction native.
 
 ^code free-native (1 before, 1 after)
 
-There isn't much here since ObjNative doesn't own any extra memory. The other
-capability all Lox objects support is being printed.
+Il n'y a pas grand-chose ici puisque ObjNative ne possède aucune mémoire supplémentaire. L'autre capacité que tous les objets Lox supportent est d'être affiché.
 
 ^code print-native (1 before, 1 after)
 
-In order to support dynamic typing, we have a macro to see if a value is a
-native function.
+Afin de supporter le typage dynamique, nous avons une macro pour voir si une valeur est une fonction native.
 
 ^code is-native (1 before, 1 after)
 
-Assuming that returns true, this macro extracts the C function pointer from a
-Value representing a native function:
+Supposant que cela renvoie vrai, cette macro extrait le pointeur de fonction C depuis une Value représentant une fonction native :
 
 ^code as-native (1 before, 1 after)
 
-All of this baggage lets the VM treat native functions like any other object.
-You can store them in variables, pass them around, throw them birthday parties,
-etc. Of course, the operation we actually care about is *calling* them -- using
-one as the left-hand operand in a call expression.
+Tout ce bagage laisse la VM traiter les fonctions natives comme n'importe quel autre objet. Vous pouvez les stocker dans des variables, les passer autour comme des anniversaires, leur faire des fêtes d'anniversaire, etc. Bien sûr, l'opération dont nous nous soucions réellement est _les appeler_ -- en utiliser une comme l'opérande de main gauche dans une expression d'appel.
 
-Over in `callValue()` we add another type case.
+Là-bas dans `callValue()` nous ajoutons un autre cas de type.
 
 ^code call-native (2 before, 1 after)
 
-If the object being called is a native function, we invoke the C function right
-then and there. There's no need to muck with CallFrames or anything. We just
-hand off to C, get the result, and stuff it back in the stack. This makes native
-functions as fast as we can get.
+Si l'objet étant appelé est une fonction native, nous invoquons la fonction C juste là et maintenant. Il n'y a pas besoin de boue avec des CallFrames ou quoi que ce soit. Nous passons juste la main au C, obtenons le résultat, et le fourrons de retour dans la pile. Cela rend les fonctions natives aussi rapides que nous le pouvons.
 
-With this, users should be able to call native functions, but there aren't any
-to call. Without something like a foreign function interface, users can't define
-their own native functions. That's our job as VM implementers. We'll start with
-a helper to define a new native function exposed to Lox programs.
+Avec cela, les utilisateurs devraient être capables d'appeler des fonctions natives, mais il n'y en a aucune à appeler. Sans quelque chose comme une interface de fonction étrangère, les utilisateurs ne peuvent pas définir leurs propres fonctions natives. C'est notre travail en tant qu'implémenteurs de VM. Nous commencerons avec un aide pour définir une nouvelle fonction native exposée aux programmes Lox.
 
 ^code define-native
 
-It takes a pointer to a C function and the name it will be known as in Lox.
-We wrap the function in an ObjNative and then store that in a global variable
-with the given name.
+Elle prend un pointeur vers une fonction C et le nom sous lequel elle sera connue dans Lox. Nous enveloppons la fonction dans une ObjNative et ensuite stockons cela dans une variable globale avec le nom donné.
 
-You're probably wondering why we push and pop the name and function on the
-stack. That looks weird, right? This is the kind of stuff you have to worry
-about when <span name="worry">garbage</span> collection gets involved. Both
-`copyString()` and `newNative()` dynamically allocate memory. That means once we
-have a GC, they can potentially trigger a collection. If that happens, we need
-to ensure the collector knows we're not done with the name and ObjFunction so
-that it doesn't free them out from under us. Storing them on the value stack
-accomplishes that.
+Vous vous demandez probablement pourquoi nous empilons et dépilons le nom et la fonction sur la pile. Cela semble bizarre, non ? C'est le genre de trucs dont vous avez à vous soucier quand le ramassage de <span name="worry">miettes</span> devient impliqué. À la fois `copyString()` et `newNative()` allouent dynamiquement de la mémoire. Cela signifie qu'une fois que nous avons un GC, ils peuvent potentiellement déclencher une collecte. Si cela arrive, nous avons besoin de nous assurer que le collecteur sait que nous n'avons pas fini avec le nom et l'ObjFunction pour qu'il ne les libère pas sous nous. Les stocker sur la pile de valeurs accomplit cela.
 
 <aside name="worry">
 
-Don't worry if you didn't follow all that. It will make a lot more sense once we
-get around to [implementing the GC][gc].
+Ne vous inquiétez pas si vous n'avez pas suivi tout cela. Cela aura beaucoup plus de sens une fois que nous arriverons à [implémenter le GC][gc].
 
 [gc]: garbage-collection.html
 
 </aside>
 
-It feels silly, but after all of that work, we're going to add only one
-little native function.
+Cela semble idiot, mais après tout ce travail, nous allons ajouter seulement une petite fonction native.
 
 ^code clock-native
 
-This returns the elapsed time since the program started running, in seconds. It's
-handy for benchmarking Lox programs. In Lox, we'll name it `clock()`.
+Celle-ci renvoie le temps écoulé depuis que le programme a commencé à tourner, en secondes. C'est pratique pour benchmarker les programmes Lox. Dans Lox, nous la nommerons `clock()`.
 
 ^code define-native-clock (1 before, 1 after)
 
-To get to the C standard library `clock()` function, the "vm" module needs an
-include.
+Pour aller à la fonction `clock()` de la bibliothèque standard C, le module "vm" a besoin d'une inclusion.
 
 ^code vm-include-time (1 before, 2 after)
 
-That was a lot of material to work through, but we did it! Type this in and try
-it out:
+C'était beaucoup de matériel à travailler, mais nous l'avons fait ! Tapez ceci et essayez-le :
 
 ```lox
 fun fib(n) {
@@ -1356,58 +850,30 @@ print fib(35);
 print clock() - start;
 ```
 
-We can write a really inefficient recursive Fibonacci function. Even better, we
-can measure just <span name="faster">*how*</span> inefficient it is. This is, of
-course, not the smartest way to calculate a Fibonacci number. But it is a good
-way to stress test a language implementation's support for function calls. On my
-machine, running this in clox is about five times faster than in jlox. That's
-quite an improvement.
+Nous pouvons écrire une fonction Fibonacci récursive vraiment inefficace. Encore mieux, nous pouvons mesurer juste <span name="faster">_combien_</span> elle est inefficace. C'est, bien sûr, pas le moyen le plus intelligent de calculer un nombre de Fibonacci. Mais c'est un bon moyen de tester en stress le support d'une implémentation de langage pour les appels de fonction. Sur ma machine, exécuter ceci dans clox est environ cinq fois plus rapide que dans jlox. C'est toute une amélioration.
 
 <aside name="faster">
 
-It's a little slower than a comparable Ruby program run in Ruby 2.4.3p205, and
-about 3x faster than one run in Python 3.7.3. And we still have a lot of simple
-optimizations we can do in our VM.
+C'est un peu plus lent qu'un programme Ruby comparable exécuté dans Ruby 2.4.3p205, et environ 3x plus rapide qu'un exécuté dans Python 3.7.3. Et nous avons encore beaucoup d'optimisations simples que nous pouvons faire dans notre VM.
 
 </aside>
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  Reading and writing the `ip` field is one of the most frequent operations
-    inside the bytecode loop. Right now, we access it through a pointer to the
-    current CallFrame. That requires a pointer indirection which may force the
-    CPU to bypass the cache and hit main memory. That can be a real performance
-    sink.
+1.  Lire et écrire le champ `ip` est une des opérations les plus fréquentes à l'intérieur de la boucle bytecode. En ce moment, nous y accédons à travers un pointeur vers la CallFrame courante. Cela nécessite une indirection de pointeur qui peut forcer le CPU à contourner le cache et frapper la mémoire principale. Cela peut être un vrai gouffre de performance.
 
-    Ideally, we'd keep the `ip` in a native CPU register. C doesn't let us
-    *require* that without dropping into inline assembly, but we can structure
-    the code to encourage the compiler to make that optimization. If we store
-    the `ip` directly in a C local variable and mark it `register`, there's a
-    good chance the C compiler will accede to our polite request.
+    Idéalement, nous garderions l'`ip` dans un registre CPU natif. C ne nous laisse pas _exiger_ cela sans tomber dans l'assembleur inline, mais nous pouvons structurer le code pour encourager le compilateur à faire cette optimisation. Si nous stockons l'`ip` directement dans une variable locale C et la marquons `register`, il y a une bonne chance que le compilateur C accède à notre requête polie.
 
-    This does mean we need to be careful to load and store the local `ip` back
-    into the correct CallFrame when starting and ending function calls.
-    Implement this optimization. Write a couple of benchmarks and see how it
-    affects the performance. Do you think the extra code complexity is worth it?
+    Cela signifie bien que nous devons faire attention de charger et stocker l'`ip` local en retour dans la bonne CallFrame lors du démarrage et de la fin des appels de fonction. Implémentez cette optimisation. Écrivez une couple de benchmarks et voyez comment cela affecte la performance. Pensez-vous que la complexité de code supplémentaire en vaut la peine ?
 
-2.  Native function calls are fast in part because we don't validate that the
-    call passes as many arguments as the function expects. We really should, or
-    an incorrect call to a native function without enough arguments could cause
-    the function to read uninitialized memory. Add arity checking.
+2.  Les appels de fonction native sont rapides en partie parce que nous ne validons pas que l'appel passe autant d'arguments que la fonction attend. Nous devrions vraiment, ou un appel incorrect à une fonction native sans assez d'arguments pourrait causer la fonction de lire de la mémoire non initialisée. Ajoutez la vérification d'arité.
 
-3.  Right now, there's no way for a native function to signal a runtime error.
-    In a real implementation, this is something we'd need to support because
-    native functions live in the statically typed world of C but are called
-    from dynamically typed Lox land. If a user, say, tries to pass a string to
-    `sqrt()`, that native function needs to report a runtime error.
+3.  En ce moment, il n'y a pas de moyen pour une fonction native de signaler une erreur d'exécution. Dans une vraie implémentation, c'est quelque chose que nous aurions besoin de supporter parce que les fonctions natives vivent dans le monde typé statiquement du C mais sont appelées depuis le pays Lox typé dynamiquement. Si un utilisateur, disons, essaie de passer une chaîne à `sqrt()`, cette fonction native a besoin de rapporter une erreur d'exécution.
 
-    Extend the native function system to support that. How does this capability
-    affect the performance of native calls?
+    Étendez le système de fonction native pour supporter cela. Comment cette capacité affecte-t-elle la performance des appels natifs ?
 
-4.  Add some more native functions to do things you find useful. Write some
-    programs using those. What did you add? How do they affect the feel of the
-    language and how practical it is?
+4.  Ajoutez quelques fonctions natives de plus pour faire des choses que vous trouvez utiles. Écrivez quelques programmes utilisant celles-ci. Qu'avez-vous ajouté ? Comment affectent-elles le feeling du langage et à quel point il est pratique ?
 
 </div>

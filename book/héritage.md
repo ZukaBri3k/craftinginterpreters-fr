@@ -1,163 +1,105 @@
-> Once we were blobs in the sea, and then fishes, and then lizards and rats and
-> then monkeys, and hundreds of things in between. This hand was once a fin,
-> this hand once had claws! In my human mouth I have the pointy teeth of a wolf
-> and the chisel teeth of a rabbit and the grinding teeth of a cow! Our blood is
-> as salty as the sea we used to live in! When we're frightened, the hair on our
-> skin stands up, just like it did when we had fur. We are history! Everything
-> we've ever been on the way to becoming us, we still are.
+> Une fois nous étions des blobs dans la mer, et puis des poissons, et puis des lézards et des rats et
+> puis des singes, et des centaines de choses entre les deux. Cette main était autrefois une nageoire,
+> cette main avait autrefois des griffes ! Dans ma bouche humaine j'ai les dents pointues d'un loup
+> et les dents ciseaux d'un lapin et les dents broyeuses d'une vache ! Notre sang est
+> aussi salé que la mer dans laquelle nous avions l'habitude de vivre ! Quand nous sommes effrayés, les poils sur notre
+> peau se dressent, juste comme ils le faisaient quand nous avions de la fourrure. Nous sommes l'histoire ! Tout ce que
+> nous avons jamais été sur le chemin pour devenir nous, nous le sommes encore.
 >
-> <cite>Terry Pratchett, <em>A Hat Full of Sky</em></cite>
+> <cite>Terry Pratchett, <em>Un chapeau de ciel</em></cite>
 
-Can you believe it? We've reached the last chapter of [Part II][]. We're almost
-done with our first Lox interpreter. The [previous chapter][] was a big ball of
-intertwined object-orientation features. I couldn't separate those from each
-other, but I did manage to untangle one piece. In this chapter, we'll finish
-off Lox's class support by adding inheritance.
+Pouvez-vous le croire ? Nous avons atteint le dernier chapitre de la [Partie II][part ii]. Nous avons presque fini avec notre premier interpréteur Lox. Le [chapitre précédent][previous chapter] était une grosse boule de fonctionnalités orientées objet entremêlées. Je ne pouvais pas les séparer les unes des autres, mais j'ai réussi à démêler un morceau. Dans ce chapitre, nous finirons le support des classes de Lox en ajoutant l'héritage.
 
-[part ii]: a-tree-walk-interpreter.html
+[part ii]: une-promenade-dans-l-arbre.html
 [previous chapter]: classes.html
 
-Inheritance appears in object-oriented languages all the way back to the <span
-name="inherited">first</span> one, [Simula][]. Early on, Kristen Nygaard and
-Ole-Johan Dahl noticed commonalities across classes in the simulation programs
-they wrote. Inheritance gave them a way to reuse the code for those similar
-parts.
+L'héritage apparaît dans les langages orientés objet tout le chemin en arrière jusqu'au <span name="inherited">premier</span>, [Simula][]. Tôt au début, Kristen Nygaard et Ole-Johan Dahl ont remarqué des points communs à travers les classes dans les programmes de simulation qu'ils écrivaient. L'héritage leur a donné un moyen de réutiliser le code pour ces parties similaires.
 
 [simula]: https://en.wikipedia.org/wiki/Simula
 
 <aside name="inherited">
 
-You could say all those other languages *inherited* it from Simula. Hey-ooo!
-I'll, uh, see myself out.
+Vous pourriez dire que tous ces autres langages l'ont _hérité_ de Simula. Hey-ooo !
+Je vais, euh, sortir.
 
 </aside>
 
-## Superclasses and Subclasses
+## Superclasses et Sous-classes
 
-Given that the concept is "inheritance", you would hope they would pick a
-consistent metaphor and call them "parent" and "child" classes, but that would
-be too easy. Way back when, C. A. R. Hoare coined the term "<span
-name="subclass">subclass</span>" to refer to a record type that refines another
-type. Simula borrowed that term to refer to a *class* that inherits from
-another. I don't think it was until Smalltalk came along that someone flipped
-the Latin prefix to get "superclass" to refer to the other side of the
-relationship. From C++, you also hear "base" and "derived" classes. I'll mostly
-stick with "superclass" and "subclass".
+Étant donné que le concept est "héritage", vous espéreriez qu'ils choisiraient une métaphore cohérente et les appelleraient classes "parent" et "enfant", mais ce serait trop facile. Il y a longtemps, C. A. R. Hoare a inventé le terme "<span name="subclass">sous-classe</span>" pour faire référence à un type enregistrement qui raffine un autre type. Simula a emprunté ce terme pour faire référence à une _classe_ qui hérite d'une autre. Je ne pense pas que c'était avant que Smalltalk arrive que quelqu'un a retourné le préfixe Latin pour obtenir "superclasse" pour faire référence à l'autre côté de la relation. Depuis C++, vous entendez aussi classes "de base" et "dérivées". Je resterai principalement avec "superclasse" et "sous-classe".
 
 <aside name="subclass">
 
-"Super-" and "sub-" mean "above" and "below" in Latin, respectively. Picture an
-inheritance tree like a family tree with the root at the top -- subclasses are
-below their superclasses on the diagram. More generally, "sub-" refers to things
-that refine or are contained by some more general concept. In zoology, a
-subclass is a finer categorization of a larger class of living things.
+"Super-" et "sub-" signifient "au-dessus" et "en dessous" en Latin, respectivement. Imaginez un arbre d'héritage comme un arbre généalogique avec la racine au sommet -- les sous-classes sont en dessous de leurs superclasses sur le diagramme. Plus généralement, "sub-" fait référence à des choses qui raffinent ou sont contenues par un concept plus général. En zoologie, une sous-classe est une catégorisation plus fine d'une plus large classe de choses vivantes.
 
-In set theory, a subset is contained by a larger superset which has all of the
-elements of the subset and possibly more. Set theory and programming languages
-meet each other in type theory. There, you have "supertypes" and "subtypes".
+En théorie des ensembles, un sous-ensemble est contenu par un super-ensemble plus large qui a tous les éléments du sous-ensemble et possiblement plus. La théorie des ensembles et les langages de programmation se rencontrent en théorie des types. Là, vous avez des "supertypes" et des "sous-types".
 
-In statically typed object-oriented languages, a subclass is also often a
-subtype of its superclass. Say we have a Doughnut superclass and a BostonCream
-subclass. Every BostonCream is also an instance of Doughnut, but there may be
-doughnut objects that are not BostonCreams (like Crullers).
+Dans les langages orientés objet typés statiquement, une sous-classe est aussi souvent un sous-type de sa superclasse. Disons que nous avons une superclasse Beignet et une sous-classe BostonCream. Chaque BostonCream est aussi une instance de Beignet, mais il peut y avoir des objets beignet qui ne sont pas des BostonCreams (comme des Crullers).
 
-Think of a type as the set of all values of that type. The set of all Doughnut
-instances contains the set of all BostonCream instances since every BostonCream
-is also a Doughnut. So BostonCream is a subclass, and a subtype, and its
-instances are a subset. It all lines up.
+Pensez à un type comme l'ensemble de toutes les valeurs de ce type. L'ensemble de toutes les instances de Beignet contient l'ensemble de toutes les instances de BostonCream puisque chaque BostonCream est aussi un Beignet. Donc BostonCream est une sous-classe, et un sous-type, et ses instances sont un sous-ensemble. Tout s'aligne.
 
 <img src="image/inheritance/doughnuts.png" alt="Boston cream &lt;: doughnut." />
 
 </aside>
 
-Our first step towards supporting inheritance in Lox is a way to specify a
-superclass when declaring a class. There's a lot of variety in syntax for this.
-C++ and C# place a `:` after the subclass's name, followed by the superclass
-name. Java uses `extends` instead of the colon. Python puts the superclass(es)
-in parentheses after the class name. Simula puts the superclass's name *before*
-the `class` keyword.
+Notre première étape vers le support de l'héritage dans Lox est un moyen de spécifier une superclasse lors de la déclaration d'une classe. Il y a beaucoup de variété dans la syntaxe pour cela. C++ et C# placent un `:` après le nom de la sous-classe, suivi par le nom de la superclasse. Java utilise `extends` au lieu du deux-points. Python met la ou les superclasse(s) entre parenthèses après le nom de la classe. Simula met le nom de la superclasse _avant_ le mot-clé `class`.
 
-This late in the game, I'd rather not add a new reserved word or token to the
-lexer. We don't have `extends` or even `:`, so we'll follow Ruby and use a
-less-than sign (`<`).
+Si tard dans le jeu, je préférerais ne pas ajouter un nouveau mot réservé ou token au lexer. Nous n'avons pas `extends` ou même `:`, donc nous suivrons Ruby et utiliserons un signe inférieur à (`<`).
 
 ```lox
 class Doughnut {
-  // General doughnut stuff...
+  // Trucs généraux de beignet...
 }
 
 class BostonCream < Doughnut {
-  // Boston Cream-specific stuff...
+  // Trucs spécifiques au Boston Cream...
 }
 ```
 
-To work this into the grammar, we add a new optional clause in our existing
-`classDecl` rule.
+Pour faire entrer cela dans la grammaire, nous ajoutons une nouvelle clause optionnelle dans notre règle `classDecl` existante.
 
 ```ebnf
 classDecl      → "class" IDENTIFIER ( "<" IDENTIFIER )?
                  "{" function* "}" ;
 ```
 
-After the class name, you can have a `<` followed by the superclass's name. The
-superclass clause is optional because you don't *have* to have a superclass.
-Unlike some other object-oriented languages like Java, Lox has no root "Object"
-class that everything inherits from, so when you omit the superclass clause, the
-class has *no* superclass, not even an implicit one.
+Après le nom de la classe, vous pouvez avoir un `<` suivi par le nom de la superclasse. La clause de superclasse est optionnelle parce que vous n'êtes pas _obligé_ d'avoir une superclasse. Contrairement à certains autres langages orientés objet comme Java, Lox n'a pas de classe racine "Object" dont tout hérite, donc quand vous omettez la clause de superclasse, la classe n'a _pas_ de superclasse, pas même une implicite.
 
-We want to capture this new syntax in the class declaration's AST node.
+Nous voulons capturer cette nouvelle syntaxe dans le nœud AST de déclaration de classe.
 
 ^code superclass-ast (1 before, 1 after)
 
-You might be surprised that we store the superclass name as an Expr.Variable,
-not a Token. The grammar restricts the superclass clause to a single identifier,
-but at runtime, that identifier is evaluated as a variable access. Wrapping the
-name in an Expr.Variable early on in the parser gives us an object that the
-resolver can hang the resolution information off of.
+Vous pourriez être surpris que nous stockions le nom de la superclasse comme une Expr.Variable, pas un Token. La grammaire restreint la clause de superclasse à un identifieur unique, mais à l'exécution, cet identifieur est évalué comme un accès variable. Envelopper le nom dans une Expr.Variable tôt dans le parseur nous donne un objet auquel le résolveur peut accrocher les informations de résolution.
 
-The new parser code follows the grammar directly.
+Le nouveau code de parseur suit la grammaire directement.
 
 ^code parse-superclass (1 before, 1 after)
 
-Once we've (possibly) parsed a superclass declaration, we store it in the AST.
+Une fois que nous avons (possiblement) parsé une déclaration de superclasse, nous la stockons dans l'AST.
 
 ^code construct-class-ast (2 before, 1 after)
 
-If we didn't parse a superclass clause, the superclass expression will be
-`null`. We'll have to make sure the later passes check for that. The first of
-those is the resolver.
+Si nous n'avons pas parsé de clause de superclasse, l'expression superclasse sera `null`. Nous devrons nous assurer que les passes ultérieures vérifient cela. La première de celles-ci est le résolveur.
 
 ^code resolve-superclass (1 before, 2 after)
 
-The class declaration AST node has a new subexpression, so we traverse into and
-resolve that. Since classes are usually declared at the top level, the
-superclass name will most likely be a global variable, so this doesn't usually
-do anything useful. However, Lox allows class declarations even inside blocks,
-so it's possible the superclass name refers to a local variable. In that case,
-we need to make sure it's resolved.
+Le nœud AST de déclaration de classe a une nouvelle sous-expression, donc nous traversons dedans et résolvons cela. Puisque les classes sont habituellement déclarées au niveau supérieur, le nom de la superclasse sera très probablement une variable globale, donc cela ne fait habituellement rien d'utile. Cependant, Lox permet les déclarations de classe même à l'intérieur de blocs, donc il est possible que le nom de la superclasse fasse référence à une variable locale. Dans ce cas, nous devons nous assurer qu'elle est résolue.
 
-Because even well-intentioned programmers sometimes write weird code, there's a
-silly edge case we need to worry about while we're in here. Take a look at this:
+Parce que même des programmeurs bien intentionnés écrivent parfois du code bizarre, il y a un cas limite idiot dont nous devons nous soucier pendant que nous sommes ici. Jetez un œil à ceci :
 
 ```lox
 class Oops < Oops {}
 ```
 
-There's no way this will do anything useful, and if we let the runtime try to
-run this, it will break the expectation the interpreter has about there not
-being cycles in the inheritance chain. The safest thing is to detect this case
-statically and report it as an error.
+Il n'y a aucun moyen que cela fasse quoi que ce soit d'utile, et si nous laissons le runtime essayer d'exécuter ceci, cela brisera l'attente que l'interpréteur a à propos du fait qu'il n'y ait pas de cycles dans la chaîne d'héritage. La chose la plus sûre est de détecter ce cas statiquement et de le rapporter comme une erreur.
 
 ^code inherit-self (2 before, 1 after)
 
-Assuming the code resolves without error, the AST travels to the interpreter.
+En supposant que le code se résolve sans erreur, l'AST voyage vers l'interpréteur.
 
 ^code interpret-superclass (1 before, 1 after)
 
-If the class has a superclass expression, we evaluate it. Since that could
-potentially evaluate to some other kind of object, we have to check at runtime
-that the thing we want to be the superclass is actually a class. Bad things
-would happen if we allowed code like:
+Si la classe a une expression superclasse, nous l'évaluons. Puisque cela pourrait potentiellement s'évaluer en une autre sorte d'objet, nous devons vérifier à l'exécution que la chose que nous voulons être la superclasse est en fait une classe. De mauvaises choses arriveraient si nous permettions du code comme :
 
 ```lox
 var NotAClass = "I am totally not a class";
@@ -165,57 +107,39 @@ var NotAClass = "I am totally not a class";
 class Subclass < NotAClass {} // ?!
 ```
 
-Assuming that check passes, we continue on. Executing a class declaration turns
-the syntactic representation of a class -- its AST node -- into its runtime
-representation, a LoxClass object. We need to plumb the superclass through to
-that too. We pass the superclass to the constructor.
+En supposant que cette vérification passe, nous continuons. Exécuter une déclaration de classe transforme la représentation syntaxique d'une classe -- son nœud AST -- en sa représentation à l'exécution, un objet LoxClass. Nous devons tuyauter la superclasse à travers vers cela aussi. Nous passons la superclasse au constructeur.
 
 ^code interpreter-construct-class (3 before, 1 after)
 
-The constructor stores it in a field.
+Le constructeur la stocke dans un champ.
 
 ^code lox-class-constructor (1 after)
 
-Which we declare here:
+Que nous déclarons ici :
 
 ^code lox-class-superclass-field (1 before, 1 after)
 
-With that, we can define classes that are subclasses of other classes. Now, what
-does having a superclass actually *do?*
+Avec cela, nous pouvons définir des classes qui sont des sous-classes d'autres classes. Maintenant, qu'est-ce que le fait d'avoir une superclasse _fait_ réellement ?
 
-## Inheriting Methods
+## Hériter des Méthodes
 
-Inheriting from another class means that everything that's <span
-name="liskov">true</span> of the superclass should be true, more or less, of the
-subclass. In statically typed languages, that carries a lot of implications. The
-sub*class* must also be a sub*type*, and the memory layout is controlled so that
-you can pass an instance of a subclass to a function expecting a superclass and
-it can still access the inherited fields correctly.
+Hériter d'une autre classe signifie que tout ce qui est <span name="liskov">vrai</span> de la superclasse devrait être vrai, plus ou moins, de la sous-classe. Dans les langages typés statiquement, cela porte beaucoup d'implications. La sous-_classe_ doit aussi être un sous-_type_, et la disposition de la mémoire est contrôlée pour que vous puissiez passer une instance d'une sous-classe à une fonction attendant une superclasse et qu'elle puisse toujours accéder aux champs hérités correctement.
 
 <aside name="liskov">
 
-A fancier name for this hand-wavey guideline is the [*Liskov substitution
-principle*][liskov]. Barbara Liskov introduced it in a keynote during the
-formative period of object-oriented programming.
+Un nom plus chic pour cette directive vague est le [_principe de substitution de Liskov_][liskov]. Barbara Liskov l'a introduit dans une conférence pendant la période formative de la programmation orientée objet.
 
 [liskov]: https://en.wikipedia.org/wiki/Liskov_substitution_principle
 
 </aside>
 
-Lox is a dynamically typed language, so our requirements are much simpler.
-Basically, it means that if you can call some method on an instance of the
-superclass, you should be able to call that method when given an instance of the
-subclass. In other words, methods are inherited from the superclass.
+Lox est un langage typé dynamiquement, donc nos exigences sont beaucoup plus simples. Fondamentalement, cela signifie que si vous pouvez appeler une certaine méthode sur une instance de la superclasse, vous devriez être capable d'appeler cette méthode quand on vous donne une instance de la sous-classe. En d'autres termes, les méthodes sont héritées de la superclasse.
 
-This lines up with one of the goals of inheritance -- to give users a way to
-reuse code across classes. Implementing this in our interpreter is
-astonishingly easy.
+Cela s'aligne avec l'un des buts de l'héritage -- donner aux utilisateurs un moyen de réutiliser du code à travers les classes. Implémenter cela dans notre interpréteur est étonnamment facile.
 
 ^code find-method-recurse-superclass (3 before, 1 after)
 
-That's literally all there is to it. When we are looking up a method on an
-instance, if we don't find it on the instance's class, we recurse up through the
-superclass chain and look there. Give it a try:
+C'est littéralement tout ce qu'il y a à faire. Quand nous cherchons une méthode sur une instance, si nous ne la trouvons pas sur la classe de l'instance, nous récursons vers le haut à travers la chaîne de superclasses et cherchons là. Donnez-lui un essai :
 
 ```lox
 class Doughnut {
@@ -229,26 +153,15 @@ class BostonCream < Doughnut {}
 BostonCream().cook();
 ```
 
-There we go, half of our inheritance features are complete with only three lines
-of Java code.
+Et voilà, la moitié de nos fonctionnalités d'héritage sont complètes avec seulement trois lignes de code Java.
 
-## Calling Superclass Methods
+## Appeler les Méthodes de Superclasse
 
-In `findMethod()` we look for a method on the current class *before* walking up
-the superclass chain. If a method with the same name exists in both the subclass
-and the superclass, the subclass one takes precedence or **overrides** the
-superclass method. Sort of like how variables in inner scopes shadow outer ones.
+Dans `findMethod()` nous cherchons une méthode sur la classe courante _avant_ de marcher vers le haut de la chaîne de superclasses. Si une méthode avec le même nom existe à la fois dans la sous-classe et la superclasse, celle de la sous-classe prend la précédence ou **redéfinit** la méthode de la superclasse. Un peu comme comment les variables dans les portées internes masquent celles externes.
 
-That's great if the subclass wants to *replace* some superclass behavior
-completely. But, in practice, subclasses often want to *refine* the superclass's
-behavior. They want to do a little work specific to the subclass, but also
-execute the original superclass behavior too.
+C'est super si la sous-classe veut _remplacer_ certain comportement de superclasse complètement. Mais, en pratique, les sous-classes veulent souvent _raffiner_ le comportement de la superclasse. Elles veulent faire un peu de travail spécifique à la sous-classe, mais aussi exécuter le comportement original de la superclasse aussi.
 
-However, since the subclass has overridden the method, there's no way to refer
-to the original one. If the subclass method tries to call it by name, it will
-just recursively hit its own override. We need a way to say "Call this method,
-but look for it directly on my superclass and ignore my override". Java uses
-`super` for this, and we'll use that same syntax in Lox. Here is an example:
+Cependant, puisque la sous-classe a redéfini la méthode, il n'y a aucun moyen de faire référence à celle originale. Si la méthode de sous-classe essaie de l'appeler par nom, elle frappera juste récursivement sa propre redéfinition. Nous avons besoin d'un moyen de dire "Appelle cette méthode, mais cherche-la directement sur ma superclasse et ignore ma redéfinition". Java utilise `super` pour cela, et nous utiliserons cette même syntaxe dans Lox. Voici un exemple :
 
 ```lox
 class Doughnut {
@@ -267,30 +180,24 @@ class BostonCream < Doughnut {
 BostonCream().cook();
 ```
 
-If you run this, it should print:
+Si vous lancez ceci, cela devrait imprimer :
 
 ```text
 Fry until golden brown.
 Pipe full of custard and coat with chocolate.
 ```
 
-We have a new expression form. The `super` keyword, followed by a dot and an
-identifier, looks for a method with that name. Unlike calls on `this`, the search
-starts at the superclass.
+Nous avons une nouvelle forme d'expression. Le mot-clé `super`, suivi par un point et un identifieur, cherche une méthode avec ce nom. Contrairement aux appels sur `this`, la recherche commence à la superclasse.
 
-### Syntax
+### Syntaxe
 
-With `this`, the keyword works sort of like a magic variable, and the expression
-is that one lone token. But with `super`, the subsequent `.` and property name
-are inseparable parts of the `super` expression. You can't have a bare `super`
-token all by itself.
+Avec `this`, le mot-clé fonctionne un peu comme une variable magique, et l'expression est ce token solitaire. Mais avec `super`, le `.` subséquent et le nom de propriété sont des parties inséparables de l'expression `super`. Vous ne pouvez pas avoir un token `super` nu tout seul.
 
 ```lox
-print super; // Syntax error.
+print super; // Erreur de syntaxe.
 ```
 
-So the new clause we add to the `primary` rule in our grammar includes the
-property access as well.
+Donc la nouvelle clause que nous ajoutons à la règle `primary` dans notre grammaire inclut l'accès de propriété aussi.
 
 ```ebnf
 primary        → "true" | "false" | "nil" | "this"
@@ -298,45 +205,34 @@ primary        → "true" | "false" | "nil" | "this"
                | "super" "." IDENTIFIER ;
 ```
 
-Typically, a `super` expression is used for a method call, but, as with regular
-methods, the argument list is *not* part of the expression. Instead, a super
-*call* is a super *access* followed by a function call. Like other method calls,
-you can get a handle to a superclass method and invoke it separately.
+Typiquement, une expression `super` est utilisée pour un appel de méthode, mais, comme avec les méthodes régulières, la liste d'arguments ne fait _pas_ partie de l'expression. Au lieu de cela, un _appel_ super est un _accès_ super suivi par un appel de fonction. Comme les autres appels de méthode, vous pouvez obtenir une poignée vers une méthode de superclasse et l'invoquer séparément.
 
 ```lox
 var method = super.cook;
 method();
 ```
 
-So the `super` expression itself contains only the token for the `super` keyword
-and the name of the method being looked up. The corresponding <span
-name="super-ast">syntax tree node</span> is thus:
+Donc l'expression `super` elle-même contient seulement le token pour le mot-clé `super` et le nom de la méthode étant cherchée. Le <span name="super-ast">nœud d'arbre syntaxique</span> correspondant est ainsi :
 
 ^code super-expr (1 before, 1 after)
 
 <aside name="super-ast">
 
-The generated code for the new node is in [Appendix II][appendix-super].
+Le code généré pour le nouveau nœud est dans l'[Annexe II][appendix-super].
 
 [appendix-super]: appendix-ii.html#super-expression
 
 </aside>
 
-Following the grammar, the new parsing code goes inside our existing `primary()`
-method.
+Suivant la grammaire, le nouveau code de parsing va à l'intérieur de notre méthode `primary()` existante.
 
 ^code parse-super (2 before, 2 after)
 
-A leading `super` keyword tells us we've hit a `super` expression. After that we
-consume the expected `.` and method name.
+Un mot-clé `super` en tête nous dit que nous avons frappé une expression `super`. Après cela nous consommons le `.` attendu et le nom de méthode.
 
-### Semantics
+### Sémantique
 
-Earlier, I said a `super` expression starts the method lookup from "the
-superclass", but *which* superclass? The naïve answer is the superclass of
-`this`, the object the surrounding method was called on. That coincidentally
-produces the right behavior in a lot of cases, but that's not actually correct.
-Gaze upon:
+Plus tôt, j'ai dit qu'une expression `super` commence la recherche de méthode depuis "la superclasse", mais _quelle_ superclasse ? La réponse naïve est la superclasse de `this`, l'objet sur lequel la méthode environnante a été appelée. Cela produit par coïncidence le bon comportement dans beaucoup de cas, mais ce n'est pas réellement correct. Contemplez :
 
 ```lox
 class A {
@@ -359,172 +255,110 @@ class C < B {}
 
 C().test();
 ```
-Translate this program to Java, C#, or C++ and it will print "A method", which
-is what we want Lox to do too. When this program runs, inside the body of
-`test()`, `this` is an instance of C. The superclass of C is B, but that is
-*not* where the lookup should start. If it did, we would hit B's `method()`.
 
-Instead, lookup should start on the superclass of *the class containing the
-`super` expression*. In this case, since `test()` is defined inside B, the
-`super` expression inside it should start the lookup on *B*&rsquo;s superclass
--- A.
+Traduisez ce programme en Java, C#, ou C++ et il imprimera "A method", ce qui est ce que nous voulons que Lox fasse aussi. Quand ce programme s'exécute, à l'intérieur du corps de `test()`, `this` est une instance de C. La superclasse de C est B, mais ce n'est _pas_ là où la recherche devrait commencer. Si elle le faisait, nous frapperions la `method()` de B.
+
+Au lieu de cela, la recherche devrait commencer sur la superclasse de _la classe contenant l'expression `super`_. Dans ce cas, puisque `test()` est défini à l'intérieur de B, l'expression `super` à l'intérieur devrait commencer la recherche sur la superclasse de _B_ -- A.
 
 <span name="flow"></span>
 
-<img src="image/inheritance/classes.png" alt="The call chain flowing through the classes." />
+<img src="image/inheritance/classes.png" alt="La chaîne d'appel s'écoulant à travers les classes." />
 
 <aside name="flow">
 
-The execution flow looks something like this:
+Le flux d'exécution ressemble à quelque chose comme ceci :
 
-1. We call `test()` on an instance of C.
+1. Nous appelons `test()` sur une instance de C.
 
-2. That enters the `test()` method inherited from B. That calls
-   `super.method()`.
+2. Cela entre dans la méthode `test()` héritée de B. Cela appelle `super.method()`.
 
-3. The superclass of B is A, so that chains to `method()` on A, and the program
-   prints "A method".
+3. La superclasse de B est A, donc cela enchaîne vers `method()` sur A, et le programme imprime "A method".
 
 </aside>
 
-Thus, in order to evaluate a `super` expression, we need access to the
-superclass of the class definition surrounding the call. Alack and alas, at the
-point in the interpreter where we are executing a `super` expression, we don't
-have that easily available.
+Ainsi, afin d'évaluer une expression `super`, nous avons besoin de l'accès à la superclasse de la définition de classe entourant l'appel. Hélas, au point dans l'interpréteur où nous exécutons une expression `super`, nous n'avons pas cela facilement disponible.
 
-We *could* add a field to LoxFunction to store a reference to the LoxClass that
-owns that method. The interpreter would keep a reference to the
-currently executing LoxFunction so that we could look it up later when we hit a
-`super` expression. From there, we'd get the LoxClass of the method, then its
-superclass.
+Nous _pourrions_ ajouter un champ à LoxFunction pour stocker une référence à la LoxClass qui possède cette méthode. L'interpréteur garderait une référence à la LoxFunction s'exécutant actuellement pour que nous puissions la chercher plus tard quand nous frappons une expression `super`. De là, nous obtiendrions la LoxClass de la méthode, puis sa superclasse.
 
-That's a lot of plumbing. In the [last chapter][], we had a similar problem when
-we needed to add support for `this`. In that case, we used our existing
-environment and closure mechanism to store a reference to the current object.
-Could we do something similar for storing the superclass<span
-name="rhetorical">?</span> Well, I probably wouldn't be talking about it if the
-answer was no, so... yes.
+C'est beaucoup de tuyauterie. Dans le [dernier chapitre][], nous avions un problème similaire quand nous avions besoin d'ajouter le support pour `this`. Dans ce cas, nous avons utilisé notre mécanisme existant d'environnement et de fermeture pour stocker une référence à l'objet courant. Pourrions-nous faire quelque chose de similaire pour stocker la superclasse <span name="rhetorical">?</span> Eh bien, je ne serais probablement pas en train d'en parler si la réponse était non, donc... oui.
 
 <aside name="rhetorical">
 
-Does anyone even like rhetorical questions?
+Est-ce que quelqu'un aime même les questions rhétoriques ?
 
 </aside>
 
 [last chapter]: classes.html
 
-One important difference is that we bound `this` when the method was *accessed*.
-The same method can be called on different instances and each needs its own
-`this`. With `super` expressions, the superclass is a fixed property of the
-*class declaration itself*. Every time you evaluate some `super` expression, the
-superclass is always the same.
+Une différence importante est que nous lions `this` quand la méthode est _accédée_. La même méthode peut être appelée sur différentes instances et chacune a besoin de son propre `this`. Avec les expressions `super`, la superclasse est une propriété fixe de la _déclaration de classe elle-même_. Chaque fois que vous évaluez une certaine expression `super`, la superclasse est toujours la même.
 
-That means we can create the environment for the superclass once, when the class
-definition is executed. Immediately before we define the methods, we make a new
-environment to bind the class's superclass to the name `super`.
+Cela signifie que nous pouvons créer l'environnement pour la superclasse une fois, quand la définition de classe est exécutée. Immédiatement avant que nous définissions les méthodes, nous faisons un nouvel environnement pour lier la superclasse de la classe au nom "super".
 
-<img src="image/inheritance/superclass.png" alt="The superclass environment." />
+<img src="image/inheritance/superclass.png" alt="L'environnement de superclasse." />
 
-When we create the LoxFunction runtime representation for each method, that is
-the environment they will capture in their closure. Later, when a method is
-invoked and `this` is bound, the superclass environment becomes the parent for
-the method's environment, like so:
+Quand nous créons la représentation d'exécution LoxFunction pour chaque méthode, c'est l'environnement qu'elles captureront dans leur fermeture. Plus tard, quand une méthode est invoquée et `this` est lié, l'environnement de superclasse devient le parent pour l'environnement de la méthode, comme ceci :
 
-<img src="image/inheritance/environments.png" alt="The environment chain including the superclass environment." />
+<img src="image/inheritance/environments.png" alt="La chaîne d'environnement incluant l'environnement de superclasse." />
 
-That's a lot of machinery, but we'll get through it a step at a time. Before we
-can get to creating the environment at runtime, we need to handle the
-corresponding scope chain in the resolver.
+C'est beaucoup de machinerie, mais nous la traverserons une étape à la fois. Avant que nous puissions arriver à créer l'environnement à l'exécution, nous devons gérer la chaîne de portée correspondante dans le résolveur.
 
 ^code begin-super-scope (2 before, 2 after)
 
-If the class declaration has a superclass, then we create a new scope
-surrounding all of its methods. In that scope, we define the name "super". Once
-we're done resolving the class's methods, we discard that scope.
+Si la déclaration de classe a une superclasse, alors nous créons une nouvelle portée entourant toutes ses méthodes. Dans cette portée, nous définissons le nom "super". Une fois que nous avons fini de résoudre les méthodes de la classe, nous jetons cette portée.
 
 ^code end-super-scope (2 before, 1 after)
 
-It's a minor optimization, but we only create the superclass environment if the
-class actually *has* a superclass. There's no point creating it when there isn't
-a superclass since there'd be no superclass to store in it anyway.
+C'est une optimisation mineure, mais nous créons seulement l'environnement de superclasse si la classe a réellement _une_ superclasse. Il n'y a pas de but à le créer quand il n'y a pas de superclasse puisqu'il n'y aurait pas de superclasse à stocker dedans de toute façon.
 
-With "super" defined in a scope chain, we are able to resolve the `super`
-expression itself.
+Avec "super" défini dans une chaîne de portée, nous sommes capables de résoudre l'expression `super` elle-même.
 
 ^code resolve-super-expr
 
-We resolve the `super` token exactly as if it were a variable. The resolution
-stores the number of hops along the environment chain that the interpreter needs
-to walk to find the environment where the superclass is stored.
+Nous résolvons le token `super` exactement comme si c'était une variable. La résolution stocke le nombre de sauts le long de la chaîne d'environnement que l'interpréteur a besoin de marcher pour trouver l'environnement où la superclasse est stockée.
 
-This code is mirrored in the interpreter. When we evaluate a subclass
-definition, we create a new environment.
+Ce code est reflété dans l'interpréteur. Quand nous évaluons une définition de sous-classe, nous créons un nouvel environnement.
 
 ^code begin-superclass-environment (6 before, 2 after)
 
-Inside that environment, we store a reference to the superclass -- the actual
-LoxClass object for the superclass which we have now that we are in the runtime.
-Then we create the LoxFunctions for each method. Those will capture the current
-environment -- the one where we just bound "super" -- as their closure, holding
-on to the superclass like we need. Once that's done, we pop the environment.
+À l'intérieur de cet environnement, nous stockons une référence à la superclasse -- l'objet LoxClass réel pour la superclasse que nous avons maintenant que nous sommes dans le runtime. Ensuite nous créons les LoxFunctions pour chaque méthode. Celles-ci vont capturer l'environnement courant -- celui où nous venons de lier "super" -- comme leur fermeture, s'accrochant à la superclasse comme nous en avons besoin. Une fois que c'est fait, nous dépilons l'environnement.
 
 ^code end-superclass-environment (2 before, 2 after)
 
-We're ready to interpret `super` expressions themselves. There are a few moving
-parts, so we'll build this method up in pieces.
+Nous sommes prêts à interpréter les expressions `super` elles-mêmes. Il y a quelques pièces mobiles, donc nous construirons cette méthode en morceaux.
 
 ^code interpreter-visit-super
 
-First, the work we've been leading up to. We look up the surrounding class's
-superclass by looking up "super" in the proper environment.
+D'abord, le travail auquel nous avons mené. Nous cherchons la superclasse de la classe environnante en cherchant "super" dans l'environnement approprié.
 
-When we access a method, we also need to bind `this` to the object the method is
-accessed from. In an expression like `doughnut.cook`, the object is whatever we
-get from evaluating `doughnut`. In a `super` expression like `super.cook`, the
-current object is implicitly the *same* current object that we're using. In
-other words, `this`. Even though we are looking up the *method* on the
-superclass, the *instance* is still `this`.
+Quand nous accédons à une méthode, nous avons aussi besoin de lier `this` à l'objet depuis lequel la méthode est accédée. Dans une expression comme `beignet.cook`, l'objet est tout ce que nous obtenons de l'évaluation de `beignet`. Dans une expression `super` comme `super.cook`, l'objet courant est implicitement le _même_ objet courant que nous utilisons. En d'autres termes, `this`. Même si nous cherchons la _méthode_ sur la superclasse, l'_instance_ est toujours `this`.
 
-Unfortunately, inside the `super` expression, we don't have a convenient node
-for the resolver to hang the number of hops to `this` on. Fortunately, we do
-control the layout of the environment chains. The environment where "this" is
-bound is always right inside the environment where we store "super".
+Malheureusement, à l'intérieur de l'expression `super`, nous n'avons pas de nœud pratique auquel le résolveur peut accrocher le nombre de sauts vers `this`. Heureusement, nous contrôlons la disposition des chaînes d'environnement. L'environnement où "this" est lié est toujours juste à l'intérieur de l'environnement où nous stockons "super".
 
 ^code super-find-this (2 before, 1 after)
 
-Offsetting the distance by one looks up "this" in that inner environment. I
-admit this isn't the most <span name="elegant">elegant</span> code, but it
-works.
+Décaler la distance de un cherche "this" dans cet environnement interne. J'admets que ce n'est pas le code le plus <span name="elegant">élégant</span>, mais ça marche.
 
 <aside name="elegant">
 
-Writing a book that includes every single line of code for a program means I
-can't hide the hacks by leaving them as an "exercise for the reader".
+Écrire un livre qui inclut chaque ligne de code unique pour un programme signifie que je ne peux pas cacher les bidouilles en les laissant comme un "exercice pour le lecteur".
 
 </aside>
 
-Now we're ready to look up and bind the method, starting at the superclass.
+Maintenant nous sommes prêts à chercher et lier la méthode, en commençant à la superclasse.
 
 ^code super-find-method (2 before, 1 after)
 
-This is almost exactly like the code for looking up a method of a get
-expression, except that we call `findMethod()` on the superclass instead of on
-the class of the current object.
+C'est presque exactement comme le code pour chercher une méthode d'une expression d'accès, sauf que nous appelons `findMethod()` sur la superclasse au lieu de sur la classe de l'objet courant.
 
-That's basically it. Except, of course, that we might *fail* to find the method.
-So we check for that too.
+C'est fondamentalement ça. Sauf, bien sûr, que nous pourrions _échouer_ à trouver la méthode. Donc nous vérifions cela aussi.
 
 ^code super-no-method (2 before, 2 after)
 
-There you have it! Take that BostonCream example earlier and give it a try.
-Assuming you and I did everything right, it should fry it first, then stuff it
-with cream.
+Vous l'avez ! Prenez cet exemple BostonCream de tout à l'heure et donnez-lui un essai. En supposant que vous et moi ayons tout fait correctement, cela devrait le frire d'abord, puis le fourrer avec de la crème.
 
-### Invalid uses of super
+### Usages invalides de super
 
-As with previous language features, our implementation does the right thing when
-the user writes correct code, but we haven't bulletproofed the intepreter
-against bad code. In particular, consider:
+Comme avec les fonctionnalités de langage précédentes, notre implémentation fait la bonne chose quand l'utilisateur écrit du code correct, mais nous n'avons pas blindé l'interpréteur contre le mauvais code. En particulier, considérez :
 
 ```lox
 class Eclair {
@@ -535,143 +369,96 @@ class Eclair {
 }
 ```
 
-This class has a `super` expression, but no superclass. At runtime, the code for
-evaluating `super` expressions assumes that "super" was successfully resolved
-and will be found in the environment. That's going to fail here because there is
-no surrounding environment for the superclass since there is no superclass. The
-JVM will throw an exception and bring our interpreter to its knees.
+Cette classe a une expression `super`, mais pas de superclasse. À l'exécution, le code pour évaluer les expressions `super` suppose que "super" a été résolu avec succès et sera trouvé dans l'environnement. Cela va échouer ici parce qu'il n'y a pas d'environnement environnant pour la superclasse puisqu'il n'y a pas de superclasse. La JVM lancera une exception et mettra notre interpréteur à genoux.
 
-Heck, there are even simpler broken uses of super:
+Zut, il y a même des utilisations cassées plus simples de super :
 
 ```lox
 super.notEvenInAClass();
 ```
 
-We could handle errors like these at runtime by checking to see if the lookup
-of "super" succeeded. But we can tell statically -- just by looking at the
-source code -- that Eclair has no superclass and thus no `super` expression will
-work inside it. Likewise, in the second example, we know that the `super`
-expression is not even inside a method body.
+Nous pourrions gérer des erreurs comme celles-ci à l'exécution en vérifiant pour voir si la recherche de "super" a réussi. Mais nous pouvons dire statiquement -- juste en regardant le code source -- que Eclair n'a pas de superclasse et ainsi aucune expression `super` ne marchera à l'intérieur. De même, dans le second exemple, nous savons que l'expression `super` n'est même pas à l'intérieur d'un corps de méthode.
 
-Even though Lox is dynamically typed, that doesn't mean we want to defer
-*everything* to runtime. If the user made a mistake, we'd like to help them find
-it sooner rather than later. So we'll report these errors statically, in the
-resolver.
+Même si Lox est typé dynamiquement, cela ne veut pas dire que nous voulons différer _tout_ à l'exécution. Si l'utilisateur a fait une erreur, nous aimerions les aider à la trouver plus tôt plutôt que plus tard. Donc nous rapporterons ces erreurs statiquement, dans le résolveur.
 
-First, we add a new case to the enum we use to keep track of what kind of class
-is surrounding the current code being visited.
+D'abord, nous ajoutons un nouveau cas à l'enum que nous utilisons pour garder la trace de quel genre de classe entoure le code courant étant visité.
 
 ^code class-type-subclass (1 before, 1 after)
 
-We'll use that to distinguish when we're inside a class that has a superclass
-versus one that doesn't. When we resolve a class declaration, we set that if the
-class is a subclass.
+Nous utiliserons cela pour distinguer quand nous sommes à l'intérieur d'une classe qui a une superclasse contre une qui n'en a pas. Quand nous résolvons une déclaration de classe, nous définissons cela si la classe est une sous-classe.
 
 ^code set-current-subclass (1 before, 1 after)
 
-Then, when we resolve a `super` expression, we check to see that we are
-currently inside a scope where that's allowed.
+Ensuite, quand nous résolvons une expression `super`, nous vérifions pour voir que nous sommes actuellement à l'intérieur d'une portée où c'est autorisé.
 
 ^code invalid-super (1 before, 1 after)
 
-If not -- oopsie! -- the user made a mistake.
+Si non -- oups ! -- l'utilisateur a fait une erreur.
 
 ## Conclusion
 
-We made it! That final bit of error handling is the last chunk of code needed to
-complete our Java implementation of Lox. This is a real <span
-name="superhero">accomplishment</span> and one you should be proud of. In the
-past dozen chapters and a thousand or so lines of code, we have learned and
-implemented...
+Nous l'avons fait ! Ce dernier bout de gestion d'erreur est le dernier morceau de code nécessaire pour compléter notre implémentation Java de Lox. C'est un réel <span name="superhero">accomplissement</span> et un dont vous devriez être fier. Dans la douzaine de chapitres passés et un millier ou presque de lignes de code, nous avons appris et implémenté...
 
-* [tokens and lexing][4],
-* [abstract syntax trees][5],
-* [recursive descent parsing][6],
-* prefix and infix expressions,
-* runtime representation of objects,
-* [interpreting code using the Visitor pattern][7],
-* [lexical scope][8],
-* environment chains for storing variables,
-* [control flow][9],
-* [functions with parameters][10],
-* closures,
-* [static variable resolution and error detection][11],
-* [classes][12],
-* constructors,
-* fields,
-* methods, and finally,
-* inheritance.
+- [tokens et analyse lexicale][4],
+- [arbres syntaxiques abstraits][5],
+- [analyse récursive descendante][6],
+- expressions préfixes et infixes,
+- représentation à l'exécution des objets,
+- [interprétation de code utilisant le pattern Visiteur][7],
+- [portée lexicale][8],
+- chaînes d'environnement pour stocker les variables,
+- [contrôle de flux][9],
+- [fonctions avec paramètres][10],
+- fermetures,
+- [résolution de variable statique et détection d'erreur][11],
+- [classes][12],
+- constructeurs,
+- champs,
+- méthodes, et finalement,
+- héritage.
 
-[4]: scanning.html
-[5]: representing-code.html
-[6]: parsing-expressions.html
-[7]: evaluating-expressions.html
-[8]: statements-and-state.html
-[9]: control-flow.html
-[10]: functions.html
-[11]: resolving-and-binding.html
+[4]: analyse-lexicale.html
+[5]: représentation-du-code.html
+[6]: analyse-des-expressions.html
+[7]: évaluation-des-expressions.html
+[8]: instructions-et-état.html
+[9]: contrôle-de-flux.html
+[10]: fonctions.html
+[11]: résolution-et-liaison.html
 [12]: classes.html
 
 <aside name="superhero">
 
-<img src="image/inheritance/superhero.png" alt="You, being your bad self." />
+<img src="image/inheritance/superhero.png" alt="Vous, étant votre mauvais soi." />
 
 </aside>
 
-We did all of that from scratch, with no external dependencies or magic tools.
-Just you and I, our respective text editors, a couple of collection classes in
-the Java standard library, and the JVM runtime.
+Nous avons fait tout cela à partir de rien, avec aucune dépendance externe ou outils magiques. Juste vous et moi, nos éditeurs de texte respectifs, une paire de classes de collection de la bibliothèque standard Java, et le runtime JVM.
 
-This marks the end of Part II, but not the end of the book. Take a break. Maybe
-write a few fun Lox programs and run them in your interpreter. (You may want to
-add a few more native methods for things like reading user input.) When you're
-refreshed and ready, we'll embark on our [next adventure][].
+Cela marque la fin de la Partie II, mais pas la fin du livre. Prenez une pause. Peut-être écrivez quelques programmes Lox amusants et lancez-les dans votre interpréteur. (Vous pouvez vouloir ajouter quelques méthodes natives de plus pour des choses comme lire l'entrée utilisateur.) Quand vous serez rafraîchi et prêt, nous embarquerons pour notre [prochaine aventure][].
 
-[next adventure]: a-bytecode-virtual-machine.html
+[prochaine aventure]: une-machine-virtuelle-a-bytecode.html
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  Lox supports only *single inheritance* -- a class may have a single
-    superclass and that's the only way to reuse methods across classes. Other
-    languages have explored a variety of ways to more freely reuse and share
-    capabilities across classes: mixins, traits, multiple inheritance, virtual
-    inheritance, extension methods, etc.
+1.  Lox supporte seulement l'_héritage simple_ -- une classe peut avoir une seule superclasse et c'est le seul moyen de réutiliser des méthodes à travers les classes. D'autres langages ont exploré une variété de façons de réutiliser et partager plus librement des capacités à travers les classes : mixins, traits, héritage multiple, héritage virtuel, méthodes d'extension, etc.
 
-    If you were to add some feature along these lines to Lox, which would you
-    pick and why? If you're feeling courageous (and you should be at this
-    point), go ahead and add it.
+    Si vous deviez ajouter une certaine fonctionnalité le long de ces lignes à Lox, laquelle choisiriez-vous et pourquoi ? Si vous vous sentez courageux (et vous devriez l'être à ce point), allez-y et ajoutez-la.
 
-1.  In Lox, as in most other object-oriented languages, when looking up a
-    method, we start at the bottom of the class hierarchy and work our way up --
-    a subclass's method is preferred over a superclass's. In order to get to the
-    superclass method from within an overriding method, you use `super`.
+2.  Dans Lox, comme dans la plupart des autres langages orientés objet, quand nous cherchons une méthode, nous commençons au bas de la hiérarchie de classe et travaillons notre chemin vers le haut -- une méthode de sous-classe est préférée sur celle d'une superclasse. Afin d'atteindre la méthode de superclasse depuis l'intérieur d'une méthode de redéfinition, vous utilisez `super`.
 
-    The language [BETA][] takes the [opposite approach][inner]. When you call a
-    method, it starts at the *top* of the class hierarchy and works *down*. A
-    superclass method wins over a subclass method. In order to get to the
-    subclass method, the superclass method can call `inner`, which is sort of
-    like the inverse of `super`. It chains to the next method down the
-    hierarchy.
+    Le langage [BETA][] prend l'[approche opposée][inner]. Quand vous appelez une méthode, elle commence au _sommet_ de la hiérarchie de classe et travaille vers le _bas_. Une méthode de superclasse gagne sur une méthode de sous-classe. Afin d'atteindre la méthode de sous-classe, la méthode de superclasse peut appeler `inner`, qui est en quelque sorte comme l'inverse de `super`. Cela enchaîne vers la prochaine méthode en bas de la hiérarchie.
 
-    The superclass method controls when and where the subclass is allowed to
-    refine its behavior. If the superclass method doesn't call `inner` at all,
-    then the subclass has no way of overriding or modifying the superclass's
-    behavior.
+    La méthode de superclasse contrôle quand et où il est permis à la sous-classe de raffiner son comportement. Si la méthode de superclasse n'appelle pas `inner` du tout, alors la sous-classe n'a aucun moyen de redéfinir ou modifier le comportement de la superclasse.
 
-    Take out Lox's current overriding and `super` behavior and replace it with
-    BETA's semantics. In short:
+    Enlevez le comportement actuel de redéfinition et de `super` de Lox et remplacez-le avec la sémantique de BETA. En bref :
+    - Quand une méthode est appelée sur une classe, préférez la méthode _la plus haute_ sur la chaîne d'héritage de la classe.
 
-    *   When calling a method on a class, prefer the method *highest* on the
-        class's inheritance chain.
+    - À l'intérieur du corps d'une méthode, un appel à `inner` cherche une méthode avec le même nom dans la sous-classe la plus proche le long de la chaîne d'héritage entre la classe contenant le `inner` et la classe de `this`. S'il n'y a pas de méthode correspondante, l'appel `inner` ne fait rien.
 
-    *   Inside the body of a method, a call to `inner` looks for a method with
-        the same name in the nearest subclass along the inheritance chain
-        between the class containing the `inner` and the class of `this`. If
-        there is no matching method, the `inner` call does nothing.
-
-    For example:
+    Par exemple :
 
     ```lox
     class Doughnut {
@@ -691,7 +478,7 @@ refreshed and ready, we'll embark on our [next adventure][].
     BostonCream().cook();
     ```
 
-    This should print:
+    Cela devrait imprimer :
 
     ```text
     Fry until golden brown.
@@ -699,11 +486,9 @@ refreshed and ready, we'll embark on our [next adventure][].
     Place in a nice box.
     ```
 
-1.  In the chapter where I introduced Lox, [I challenged you][challenge] to
-    come up with a couple of features you think the language is missing. Now
-    that you know how to build an interpreter, implement one of those features.
+3.  Dans le chapitre où j'ai présenté Lox, [je vous ai mis au défi][challenge] d'arriver avec une paire de fonctionnalités dont vous pensez que le langage manque. Maintenant que vous savez comment construire un interpréteur, implémentez l'une de ces fonctionnalités.
 
-[challenge]: the-lox-language.html#challenges
+[challenge]: le-langage-lox.html#defis
 [inner]: http://journal.stuffwithstuff.com/2012/12/19/the-impoliteness-of-overriding-methods/
 [beta]: https://beta.cs.au.dk/
 

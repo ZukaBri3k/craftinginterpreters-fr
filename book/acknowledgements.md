@@ -1,31 +1,13 @@
-When the first copy of "[Game Programming Patterns][gpp]" sold, I guess I had
-the right to call myself an author. But it took time to feel comfortable with
-that label. Thank you to everyone who bought copies of my first book, and to the
-publishers and translators who brought it to other languages. You gave me the
-confidence to believe I could tackle a project of this scope. Well, that, and
-massively underestimating what I was getting myself into, but that's on me.
+Lorsque le premier exemplaire de "[Game Programming Patterns][gpp]" a été vendu, j'imagine que j'ai eu le droit de m'appeler "auteur". Mais il a fallu du temps pour que je sois à l'aise avec cette étiquette. Merci à tous ceux qui ont acheté des exemplaires de mon premier livre, et aux éditeurs et traducteurs qui l'ont porté dans d'autres langues. Vous m'avez donné la confiance de croire que je pouvais m'attaquer à un projet de cette envergure. Enfin, ça, et le fait de sous-estimer massivement ce dans quoi je m'embarquais, mais ça, c'est ma faute.
 
 [gpp]: https://gameprogrammingpatterns.com/
 
-A fear particular to technical writing is *getting stuff wrong*. Tests and
-static analysis only get you so far. Once the code and prose is in ink on paper,
-there's no fixing it. I am deeply grateful to the many people who filed issues
-and pull requests on the [open source repo][repo] for the book. Special thanks
-go to cm1776, who filed 145 tactfully worded issues pointing out hundreds of
-code errors, typos, and unclear sentences. The book is more accurate and
-readable because of you all.
+Une peur particulière à l'écriture technique est de _se tromper_. Les tests et l'analyse statique ne vous mènent que jusqu'à un certain point. Une fois que le code et la prose sont couchés sur papier, il n'y a plus moyen de corriger. Je suis profondément reconnaissant aux nombreuses personnes qui ont signalé des problèmes et proposé des pull requests sur le [dépôt open source][repo] du livre. Un remerciement tout particulier à cm1776, qui a signalé 145 problèmes formulés avec tact, pointant des centaines d'erreurs de code, de fautes de frappe et de phrases peu claires. Le livre est plus précis et plus lisible grâce à vous tous.
 
 [repo]: https://github.com/munificent/craftinginterpreters
 
-I'm grateful to my copy editor Kari Somerton who braved a heap of computer
-science jargon and an unfamilar workflow in order to fix my many grammar errors
-and stylistic inconsistencies.
+Je suis reconnaissant à ma copy-éditrice Kari Somerton qui a bravé un tas de jargon informatique et un flux de travail inconnu pour corriger mes nombreuses erreurs de grammaire et incohérences stylistiques.
 
-When the pandemic turned everyone's life upside down, a number of people reached
-out to tell me that my book provided a helpful distraction. This book that I
-spent six years writing forms a chapter in my own life's story and I'm grateful
-to the readers who contacted me and made that chapter more meaningful.
+Lorsque la pandémie a bouleversé la vie de tout le monde, un certain nombre de personnes m'ont contacté pour me dire que mon livre leur avait offert une distraction utile. Ce livre que j'ai passé six ans à écrire constitue un chapitre de ma propre histoire, et je suis reconnaissant aux lecteurs qui m'ont contacté et ont rendu ce chapitre plus significatif.
 
-Finally, the deepest thanks go to my wife Megan and my daughters Lily and
-Gretchen. You patiently endured the time I had to sink into the book, and my
-stress while writing it. There's no one I'd rather be stuck at home with.
+Enfin, mes plus profonds remerciements vont à ma femme Megan et à mes filles Lily et Gretchen. Vous avez patiemment supporté le temps que j'ai dû consacrer au livre, et mon stress pendant son écriture. Il n'y a personne avec qui je préférerais être coincé à la maison.

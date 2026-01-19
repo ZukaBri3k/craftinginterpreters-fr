@@ -1,31 +1,19 @@
-> If you find that you're spending almost all your time on theory, start turning
-> some attention to practical things; it will improve your theories. If you find
-> that you're spending almost all your time on practice, start turning some
-> attention to theoretical things; it will improve your practice.
+> Si vous trouvez que vous passez presque tout votre temps sur la théorie, commencez à tourner
+> un peu d'attention vers les choses pratiques ; cela améliorera vos théories. Si vous trouvez
+> que vous passez presque tout votre temps sur la pratique, commencez à tourner un peu
+> d'attention vers les choses théoriques ; cela améliorera votre pratique.
 >
 > <cite>Donald Knuth</cite>
 
-We already have ourselves a complete implementation of Lox with jlox, so why
-isn't the book over yet? Part of this is because jlox relies on the <span
-name="metal">JVM</span> to do lots of things for us. If we want to understand
-how an interpreter works all the way down to the metal, we need to build those
-bits and pieces ourselves.
+Nous avons déjà nous-mêmes une implémentation complète de Lox avec jlox, alors pourquoi le livre n'est-il pas encore fini ? Une partie de cela est parce que jlox compte sur la <span name="metal">JVM</span> pour faire beaucoup de choses pour nous. Si nous voulons comprendre comment un interpréteur fonctionne tout le chemin vers le bas jusqu'au métal, nous devons construire ces pièces et morceaux nous-mêmes.
 
 <aside name="metal">
 
-Of course, our second interpreter relies on the C standard library for basics
-like memory allocation, and the C compiler frees us from details of the
-underlying machine code we're running it on. Heck, that machine code is probably
-implemented in terms of microcode on the chip. And the C runtime relies on the
-operating system to hand out pages of memory. But we have to stop *somewhere* if
-this book is going to fit on your bookshelf.
+Bien sûr, notre second interpréteur compte sur la bibliothèque standard C pour des bases comme l'allocation mémoire, et le compilateur C nous libère des détails du code machine sous-jacent sur lequel nous l'exécutons. Zut, ce code machine est probablement implémenté en termes de microcode sur la puce. Et le runtime C compte sur le système d'exploitation pour distribuer des pages de mémoire. Mais nous devons nous arrêter _quelque part_ si ce livre va tenir sur votre étagère.
 
 </aside>
 
-An even more fundamental reason that jlox isn't sufficient is that it's too damn
-slow. A tree-walk interpreter is fine for some kinds of high-level, declarative
-languages. But for a general-purpose, imperative language -- even a "scripting"
-language like Lox -- it won't fly. Take this little script:
+Une raison encore plus fondamentale que jlox n'est pas suffisant est qu'il est bon sang de trop lent. Un interpréteur à parcours d'arbre est bien pour certaines sortes de langages déclaratifs de haut niveau. Mais pour un langage impératif à usage général -- même un langage de "script" comme Lox -- cela ne volera pas. Prenez ce petit script :
 
 ```lox
 fun fib(n) {
@@ -41,962 +29,615 @@ print after - before;
 
 <aside name="fib">
 
-This is a comically inefficient way to actually calculate Fibonacci numbers.
-Our goal is to see how fast the *interpreter* runs, not to see how fast of a
-program we can write. A slow program that does a lot of work -- pointless or not
--- is a good test case for that.
+Ceci est une façon comiquement inefficace de calculer réellement des nombres de Fibonacci. Notre but est de voir à quelle vitesse l'_interpréteur_ s'exécute, pas de voir à quelle vitesse de programme nous pouvons écrire. Un programme lent qui fait beaucoup de travail -- inutile ou pas -- est un bon cas de test pour cela.
 
 </aside>
 
-On my laptop, that takes jlox about 72 seconds to execute. An equivalent C
-program finishes in half a second. Our dynamically typed scripting language is
-never going to be as fast as a statically typed language with manual memory
-management, but we don't need to settle for more than *two orders of magnitude*
-slower.
+Sur mon portable, cela prend à jlox environ 72 secondes pour s'exécuter. Un programme C équivalent finit en une demi-seconde. Notre langage de script typé dynamiquement ne va jamais être aussi rapide qu'un langage typé statiquement avec gestion manuelle de la mémoire, mais nous n'avons pas besoin de nous contenter de plus de _deux ordres de grandeur_ plus lent.
 
-We could take jlox and run it in a profiler and start tuning and tweaking
-hotspots, but that will only get us so far. The execution model -- walking the
-AST -- is fundamentally the wrong design. We can't micro-optimize that to the
-performance we want any more than you can polish an AMC Gremlin into an SR-71
-Blackbird.
+Nous pourrions prendre jlox et le lancer dans un profileur et commencer à régler et ajuster les points chauds, mais cela ne nous mènera que jusque-là. Le modèle d'exécution -- parcourir l'AST -- est fondamentalement le mauvais design. Nous ne pouvons pas micro-optimiser cela vers la performance que nous voulons plus que vous ne pouvez polir une AMC Gremlin en un SR-71 Blackbird.
 
-We need to rethink the core model. This chapter introduces that model, bytecode,
-and begins our new interpreter, clox.
+Nous devons repenser le modèle central. Ce chapitre introduit ce modèle, le bytecode, et commence notre nouvel interpréteur, clox.
 
-## Bytecode?
+## Bytecode ?
 
-In engineering, few choices are without trade-offs. To best understand why we're
-going with bytecode, let's stack it up against a couple of alternatives.
+En ingénierie, peu de choix sont sans compromis. Pour comprendre au mieux pourquoi nous allons avec le bytecode, empilons-le contre une paire d'alternatives.
 
-### Why not walk the AST?
+### Pourquoi ne pas parcourir l'AST ?
 
-Our existing interpreter has a couple of things going for it:
+Notre interpréteur existant a une paire de choses pour lui :
 
-*   Well, first, we already wrote it. It's done. And the main reason it's done
-    is because this style of interpreter is *really simple to implement*. The
-    runtime representation of the code directly maps to the syntax. It's
-    virtually effortless to get from the parser to the data structures we need
-    at runtime.
+- Eh bien, d'abord, nous l'avons déjà écrit. C'est fait. Et la raison principale qu'il est fait est parce que ce style d'interpréteur est _vraiment simple à implémenter_. La représentation à l'exécution du code mappe directement vers la syntaxe. Il est virtuellement sans effort d'aller du parseur aux structures de données dont nous avons besoin à l'exécution.
 
-*   It's *portable*. Our current interpreter is written in Java and runs on any
-    platform Java supports. We could write a new implementation in C using the
-    same approach and compile and run our language on basically every platform
-    under the sun.
+- Il est _portable_. Notre interpréteur actuel est écrit en Java et tourne sur n'importe quelle plateforme que Java supporte. Nous pourrions écrire une nouvelle implémentation en C en utilisant la même approche et compiler et exécuter notre langage sur fondamentalement chaque plateforme sous le soleil.
 
-Those are real advantages. But, on the other hand, it's *not memory-efficient*.
-Each piece of syntax becomes an AST node. A tiny Lox expression like `1 + 2`
-turns into a slew of objects with lots of pointers between them, something like:
+Ce sont de réels avantages. Mais, d'un autre côté, ce n'est _pas efficace en mémoire_. Chaque morceau de syntaxe devient un nœud AST. Une minuscule expression Lox comme `1 + 2` se transforme en une flopée d'objets avec beaucoup de pointeurs entre eux, quelque chose comme :
 
 <span name="header"></span>
 
 <aside name="header">
 
-The "(header)" parts are the bookkeeping information the Java virtual machine
-uses to support memory management and store the object's type. Those take up
-space too!
+Les parties "(header)" sont les informations de comptabilité que la machine virtuelle Java utilise pour supporter la gestion de la mémoire et stocker le type de l'objet. Celles-ci prennent de la place aussi !
 
 </aside>
 
-<img src="image/chunks-of-bytecode/ast.png" alt="The tree of Java objects created to represent '1 + 2'." />
+<img src="image/chunks-of-bytecode/ast.png" alt="L'arbre d'objets Java créés pour représenter '1 + 2'." />
 
-Each of those pointers adds an extra 32 or 64 bits of overhead to the object.
-Worse, sprinkling our data across the heap in a loosely connected web of objects
-does bad things for <span name="locality">*spatial locality*</span>.
+Chacun de ces pointeurs ajoute 32 ou 64 bits supplémentaires de surcharge à l'objet. Pire, saupoudrer nos données à travers le tas dans une toile d'objets lâchement connectés fait de mauvaises choses pour la <span name="locality">_localité spatiale_</span>.
 
 <aside name="locality">
 
-I wrote [an entire chapter][gpp locality] about this exact problem in my first
-book, *Game Programming Patterns*, if you want to really dig in.
+J'ai écrit [un chapitre entier][gpp locality] à propos de ce problème exact dans mon premier livre, _Game Programming Patterns_, si vous voulez vraiment creuser.
 
 [gpp locality]: http://gameprogrammingpatterns.com/data-locality.html
 
 </aside>
 
-Modern CPUs process data way faster than they can pull it from RAM. To
-compensate for that, chips have multiple layers of caching. If a piece of memory
-it needs is already in the cache, it can be loaded more quickly. We're talking
-upwards of 100 *times* faster.
+Les processeurs modernes traitent les données bien plus vite qu'ils ne peuvent les tirer de la RAM. Pour compenser cela, les puces ont de multiples couches de cache. Si un morceau de mémoire dont il a besoin est déjà dans le cache, il peut être chargé plus rapidement. Nous parlons de plus de 100 _fois_ plus vite.
 
-How does data get into that cache? The machine speculatively stuffs things in
-there for you. Its heuristic is pretty simple. Whenever the CPU reads a bit of
-data from RAM, it pulls in a whole little bundle of adjacent bytes and stuffs
-them in the cache.
+Comment les données entrent-elles dans ce cache ? La machine bourre spéculativement des choses dedans pour vous. Son heuristique est assez simple. Chaque fois que le CPU lit un peu de données de la RAM, il tire tout un petit paquet d'octets adjacents et les bourre dans le cache.
 
-If our program next requests some data close enough to be inside that cache
-line, our CPU runs like a well-oiled conveyor belt in a factory. We *really*
-want to take advantage of this. To use the cache effectively, the way we
-represent code in memory should be dense and ordered like it's read.
+Si notre programme demande ensuite quelques données assez proches pour être à l'intérieur de cette ligne de cache, notre CPU tourne comme un tapis roulant bien huilé dans une usine. Nous voulons _vraiment_ prendre avantage de cela. Pour utiliser le cache efficacement, la façon dont nous représentons le code en mémoire devrait être dense et ordonnée comme il est lu.
 
-Now look up at that tree. Those sub-objects could be <span
-name="anywhere">*anywhere*</span>. Every step the tree-walker takes where it
-follows a reference to a child node may step outside the bounds of the cache and
-force the CPU to stall until a new lump of data can be slurped in from RAM. Just
-the *overhead* of those tree nodes with all of their pointer fields and object
-headers tends to push objects away from each other and out of the cache.
+Maintenant regardez cet arbre là-haut. Ces sous-objets pourraient être <span name="anywhere">_n'importe où_</span>. Chaque pas que le promeneur d'arbres prend où il suit une référence vers un nœud enfant peut marcher en dehors des limites du cache et forcer le CPU à caler jusqu'à ce qu'un nouveau morceau de données puisse être aspiré depuis la RAM. Juste la _surcharge_ de ces nœuds d'arbre avec tous leurs champs pointeurs et en-têtes d'objet tend à pousser les objets loin les uns des autres et hors du cache.
 
 <aside name="anywhere">
 
-Even if the objects happened to be allocated in sequential memory when the
-parser first produced them, after a couple of rounds of garbage collection --
-which may move objects around in memory -- there's no telling where they'll be.
+Même si les objets se trouvaient être alloués en mémoire séquentielle quand le parseur les a produits pour la première fois, après une paire de tours de ramasse-miettes -- qui peut déplacer les objets en mémoire -- il n'y a pas moyen de dire où ils seront.
 
 </aside>
 
-Our AST walker has other overhead too around interface dispatch and the Visitor
-pattern, but the locality issues alone are enough to justify a better code
-representation.
+Notre parcours AST a d'autres surcharges aussi autour du dispatch d'interface et du pattern Visiteur, mais les problèmes de localité seuls sont assez pour justifier une meilleure représentation de code.
 
-### Why not compile to native code?
+### Pourquoi ne pas compiler en code natif ?
 
-If you want to go *real* fast, you want to get all of those layers of
-indirection out of the way. Right down to the metal. Machine code. It even
-*sounds* fast. *Machine code.*
+Si vous voulez aller _vraiment_ vite, vous voulez sortir toutes ces couches d'indirection du chemin. Droit au métal. Code machine. Ça _sonne_ même rapide. _Code machine._
 
-Compiling directly to the native instruction set the chip supports is what the
-fastest languages do. Targeting native code has been the most efficient option
-since way back in the early days when engineers actually <span
-name="hand">handwrote</span> programs in machine code.
+Compiler directement vers le jeu d'instructions natif que la puce supporte est ce que les langages les plus rapides font. Cibler le code natif a été l'option la plus efficace depuis longtemps dans les premiers jours quand les ingénieurs <span name="hand">écrivaient à la main</span> réellement des programmes en code machine.
 
 <aside name="hand">
 
-Yes, they actually wrote machine code by hand. On punched cards. Which,
-presumably, they punched *with their fists*.
+Oui, ils écrivaient réellement du code machine à la main. Sur des cartes perforées. Lesquelles, présumément, ils perforaient _avec leurs poings_.
 
 </aside>
 
-If you've never written any machine code, or its slightly more human-palatable
-cousin assembly code before, I'll give you the gentlest of introductions. Native
-code is a dense series of operations, encoded directly in binary. Each
-instruction is between one and a few bytes long, and is almost mind-numbingly
-low level. "Move a value from this address to this register." "Add the integers
-in these two registers." Stuff like that.
+Si vous n'avez jamais écrit de code machine, ou son cousin légèrement plus agréable pour l'humain le code assembleur avant, je vous donnerai la plus douce des introductions. Le code natif est une série dense d'opérations, encodées directement en binaire. Chaque instruction fait entre un et quelques octets de long, et est presque abrutissamment bas niveau. "Déplace une valeur de cette adresse vers ce registre." "Ajoute les entiers dans ces deux registres." Des trucs comme ça.
 
-The CPU cranks through the instructions, decoding and executing each one in
-order. There is no tree structure like our AST, and control flow is handled by
-jumping from one point in the code directly to another. No indirection, no
-overhead, no unnecessary skipping around or chasing pointers.
+Le CPU mouline à travers les instructions, décodant et exécutant chacune dans l'ordre. Il n'y a pas de structure d'arbre comme notre AST, et le contrôle de flux est géré en sautant d'un point dans le code directement à un autre. Pas d'indirection, pas de surcharge, pas de sauts inutiles ou de chasse aux pointeurs.
 
-Lightning fast, but that performance comes at a cost. First of all, compiling to
-native code ain't easy. Most chips in wide use today have sprawling Byzantine
-architectures with heaps of instructions that accreted over decades. They
-require sophisticated register allocation, pipelining, and instruction
-scheduling.
+Rapide comme l'éclair, mais cette performance vient à un coût. D'abord, compiler vers du code natif n'est pas facile. La plupart des puces en large usage aujourd'hui ont des architectures byzantines tentaculaires avec des tas d'instructions qui se sont accrétées sur des décennies. Elles exigent une allocation de registres, un pipelining, et un ordonnancement d'instructions sophistiqués.
 
-And, of course, you've thrown <span name="back">portability</span> out. Spend a
-few years mastering some architecture and that still only gets you onto *one* of
-the several popular instruction sets out there. To get your language on all of
-them, you need to learn all of their instruction sets and write a separate back
-end for each one.
+Et, bien sûr, vous avez jeté la <span name="back">portabilité</span> dehors. Passez quelques années à maîtriser une certaine architecture et cela ne vous mène encore que sur _l'un_ des plusieurs jeux d'instructions populaires là-bas. Pour mettre votre langage sur tous ceux-là, vous devez apprendre tous leurs jeux d'instructions et écrire un back end séparé pour chacun.
 
 <aside name="back">
 
-The situation isn't entirely dire. A well-architected compiler lets you
-share the front end and most of the middle layer optimization passes across the
-different architectures you support. It's mainly the code generation and some of
-the details around instruction selection that you'll need to write afresh each
-time.
+La situation n'est pas entièrement désastreuse. Un compilateur bien architecturé vous permet de partager le front end et la plupart des passes d'optimisation de la couche médiane à travers les différentes architectures que vous supportez. C'est principalement la génération de code et certains des détails autour de la sélection d'instruction que vous aurez besoin d'écrire à nouveau chaque fois.
 
-The [LLVM][] project gives you some of this out of the box. If your compiler
-outputs LLVM's own special intermediate language, LLVM in turn compiles that to
-native code for a plethora of architectures.
+Le projet [LLVM][] vous donne un peu de cela clé en main. Si votre compilateur sort le propre langage intermédiaire spécial de LLVM, LLVM à son tour compile cela vers du code natif pour une pléthore d'architectures.
 
 [llvm]: https://llvm.org/
 
 </aside>
 
-### What is bytecode?
+### Qu'est-ce que le bytecode ?
 
-Fix those two points in your mind. On one end, a tree-walk interpreter is
-simple, portable, and slow. On the other, native code is complex and
-platform-specific but fast. Bytecode sits in the middle. It retains the
-portability of a tree-walker -- we won't be getting our hands dirty with
-assembly code in this book. It sacrifices *some* simplicity to get a performance
-boost in return, though not as fast as going fully native.
+Fixez ces deux points dans votre esprit. D'un côté, un interpréteur à parcours d'arbre est simple, portable, et lent. De l'autre, le code natif est complexe et spécifique à la plateforme mais rapide. Le bytecode s'assoit au milieu. Il retient la portabilité d'un parcours d'arbre -- nous ne nous salirons pas les mains avec du code assembleur dans ce livre. Il sacrifie _un peu_ de simplicité pour obtenir un boost de performance en retour, bien que pas aussi rapide que d'aller totalement natif.
 
-Structurally, bytecode resembles machine code. It's a dense, linear sequence of
-binary instructions. That keeps overhead low and plays nice with the cache.
-However, it's a much simpler, higher-level instruction set than any real chip
-out there. (In many bytecode formats, each instruction is only a single byte
-long, hence "bytecode".)
+Structurellement, le bytecode ressemble au code machine. C'est une séquence dense, linéaire d'instructions binaires. Cela garde la surcharge basse et joue gentiment avec le cache. Cependant, c'est un jeu d'instructions de beaucoup plus haut niveau, plus simple que n'importe quelle vraie puce là-bas. (Dans beaucoup de formats de bytecode, chaque instruction fait seulement un octet de long, d'où "bytecode".)
 
-Imagine you're writing a native compiler from some source language and you're
-given carte blanche to define the easiest possible architecture to target.
-Bytecode is kind of like that. It's an idealized fantasy instruction set that
-makes your life as the compiler writer easier.
+Imaginez que vous écrivez un compilateur natif depuis un certain langage source et qu'on vous donne carte blanche pour définir l'architecture la plus facile possible à cibler. Le bytecode est un peu comme ça. C'est un jeu d'instructions fantaisie idéalisé qui rend votre vie en tant qu'écrivain de compilateur plus facile.
 
-The problem with a fantasy architecture, of course, is that it doesn't exist. We
-solve that by writing an *emulator* -- a simulated chip written in software that
-interprets the bytecode one instruction at a time. A *virtual machine (VM)*, if
-you will.
+Le problème avec une architecture fantaisie, bien sûr, est qu'elle n'existe pas. Nous résolvons cela en écrivant un _émulateur_ -- une puce simulée écrite en logiciel qui interprète le bytecode une instruction à la fois. Une _machine virtuelle (VM)_, si vous voulez.
 
-That emulation layer adds <span name="p-code">overhead</span>, which is a key
-reason bytecode is slower than native code. But in return, it gives us
-portability. Write our VM in a language like C that is already supported on all
-the machines we care about, and we can run our emulator on top of any hardware
-we like.
+Cette couche d'émulation ajoute de la <span name="p-code">surcharge</span>, qui est une raison clé pour laquelle le bytecode est plus lent que le code natif. Mais en retour, elle nous donne la portabilité. Écrivez notre VM dans un langage comme C qui est déjà supporté sur toutes les machines dont nous nous soucions, et nous pouvons exécuter notre émulateur au-dessus de n'importe quel matériel que nous aimons.
 
 <aside name="p-code">
 
-One of the first bytecode formats was [p-code][], developed for Niklaus Wirth's
-Pascal language. You might think a PDP-11 running at 15MHz couldn't afford the
-overhead of emulating a virtual machine. But back then, computers were in their
-Cambrian explosion and new architectures appeared every day. Keeping up with the
-latest chips was worth more than squeezing the maximum performance from each
-one. That's why the "p" in p-code doesn't stand for "Pascal", but "portable".
+L'un des premiers formats de bytecode était le [p-code][], développé pour le langage Pascal de Niklaus Wirth. Vous pourriez penser qu'un PDP-11 tournant à 15MHz ne pouvait pas se permettre la surcharge d'émuler une machine virtuelle. Mais à l'époque, les ordinateurs étaient dans leur explosion Cambrienne et de nouvelles architectures apparaissaient chaque jour. Suivre les dernières puces valait plus que de presser la performance maximum de chacune. C'est pourquoi le "p" dans p-code ne signifie pas "Pascal", mais "portable".
 
 [p-code]: https://en.wikipedia.org/wiki/P-code_machine
 
 </aside>
 
-This is the path we'll take with our new interpreter, clox. We'll follow in the
-footsteps of the main implementations of Python, Ruby, Lua, OCaml, Erlang, and
-others. In many ways, our VM's design will parallel the structure of our
-previous interpreter:
+C'est le chemin que nous prendrons avec notre nouvel interpréteur, clox. Nous suivrons dans les pas des implémentations principales de Python, Ruby, Lua, OCaml, Erlang, et autres. De bien des façons, le design de notre VM sera parallèle à la structure de notre interpréteur précédent :
 
-<img src="image/chunks-of-bytecode/phases.png" alt="Phases of the two
-implementations. jlox is Parser to Syntax Trees to Interpreter. clox is Compiler
-to Bytecode to Virtual Machine." />
+<img src="image/chunks-of-bytecode/phases.png" alt="Phases des deux implémentations. jlox est Parseur vers Arbres Syntaxiques vers Interpréteur. clox est Compilateur vers Bytecode vers Machine Virtuelle." />
 
-Of course, we won't implement the phases strictly in order. Like our previous
-interpreter, we'll bounce around, building up the implementation one language
-feature at a time. In this chapter, we'll get the skeleton of the application in
-place and create the data structures needed to store and represent a chunk of
-bytecode.
+Bien sûr, nous n'implémenterons pas les phases strictement dans l'ordre. Comme notre interpréteur précédent, nous rebondirons autour, construisant l'implémentation une fonctionnalité de langage à la fois. Dans ce chapitre, nous mettrons le squelette de l'application en place et créerons les structures de données nécessaires pour stocker et représenter un morceau de bytecode.
 
-## Getting Started
+## Commencer
 
-Where else to begin, but at `main()`? <span name="ready">Fire</span> up your
-trusty text editor and start typing.
+Où d'autre commencer, sinon à `main()` ? <span name="ready">Démarrez</span> votre fidèle éditeur de texte et commencez à taper.
 
 <aside name="ready">
 
-Now is a good time to stretch, maybe crack your knuckles. A little montage music
-wouldn't hurt either.
+Maintenant est un bon moment pour s'étirer, peut-être faire craquer vos jointures. Un peu de musique de montage ne ferait pas de mal non plus.
 
 </aside>
 
 ^code main-c
 
-From this tiny seed, we will grow our entire VM. Since C provides us with so
-little, we first need to spend some time amending the soil. Some of that goes
-into this header:
+De cette minuscule graine, nous ferons grandir notre VM entière. Puisque C nous fournit si peu, nous devons d'abord passer un peu de temps à amender le sol. Un peu de cela va dans cet en-tête :
 
 ^code common-h
 
-There are a handful of types and constants we'll use throughout the interpreter,
-and this is a convenient place to put them. For now, it's the venerable `NULL`,
-`size_t`, the nice C99 Boolean `bool`, and explicit-sized integer types --
-`uint8_t` and friends.
+Il y a une poignée de types et constantes que nous utiliserons à travers l'interpréteur, et c'est un endroit pratique pour les mettre. Pour l'instant, c'est le vénérable `NULL`, `size_t`, le gentil Booléen C99 `bool`, et les types entiers à taille explicite -- `uint8_t` et ses amis.
 
-## Chunks of Instructions
+## Morceaux d'Instructions
 
-Next, we need a module to define our code representation. I've been using
-"chunk" to refer to sequences of bytecode, so let's make that the official name
-for that module.
+Ensuite, nous avons besoin d'un module pour définir notre représentation de code. J'ai utilisé "morceau" (chunk) pour faire référence à des séquences de bytecode, donc faisons de cela le nom officiel pour ce module.
 
 ^code chunk-h
 
-In our bytecode format, each instruction has a one-byte **operation code**
-(universally shortened to **opcode**). That number controls what kind of
-instruction we're dealing with -- add, subtract, look up variable, etc. We
-define those here:
+Dans notre format de bytecode, chaque instruction a un **code opération** d'un octet (universellement raccourci en **opcode**). Ce nombre contrôle quel genre d'instruction nous traitons -- additionner, soustraire, chercher une variable, etc. Nous définissons ceux-ci ici :
 
 ^code op-enum (1 before, 2 after)
 
-For now, we start with a single instruction, `OP_RETURN`. When we have a
-full-featured VM, this instruction will mean "return from the current function".
-I admit this isn't exactly useful yet, but we have to start somewhere, and this
-is a particularly simple instruction, for reasons we'll get to later.
+Pour l'instant, nous commençons avec une seule instruction, `OP_RETURN`. Quand nous aurons une VM complète, cette instruction signifiera "retourner depuis la fonction courante". J'admets que ce n'est pas exactement utile encore, mais nous devons commencer quelque part, et c'est une instruction particulièrement simple, pour des raisons auxquelles nous arriverons plus tard.
 
-### A dynamic array of instructions
+### Un tableau dynamique d'instructions
 
-Bytecode is a series of instructions. Eventually, we'll store some other data
-along with the instructions, so let's go ahead and create a struct to hold it
-all.
+Le bytecode est une série d'instructions. Éventuellement, nous stockerons quelques autres données avec les instructions, donc allons-y et créons une struct pour tenir tout ça.
 
 ^code chunk-struct (1 before, 2 after)
 
-At the moment, this is simply a wrapper around an array of bytes. Since we don't
-know how big the array needs to be before we start compiling a chunk, it must be
-dynamic. Dynamic arrays are one of my favorite data structures. That sounds like
-claiming vanilla is my favorite ice cream <span name="flavor">flavor</span>, but
-hear me out. Dynamic arrays provide:
+Pour le moment, c'est simplement une enveloppe autour d'un tableau d'octets. Puisque nous ne savons pas quelle taille le tableau a besoin d'avoir avant que nous commencions à compiler un morceau, il doit être dynamique. Les tableaux dynamiques sont l'une de mes structures de données favorites. Ça sonne comme prétendre que vanille est mon <span name="flavor">parfum</span> de glace favori, mais écoutez-moi. Les tableaux dynamiques fournissent :
 
 <aside name="flavor">
 
-Butter pecan is actually my favorite.
+Noix de pécan au beurre est en fait mon favori.
 
 </aside>
 
-* Cache-friendly, dense storage
+- Stockage dense, ami du cache
 
-* Constant-time indexed element lookup
+- Recherche d'élément indexé en temps constant
 
-* Constant-time appending to the end of the array
+- Ajout à la fin du tableau en temps constant
 
-Those features are exactly why we used dynamic arrays all the time in jlox under
-the guise of Java's ArrayList class. Now that we're in C, we get to roll our
-own. If you're rusty on dynamic arrays, the idea is pretty simple. In addition
-to the array itself, we keep two numbers: the number of elements in the array we
-have allocated ("capacity") and how many of those allocated entries are actually
-in use ("count").
+Ces fonctionnalités sont exactement pourquoi nous utilisions des tableaux dynamiques tout le temps dans jlox sous la guise de la classe ArrayList de Java. Maintenant que nous sommes en C, nous pouvons rouler le nôtre. Si vous êtes rouillé sur les tableaux dynamiques, l'idée est assez simple. En plus du tableau lui-même, nous gardons deux nombres : le nombre d'éléments dans le tableau que nous avons alloué ("capacité") et combien de ces entrées allouées sont réellement utilisées ("compte").
 
 ^code count-and-capacity (1 before, 2 after)
 
-When we add an element, if the count is less than the capacity, then there is
-already available space in the array. We store the new element right in there
-and bump the count.
+Quand nous ajoutons un élément, si le compte est inférieur à la capacité, alors il y a déjà de l'espace disponible dans le tableau. Nous stockons le nouvel élément juste là-dedans et augmentons le compte.
 
-<img src="image/chunks-of-bytecode/insert.png" alt="Storing an element in an
-array that has enough capacity." />
+<img src="image/chunks-of-bytecode/insert.png" alt="Stocker un élément dans un tableau qui a assez de capacité." />
 
-If we have no spare capacity, then the process is a little more involved.
+Si nous n'avons pas de capacité libre, alors le processus est un peu plus impliqué.
 
-<img src="image/chunks-of-bytecode/grow.png" alt="Growing the dynamic array
-before storing an element." class="wide" />
+<img src="image/chunks-of-bytecode/grow.png" alt="Faire grandir le tableau dynamique avant de stocker un élément." class="wide" />
 
-1.  <span name="amortized">Allocate</span> a new array with more capacity.
-2.  Copy the existing elements from the old array to the new one.
-3.  Store the new `capacity`.
-4.  Delete the old array.
-5.  Update `code` to point to the new array.
-6.  Store the element in the new array now that there is room.
-7.  Update the `count`.
+1.  <span name="amortized">Allouer</span> un nouveau tableau avec plus de capacité.
+2.  Copier les éléments existants de l'ancien tableau vers le nouveau.
+3.  Stocker la nouvelle `capacity`.
+4.  Supprimer l'ancien tableau.
+5.  Mettre à jour `code` pour pointer vers le nouveau tableau.
+6.  Stocker l'élément dans le nouveau tableau maintenant qu'il y a de la place.
+7.  Mettre à jour le `count`.
 
 <aside name="amortized">
 
-Copying the existing elements when you grow the array makes it seem like
-appending an element is *O(n)*, not *O(1)* like I said above. However, you need
-to do this copy step only on *some* of the appends. Most of the time, there is
-already extra capacity, so you don't need to copy.
+Copier les éléments existants quand vous faites grandir le tableau fait sembler que l'ajout d'un élément est _O(n)_, pas _O(1)_ comme j'ai dit au-dessus. Cependant, vous avez besoin de faire cette étape de copie seulement sur _certains_ des ajouts. La plupart du temps, il y a déjà de la capacité supplémentaire, donc vous n'avez pas besoin de copier.
 
-To understand how this works, we need [**amortized
-analysis**](https://en.wikipedia.org/wiki/Amortized_analysis). That shows us
-that as long as we grow the array by a multiple of its current size, when we
-average out the cost of a *sequence* of appends, each append is *O(1)*.
+Pour comprendre comment ça marche, nous avons besoin de [**l'analyse amortie**](https://en.wikipedia.org/wiki/Amortized_analysis). Cela nous montre que tant que nous faisons grandir le tableau par un multiple de sa taille courante, quand nous faisons la moyenne du coût d'une _séquence_ d'ajouts, chaque ajout est _O(1)_.
 
 </aside>
 
-We have our struct ready, so let's implement the functions to work with it. C
-doesn't have constructors, so we declare a function to initialize a new chunk.
+Nous avons notre struct prête, donc implémentons les fonctions pour travailler avec. C n'a pas de constructeurs, donc nous déclarons une fonction pour initialiser un nouveau morceau.
 
 ^code init-chunk-h (1 before, 2 after)
 
-And implement it thusly:
+Et l'implémentons ainsi :
 
 ^code chunk-c
 
-The dynamic array starts off completely empty. We don't even allocate a raw
-array yet. To append a byte to the end of the chunk, we use a new function.
+Le tableau dynamique commence complètement vide. Nous n'allouons même pas encore un tableau brut. Pour ajouter un octet à la fin du morceau, nous utilisons une nouvelle fonction.
 
 ^code write-chunk-h (1 before, 2 after)
 
-This is where the interesting work happens.
+C'est là où le travail intéressant se produit.
 
 ^code write-chunk
 
-The first thing we need to do is see if the current array already has capacity
-for the new byte. If it doesn't, then we first need to grow the array to make
-room. (We also hit this case on the very first write when the array is `NULL`
-and `capacity` is 0.)
+La première chose que nous avons besoin de faire est de voir si le tableau courant a déjà de la capacité pour le nouvel octet. S'il n'en a pas, alors nous avons d'abord besoin de faire grandir le tableau pour faire de la place. (Nous frappons aussi ce cas sur la toute première écriture quand le tableau est `NULL` et `capacity` est 0.)
 
-To grow the array, first we figure out the new capacity and grow the array to
-that size. Both of those lower-level memory operations are defined in a new
-module.
+Pour faire grandir le tableau, d'abord nous trouvons la nouvelle capacité et faisons grandir le tableau à cette taille. Ces deux opérations mémoire de plus bas niveau sont définies dans un nouveau module.
 
 ^code chunk-c-include-memory (1 before, 2 after)
 
-This is enough to get us started.
+C'est assez pour nous démarrer.
 
 ^code memory-h
 
-This macro calculates a new capacity based on a given current capacity. In order
-to get the performance we want, the important part is that it *scales* based on
-the old size. We grow by a factor of two, which is pretty typical. 1.5&times; is
-another common choice.
+Cette macro calcule une nouvelle capacité basée sur une capacité courante donnée. Afin d'obtenir la performance que nous voulons, la partie importante est qu'elle _s'échelle_ basée sur l'ancienne taille. Nous grandissons par un facteur de deux, ce qui est assez typique. 1.5&times; est un autre choix courant.
 
-We also handle when the current capacity is zero. In that case, we jump straight
-to eight elements instead of starting at one. That <span
-name="profile">avoids</span> a little extra memory churn when the array is very
-small, at the expense of wasting a few bytes on very small chunks.
+Nous gérons aussi quand la capacité courante est zéro. Dans ce cas, nous sautons directement à huit éléments au lieu de commencer à un. Cela <span name="profile">évite</span> un peu de barattage mémoire supplémentaire quand le tableau est très petit, au prix de gaspiller quelques octets sur de très petits morceaux.
 
 <aside name="profile">
 
-I picked the number eight somewhat arbitrarily for the book. Most dynamic array
-implementations have a minimum threshold like this. The right way to pick a
-value for this is to profile against real-world usage and see which constant
-makes the best performance trade-off between extra grows versus wasted space.
+J'ai choisi le nombre huit quelque peu arbitrairement pour le livre. La plupart des implémentations de tableau dynamique ont un seuil minimum comme celui-ci. La bonne façon de choisir une valeur pour cela est de profiler contre un usage du monde réel et voir quelle constante fait le meilleur compromis de performance entre les grandissements supplémentaires versus l'espace gaspillé.
 
 </aside>
 
-Once we know the desired capacity, we create or grow the array to that size
-using `GROW_ARRAY()`.
+Une fois que nous connaissons la capacité désirée, nous créons ou faisons grandir le tableau à cette taille en utilisant `GROW_ARRAY()`.
 
 ^code grow-array (2 before, 2 after)
 
-This macro pretties up a function call to `reallocate()` where the real work
-happens. The macro itself takes care of getting the size of the array's element
-type and casting the resulting `void*` back to a pointer of the right type.
+Cette macro embellit un appel de fonction à `reallocate()` où le vrai travail se produit. La macro elle-même s'occupe d'obtenir la taille du type d'élément du tableau et de caster le `void*` résultant en retour vers un pointeur du bon type.
 
-This `reallocate()` function is the single function we'll use for all dynamic
-memory management in clox -- allocating memory, freeing it, and changing the
-size of an existing allocation. Routing all of those operations through a single
-function will be important later when we add a garbage collector that needs to
-keep track of how much memory is in use.
+Cette fonction `reallocate()` est l'unique fonction que nous utiliserons pour toute la gestion dynamique de la mémoire dans clox -- allouer de la mémoire, la libérer, et changer la taille d'une allocation existante. Router toutes ces opérations à travers une seule fonction sera important plus tard quand nous ajouterons un ramasse-miettes qui a besoin de garder la trace de combien de mémoire est utilisée.
 
-The two size arguments passed to `reallocate()` control which operation to
-perform:
+Les deux arguments de taille passés à `reallocate()` contrôlent quelle opération effectuer :
 
 <table>
   <thead>
     <tr>
       <td>oldSize</td>
       <td>newSize</td>
-      <td>Operation</td>
+      <td>Opération</td>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td>0</td>
-      <td>Non&#8209;zero</td>
-      <td>Allocate new block.</td>
+      <td>Non&#8209;zéro</td>
+      <td>Allouer un nouveau bloc.</td>
     </tr>
     <tr>
-      <td>Non&#8209;zero</td>
+      <td>Non&#8209;zéro</td>
       <td>0</td>
-      <td>Free allocation.</td>
+      <td>Libérer l'allocation.</td>
     </tr>
     <tr>
-      <td>Non&#8209;zero</td>
-      <td>Smaller&nbsp;than&nbsp;<code>oldSize</code></td>
-      <td>Shrink existing allocation.</td>
+      <td>Non&#8209;zéro</td>
+      <td>Plus&nbsp;petit&nbsp;que&nbsp;<code>oldSize</code></td>
+      <td>Rétrécir l'allocation existante.</td>
     </tr>
     <tr>
-      <td>Non&#8209;zero</td>
-      <td>Larger&nbsp;than&nbsp;<code>oldSize</code></td>
-      <td>Grow existing allocation.</td>
+      <td>Non&#8209;zéro</td>
+      <td>Plus&nbsp;grand&nbsp;que&nbsp;<code>oldSize</code></td>
+      <td>Faire grandir l'allocation existante.</td>
     </tr>
   </tbody>
 </table>
 
-That sounds like a lot of cases to handle, but here's the implementation:
+Cela semble comme beaucoup de cas à gérer, mais voici l'implémentation :
 
 ^code memory-c
 
-When `newSize` is zero, we handle the deallocation case ourselves by calling
-`free()`. Otherwise, we rely on the C standard library's `realloc()` function.
-That function conveniently supports the other three aspects of our policy. When
-`oldSize` is zero, `realloc()` is equivalent to calling `malloc()`.
+Quand `newSize` est zéro, nous gérons le cas de désallocation nous-mêmes en appelant `free()`. Sinon, nous comptons sur la fonction `realloc()` de la bibliothèque standard C. Cette fonction supporte commodément les trois autres aspects de notre politique. Quand `oldSize` est zéro, `realloc()` est équivalent à appeler `malloc()`.
 
-The interesting cases are when both `oldSize` and `newSize` are not zero. Those
-tell `realloc()` to resize the previously allocated block. If the new size is
-smaller than the existing block of memory, it simply <span
-name="shrink">updates</span> the size of the block and returns the same pointer
-you gave it. If the new size is larger, it attempts to grow the existing block
-of memory.
+Les cas intéressants sont quand à la fois `oldSize` et `newSize` ne sont pas zéro. Ceux-ci disent à `realloc()` de redimensionner le bloc précédemment alloué. Si la nouvelle taille est plus petite que le bloc de mémoire existant, elle met simplement à jour la taille du bloc et renvoie le même pointeur que vous lui avez donné <span name="shrink">mise à jour</span>. Si la nouvelle taille est plus grande, elle tente de faire grandir le bloc de mémoire existant.
 
-It can do that only if the memory after that block isn't already in use. If
-there isn't room to grow the block, `realloc()` instead allocates a *new* block
-of memory of the desired size, copies over the old bytes, frees the old block,
-and then returns a pointer to the new block. Remember, that's exactly the
-behavior we want for our dynamic array.
+Elle peut faire cela seulement si la mémoire après ce bloc n'est pas déjà utilisée. S'il n'y a pas de place pour faire grandir le bloc, `realloc()` alloue à la place un _nouveau_ bloc de mémoire de la taille désirée, copie les vieux octets, libère le vieux bloc, et ensuite renvoie un pointeur vers le nouveau bloc. Rappelez-vous, c'est exactement le comportement que nous voulons pour notre tableau dynamique.
 
-Because computers are finite lumps of matter and not the perfect mathematical
-abstractions computer science theory would have us believe, allocation can fail
-if there isn't enough memory and `realloc()` will return `NULL`. We should
-handle that.
+Parce que les ordinateurs sont des amas finis de matière et pas les abstractions mathématiques parfaites que la théorie de la science informatique voudrait nous faire croire, l'allocation peut échouer s'il n'y a pas assez de mémoire et `realloc()` renverra `NULL`. Nous devrions gérer cela.
 
 ^code out-of-memory (1 before, 1 after)
 
-There's not really anything *useful* that our VM can do if it can't get the
-memory it needs, but we at least detect that and abort the process immediately
-instead of returning a `NULL` pointer and letting it go off the rails later.
+Il n'y a pas vraiment quoi que ce soit d'_utile_ que notre VM peut faire si elle ne peut pas obtenir la mémoire dont elle a besoin, mais nous détectons au moins cela et avortons le processus immédiatement au lieu de renvoyer un pointeur `NULL` et le laisser dérailler plus tard.
 
 <aside name="shrink">
 
-Since all we passed in was a bare pointer to the first byte of memory, what does
-it mean to "update" the block's size? Under the hood, the memory allocator
-maintains additional bookkeeping information for each block of heap-allocated
-memory, including its size.
+Puisque tout ce que nous avons passé était un simple pointeur vers le premier octet de mémoire, qu'est-ce que cela signifie de "mettre à jour" la taille du bloc ? Sous le capot, l'allocateur de mémoire maintient des informations de comptabilité supplémentaires pour chaque bloc de mémoire alloué sur le tas, incluant sa taille.
 
-Given a pointer to some previously allocated memory, it can find this
-bookkeeping information, which is necessary to be able to cleanly free it. It's
-this size metadata that `realloc()` updates.
+Étant donné un pointeur vers une certaine mémoire précédemment allouée, il peut trouver cette information de comptabilité, ce qui est nécessaire pour être capable de la libérer proprement. C'est cette métadonnée de taille que `realloc()` met à jour.
 
-Many implementations of `malloc()` store the allocated size in memory right
-*before* the returned address.
+Beaucoup d'implémentations de `malloc()` stockent la taille allouée en mémoire juste _avant_ l'adresse renvoyée.
 
 </aside>
 
-OK, we can create new chunks and write instructions to them. Are we done? Nope!
-We're in C now, remember, we have to manage memory ourselves, like in Ye Olden
-Times, and that means *freeing* it too.
+OK, nous pouvons créer de nouveaux morceaux et écrire des instructions dedans. Avons-nous fini ? Nope ! Nous sommes en C maintenant, rappelez-vous, nous devons gérer la mémoire nous-mêmes, comme au Bon Vieux Temps, et cela signifie la _libérer_ aussi.
 
 ^code free-chunk-h (1 before, 1 after)
 
-The implementation is:
+L'implémentation est :
 
 ^code free-chunk
 
-We deallocate all of the memory and then call `initChunk()` to zero out the
-fields leaving the chunk in a well-defined empty state. To free the memory, we
-add one more macro.
+Nous désallouons toute la mémoire et ensuite appelons `initChunk()` pour mettre les champs à zéro laissant le morceau dans un état vide bien défini. Pour libérer la mémoire, nous ajoutons une macro de plus.
 
 ^code free-array (3 before, 2 after)
 
-Like `GROW_ARRAY()`, this is a wrapper around a call to `reallocate()`. This one
-frees the memory by passing in zero for the new size. I know, this is a lot of
-boring low-level stuff. Don't worry, we'll get a lot of use out of these in
-later chapters and will get to program at a higher level. Before we can do that,
-though, we gotta lay our own foundation.
+Comme `GROW_ARRAY()`, c'est une enveloppe autour d'un appel à `reallocate()`. Celle-ci libère la mémoire en passant zéro pour la nouvelle taille. Je sais, c'est beaucoup de trucs bas niveau ennuyeux. Ne vous inquiétez pas, nous aurons beaucoup d'usage de ceux-ci dans les chapitres ultérieurs et arriverons à programmer à un plus haut niveau. Avant que nous puissions faire cela, cependant, nous devons poser notre propre fondation.
 
-## Disassembling Chunks
+## Désassembler des Morceaux
 
-Now we have a little module for creating chunks of bytecode. Let's try it out by
-hand-building a sample chunk.
+Maintenant nous avons un petit module pour créer des morceaux de bytecode. Essayons-le en construisant à la main un morceau exemple.
 
 ^code main-chunk (1 before, 1 after)
 
-Don't forget the include.
+N'oubliez pas l'include.
 
 ^code main-include-chunk (1 before, 2 after)
 
-Run that and give it a try. Did it work? Uh... who knows? All we've done is push
-some bytes around in memory. We have no human-friendly way to see what's
-actually inside that chunk we made.
+Lancez ça et donnez-lui un essai. Est-ce que ça a marché ? Euh... qui sait ? Tout ce que nous avons fait est pousser quelques octets dans la mémoire. Nous n'avons aucun moyen amical pour l'humain de voir ce qui est réellement à l'intérieur de ce morceau que nous avons fait.
 
-To fix this, we're going to create a **disassembler**. An **assembler** is an
-old-school program that takes a file containing human-readable mnemonic names
-for CPU instructions like "ADD" and "MULT" and translates them to their binary
-machine code equivalent. A *dis*assembler goes in the other direction -- given a
-blob of machine code, it spits out a textual listing of the instructions.
+Pour corriger cela, nous allons créer un **désassembleur**. Un **assembleur** est un programme de la vieille école qui prend un fichier contenant des noms mnémoniques lisibles par l'humain pour des instructions CPU comme "ADD" et "MULT" et les traduit vers leur équivalent code machine binaire. Un *dés*assembleur va dans l'autre direction -- étant donné un blob de code machine, il crache un listage textuel des instructions.
 
-We'll implement something <span name="printer">similar</span>. Given a chunk, it
-will print out all of the instructions in it. A Lox *user* won't use this, but
-we Lox *maintainers* will certainly benefit since it gives us a window into the
-interpreter's internal representation of code.
+Nous implémenterons quelque chose de <span name="printer">similaire</span>. Étant donné un morceau, il imprimera toutes les instructions dedans. Un _utilisateur_ Lox n'utilisera pas cela, mais nous les _mainteneurs_ Lox en bénéficierons certainement puisque cela nous donne une fenêtre dans la représentation interne du code de l'interpréteur.
 
 <aside name="printer">
 
-In jlox, our analogous tool was the [AstPrinter class][].
+Dans jlox, notre outil analogue était la [classe AstPrinter][].
 
-[astprinter class]: representing-code.html#a-not-very-pretty-printer
+[astprinter class]: représentation-du-code.html#a-not-very-pretty-printer
 
 </aside>
 
-In `main()`, after we create the chunk, we pass it to the disassembler.
+Dans `main()`, après que nous ayons créé le morceau, nous le passons au désassembleur.
 
 ^code main-disassemble-chunk (2 before, 1 after)
 
-Again, we whip up <span name="module">yet another</span> module.
+Encore une fois, nous fouettons <span name="module">encore un autre</span> module.
 
 <aside name="module">
 
-I promise you we won't be creating this many new files in later chapters.
+Je vous promets que nous ne créerons pas autant de nouveaux fichiers dans les chapitres ultérieurs.
 
 </aside>
 
 ^code main-include-debug (1 before, 2 after)
 
-Here's that header:
+Voici cet en-tête :
 
 ^code debug-h
 
-In `main()`, we call `disassembleChunk()` to disassemble all of the instructions
-in the entire chunk. That's implemented in terms of the other function, which
-just disassembles a single instruction. It shows up here in the header because
-we'll call it from the VM in later chapters.
+Dans `main()`, nous appelons `disassembleChunk()` pour désassembler toutes les instructions dans le morceau entier. C'est implémenté en termes de l'autre fonction, qui désassemble juste une seule instruction. Elle apparaît ici dans l'en-tête parce que nous l'appellerons depuis la VM dans les chapitres ultérieurs.
 
-Here's a start at the implementation file:
+Voici un début au fichier d'implémentation :
 
 ^code debug-c
 
-To disassemble a chunk, we print a little header (so we can tell *which* chunk
-we're looking at) and then crank through the bytecode, disassembling each
-instruction. The way we iterate through the code is a little odd. Instead of
-incrementing `offset` in the loop, we let `disassembleInstruction()` do it for
-us. When we call that function, after disassembling the instruction at the given
-offset, it returns the offset of the *next* instruction. This is because, as
-we'll see later, instructions can have different sizes.
+Pour désassembler un morceau, nous imprimons un petit en-tête (pour que nous puissions dire _quel_ morceau nous regardons) et ensuite moulinons à travers le bytecode, désassemblant chaque instruction. La façon dont nous itérons à travers le code est un peu bizarre. Au lieu d'incrémenter `offset` dans la boucle, nous laissons `disassembleInstruction()` le faire pour nous. Quand nous appelons cette fonction, après avoir désassemblé l'instruction à l'offset donné, elle renvoie l'offset de la _prochaine_ instruction. C'est parce que, comme nous le verrons plus tard, les instructions peuvent avoir différentes tailles.
 
-The core of the "debug" module is this function:
+Le cœur du module "debug" est cette fonction :
 
 ^code disassemble-instruction
 
-First, it prints the byte offset of the given instruction -- that tells us where
-in the chunk this instruction is. This will be a helpful signpost when we start
-doing control flow and jumping around in the bytecode.
+D'abord, elle imprime l'offset en octet de l'instruction donnée -- cela nous dit où dans le morceau cette instruction est. Ce sera un panneau indicateur utile quand nous commencerons à faire du contrôle de flux et sauter autour dans le bytecode.
 
-Next, it reads a single byte from the bytecode at the given offset. That's our
-opcode. We <span name="switch">switch</span> on that. For each kind of
-instruction, we dispatch to a little utility function for displaying it. On the
-off chance that the given byte doesn't look like an instruction at all -- a bug
-in our compiler -- we print that too. For the one instruction we do have,
-`OP_RETURN`, the display function is:
+Ensuite, elle lit un seul octet du bytecode à l'offset donné. C'est notre opcode. Nous <span name="switch">commutions</span> (switch) là-dessus. Pour chaque genre d'instruction, nous dispatchons vers une petite fonction utilitaire pour l'afficher. Dans le cas improbable où l'octet donné ne ressemble pas à une instruction du tout -- un bug dans notre compilateur -- nous imprimons cela aussi. Pour la seule instruction que nous avons, `OP_RETURN`, la fonction d'affichage est :
 
 <aside name="switch">
 
-We have only one instruction right now, but this switch will grow throughout the
-rest of the book.
+Nous avons seulement une instruction pour l'instant, mais ce switch grandira tout au long du reste du livre.
 
 </aside>
 
 ^code simple-instruction
 
-There isn't much to a return instruction, so all it does is print the name of
-the opcode, then return the next byte offset past this instruction. Other
-instructions will have more going on.
+Il n'y a pas grand chose pour une instruction de retour, donc tout ce qu'elle fait est imprimer le nom de l'opcode, puis renvoyer le prochain offset d'octet après cette instruction. D'autres instructions auront plus de choses en cours.
 
-If we run our nascent interpreter now, it actually prints something:
+Si nous lançons notre interpréteur naissant maintenant, il imprime réellement quelque chose :
 
 ```text
 == test chunk ==
 0000 OP_RETURN
 ```
 
-It worked! This is sort of the "Hello, world!" of our code representation. We
-can create a chunk, write an instruction to it, and then extract that
-instruction back out. Our encoding and decoding of the binary bytecode is
-working.
+Ça a marché ! C'est en quelque sorte le "Bonjour, monde !" de notre représentation de code. Nous pouvons créer un morceau, écrire une instruction dedans, et ensuite extraire cette instruction en retour. Notre encodage et décodage du bytecode binaire fonctionne.
 
-## Constants
+## Constantes
 
-Now that we have a rudimentary chunk structure working, let's start making it
-more useful. We can store *code* in chunks, but what about *data*? Many values
-the interpreter works with are created at runtime as the result of operations.
+Maintenant que nous avons une structure de morceau rudimentaire qui fonctionne, commençons à la rendre plus utile. Nous pouvons stocker du _code_ dans des morceaux, mais qu'en est-il des _données_ ? Beaucoup de valeurs avec lesquelles l'interpréteur travaille sont créées à l'exécution comme le résultat d'opérations.
 
 ```lox
 1 + 2;
 ```
 
-The value 3 appears nowhere in the code here. However, the literals `1` and `2`
-do. To compile that statement to bytecode, we need some sort of instruction that
-means "produce a constant" and those literal values need to get stored in the
-chunk somewhere. In jlox, the Expr.Literal AST node held the value. We need a
-different solution now that we don't have a syntax tree.
+La valeur 3 apparaît nulle part dans le code ici. Cependant, les littéraux `1` et `2` le font. Pour compiler cette instruction en bytecode, nous avons besoin d'une sorte d'instruction qui signifie "produire une constante" et ces valeurs littérales ont besoin d'être stockées dans le morceau quelque part. Dans jlox, le nœud AST Expr.Literal tenait la valeur. Nous avons besoin d'une solution différente maintenant que nous n'avons pas d'arbre syntaxique.
 
-### Representing values
+### Représenter des valeurs
 
-We won't be *running* any code in this chapter, but since constants have a foot
-in both the static and dynamic worlds of our interpreter, they force us to start
-thinking at least a little bit about how our VM should represent values.
+Nous ne ferons _tourner_ aucun code dans ce chapitre, mais puisque les constantes ont un pied à la fois dans les mondes statique et dynamique de notre interpréteur, elles nous forcent à commencer à penser au moins un petit peu à comment notre VM devrait représenter les valeurs.
 
-For now, we're going to start as simple as possible -- we'll support only
-double-precision, floating-point numbers. This will obviously expand over time,
-so we'll set up a new module to give ourselves room to grow.
+Pour l'instant, nous allons commencer aussi simple que possible -- nous supporterons seulement les nombres à virgule flottante double précision. Cela va évidemment s'étendre avec le temps, donc nous mettrons en place un nouveau module pour nous donner de la place pour grandir.
 
 ^code value-h
 
-This typedef abstracts how Lox values are concretely represented in C. That way,
-we can change that representation without needing to go back and fix existing
-code that passes around values.
+Ce typedef abstrait comment les valeurs Lox sont concrètement représentées en C. De cette façon, nous pouvons changer cette représentation sans avoir besoin de revenir en arrière et corriger le code existant qui passe des valeurs autour.
 
-Back to the question of where to store constants in a chunk. For small
-fixed-size values like integers, many instruction sets store the value directly
-in the code stream right after the opcode. These are called **immediate
-instructions** because the bits for the value are immediately after the opcode.
+Retour à la question de où stocker les constantes dans un morceau. Pour de petites valeurs à taille fixe comme des entiers, beaucoup de jeux d'instructions stockent la valeur directement dans le flux de code juste après l'opcode. Celles-ci sont appelées **instructions immédiates** parce que les bits pour la valeur sont immédiatement après l'opcode.
 
-That doesn't work well for large or variable-sized constants like strings. In a
-native compiler to machine code, those bigger constants get stored in a separate
-"constant data" region in the binary executable. Then, the instruction to load a
-constant has an address or offset pointing to where the value is stored in that
-section.
+Cela ne marche pas bien pour des constantes grandes ou à taille variable comme les chaînes de caractères. Dans un compilateur natif vers code machine, ces plus grosses constantes sont stockées dans une région "données constantes" séparée dans l'exécutable binaire. Ensuite, l'instruction pour charger une constante a une adresse ou un offset pointant vers où la valeur est stockée dans cette section.
 
-Most virtual machines do something similar. For example, the Java Virtual
-Machine [associates a **constant pool**][jvm const] with each compiled class.
-That sounds good enough for clox to me. Each chunk will carry with it a list of
-the values that appear as literals in the program. To keep things <span
-name="immediate">simpler</span>, we'll put *all* constants in there, even simple
-integers.
+La plupart des machines virtuelles font quelque chose de similaire. Par exemple, la Machine Virtuelle Java [associe un **pool de constantes**][jvm const] avec chaque classe compilée. Cela semble assez bon pour clox pour moi. Chaque morceau portera avec lui une liste des valeurs qui apparaissent comme littéraux dans le programme. Pour garder les choses <span name="immediate">plus simples</span>, nous mettrons _toutes_ les constantes là-dedans, même les simples entiers.
 
 [jvm const]: https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.4
 
 <aside name="immediate">
 
-In addition to needing two kinds of constant instructions -- one for immediate
-values and one for constants in the constant table -- immediates also force us
-to worry about alignment, padding, and endianness. Some architectures aren't
-happy if you try to say, stuff a 4-byte integer at an odd address.
+En plus d'avoir besoin de deux genres d'instructions de constante -- une pour les valeurs immédiates et une pour les constantes dans la table de constantes -- les immédiates nous forcent aussi à nous soucier de l'alignement, du padding, et de l'endianness. Certaines architectures ne sont pas contentes si vous essayez de dire, bourrer un entier de 4 octets à une adresse impaire.
 
 </aside>
 
-### Value arrays
+### Tableaux de valeurs
 
-The constant pool is an array of values. The instruction to load a constant
-looks up the value by index in that array. As with our <span
-name="generic">bytecode</span> array, the compiler doesn't know how big the
-array needs to be ahead of time. So, again, we need a dynamic one. Since C
-doesn't have generic data structures, we'll write another dynamic array data
-structure, this time for Value.
+Le pool de constantes est un tableau de valeurs. L'instruction pour charger une constante cherche la valeur par index dans ce tableau. Comme avec notre tableau de <span name="generic">bytecode</span>, le compilateur ne sait pas quelle taille le tableau a besoin d'avoir à l'avance. Donc, encore une fois, nous en avons besoin d'un dynamique. Puisque C n'a pas de structures de données génériques, nous écrirons une autre structure de données de tableau dynamique, cette fois pour Value.
 
 <aside name="generic">
 
-Defining a new struct and manipulation functions each time we need a dynamic
-array of a different type is a chore. We could cobble together some preprocessor
-macros to fake generics, but that's overkill for clox. We won't need many more
-of these.
+Définir une nouvelle struct et des fonctions de manipulation chaque fois que nous avons besoin d'un tableau dynamique d'un type différent est une corvée. Nous pourrions bricoler quelques macros préprocesseur pour simuler des génériques, mais c'est excessif pour clox. Nous n'aurons pas besoin de beaucoup plus de ceux-ci.
 
 </aside>
 
 ^code value-array (1 before, 2 after)
 
-As with the bytecode array in Chunk, this struct wraps a pointer to an array
-along with its allocated capacity and the number of elements in use. We also
-need the same three functions to work with value arrays.
+Comme avec le tableau de bytecode dans Chunk, cette struct enveloppe un pointeur vers un tableau avec sa capacité allouée et le nombre d'éléments utilisés. Nous avons aussi besoin des mêmes trois fonctions pour travailler avec les tableaux de valeurs.
 
 ^code array-fns-h (1 before, 2 after)
 
-The implementations will probably give you déjà vu. First, to create a new one:
+Les implémentations vous donneront probablement une impression de déjà vu. D'abord, pour en créer un nouveau :
 
 ^code value-c
 
-Once we have an initialized array, we can start <span name="add">adding</span>
-values to it.
+Une fois que nous avons un tableau initialisé, nous pouvons commencer à <span name="add">ajouter</span> des valeurs dedans.
 
 <aside name="add">
 
-Fortunately, we don't need other operations like insertion and removal.
+Heureusement, nous n'avons pas besoin d'autres opérations comme l'insertion et la suppression.
 
 </aside>
 
 ^code write-value-array
 
-The memory-management macros we wrote earlier do let us reuse some of the logic
-from the code array, so this isn't too bad. Finally, to release all memory used
-by the array:
+Les macros de gestion mémoire que nous avons écrites plus tôt nous laissent réutiliser un peu de la logique du tableau de code, donc ce n'est pas trop mal. Finalement, pour relâcher toute la mémoire utilisée par le tableau :
 
 ^code free-value-array
 
-Now that we have growable arrays of values, we can add one to Chunk to store the
-chunk's constants.
+Maintenant que nous avons des tableaux de valeurs extensibles, nous pouvons en ajouter un à Chunk pour stocker les constantes du morceau.
 
 ^code chunk-constants (1 before, 1 after)
 
-Don't forget the include.
+N'oubliez pas l'include.
 
 ^code chunk-h-include-value (1 before, 2 after)
 
-Ah, C, and its Stone Age modularity story. Where were we? Right. When we
-initialize a new chunk, we initialize its constant list too.
+Ah, C, et son histoire de modularité de l'Âge de Pierre. Où étions-nous ? Juste. Quand nous initialisons un nouveau morceau, nous initialisons sa liste de constantes aussi.
 
 ^code chunk-init-constant-array (1 before, 1 after)
 
-Likewise, we free the constants when we free the chunk.
+De même, nous libérons les constantes quand nous libérons le morceau.
 
 ^code chunk-free-constants (1 before, 1 after)
 
-Next, we define a convenience method to add a new constant to the chunk. Our
-yet-to-be-written compiler could write to the constant array inside Chunk
-directly -- it's not like C has private fields or anything -- but it's a little
-nicer to add an explicit function.
+Ensuite, nous définissons une méthode de commodité pour ajouter une nouvelle constante au morceau. Notre compilateur encore-à-être-écrit pourrait écrire dans le tableau de constantes à l'intérieur de Chunk directement -- ce n'est pas comme si C avait des champs privés ou quoi que ce soit -- mais c'est un peu plus sympa d'ajouter une fonction explicite.
 
 ^code add-constant-h (1 before, 2 after)
 
-Then we implement it.
+Ensuite nous l'implémentons.
 
 ^code add-constant
 
-After we add the constant, we return the index where the constant was appended
-so that we can locate that same constant later.
+Après que nous ayons ajouté la constante, nous renvoyons l'index où la constante a été ajoutée pour que nous puissions localiser cette même constante plus tard.
 
-### Constant instructions
+### Instructions de constante
 
-We can *store* constants in chunks, but we also need to *execute* them. In a
-piece of code like:
+Nous pouvons _stocker_ des constantes dans des morceaux, mais nous avons aussi besoin de les _exécuter_. Dans un bout de code comme :
 
 ```lox
 print 1;
 print 2;
 ```
 
-The compiled chunk needs to not only contain the values 1 and 2, but know *when*
-to produce them so that they are printed in the right order. Thus, we need an
-instruction that produces a particular constant.
+Le morceau compilé a besoin de ne pas seulement contenir les valeurs 1 et 2, mais savoir _quand_ les produire pour qu'elles soient imprimées dans le bon ordre. Ainsi, nous avons besoin d'une instruction qui produit une constante particulière.
 
 ^code op-constant (1 before, 1 after)
 
-When the VM executes a constant instruction, it <span name="load">"loads"</span>
-the constant for use. This new instruction is a little more complex than
-`OP_RETURN`. In the above example, we load two different constants. A single
-bare opcode isn't enough to know *which* constant to load.
+Quand la VM exécute une instruction de constante, elle <span name="load">"charge"</span> la constante pour usage. Cette nouvelle instruction est un peu plus complexe que `OP_RETURN`. Dans l'exemple ci-dessus, nous chargeons deux constantes différentes. Un seul opcode nu n'est pas assez pour savoir _quelle_ constante charger.
 
 <aside name="load">
 
-I'm being vague about what it means to "load" or "produce" a constant because we
-haven't learned how the virtual machine actually executes code at runtime yet.
-For that, you'll have to wait until you get to (or skip ahead to, I suppose) the
-[next chapter][vm].
+Je suis vague à propos de ce que cela signifie de "charger" ou "produire" une constante parce que nous n'avons pas appris comment la machine virtuelle exécute réellement le code à l'exécution encore. Pour cela, vous devrez attendre jusqu'à ce que vous arriviez au (ou sautiez en avant vers, je suppose) [prochain chapitre][vm].
 
-[vm]: a-virtual-machine.html
+[vm]: une-machine-virtuelle.html
 
 </aside>
 
-To handle cases like this, our bytecode -- like most others -- allows
-instructions to have <span name="operand">**operands**</span>. These are stored
-as binary data immediately after the opcode in the instruction stream and let us
-parameterize what the instruction does.
+Pour gérer des cas comme ceci, notre bytecode -- comme la plupart des autres -- permet aux instructions d'avoir des <span name="operand">**opérandes**</span>. Ce sont des données binaires stockées immédiatement après l'opcode dans le flux d'instructions et nous laissent paramétrer ce que fait l'instruction.
 
-<img src="image/chunks-of-bytecode/format.png" alt="OP_CONSTANT is a byte for
-the opcode followed by a byte for the constant index." />
+<img src="image/chunks-of-bytecode/format.png" alt="OP_CONSTANT est un octet pour l'opcode suivi par un octet pour l'index de constante." />
 
-Each opcode determines how many operand bytes it has and what they mean. For
-example, a simple operation like "return" may have no operands, where an
-instruction for "load local variable" needs an operand to identify which
-variable to load. Each time we add a new opcode to clox, we specify what its
-operands look like -- its **instruction format**.
+Chaque opcode détermine combien d'octets d'opérande il a et ce qu'ils signifient. Par exemple, une opération simple comme "retour" peut ne pas avoir d'opérandes, là où une instruction pour "charger une variable locale" a besoin d'un opérande pour identifier quelle variable charger. Chaque fois que nous ajoutons un nouvel opcode à clox, nous spécifions à quoi ses opérandes ressemblent -- son **format d'instruction**.
 
 <aside name="operand">
 
-Bytecode instruction operands are *not* the same as the operands passed to an
-arithmetic operator. You'll see when we get to expressions that arithmetic
-operand values are tracked separately. Instruction operands are a lower-level
-notion that modify how the bytecode instruction itself behaves.
+Les opérandes d'instruction bytecode ne sont _pas_ les mêmes que les opérandes passés à un opérateur arithmétique. Vous verrez quand nous arriverons aux expressions que les valeurs d'opérande arithmétique sont suivies séparément. Les opérandes d'instruction sont une notion de plus bas niveau qui modifie comment l'instruction bytecode elle-même se comporte.
 
 </aside>
 
-In this case, `OP_CONSTANT` takes a single byte operand that specifies which
-constant to load from the chunk's constant array. Since we don't have a compiler
-yet, we "hand-compile" an instruction in our test chunk.
+Dans ce cas, `OP_CONSTANT` prend un opérande d'un seul octet qui spécifie quelle constante charger depuis le tableau de constantes du morceau. Puisque nous n'avons pas de compilateur encore, nous "compilons à la main" une instruction dans notre morceau de test.
 
 ^code main-constant (1 before, 1 after)
 
-We add the constant value itself to the chunk's constant pool. That returns the
-index of the constant in the array. Then we write the constant instruction,
-starting with its opcode. After that, we write the one-byte constant index
-operand. Note that `writeChunk()` can write opcodes or operands. It's all raw
-bytes as far as that function is concerned.
+Nous ajoutons la valeur de constante elle-même au pool de constantes du morceau. Cela renvoie l'index de la constante dans le tableau. Ensuite nous écrivons l'instruction de constante, en commençant par son opcode. Après cela, nous écrivons l'opérande d'index de constante d'un octet. Notez que `writeChunk()` peut écrire des opcodes ou des opérandes. C'est tout des octets bruts pour autant que cette fonction soit concernée.
 
-If we try to run this now, the disassembler is going to yell at us because it
-doesn't know how to decode the new instruction. Let's fix that.
+Si nous essayons de lancer ceci maintenant, le désassembleur va nous crier dessus parce qu'il ne sait pas comment décoder la nouvelle instruction. Corrigeons cela.
 
 ^code disassemble-constant (1 before, 1 after)
 
-This instruction has a different instruction format, so we write a new helper
-function to disassemble it.
+Cette instruction a un format d'instruction différent, donc nous écrivons une nouvelle fonction utilitaire pour la désassembler.
 
 ^code constant-instruction
 
-There's more going on here. As with `OP_RETURN`, we print out the name of the
-opcode. Then we pull out the constant index from the subsequent byte in the
-chunk. We print that index, but that isn't super useful to us human readers. So
-we also look up the actual constant value -- since constants *are* known at
-compile time after all -- and display the value itself too.
+Il y a plus de choses en cours ici. Comme avec `OP_RETURN`, nous imprimons le nom de l'opcode. Ensuite nous tirons l'index de la constante depuis l'octet subséquent dans le morceau. Nous imprimons cet index, mais ce n'est pas super utile pour nous lecteurs humains. Donc nous cherchons aussi la valeur de constante réelle -- puisque les constantes _sont_ connues au moment de la compilation après tout -- et affichons la valeur elle-même aussi.
 
-This requires some way to print a clox Value. That function will live in the
-"value" module, so we include that.
+Cela exige un moyen d'imprimer une Value clox. Cette fonction vivra dans le module "value", donc nous incluons cela.
 
 ^code debug-include-value (1 before, 2 after)
 
-Over in that header, we declare:
+Là-bas dans cet en-tête, nous déclarons :
 
 ^code print-value-h (1 before, 2 after)
 
-And here's an implementation:
+Et voici une implémentation :
 
 ^code print-value
 
-Magnificent, right? As you can imagine, this is going to get more complex once
-we add dynamic typing to Lox and have values of different types.
+Magnifique, pas vrai ? Comme vous pouvez l'imaginer, cela va devenir plus complexe une fois que nous ajouterons le typage dynamique à Lox et aurons des valeurs de différents types.
 
-Back in `constantInstruction()`, the only remaining piece is the return value.
+De retour dans `constantInstruction()`, la seule pièce restante est la valeur de retour.
 
 ^code return-after-operand (1 before, 1 after)
 
-Remember that `disassembleInstruction()` also returns a number to tell the
-caller the offset of the beginning of the *next* instruction. Where `OP_RETURN`
-was only a single byte, `OP_CONSTANT` is two -- one for the opcode and one for
-the operand.
+Rappelez-vous que `disassembleInstruction()` renvoie aussi un nombre pour dire à l'appelant l'offset du début de la _prochaine_ instruction. Là où `OP_RETURN` était seulement un seul octet, `OP_CONSTANT` en fait deux -- un pour l'opcode et un pour l'opérande.
 
-## Line Information
+## Informations de Ligne
 
-Chunks contain almost all of the information that the runtime needs from the
-user's source code. It's kind of crazy to think that we can reduce all of the
-different AST classes that we created in jlox down to an array of bytes and an
-array of constants. There's only one piece of data we're missing. We need it,
-even though the user hopes to never see it.
+Les morceaux contiennent presque toute l'information dont le runtime a besoin depuis le code source de l'utilisateur. C'est un peu fou de penser que nous pouvons réduire toutes les différentes classes AST que nous avons créées dans jlox à un tableau d'octets et un tableau de constantes. Il y a seulement une pièce de donnée que nous manquons. Nous en avons besoin, même si l'utilisateur espère ne jamais la voir.
 
-When a runtime error occurs, we show the user the line number of the offending
-source code. In jlox, those numbers live in tokens, which we in turn store in
-the AST nodes. We need a different solution for clox now that we've ditched
-syntax trees in favor of bytecode. Given any bytecode instruction, we need to be
-able to determine the line of the user's source program that it was compiled
-from.
+Quand une erreur d'exécution se produit, nous montrons à l'utilisateur le numéro de ligne du code source offensant. Dans jlox, ces nombres vivent dans les tokens, que nous stockons à leur tour dans les nœuds AST. Nous avons besoin d'une solution différente pour clox maintenant que nous avons abandonné les arbres syntaxiques en faveur du bytecode. Étant donné n'importe quelle instruction bytecode, nous devons être capables de déterminer la ligne du programme source de l'utilisateur à partir de laquelle elle a été compilée.
 
-There are a lot of clever ways we could encode this. I took the absolute <span
-name="side">simplest</span> approach I could come up with, even though it's
-embarrassingly inefficient with memory. In the chunk, we store a separate array
-of integers that parallels the bytecode. Each number in the array is the line
-number for the corresponding byte in the bytecode. When a runtime error occurs,
-we look up the line number at the same index as the current instruction's offset
-in the code array.
+Il y a beaucoup de façons intelligentes dont nous pourrions encoder cela. J'ai pris l'approche absolue la plus <span name="side">simple</span> que je pouvais trouver, même si elle est embarrassement inefficace avec la mémoire. Dans le morceau, nous stockons un tableau séparé d'entiers qui est parallèle au bytecode. Chaque nombre dans le tableau est le numéro de ligne pour l'octet correspondant dans le bytecode. Quand une erreur d'exécution se produit, nous cherchons le numéro de ligne au même index que l'offset de l'instruction courante dans le tableau de code.
 
 <aside name="side">
 
-This braindead encoding does do one thing right: it keeps the line information
-in a *separate* array instead of interleaving it in the bytecode itself. Since
-line information is only used when a runtime error occurs, we don't want it
-between the instructions, taking up precious space in the CPU cache and causing
-more cache misses as the interpreter skips past it to get to the opcodes and
-operands it cares about.
+Cet encodage stupide fait une chose correctement : il garde l'information de ligne dans un tableau _séparé_ au lieu de l'entrelacer dans le bytecode lui-même. Puisque l'information de ligne est seulement utilisée quand une erreur d'exécution se produit, nous ne la voulons pas entre les instructions, prenant de la place précieuse dans le cache CPU et causant plus de manqués de cache alors que l'interpréteur saute par-dessus pour arriver aux opcodes et opérandes dont il se soucie.
 
 </aside>
 
-To implement this, we add another array to Chunk.
+Pour implémenter cela, nous ajoutons un autre tableau à Chunk.
 
 ^code chunk-lines (1 before, 1 after)
 
-Since it exactly parallels the bytecode array, we don't need a separate count or
-capacity. Every time we touch the code array, we make a corresponding change to
-the line number array, starting with initialization.
+Puisqu'il suit exactement le tableau de bytecode, nous n'avons pas besoin d'un compte ou capacité séparé. Chaque fois que nous touchons au tableau de code, nous faisons un changement correspondant au tableau de numéros de ligne, en commençant avec l'initialisation.
 
 ^code chunk-null-lines (1 before, 1 after)
 
-And likewise deallocation:
+Et de même la désallocation :
 
 ^code chunk-free-lines (1 before, 1 after)
 
-When we write a byte of code to the chunk, we need to know what source line it
-came from, so we add an extra parameter in the declaration of `writeChunk()`.
+Quand nous écrivons un octet de code dans le morceau, nous avons besoin de savoir de quelle ligne source il est venu, donc nous ajoutons un paramètre supplémentaire dans la déclaration de `writeChunk()`.
 
 ^code write-chunk-with-line-h (1 before, 1 after)
 
-And in the implementation:
+Et dans l'implémentation :
 
 ^code write-chunk-with-line (1 after)
 
-When we allocate or grow the code array, we do the same for the line info too.
+Quand nous allouons ou faisons grandir le tableau de code, nous faisons la même chose pour l'info de ligne aussi.
 
 ^code write-chunk-line (2 before, 1 after)
 
-Finally, we store the line number in the array.
+Finalement, nous stockons le numéro de ligne dans le tableau.
 
 ^code chunk-write-line (1 before, 1 after)
 
-### Disassembling line information
+### Désassembler les informations de ligne
 
-Alright, let's try this out with our little, uh, artisanal chunk. First, since
-we added a new parameter to `writeChunk()`, we need to fix those calls to pass
-in some -- arbitrary at this point -- line number.
+Très bien, essayons cela avec notre petit, euh, morceau artisanal. D'abord, puisque nous avons ajouté un nouveau paramètre à `writeChunk()`, nous devons corriger ces appels pour passer un -- arbitraire à ce point -- numéro de ligne.
 
 ^code main-chunk-line (1 before, 2 after)
 
-Once we have a real front end, of course, the compiler will track the current
-line as it parses and pass that in.
+Une fois que nous avons un vrai front end, bien sûr, le compilateur suivra la ligne courante alors qu'il parse et passera cela.
 
-Now that we have line information for every instruction, let's put it to good
-use. In our disassembler, it's helpful to show which source line each
-instruction was compiled from. That gives us a way to map back to the original
-code when we're trying to figure out what some blob of bytecode is supposed to
-do. After printing the offset of the instruction -- the number of bytes from the
-beginning of the chunk -- we show its source line.
+Maintenant que nous avons l'information de ligne pour chaque instruction, mettons-la à bon usage. Dans notre désassembleur, il est utile de montrer depuis quelle ligne source chaque instruction a été compilée. Cela nous donne un moyen de mapper en retour vers le code original quand nous essayons de comprendre ce qu'un certain blob de bytecode est supposé faire. Après avoir imprimé l'offset de l'instruction -- le nombre d'octets depuis le début du morceau -- nous montrons sa ligne source.
 
 ^code show-location (2 before, 2 after)
 
-Bytecode instructions tend to be pretty fine-grained. A single line of source
-code often compiles to a whole sequence of instructions. To make that more
-visually clear, we show a `|` for any instruction that comes from the same
-source line as the preceding one. The resulting output for our handwritten
-chunk looks like:
+Les instructions bytecode tendent à être à grain assez fin. Une seule ligne de code source compile souvent en toute une séquence d'instructions. Pour rendre cela plus visuellement clair, nous montrons un `|` pour toute instruction qui vient de la même ligne source que la précédente. La sortie résultante pour notre morceau écrit à la main ressemble à :
 
 ```text
 == test chunk ==
@@ -1004,84 +645,41 @@ chunk looks like:
 0002    | OP_RETURN
 ```
 
-We have a three-byte chunk. The first two bytes are a constant instruction that
-loads 1.2 from the chunk's constant pool. The first byte is the `OP_CONSTANT`
-opcode and the second is the index in the constant pool. The third byte (at
-offset 2) is a single-byte return instruction.
+Nous avons un morceau de trois octets. Les deux premiers octets sont une instruction de constante qui charge 1.2 depuis le pool de constantes du morceau. Le premier octet est l'opcode `OP_CONSTANT` et le second est l'index dans le pool de constantes. Le troisième octet (à l'offset 2) est une instruction de retour d'un seul octet.
 
-In the remaining chapters, we will flesh this out with lots more kinds of
-instructions. But the basic structure is here, and we have everything we need
-now to completely represent an executable piece of code at runtime in our
-virtual machine. Remember that whole family of AST classes we defined in jlox?
-In clox, we've reduced that down to three arrays: bytes of code, constant
-values, and line information for debugging.
+Dans les chapitres restants, nous étofferons cela avec beaucoup plus de genres d'instructions. Mais la structure basique est là, et nous avons tout ce dont nous avons besoin maintenant pour représenter complètement un morceau de code exécutable à l'exécution dans notre machine virtuelle. Rappelez-vous toute cette famille de classes AST que nous avons définies dans jlox ? Dans clox, nous avons réduit cela à trois tableaux : octets de code, valeurs constantes, et informations de ligne pour le débogage.
 
-This reduction is a key reason why our new interpreter will be faster than jlox.
-You can think of bytecode as a sort of compact serialization of the AST, highly
-optimized for how the interpreter will deserialize it in the order it needs as
-it executes. In the [next chapter][vm], we will see how the virtual machine does
-exactly that.
+Cette réduction est une raison clé pour laquelle notre nouvel interpréteur sera plus rapide que jlox. Vous pouvez penser au bytecode comme une sorte de sérialisation compacte de l'AST, hautement optimisée pour comment l'interpréteur la désérialisera dans l'ordre dont il a besoin alors qu'il s'exécute. Dans le [prochain chapitre][vm], nous verrons comment la machine virtuelle fait exactement cela.
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  Our encoding of line information is hilariously wasteful of memory. Given
-    that a series of instructions often correspond to the same source line, a
-    natural solution is something akin to [run-length encoding][rle] of the line
-    numbers.
+1.  Notre encodage de l'information de ligne est hilarant de gaspillage de mémoire. Étant donné qu'une série d'instructions correspond souvent à la même ligne source, une solution naturelle est quelque chose de similaire au [codage par plages][rle] des numéros de ligne.
 
-    Devise an encoding that compresses the line information for a
-    series of instructions on the same line. Change `writeChunk()` to write this
-    compressed form, and implement a `getLine()` function that, given the index
-    of an instruction, determines the line where the instruction occurs.
+    Concevez un encodage qui compresse l'information de ligne pour une série d'instructions sur la même ligne. Changez `writeChunk()` pour écrire cette forme compressée, et implémentez une fonction `getLine()` qui, étant donné l'index d'une instruction, détermine la ligne où l'instruction se produit.
 
-    *Hint: It's not necessary for `getLine()` to be particularly efficient.
-    Since it is called only when a runtime error occurs, it is well off the
-    critical path where performance matters.*
+    _Indice : Il n'est pas nécessaire pour `getLine()` d'être particulièrement efficace. Puisqu'elle est appelée seulement quand une erreur d'exécution se produit, elle est bien loin du chemin critique où la performance compte._
 
-2.  Because `OP_CONSTANT` uses only a single byte for its operand, a chunk may
-    only contain up to 256 different constants. That's small enough that people
-    writing real-world code will hit that limit. We could use two or more bytes
-    to store the operand, but that makes *every* constant instruction take up
-    more space. Most chunks won't need that many unique constants, so that
-    wastes space and sacrifices some locality in the common case to support the
-    rare case.
+2.  Parce que `OP_CONSTANT` utilise seulement un seul octet pour son opérande, un morceau peut seulement contenir jusqu'à 256 constantes différentes. C'est assez petit pour que les gens écrivant du code du monde réel frappent cette limite. Nous pourrions utiliser deux octets ou plus pour stocker l'opérande, mais cela fait prendre plus de place à _chaque_ instruction de constante. La plupart des morceaux n'auront pas besoin d'autant de constantes uniques, donc cela gaspille de l'espace et sacrifie un peu de localité dans le cas commun pour supporter le cas rare.
 
-    To balance those two competing aims, many instruction sets feature multiple
-    instructions that perform the same operation but with operands of different
-    sizes. Leave our existing one-byte `OP_CONSTANT` instruction alone, and
-    define a second `OP_CONSTANT_LONG` instruction. It stores the operand as a
-    24-bit number, which should be plenty.
+    Pour équilibrer ces deux buts concurrents, beaucoup de jeux d'instructions comportent de multiples instructions qui effectuent la même opération mais avec des opérandes de tailles différentes. Laissez notre instruction `OP_CONSTANT` d'un octet existante tranquille, et définissez une seconde instruction `OP_CONSTANT_LONG`. Elle stocke l'opérande comme un nombre de 24 bits, ce qui devrait être suffisant.
 
-    Implement this function:
+    Implémentez cette fonction :
 
     ```c
     void writeConstant(Chunk* chunk, Value value, int line) {
-      // Implement me...
+      // Implémentez-moi...
     }
     ```
 
-    It adds `value` to `chunk`'s constant array and then writes an appropriate
-    instruction to load the constant. Also add support to the disassembler for
-    `OP_CONSTANT_LONG` instructions.
+    Elle ajoute `value` au tableau de constantes de `chunk` et ensuite écrit une instruction appropriée pour charger la constante. Ajoutez aussi le support au désassembleur pour les instructions `OP_CONSTANT_LONG`.
 
-    Defining two instructions seems to be the best of both worlds. What
-    sacrifices, if any, does it force on us?
+    Définir deux instructions semble être le meilleur des deux mondes. Quels sacrifices, s'il y en a, cela nous force-t-il à faire ?
 
-3.  Our `reallocate()` function relies on the C standard library for dynamic
-    memory allocation and freeing. `malloc()` and `free()` aren't magic. Find
-    a couple of open source implementations of them and explain how they work.
-    How do they keep track of which bytes are allocated and which are free?
-    What is required to allocate a block of memory? Free it? How do they make
-    that efficient? What do they do about fragmentation?
+3.  Notre fonction `reallocate()` compte sur la bibliothèque standard C pour l'allocation dynamique de mémoire et sa libération. `malloc()` et `free()` ne sont pas magiques. Trouvez une paire d'implémentations open source de celles-ci et expliquez comment elles fonctionnent. Comment gardent-elles la trace de quels octets sont alloués et lesquels sont libres ? Qu'est-ce qui est requis pour allouer un bloc de mémoire ? Le libérer ? Comment rendent-elles cela efficace ? Que font-elles à propos de la fragmentation ?
 
-    *Hardcore mode:* Implement `reallocate()` without calling `realloc()`,
-    `malloc()`, or `free()`. You are allowed to call `malloc()` *once*, at the
-    beginning of the interpreter's execution, to allocate a single big block of
-    memory, which your `reallocate()` function has access to. It parcels out
-    blobs of memory from that single region, your own personal heap. It's your
-    job to define how it does that.
+    _Mode Hardcore :_ Implémentez `reallocate()` sans appeler `realloc()`, `malloc()`, ou `free()`. Vous êtes autorisé à appeler `malloc()` _une fois_, au début de l'exécution de l'interpréteur, pour allouer un seul gros bloc de mémoire, auquel votre fonction `reallocate()` a accès. Elle distribue des blobs de mémoire depuis cette région unique, votre propre tas personnel. C'est votre travail de définir comment elle fait cela.
 
 </div>
 
@@ -1089,87 +687,42 @@ exactly that.
 
 <div class="design-note">
 
-## Design Note: Test Your Language
+## Note de Conception : Testez Votre Langage
 
-We're almost halfway through the book and one thing we haven't talked about is
-*testing* your language implementation. That's not because testing isn't
-important. I can't possibly stress enough how vital it is to have a good,
-comprehensive test suite for your language.
+Nous sommes presque à la moitié du livre et une chose dont nous n'avons pas parlé est le _test_ de votre implémentation de langage. Ce n'est pas parce que tester n'est pas important. Je ne peux possiblement pas insister assez sur combien il est vital d'avoir une bonne suite de tests complète pour votre langage.
 
-I wrote a [test suite for Lox][tests] (which you are welcome to use on your own
-Lox implementation) before I wrote a single word of this book. Those tests found
-countless bugs in my implementations.
+J'ai écrit une [suite de tests pour Lox][tests] (que vous êtes bienvenu d'utiliser sur votre propre implémentation Lox) avant d'écrire un seul mot de ce livre. Ces tests ont trouvé d'innombrables bugs dans mes implémentations.
 
 [tests]: https://github.com/munificent/craftinginterpreters/tree/master/test
 
-Tests are important in all software, but they're even more important for a
-programming language for at least a couple of reasons:
+Les tests sont importants dans tout logiciel, mais ils sont encore plus importants pour un langage de programmation pour au moins une paire de raisons :
 
-*   **Users expect their programming languages to be rock solid.** We are so
-    used to mature, stable compilers and interpreters that "It's your code, not
-    the compiler" is [an ingrained part of software culture][fault]. If there
-    are bugs in your language implementation, users will go through the full
-    five stages of grief before they can figure out what's going on, and you
-    don't want to put them through all that.
+- **Les utilisateurs s'attendent à ce que leurs langages de programmation soient solides comme le roc.** Nous sommes si habitués à des compilateurs et interpréteurs matures et stables que "C'est votre code, pas le compilateur" est [une partie enracinée de la culture logicielle][fault]. S'il y a des bugs dans votre implémentation de langage, les utilisateurs passeront par les cinq stades complets du deuil avant qu'ils ne puissent comprendre ce qui se passe, et vous ne voulez pas leur faire traverser tout ça.
 
-*   **A language implementation is a deeply interconnected piece of software.**
-    Some codebases are broad and shallow. If the file loading code is broken in
-    your text editor, it -- hopefully! -- won't cause failures in the text
-    rendering on screen. Language implementations are narrower and deeper,
-    especially the core of the interpreter that handles the language's actual
-    semantics. That makes it easy for subtle bugs to creep in caused by weird
-    interactions between various parts of the system. It takes good tests to
-    flush those out.
+- **Une implémentation de langage est un morceau de logiciel profondément interconnecté.** Certaines bases de code sont larges et peu profondes. Si le code de chargement de fichier est cassé dans votre éditeur de texte, cela -- avec un peu de chance ! -- ne causera pas d'échecs dans le rendu du texte à l'écran. Les implémentations de langage sont plus étroites et plus profondes, particulièrement le cœur de l'interpréteur qui gère la sémantique réelle du langage. Cela rend facile pour des bugs subtils de s'infiltrer causés par des interactions bizarres entre diverses parties du système. Il faut de bons tests pour débusquer ceux-là.
 
-*   **The input to a language implementation is, by design, combinatorial.**
-    There are an infinite number of possible programs a user could write, and
-    your implementation needs to run them all correctly. You obviously can't
-    test that exhaustively, but you need to work hard to cover as much of the
-    input space as you can.
+- **L'entrée d'une implémentation de langage est, par design, combinatoire.** Il y a un nombre infini de programmes possibles qu'un utilisateur pourrait écrire, et votre implémentation a besoin de tous les exécuter correctement. Vous ne pouvez évidemment pas tester cela exhaustivement, mais vous devez travailler dur pour couvrir autant de l'espace d'entrée que vous pouvez.
 
-*   **Language implementations are often complex, constantly changing, and full
-    of optimizations.** That leads to gnarly code with lots of dark corners
-    where bugs can hide.
+- **Les implémentations de langage sont souvent complexes, changeant constamment, et pleines d'optimisations.** Cela mène à du code noueux avec beaucoup de coins sombres où les bugs peuvent se cacher.
 
 [fault]: https://blog.codinghorror.com/the-first-rule-of-programming-its-always-your-fault/
 
-All of that means you're gonna want a lot of tests. But *what* tests? Projects
-I've seen focus mostly on end-to-end "language tests". Each test is a program
-written in the language along with the output or errors it is expected to
-produce. Then you have a test runner that pushes the test program through your
-language implementation and validates that it does what it's supposed to.
-Writing your tests in the language itself has a few nice advantages:
+Tout cela signifie que vous allez vouloir beaucoup de tests. Mais _quels_ tests ? Les projets que j'ai vus se concentrent principalement sur des "tests de langage" bout-en-bout. Chaque test est un programme écrit dans le langage avec la sortie ou les erreurs qu'il est attendu qu'il produise. Ensuite vous avez un lanceur de tests qui pousse le programme de test à travers votre implémentation de langage et valide qu'elle fait ce qu'elle est supposée faire. Écrire vos tests dans le langage lui-même a quelques avantages sympas :
 
-*   The tests aren't coupled to any particular API or internal architecture
-    decisions of the implementation. This frees you to reorganize or rewrite
-    parts of your interpreter or compiler without needing to update a slew of
-    tests.
+- Les tests ne sont pas couplés à une API particulière ou des décisions d'architecture interne de l'implémentation. Cela vous libère pour réorganiser ou réécrire des parties de votre interpréteur ou compilateur sans avoir besoin de mettre à jour une flopée de tests.
 
-*   You can use the same tests for multiple implementations of the language.
+- Vous pouvez utiliser les mêmes tests pour de multiples implémentations du langage.
 
-*   Tests can often be terse and easy to read and maintain since they are
-    simply scripts in your language.
+- Les tests peuvent souvent être concis et faciles à lire et maintenir puisqu'ils sont simplement des scripts dans votre langage.
 
-It's not all rosy, though:
+Ce n'est pas tout rose, cependant :
 
-*   End-to-end tests help you determine *if* there is a bug, but not *where* the
-    bug is. It can be harder to figure out where the erroneous code in the
-    implementation is because all the test tells you is that the right output
-    didn't appear.
+- Les tests bout-en-bout vous aident à déterminer _s'il_ y a un bug, mais pas _où_ est le bug. Il peut être plus difficile de comprendre où est le code erroné dans l'implémentation parce que tout ce que le test vous dit est que la bonne sortie n'est pas apparue.
 
-*   It can be a chore to craft a valid program that tickles some obscure corner
-    of the implementation. This is particularly true for highly optimized
-    compilers where you may need to write convoluted code to ensure that you
-    end up on just the right optimization path where a bug may be hiding.
+- Cela peut être une corvée de fabriquer un programme valide qui chatouille un certain coin obscur de l'implémentation. C'est particulièrement vrai pour des compilateurs hautement optimisés où vous pouvez avoir besoin d'écrire du code alambiqué pour vous assurer que vous finissez sur juste le bon chemin d'optimisation où un bug peut se cacher.
 
-*   The overhead can be high to fire up the interpreter, parse, compile, and
-    run each test script. With a big suite of tests -- which you *do* want,
-    remember -- that can mean a lot of time spent waiting for the tests to
-    finish running.
+- La surcharge peut être élevée pour démarrer l'interpréteur, parser, compiler, et exécuter chaque script de test. Avec une grosse suite de tests -- que vous _voulez_, rappelez-vous -- cela peut signifier beaucoup de temps passé à attendre que les tests finissent de s'exécuter.
 
-I could go on, but I don't want this to turn into a sermon. Also, I don't
-pretend to be an expert on *how* to test languages. I just want you to
-internalize how important it is *that* you test yours. Seriously. Test your
-language. You'll thank me for it.
+Je pourrais continuer, mais je ne veux pas que cela se transforme en sermon. Aussi, je ne prétends pas être un expert sur _comment_ tester des langages. Je veux juste que vous internalisiez combien il est important _que_ vous testiez le vôtre. Sérieusement. Testez votre langage. Vous me remercierez pour ça.
 
 </div>

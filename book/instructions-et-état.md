@@ -1,84 +1,43 @@
-> All my life, my heart has yearned for a thing I cannot name.
-> <cite>Andr&eacute; Breton, <em>Mad Love</em></cite>
+> Toute ma vie, mon cœur a aspiré à une chose que je ne peux nommer.
+> <cite>André Breton, <em>L'Amour fou</em></cite>
 
-The interpreter we have so far feels less like programming a real language and
-more like punching buttons on a calculator. "Programming" to me means building
-up a system out of smaller pieces. We can't do that yet because we have no way
-to bind a name to some data or function. We can't compose software without a way
-to refer to the pieces.
+L'interpréteur que nous avons jusqu'ici ressemble moins à la programmation d'un vrai langage et plus à tapoter des boutons sur une calculatrice. "Programmer" pour moi signifie construire un système à partir de plus petits morceaux. Nous ne pouvons pas encore faire cela car nous n'avons aucun moyen de lier un nom à une donnée ou une fonction. Nous ne pouvons pas composer de logiciel sans un moyen de faire référence aux morceaux.
 
-To support bindings, our interpreter needs internal state. When you define a
-variable at the beginning of the program and use it at the end, the interpreter
-has to hold on to the value of that variable in the meantime. So in this
-chapter, we will give our interpreter a brain that can not just process, but
-*remember*.
+Pour supporter les liaisons (bindings), notre interpréteur a besoin d'un état interne. Quand vous définissez une variable au début du programme et l'utilisez à la fin, l'interpréteur doit conserver la valeur de cette variable entre-temps. Donc dans ce chapitre, nous allons donner à notre interpréteur un cerveau qui peut non seulement traiter, mais _se souvenir_.
 
-<img src="image/statements-and-state/brain.png" alt="A brain, presumably remembering stuff." />
+<img src="image/statements-and-state/brain.png" alt="Un cerveau, se souvenant probablement de trucs." />
 
-State and <span name="expr">statements</span> go hand in hand. Since statements,
-by definition, don't evaluate to a value, they need to do something else to be
-useful. That something is called a **side effect**. It could mean producing
-user-visible output or modifying some state in the interpreter that can be
-detected later. The latter makes them a great fit for defining variables or
-other named entities.
+L'état et les <span name="expr">instructions</span> (statements) vont main dans la main. Puisque les instructions, par définition, ne s'évaluent pas en une valeur, elles doivent faire quelque chose d'autre pour être utiles. Ce quelque chose est appelé un **effet de bord**. Cela peut signifier produire une sortie visible par l'utilisateur ou modifier un état dans l'interpréteur qui pourra être détecté plus tard. Ce dernier en fait un excellent candidat pour définir des variables ou d'autres entités nommées.
 
 <aside name="expr">
 
-You could make a language that treats variable declarations as expressions that
-both create a binding and produce a value. The only language I know that does
-that is Tcl. Scheme seems like a contender, but note that after a `let`
-expression is evaluated, the variable it bound is forgotten. The `define` syntax
-is not an expression.
+Vous pourriez faire un langage qui traite les déclarations de variables comme des expressions qui créent à la fois une liaison et produisent une valeur. Le seul langage que je connaisse qui fait cela est Tcl. Scheme semble être un candidat, mais notez qu'après qu'une expression `let` soit évaluée, la variable qu'elle liait est oubliée. La syntaxe `define` n'est pas une expression.
 
 </aside>
 
-In this chapter, we'll do all of that. We'll define statements that produce
-output (`print`) and create state (`var`). We'll add expressions to access and
-assign to variables. Finally, we'll add blocks and local scope. That's a lot to
-stuff into one chapter, but we'll chew through it all one bite at a time.
+Dans ce chapitre, nous allons faire tout cela. Nous définirons des instructions qui produisent une sortie (`print`) et créent un état (`var`). Nous ajouterons des expressions pour accéder aux variables et leur assigner une valeur. Enfin, nous ajouterons les blocs et la portée locale. C'est beaucoup à bourrer dans un seul chapitre, mais nous allons mâcher tout cela une bouchée à la fois.
 
-## Statements
+## Instructions
 
-We start by extending Lox's grammar with statements. They aren't very different
-from expressions. We start with the two simplest kinds:
+Nous commençons par étendre la grammaire de Lox avec des instructions. Elles ne sont pas très différentes des expressions. Nous commençons avec les deux types les plus simples :
 
-1.  An **expression statement** lets you place an expression where a statement
-    is expected. They exist to evaluate expressions that have side effects. You
-    may not notice them, but you use them all the time in <span
-    name="expr-stmt">C</span>, Java, and other languages. Any time you see a
-    function or method call followed by a `;`, you're looking at an expression
-    statement.
+1.  Une **instruction d'expression** vous permet de placer une expression là où une instruction est attendue. Elles existent pour évaluer des expressions qui ont des effets de bord. Vous ne les remarquez peut-être pas, mais vous les utilisez tout le temps en <span name="expr-stmt">C</span>, Java, et d'autres langages. Chaque fois que vous voyez un appel de fonction ou de méthode suivi d'un `;`, vous regardez une instruction d'expression.
 
     <aside name="expr-stmt">
 
-    Pascal is an outlier. It distinguishes between *procedures* and *functions*.
-    Functions return values, but procedures cannot. There is a statement form
-    for calling a procedure, but functions can only be called where an
-    expression is expected. There are no expression statements in Pascal.
+    Pascal est un cas à part. Il distingue entre _procédures_ et _fonctions_. Les fonctions renvoient des valeurs, mais les procédures ne le peuvent pas. Il y a une forme d'instruction pour appeler une procédure, mais les fonctions peuvent seulement être appelées là où une expression est attendue. Il n'y a pas d'instructions d'expression en Pascal.
 
     </aside>
 
-2.  A **`print` statement** evaluates an expression and displays the result to
-    the user. I admit it's weird to bake printing right into the language
-    instead of making it a library function. Doing so is a concession to the
-    fact that we're building this interpreter one chapter at a time and want to
-    be able to play with it before it's all done. To make print a library
-    function, we'd have to wait until we had all of the machinery for defining
-    and calling functions <span name="print">before</span> we could witness any
-    side effects.
+2.  Une **instruction `print`** évalue une expression et affiche le résultat à l'utilisateur. J'admets que c'est bizarre d'intégrer l'impression directement dans le langage au lieu d'en faire une fonction de bibliothèque. Faire ainsi est une concession au fait que nous construisons cet interpréteur un chapitre à la fois et voulons être capables de jouer avec avant qu'il ne soit tout fini. Pour faire de print une fonction de bibliothèque, nous devrions attendre jusqu'à ce que nous ayons toute la machinerie pour définir et appeler des fonctions <span name="print">avant</span> que nous puissions témoigner du moindre effet de bord.
 
     <aside name="print">
 
-    I will note with only a modicum of defensiveness that BASIC and Python
-    have dedicated `print` statements and they are real languages. Granted,
-    Python did remove their `print` statement in 3.0...
+    Je noterai avec seulement un soupçon de défensive que BASIC et Python ont des instructions `print` dédiées et ce sont de vrais langages. C'est vrai, Python a retiré son instruction `print` en 3.0...
 
     </aside>
 
-New syntax means new grammar rules. In this chapter, we finally gain the ability
-to parse an entire Lox script. Since Lox is an imperative, dynamically typed
-language, the "top level" of a script is simply a list of statements. The new
-rules are:
+Une nouvelle syntaxe signifie de nouvelles règles de grammaire. Dans ce chapitre, nous gagnons enfin la capacité de parser un script Lox entier. Puisque Lox est un langage impératif, typé dynamiquement, le "niveau supérieur" d'un script est simplement une liste d'instructions. Les nouvelles règles sont :
 
 ```ebnf
 program        → statement* EOF ;
@@ -90,38 +49,21 @@ exprStmt       → expression ";" ;
 printStmt      → "print" expression ";" ;
 ```
 
-The first rule is now `program`, which is the starting point for the grammar and
-represents a complete Lox script or REPL entry. A program is a list of
-statements followed by the special "end of file" token. The mandatory end token
-ensures the parser consumes the entire input and doesn't silently ignore
-erroneous unconsumed tokens at the end of a script.
+La première règle est maintenant `program`, qui est le point de départ pour la grammaire et représente un script Lox complet ou une entrée REPL. Un programme est une liste d'instructions suivie par le token spécial "fin de fichier" (EOF). Le token de fin obligatoire assure que le parseur consomme l'entrée entière et n'ignore pas silencieusement des tokens non consommés erronés à la fin d'un script.
 
-Right now, `statement` only has two cases for the two kinds of statements we've
-described. We'll fill in more later in this chapter and in the following ones.
-The next step is turning this grammar into something we can store in memory --
-syntax trees.
+Pour l'instant, `statement` a seulement deux cas pour les deux types d'instructions que nous avons décrits. Nous en remplirons plus plus tard dans ce chapitre et dans les suivants. L'étape suivante est de transformer cette grammaire en quelque chose que nous pouvons stocker en mémoire -- des arbres syntaxiques.
 
-### Statement syntax trees
+### Arbres syntaxiques d'instruction
 
-There is no place in the grammar where both an expression and a statement are
-allowed. The operands of, say, `+` are always expressions, never statements. The
-body of a `while` loop is always a statement.
+Il n'y a aucun endroit dans la grammaire où à la fois une expression et une instruction sont autorisées. Les opérandes de, disons, `+` sont toujours des expressions, jamais des instructions. Le corps d'une boucle `while` est toujours une instruction.
 
-Since the two syntaxes are disjoint, we don't need a single base class that they
-all inherit from. Splitting expressions and statements into separate class
-hierarchies enables the Java compiler to help us find dumb mistakes like passing
-a statement to a Java method that expects an expression.
+Puisque les deux syntaxes sont disjointes, nous n'avons pas besoin d'une seule classe de base dont elles héritent toutes. Séparer les expressions et les instructions dans des hiérarchies de classes séparées permet au compilateur Java de nous aider à trouver des erreurs bêtes comme passer une instruction à une méthode Java qui attend une expression.
 
-That means a new base class for statements. As our elders did before us, we will
-use the cryptic name "Stmt". With great <span name="foresight">foresight</span>,
-I have designed our little AST metaprogramming script in anticipation of this.
-That's why we passed in "Expr" as a parameter to `defineAst()`. Now we add
-another call to define Stmt and its <span name="stmt-ast">subclasses</span>.
+Cela signifie une nouvelle classe de base pour les instructions. Comme nos aînés l'ont fait avant nous, nous utiliserons le nom cryptique "Stmt". Avec une grande <span name="foresight">prévoyance</span>, j'ai conçu notre petit script de métaprogrammation AST en anticipation de cela. C'est pourquoi nous avons passé "Expr" comme paramètre à `defineAst()`. Maintenant nous ajoutons un autre appel pour définir Stmt et ses <span name="stmt-ast">sous-classes</span>.
 
 <aside name="foresight">
 
-Not really foresight: I wrote all the code for the book before I sliced it into
-chapters.
+Pas vraiment de la prévoyance : j'ai écrit tout le code pour le livre avant de le découper en chapitres.
 
 </aside>
 
@@ -129,7 +71,7 @@ chapters.
 
 <aside name="stmt-ast">
 
-The generated code for the new nodes is in [Appendix II][appendix-ii]: [Expression statement][], [Print statement][].
+Le code généré pour les nouveaux nœuds est dans l'[Annexe II][appendix-ii] : [Instruction d'expression][expression statement], [Instruction print][print statement].
 
 [appendix-ii]: appendix-ii.html
 [expression statement]: appendix-ii.html#expression-statement
@@ -137,233 +79,161 @@ The generated code for the new nodes is in [Appendix II][appendix-ii]: [Expressi
 
 </aside>
 
-Run the AST generator script and behold the resulting "Stmt.java" file with the
-syntax tree classes we need for expression and `print` statements. Don't forget
-to add the file to your IDE project or makefile or whatever.
+Exécutez le script générateur d'AST et contemplez le fichier "Stmt.java" résultant avec les classes d'arbre syntaxique dont nous avons besoin pour l'expression et les instructions `print`. N'oubliez pas d'ajouter le fichier à votre projet IDE ou makefile ou peu importe.
 
-### Parsing statements
+### Parser les instructions
 
-The parser's `parse()` method that parses and returns a single expression was a
-temporary hack to get the last chapter up and running. Now that our grammar has
-the correct starting rule, `program`, we can turn `parse()` into the real deal.
+La méthode `parse()` du parseur qui parse et renvoie une seule expression était un hack temporaire pour avoir le dernier chapitre opérationnel. Maintenant que notre grammaire a la règle de départ correcte, `program`, nous pouvons transformer `parse()` en la vraie affaire.
 
 ^code parse
 
 <aside name="parse-error-handling">
 
-What about the code we had in here for catching `ParseError` exceptions? We'll
-put better parse error handling in place soon when we add support for additional
-statement types.
+Qu'en est-il du code que nous avions ici pour attraper les exceptions `ParseError` ? Nous mettrons une meilleure gestion d'erreur de parsing en place bientôt quand nous ajouterons le support pour des types d'instruction supplémentaires.
 
 </aside>
 
-This parses a series of statements, as many as it can find until it hits the end
-of the input. This is a pretty direct translation of the `program` rule into
-recursive descent style. We must also chant a minor prayer to the Java verbosity
-gods since we are using ArrayList now.
+Ceci parse une série d'instructions, autant qu'il peut en trouver jusqu'à ce qu'il frappe la fin de l'entrée. C'est une traduction assez directe de la règle `program` en style descente récursive. Nous devons aussi chanter une prière mineure aux dieux de la verbosité Java puisque nous utilisons ArrayList maintenant.
 
 ^code parser-imports (2 before, 1 after)
 
-A program is a list of statements, and we parse one of those statements using
-this method:
+Un programme est une liste d'instructions, et nous parsons une de ces instructions en utilisant cette méthode :
 
 ^code parse-statement
 
-A little bare bones, but we'll fill it in with more statement types later. We
-determine which specific statement rule is matched by looking at the current
-token. A `print` token means it's obviously a `print` statement.
+Un peu squelettique, mais nous le remplirons avec plus de types d'instruction plus tard. Nous déterminons quelle règle d'instruction spécifique est matchée en regardant le token courant. Un token `print` signifie que c'est évidemment une instruction `print`.
 
-If the next token doesn't look like any known kind of statement, we assume it
-must be an expression statement. That's the typical final fallthrough case when
-parsing a statement, since it's hard to proactively recognize an expression from
-its first token.
+Si le prochain token ne ressemble à aucun type connu d'instruction, nous supposons que ce doit être une instruction d'expression. C'est le cas par défaut typique final lors du parsing d'une instruction, puisqu'il est difficile de reconnaître proactivement une expression à partir de son premier token.
 
-Each statement kind gets its own method. First `print`:
+Chaque type d'instruction obtient sa propre méthode. D'abord `print` :
 
 ^code parse-print-statement
 
-Since we already matched and consumed the `print` token itself, we don't need to
-do that here. We parse the subsequent expression, consume the terminating
-semicolon, and emit the syntax tree.
+Puisque nous avons déjà matché et consommé le token `print` lui-même, nous n'avons pas besoin de faire cela ici. Nous parsons l'expression subséquente, consommons le point-virgule terminal, et émettons l'arbre syntaxique.
 
-If we didn't match a `print` statement, we must have one of these:
+Si nous n'avons pas matché une instruction `print`, nous devons avoir une de celles-ci :
 
 ^code parse-expression-statement
 
-Similar to the previous method, we parse an expression followed by a semicolon.
-We wrap that Expr in a Stmt of the right type and return it.
+Similaire à la méthode précédente, nous parsons une expression suivie par un point-virgule. Nous enveloppons cette Expr dans une Stmt du bon type et la renvoyons.
 
-### Executing statements
+### Exécuter les instructions
 
-We're running through the previous couple of chapters in microcosm, working our
-way through the front end. Our parser can now produce statement syntax trees, so
-the next and final step is to interpret them. As in expressions, we use the
-Visitor pattern, but we have a new visitor interface, Stmt.Visitor, to
-implement since statements have their own base class.
+Nous parcourons les quelques chapitres précédents en microcosme, en faisant notre chemin à travers le front end. Notre parseur peut maintenant produire des arbres syntaxiques d'instruction, donc la prochaine et dernière étape est de les interpréter. Comme dans les expressions, nous utilisons le patron Visiteur, mais nous avons une nouvelle interface visiteur, Stmt.Visitor, à implémenter puisque les instructions ont leur propre classe de base.
 
-We add that to the list of interfaces Interpreter implements.
+Nous ajoutons cela à la liste des interfaces que Interpreter implémente.
 
 ^code interpreter (1 after)
 
 <aside name="void">
 
-Java doesn't let you use lowercase "void" as a generic type argument for obscure
-reasons having to do with type erasure and the stack. Instead, there is a
-separate "Void" type specifically for this use. Sort of a "boxed void", like
-"Integer" is for "int".
+Java ne vous laisse pas utiliser le "void" minuscule comme argument de type générique pour des raisons obscures ayant à voir avec l'effacement de type (type erasure) et la pile. Au lieu de cela, il y a un type "Void" séparé spécifiquement pour cet usage. Sorte de "void boxé", comme "Integer" l'est pour "int".
 
 </aside>
 
-Unlike expressions, statements produce no values, so the return type of the
-visit methods is Void, not Object. We have two statement types, and we need a
-visit method for each. The easiest is expression statements.
+Contrairement aux expressions, les instructions ne produisent aucune valeur, donc le type de retour des méthodes visit est Void, pas Object. Nous avons deux types d'instruction, et nous avons besoin d'une méthode visit pour chaque. La plus facile est les instructions d'expression.
 
 ^code visit-expression-stmt
 
-We evaluate the inner expression using our existing `evaluate()` method and
-<span name="discard">discard</span> the value. Then we return `null`. Java
-requires that to satisfy the special capitalized Void return type. Weird, but
-what can you do?
+Nous évaluons l'expression interne en utilisant notre méthode `evaluate()` existante et <span name="discard">rejetons</span> la valeur. Ensuite nous renvoyons `null`. Java exige cela pour satisfaire le type de retour spécial Void avec majuscule. Bizarre, mais que pouvez-vous faire ?
 
 <aside name="discard">
 
-Appropriately enough, we discard the value returned by `evaluate()` by placing
-that call inside a *Java* expression statement.
+De manière assez appropriée, nous rejetons la valeur renvoyée par `evaluate()` en plaçant cet appel à l'intérieur d'une instruction d'expression _Java_.
 
 </aside>
 
-The `print` statement's visit method isn't much different.
+La méthode visit de l'instruction `print` n'est pas très différente.
 
 ^code visit-print
 
-Before discarding the expression's value, we convert it to a string using the
-`stringify()` method we introduced in the last chapter and then dump it to
-stdout.
+Avant de rejeter la valeur de l'expression, nous la convertissons en une chaîne en utilisant la méthode `stringify()` que nous avons introduite dans le dernier chapitre et ensuite la déversons sur la sortie standard (stdout).
 
-Our interpreter is able to visit statements now, but we have some work to do to
-feed them to it. First, modify the old `interpret()` method in the Interpreter
-class to accept a list of statements -- in other words, a program.
+Notre interpréteur est capable de visiter des instructions maintenant, mais nous avons un peu de travail à faire pour les lui donner à manger. D'abord, modifiez la vieille méthode `interpret()` dans la classe Interpreter pour accepter une liste d'instructions -- en d'autres termes, un programme.
 
 ^code interpret
 
-This replaces the old code which took a single expression. The new code relies
-on this tiny helper method:
+Ceci remplace l'ancien code qui prenait une seule expression. Le nouveau code repose sur cette minuscule méthode d'aide :
 
 ^code execute
 
-That's the statement analogue to the `evaluate()` method we have for
-expressions. Since we're working with lists now, we need to let Java know.
+C'est l'analogue pour l'instruction de la méthode `evaluate()` que nous avons pour les expressions. Puisque nous travaillons avec des listes maintenant, nous avons besoin de le faire savoir à Java.
 
 ^code import-list (2 before, 2 after)
 
-The main Lox class is still trying to parse a single expression and pass it to
-the interpreter. We fix the parsing line like so:
+La classe principale Lox essaie toujours de parser une seule expression et de la passer à l'interpréteur. Nous corrigeons la ligne de parsing comme ceci :
 
 ^code parse-statements (1 before, 2 after)
 
-And then replace the call to the interpreter with this:
+Et ensuite remplaçons l'appel à l'interpréteur par ceci :
 
 ^code interpret-statements (2 before, 1 after)
 
-Basically just plumbing the new syntax through. OK, fire up the interpreter and
-give it a try. At this point, it's worth sketching out a little Lox program in a
-text file to run as a script. Something like:
+Fondamentalement juste faire passer la nouvelle syntaxe dans la tuyauterie. OK, démarrez l'interpréteur et donnez-lui un essai. À ce stade, cela vaut la peine d'esquisser un petit programme Lox dans un fichier texte pour l'exécuter comme un script. Quelque chose comme :
 
 ```lox
-print "one";
+print "un";
 print true;
 print 2 + 1;
 ```
 
-It almost looks like a real program! Note that the REPL, too, now requires you
-to enter a full statement instead of a simple expression. Don't forget your
-semicolons.
+Cela ressemble presque à un vrai programme ! Notez que le REPL, aussi, exige maintenant que vous entriez une instruction complète au lieu d'une simple expression. N'oubliez pas vos points-virgules.
 
-## Global Variables
+## Variables Globales
 
-Now that we have statements, we can start working on state. Before we get into
-all of the complexity of lexical scoping, we'll start off with the easiest kind
-of variables -- <span name="globals">globals</span>. We need two new constructs.
+Maintenant que nous avons des instructions, nous pouvons commencer à travailler sur l'état. Avant que nous entrions dans toute la complexité de la portée lexicale, nous commencerons avec le type le plus facile de variables -- les <span name="globals">globales</span>. Nous avons besoin de deux nouvelles constructions.
 
-1.  A **variable declaration** statement brings a new variable into the world.
+1.  Une instruction de **déclaration de variable** amène une nouvelle variable au monde.
 
     ```lox
     var beverage = "espresso";
     ```
 
-    This creates a new binding that associates a name (here "beverage") with a
-    value (here, the string `"espresso"`).
+    Ceci crée une nouvelle liaison qui associe un nom (ici "beverage") avec une valeur (ici, la chaîne `"espresso"`).
 
-2.  Once that's done, a **variable expression** accesses that binding. When the
-    identifier "beverage" is used as an expression, it looks up the value bound
-    to that name and returns it.
+2.  Une fois que c'est fait, une **expression de variable** accède à cette liaison. Quand l'identifiant "beverage" est utilisé comme une expression, il cherche la valeur liée à ce nom et la renvoie.
 
     ```lox
     print beverage; // "espresso".
     ```
 
-Later, we'll add assignment and block scope, but that's enough to get moving.
+Plus tard, nous ajouterons l'affectation et la portée de bloc, mais c'est assez pour commencer à bouger.
 
 <aside name="globals">
 
-Global state gets a bad rap. Sure, lots of global state -- especially *mutable*
-state -- makes it hard to maintain large programs. It's good software
-engineering to minimize how much you use.
+L'état global a mauvaise réputation. Bien sûr, beaucoup d'état global -- surtout l'état _mutable_ -- rend difficile la maintenance de gros programmes. C'est une bonne ingénierie logicielle de minimiser combien vous en utilisez.
 
-But when you're slapping together a simple programming language or, heck, even
-learning your first language, the flat simplicity of global variables helps. My
-first language was BASIC and, though I outgrew it eventually, it was nice that I
-didn't have to wrap my head around scoping rules before I could make a computer
-do fun stuff.
+Mais quand vous bricolez un langage de programmation simple ou, zut, même apprenez votre premier langage, la simplicité plate des variables globales aide. Mon premier langage était le BASIC et, bien que je l'ai dépassé finalement, c'était agréable que je n'aie pas à me prendre la tête avec les règles de portée avant que je puisse faire faire des trucs amusants à un ordinateur.
 
 </aside>
 
-### Variable syntax
+### Syntaxe de variable
 
-As before, we'll work through the implementation from front to back, starting
-with the syntax. Variable declarations are statements, but they are different
-from other statements, and we're going to split the statement grammar in two to
-handle them. That's because the grammar restricts where some kinds of statements
-are allowed.
+Comme avant, nous travaillerons à travers l'implémentation de l'avant vers l'arrière, en commençant par la syntaxe. Les déclarations de variable sont des instructions, mais elles sont différentes des autres instructions, et nous allons diviser la grammaire des instructions en deux pour les gérer. C'est parce que la grammaire restreint où certains types d'instructions sont autorisés.
 
-The clauses in control flow statements -- think the then and else branches of
-an `if` statement or the body of a `while` -- are each a single statement. But
-that statement is not allowed to be one that declares a name. This is OK:
+Les clauses dans les instructions de contrôle de flux -- pensez aux branches then et else d'une instruction `if` ou le corps d'un `while` -- sont chacune une instruction unique. Mais cette instruction n'est pas autorisée à être une qui déclare un nom. Ceci est OK :
 
 ```lox
-if (monday) print "Ugh, already?";
+if (monday) print "Ugh, déjà ?";
 ```
 
-But this is not:
+Mais ceci ne l'est pas :
 
 ```lox
 if (monday) var beverage = "espresso";
 ```
 
-We *could* allow the latter, but it's confusing. What is the scope of that
-`beverage` variable? Does it persist after the `if` statement? If so, what is
-its value on days other than Monday? Does the variable exist at all on those
-days?
+Nous _pourrions_ autoriser ce dernier, mais c'est confus. Quelle est la portée de cette variable `beverage` ? Persiste-t-elle après l'instruction `if` ? Si oui, quelle est sa valeur les jours autres que lundi ? La variable existe-t-elle tout court ces jours-là ?
 
-Code like this is weird, so C, Java, and friends all disallow it. It's as if
-there are two levels of <span name="brace">"precedence"</span> for statements.
-Some places where a statement is allowed -- like inside a block or at the top
-level -- allow any kind of statement, including declarations. Others allow only
-the "higher" precedence statements that don't declare names.
+Du code comme celui-ci est bizarre, donc C, Java, et consorts l'interdisent tous. C'est comme s'il y avait deux niveaux de <span name="brace">"précédence"</span> pour les instructions. Certains endroits où une instruction est autorisée -- comme à l'intérieur d'un bloc ou au niveau supérieur -- autorisent n'importe quel type d'instruction, y compris les déclarations. D'autres autorisent seulement les instructions de "plus haute" précédence qui ne déclarent pas de noms.
 
 <aside name="brace">
 
-In this analogy, block statements work sort of like parentheses do for
-expressions. A block is itself in the "higher" precedence level and can be used
-anywhere, like in the clauses of an `if` statement. But the statements it
-*contains* can be lower precedence. You're allowed to declare variables and
-other names inside the block. The curlies let you escape back into the full
-statement grammar from a place where only some statements are allowed.
+Dans cette analogie, les instructions de bloc fonctionnent un peu comme les parenthèses pour les expressions. Un bloc est lui-même dans le niveau de précédence "plus haut" et peut être utilisé n'importe où, comme dans les clauses d'une instruction `if`. Mais les instructions qu'il _contient_ peuvent être de plus basse précédence. Vous êtes autorisé à déclarer des variables et d'autres noms à l'intérieur du bloc. Les accolades vous laissent vous échapper de nouveau vers la grammaire d'instructions complète depuis un endroit où seules certaines instructions sont autorisées.
 
 </aside>
 
-To accommodate the distinction, we add another rule for kinds of statements that
-declare names.
+Pour accommoder la distinction, nous ajoutons une autre règle pour les types d'instructions qui déclarent des noms.
 
 ```ebnf
 program        → declaration* EOF ;
@@ -375,24 +245,17 @@ statement      → exprStmt
                | printStmt ;
 ```
 
-Declaration statements go under the new `declaration` rule. Right now, it's only
-variables, but later it will include functions and classes. Any place where a
-declaration is allowed also allows non-declaring statements, so the
-`declaration` rule falls through to `statement`. Obviously, you can declare
-stuff at the top level of a script, so `program` routes to the new rule.
+Les instructions de déclaration vont sous la nouvelle règle `declaration`. Pour l'instant, c'est seulement les variables, mais plus tard cela inclura les fonctions et les classes. N'importe quel endroit où une déclaration est autorisée permet aussi les instructions non-déclarantes, donc la règle `declaration` tombe vers `statement`. Évidemment, vous pouvez déclarer des trucs au niveau supérieur d'un script, donc `program` route vers la nouvelle règle.
 
-The rule for declaring a variable looks like:
+La règle pour déclarer une variable ressemble à :
 
 ```ebnf
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 ```
 
-Like most statements, it starts with a leading keyword. In this case, `var`.
-Then an identifier token for the name of the variable being declared, followed
-by an optional initializer expression. Finally, we put a bow on it with the
-semicolon.
+Comme la plupart des instructions, elle commence par un mot-clé de tête. Dans ce cas, `var`. Ensuite un token identifiant pour le nom de la variable étant déclarée, suivi par une expression d'initialisation optionnelle. Finalement, nous mettons un nœud dessus avec le point-virgule.
 
-To access a variable, we define a new kind of primary expression.
+Pour accéder à une variable, nous définissons un nouveau type d'expression primaire.
 
 ```ebnf
 primary        → "true" | "false" | "nil"
@@ -401,209 +264,139 @@ primary        → "true" | "false" | "nil"
                | IDENTIFIER ;
 ```
 
-That `IDENTIFIER` clause matches a single identifier token, which is understood
-to be the name of the variable being accessed.
+Cette clause `IDENTIFIER` matche un seul token identifiant, qui est compris comme être le nom de la variable à laquelle on accède.
 
-These new grammar rules get their corresponding syntax trees. Over in the AST
-generator, we add a <span name="var-stmt-ast">new statement</span> node for a
-variable declaration.
+Ces nouvelles règles de grammaire obtiennent leurs arbres syntaxiques correspondants. Là-bas dans le générateur d'AST, nous ajoutons un <span name="var-stmt-ast">nouveau nœud d'instruction</span> pour une déclaration de variable.
 
 ^code var-stmt-ast (1 before, 1 after)
 
 <aside name="var-stmt-ast">
 
-The generated code for the new node is in [Appendix II][appendix-var-stmt].
+Le code généré pour le nouveau nœud est dans l'[Annexe II][appendix-var-stmt].
 
 [appendix-var-stmt]: appendix-ii.html#variable-statement
 
 </aside>
 
-It stores the name token so we know what it's declaring, along with the
-initializer expression. (If there isn't an initializer, that field is `null`.)
+Il stocke le token de nom pour que nous sachions ce qu'il déclare, avec l'expression d'initialisation. (S'il n'y a pas d'initialiseur, ce champ est `null`.)
 
-Then we add an expression node for accessing a variable.
+Puis nous ajoutons un nœud d'expression pour accéder à une variable.
 
 ^code var-expr (1 before, 1 after)
 
-<span name="var-expr-ast">It's</span> simply a wrapper around the token for the
-variable name. That's it. As always, don't forget to run the AST generator
-script so that you get updated "Expr.java" and "Stmt.java" files.
+<span name="var-expr-ast">C'est</span> simplement une enveloppe autour du token pour le nom de la variable. C'est tout. Comme toujours, n'oubliez pas d'exécuter le script générateur d'AST pour que vous obteniez des fichiers "Expr.java" et "Stmt.java" mis à jour.
 
 <aside name="var-expr-ast">
 
-The generated code for the new node is in [Appendix II][appendix-var-expr].
+Le code généré pour le nouveau nœud est dans l'[Annexe II][appendix-var-expr].
 
 [appendix-var-expr]: appendix-ii.html#variable-expression
 
 </aside>
 
-### Parsing variables
+### Parser les variables
 
-Before we parse variable statements, we need to shift around some code to make
-room for the new `declaration` rule in the grammar. The top level of a program
-is now a list of declarations, so the entrypoint method to the parser changes.
+Avant de parser les instructions de variable, nous avons besoin de bouger un peu de code pour faire de la place pour la nouvelle règle `declaration` dans la grammaire. Le niveau supérieur d'un programme est maintenant une liste de déclarations, donc la méthode point d'entrée vers le parseur change.
 
 ^code parse-declaration (3 before, 4 after)
 
-That calls this new method:
+Cela appelle cette nouvelle méthode :
 
 ^code declaration
 
-Hey, do you remember way back in that [earlier chapter][parsing] when we put the
-infrastructure in place to do error recovery? We are finally ready to hook that
-up.
+Hé, vous souvenez-vous loin en arrière dans ce [chapitre précédent][parsing] quand nous avons mis l'infrastructure en place pour faire la récupération d'erreur ? Nous sommes enfin prêts à brancher cela.
 
 [parsing]: parsing-expressions.html
 [error recovery]: parsing-expressions.html#panic-mode-error-recovery
 
-This `declaration()` method is the method we call repeatedly when parsing a
-series of statements in a block or a script, so it's the right place to
-synchronize when the parser goes into panic mode. The whole body of this method
-is wrapped in a try block to catch the exception thrown when the parser begins
-error recovery. This gets it back to trying to parse the beginning of the next
-statement or declaration.
+Cette méthode `declaration()` est la méthode que nous appelons de manière répétée lors du parsing d'une série d'instructions dans un bloc ou un script, donc c'est le bon endroit pour synchroniser quand le parseur entre en mode panique. Tout le corps de cette méthode est enveloppé dans un bloc try pour attraper l'exception lancée quand le parseur commence la récupération d'erreur. Cela le ramène à essayer de parser le début de l'instruction ou déclaration suivante.
 
-The real parsing happens inside the try block. First, it looks to see if we're
-at a variable declaration by looking for the leading `var` keyword. If not, it
-falls through to the existing `statement()` method that parses `print` and
-expression statements.
+Le vrai parsing se passe à l'intérieur du bloc try. D'abord, il regarde pour voir si nous sommes à une déclaration de variable en cherchant le mot-clé `var` de tête. Si non, il tombe dans la méthode `statement()` existante qui parse `print` et les instructions d'expression.
 
-Remember how `statement()` tries to parse an expression statement if no other
-statement matches? And `expression()` reports a syntax error if it can't parse
-an expression at the current token? That chain of calls ensures we report an
-error if a valid declaration or statement isn't parsed.
+Rappelez-vous comment `statement()` essaie de parser une instruction d'expression si aucune autre instruction ne matche ? Et `expression()` rapporte une erreur de syntaxe si elle ne peut pas parser une expression au token courant ? Cette chaîne d'appels assure que nous rapportons une erreur si une déclaration ou instruction valide n'est pas parsée.
 
-When the parser matches a `var` token, it branches to:
+Quand le parseur matche un token `var`, il branche vers :
 
 ^code parse-var-declaration
 
-As always, the recursive descent code follows the grammar rule. The parser has
-already matched the `var` token, so next it requires and consumes an identifier
-token for the variable name.
+Comme toujours, le code de descente récursive suit la règle de grammaire. Le parseur a déjà matché le token `var`, donc ensuite il exige et consomme un token identifiant pour le nom de la variable.
 
-Then, if it sees an `=` token, it knows there is an initializer expression and
-parses it. Otherwise, it leaves the initializer `null`. Finally, it consumes the
-required semicolon at the end of the statement. All this gets wrapped in a
-Stmt.Var syntax tree node and we're groovy.
+Puis, s'il voit un token `=`, il sait qu'il y a une expression d'initialisation et la parse. Sinon, il laisse l'initialiseur à `null`. Finalement, il consomme le point-virgule requis à la fin de l'instruction. Tout cela est enveloppé dans un nœud d'arbre syntaxique Stmt.Var et nous sommes groovy.
 
-Parsing a variable expression is even easier. In `primary()`, we look for an
-identifier token.
+Parser une expression de variable est encore plus facile. Dans `primary()`, nous cherchons un token identifiant.
 
 ^code parse-identifier (2 before, 2 after)
 
-That gives us a working front end for declaring and using variables. All that's
-left is to feed it into the interpreter. Before we get to that, we need to talk
-about where variables live in memory.
+Cela nous donne un front end fonctionnel pour déclarer et utiliser des variables. Tout ce qui reste est de le donner à manger à l'interpréteur. Avant que nous arrivions à cela, nous devons parler de l'endroit où les variables vivent en mémoire.
 
-## Environments
+## Environnements
 
-The bindings that associate variables to values need to be stored somewhere.
-Ever since the Lisp folks invented parentheses, this data structure has been
-called an <span name="env">**environment**</span>.
+Les liaisons qui associent des variables à des valeurs ont besoin d'être stockées quelque part. Depuis que les gens de Lisp ont inventé les parenthèses, cette structure de données a été appelée un <span name="env">**environnement**</span>.
 
-<img src="image/statements-and-state/environment.png" alt="An environment containing two bindings." />
+<img src="image/statements-and-state/environment.png" alt="Un environnement contenant deux liaisons." />
 
 <aside name="env">
 
-I like to imagine the environment literally, as a sylvan wonderland where
-variables and values frolic.
+J'aime imaginer l'environnement littéralement, comme un pays des merveilles sylvestre où les variables et les valeurs gambadent.
 
 </aside>
 
-You can think of it like a <span name="map">map</span> where the keys are
-variable names and the values are the variable's, uh, values. In fact, that's
-how we'll implement it in Java. We could stuff that map and the code to manage
-it right into Interpreter, but since it forms a nicely delineated concept, we'll
-pull it out into its own class.
+Vous pouvez penser à cela comme une <span name="map">map</span> où les clés sont les noms de variables et les valeurs sont les valeurs de la variable, euh, valeurs. En fait, c'est comme ça que nous l'implémenterons en Java. Nous pourrions fourrer cette map et le code pour la gérer directement dans Interpreter, mais puisqu'elle forme un concept joliment délimité, nous la sortirons dans sa propre classe.
 
-Start a new file and add:
+Commencez un nouveau fichier et ajoutez :
 
 <aside name="map">
 
-Java calls them **maps** or **hashmaps**. Other languages call them **hash
-tables**, **dictionaries** (Python and C#), **hashes** (Ruby and Perl),
-**tables** (Lua), or **associative arrays** (PHP). Way back when, they were
-known as **scatter tables**.
+Java les appelle **maps** ou **hashmaps**. D'autres langages les appellent **tables de hachage**, **dictionnaires** (Python et C#), **hashes** (Ruby et Perl), **tables** (Lua), ou **tableaux associatifs** (PHP). Très loin dans le temps, elles étaient connues comme **scatter tables** (tables de dispersion).
 
 </aside>
 
 ^code environment-class
 
-There's a Java Map in there to store the bindings. It uses bare strings for the
-keys, not tokens. A token represents a unit of code at a specific place in the
-source text, but when it comes to looking up variables, all identifier tokens
-with the same name should refer to the same variable (ignoring scope for now).
-Using the raw string ensures all of those tokens refer to the same map key.
+Il y a une Map Java là-dedans pour stocker les liaisons. Elle utilise des chaînes nues pour les clés, pas des tokens. Un token représente une unité de code à un endroit spécifique dans le texte source, mais quand il s'agit de chercher des variables, tous les tokens identifiants avec le même nom devraient se référer à la même variable (en ignorant la portée pour l'instant). Utiliser la chaîne brute assure que tous ces tokens se réfèrent à la même clé de map.
 
-There are two operations we need to support. First, a variable definition binds
-a new name to a value.
+Il y a deux opérations que nous devons supporter. D'abord, une définition de variable lie un nouveau nom à une valeur.
 
 ^code environment-define
 
-Not exactly brain surgery, but we have made one interesting semantic choice.
-When we add the key to the map, we don't check to see if it's already present.
-That means that this program works:
+Pas exactement de la chirurgie du cerveau, mais nous avons fait un choix sémantique intéressant. Quand nous ajoutons la clé à la map, nous ne vérifions pas pour voir si elle est déjà présente. Cela signifie que ce programme fonctionne :
 
 ```lox
-var a = "before";
-print a; // "before".
-var a = "after";
-print a; // "after".
+var a = "avant";
+print a; // "avant".
+var a = "après";
+print a; // "après".
 ```
 
-A variable statement doesn't just define a *new* variable, it can also be used
-to *re*define an existing variable. We could <span name="scheme">choose</span>
-to make this an error instead. The user may not intend to redefine an existing
-variable. (If they did mean to, they probably would have used assignment, not
-`var`.) Making redefinition an error would help them find that bug.
+Une instruction de variable ne définit pas juste une _nouvelle_ variable, elle peut aussi être utilisée pour *re*définir une variable existante. Nous pourrions <span name="scheme">choisir</span> de faire de cela une erreur à la place. L'utilisateur peut ne pas avoir l'intention de redéfinir une variable existante. (S'ils le voulaient, ils auraient probablement utilisé l'affectation, pas `var`.) Faire de la redéfinition une erreur les aiderait à trouver ce bug.
 
-However, doing so interacts poorly with the REPL. In the middle of a REPL
-session, it's nice to not have to mentally track which variables you've already
-defined. We could allow redefinition in the REPL but not in scripts, but then
-users would have to learn two sets of rules, and code copied and pasted from one
-form to the other might not work.
+Cependant, faire ainsi interagit mal avec le REPL. Au milieu d'une session REPL, c'est agréable de ne pas avoir à suivre mentalement quelles variables vous avez déjà définies. Nous pourrions autoriser la redéfinition dans le REPL mais pas dans les scripts, mais alors les utilisateurs devraient apprendre deux ensembles de règles, et le code copié et collé d'une forme à l'autre pourrait ne pas fonctionner.
 
 <aside name="scheme">
 
-My rule about variables and scoping is, "When in doubt, do what Scheme does".
-The Scheme folks have probably spent more time thinking about variable scope
-than we ever will -- one of the main goals of Scheme was to introduce lexical
-scoping to the world -- so it's hard to go wrong if you follow in their
-footsteps.
+Ma règle à propos des variables et de la portée est, "Dans le doute, fais ce que Scheme fait". Les gens de Scheme ont probablement passé plus de temps à penser à la portée des variables que nous ne le ferons jamais -- l'un des buts principaux de Scheme était d'introduire la portée lexicale au monde -- donc il est difficile de se tromper si vous suivez leurs traces.
 
-Scheme allows redefining variables at the top level.
+Scheme autorise la redéfinition de variables au niveau supérieur.
 
 </aside>
 
-So, to keep the two modes consistent, we'll allow it -- at least for global
-variables. Once a variable exists, we need a way to look it up.
+Donc, pour garder les deux modes cohérents, nous l'autoriserons -- au moins pour les variables globales. Une fois qu'une variable existe, nous avons besoin d'un moyen de la chercher.
 
 ^code environment-get (2 before, 1 after)
 
-This is a little more semantically interesting. If the variable is found, it
-simply returns the value bound to it. But what if it's not? Again, we have a
-choice:
+Ceci est un peu plus sémantiquement intéressant. Si la variable est trouvée, elle renvoie simplement la valeur liée à elle. Mais qu'en est-il si elle ne l'est pas ? Encore une fois, nous avons un choix :
 
-* Make it a syntax error.
+- En faire une erreur de syntaxe.
 
-* Make it a runtime error.
+- En faire une erreur d'exécution.
 
-* Allow it and return some default value like `nil`.
+- L'autoriser et renvoyer une certaine valeur par défaut comme `nil`.
 
-Lox is pretty lax, but the last option is a little *too* permissive to me.
-Making it a syntax error -- a compile-time error -- seems like a smart choice.
-Using an undefined variable is a bug, and the sooner you detect the mistake, the
-better.
+Lox est assez laxiste, mais la dernière option est un peu _trop_ permissive pour moi. En faire une erreur de syntaxe -- une erreur à la compilation -- semble être un choix intelligent. Utiliser une variable indéfinie est un bug, et plus tôt vous détectez l'erreur, mieux c'est.
 
-The problem is that *using* a variable isn't the same as *referring* to it. You
-can refer to a variable in a chunk of code without immediately evaluating it if
-that chunk of code is wrapped inside a function. If we make it a static error to
-*mention* a variable before it's been declared, it becomes much harder to define
-recursive functions.
+Le problème est qu'_utiliser_ une variable n'est pas la même chose que s'y _référer_. Vous pouvez vous référer à une variable dans un morceau de code sans l'évaluer immédiatement si ce morceau de code est enveloppé à l'intérieur d'une fonction. Si nous en faisons une erreur statique de _mentionner_ une variable avant qu'elle ait été déclarée, cela devient beaucoup plus difficile de définir des fonctions récursives.
 
-We could accommodate single recursion -- a function that calls itself -- by
-declaring the function's own name before we examine its body. But that doesn't
-help with mutually recursive procedures that call each other. Consider:
+Nous pourrions accommoder la récursion simple -- une fonction qui s'appelle elle-même -- en déclarant le propre nom de la fonction avant que nous examinions son corps. Mais cela n'aide pas avec les procédures mutuellement récursives qui s'appellent l'une l'autre. Considérez :
 
 <span name="contrived"></span>
 
@@ -621,89 +414,57 @@ fun isEven(n) {
 
 <aside name="contrived">
 
-Granted, this is probably not the most efficient way to tell if a number is even
-or odd (not to mention the bad things that happen if you pass a non-integer or
-negative number to them). Bear with me.
+Il est vrai que ce n'est probablement pas la façon la plus efficace de dire si un nombre est pair ou impair (sans mentionner les mauvaises choses qui arrivent si vous leur passez un non-entier ou un nombre négatif). Soyez indulgents avec moi.
 
 </aside>
 
-The `isEven()` function isn't defined by the <span name="declare">time</span> we
-are looking at the body of `isOdd()` where it's called. If we swap the order of
-the two functions, then `isOdd()` isn't defined when we're looking at
-`isEven()`'s body.
+La fonction `isEven()` n'est pas définie au <span name="declare">moment</span> où nous regardons le corps de `isOdd()` où elle est appelée. Si nous échangeons l'ordre des deux fonctions, alors `isOdd()` n'est pas définie quand nous regardons le corps de `isEven()`.
 
 <aside name="declare">
 
-Some statically typed languages like Java and C# solve this by specifying that
-the top level of a program isn't a sequence of imperative statements. Instead, a
-program is a set of declarations which all come into being simultaneously. The
-implementation declares *all* of the names before looking at the bodies of *any*
-of the functions.
+Certains langages typés statiquement comme Java et C# résolvent cela en spécifiant que le niveau supérieur d'un programme n'est pas une séquence d'instructions impératives. Au lieu de cela, un programme est un ensemble de déclarations qui viennent toutes à l'existence simultanément. L'implémentation déclare _tous_ les noms avant de regarder les corps de _n'importe quelle_ fonction.
 
-Older languages like C and Pascal don't work like this. Instead, they force you
-to add explicit *forward declarations* to declare a name before it's fully
-defined. That was a concession to the limited computing power at the time. They
-wanted to be able to compile a source file in one single pass through the text,
-so those compilers couldn't gather up all of the declarations first before
-processing function bodies.
+Des langages plus vieux comme C et Pascal ne fonctionnent pas comme ça. Au lieu de cela, ils vous forcent à ajouter des _déclarations anticipées_ (forward declarations) explicites pour déclarer un nom avant qu'il soit entièrement défini. C'était une concession à la puissance de calcul limitée à l'époque. Ils voulaient être capables de compiler un fichier source en une seule passe à travers le texte, donc ces compilateurs ne pouvaient pas rassembler toutes les déclarations d'abord avant de traiter les corps de fonction.
 
 </aside>
 
-Since making it a *static* error makes recursive declarations too difficult,
-we'll defer the error to runtime. It's OK to refer to a variable before it's
-defined as long as you don't *evaluate* the reference. That lets the program
-for even and odd numbers work, but you'd get a runtime error in:
+Puisque en faire une erreur _statique_ rend les déclarations récursives trop difficiles, nous différerons l'erreur à l'exécution. C'est OK de se référer à une variable avant qu'elle soit définie tant que vous n'_évaluez_ pas la référence. Cela laisse le programme pour les nombres pairs et impairs fonctionner, mais vous obtiendriez une erreur d'exécution dans :
 
 ```lox
 print a;
-var a = "too late!";
+var a = "trop tard !";
 ```
 
-As with type errors in the expression evaluation code, we report a runtime error
-by throwing an exception. The exception contains the variable's token so we can
-tell the user where in their code they messed up.
+Comme avec les erreurs de type dans le code d'évaluation d'expression, nous rapportons une erreur d'exécution en lançant une exception. L'exception contient le token de la variable pour que nous puissions dire à l'utilisateur où dans son code il a fait une erreur.
 
-### Interpreting global variables
+### Interpréter les variables globales
 
-The Interpreter class gets an instance of the new Environment class.
+La classe Interpreter obtient une instance de la nouvelle classe Environment.
 
 ^code environment-field (2 before, 1 after)
 
-We store it as a field directly in Interpreter so that the variables stay in
-memory as long as the interpreter is still running.
+Nous la stockons comme un champ directement dans Interpreter pour que les variables restent en mémoire tant que l'interpréteur est encore en cours d'exécution.
 
-We have two new syntax trees, so that's two new visit methods. The first is for
-declaration statements.
+Nous avons deux nouveaux arbres syntaxiques, donc c'est deux nouvelles méthodes visit. La première est pour les instructions de déclaration.
 
 ^code visit-var
 
-If the variable has an initializer, we evaluate it. If not, we have another
-choice to make. We could have made this a syntax error in the parser by
-*requiring* an initializer. Most languages don't, though, so it feels a little
-harsh to do so in Lox.
+Si la variable a un initialiseur, nous l'évaluons. Si non, nous avons un autre choix à faire. Nous aurions pu en faire une erreur de syntaxe dans le parseur en _exigeant_ un initialiseur. La plupart des langages ne le font pas, cependant, donc cela semble un peu dur de le faire dans Lox.
 
-We could make it a runtime error. We'd let you define an uninitialized variable,
-but if you accessed it before assigning to it, a runtime error would occur. It's
-not a bad idea, but most dynamically typed languages don't do that. Instead,
-we'll keep it simple and say that Lox sets a variable to `nil` if it isn't
-explicitly initialized.
+Nous pourrions en faire une erreur d'exécution. Nous vous laisserions définir une variable non initialisée, mais si vous y accédiez avant de lui assigner quelque chose, une erreur d'exécution se produirait. Ce n'est pas une mauvaise idée, mais la plupart des langages typés dynamiquement ne font pas ça. Au lieu de cela, nous garderons les choses simples et dirons que Lox définit une variable à `nil` si elle n'est pas explicitement initialisée.
 
 ```lox
 var a;
 print a; // "nil".
 ```
 
-Thus, if there isn't an initializer, we set the value to `null`, which is the
-Java representation of Lox's `nil` value. Then we tell the environment to bind
-the variable to that value.
+Ainsi, s'il n'y a pas d'initialiseur, nous définissons la valeur à `null`, qui est la représentation Java de la valeur `nil` de Lox. Puis nous disons à l'environnement de lier la variable à cette valeur.
 
-Next, we evaluate a variable expression.
+Ensuite, nous évaluons une expression de variable.
 
 ^code visit-variable
 
-This simply forwards to the environment which does the heavy lifting to make
-sure the variable is defined. With that, we've got rudimentary variables
-working. Try this out:
+Ceci transmet simplement à l'environnement qui fait le gros du travail pour s'assurer que la variable est définie. Avec cela, nous avons des variables rudimentaires qui fonctionnent. Essayez ceci :
 
 ```lox
 var a = 1;
@@ -711,47 +472,29 @@ var b = 2;
 print a + b;
 ```
 
-We can't reuse *code* yet, but we can start to build up programs that reuse
-*data*.
+Nous ne pouvons pas encore réutiliser de _code_, mais nous pouvons commencer à construire des programmes qui réutilisent des _données_.
 
-## Assignment
+## Affectation
 
-It's possible to create a language that has variables but does not let you
-reassign -- or **mutate** -- them. Haskell is one example. SML supports only
-mutable references and arrays -- variables cannot be reassigned. Rust steers you
-away from mutation by requiring a `mut` modifier to enable assignment.
+Il est possible de créer un langage qui a des variables mais ne vous laisse pas les réassigner -- ou les **muter**. Haskell est un exemple. SML supporte seulement les références mutables et les tableaux -- les variables ne peuvent pas être réassignées. Rust vous éloigne de la mutation en exigeant un modificateur `mut` pour activer l'affectation.
 
-Mutating a variable is a side effect and, as the name suggests, some language
-folks think side effects are <span name="pure">dirty</span> or inelegant. Code
-should be pure math that produces values -- crystalline, unchanging ones -- like
-an act of divine creation. Not some grubby automaton that beats blobs of data
-into shape, one imperative grunt at a time.
+Muter une variable est un effet de bord et, comme le nom le suggère, certains gens des langages pensent que les effets de bord sont <span name="pure">sales</span> ou inélégants. Le code devrait être des mathématiques pures qui produisent des valeurs -- cristallines, inchangeables -- comme un acte de création divine. Pas un automate crasseux qui bat des paquets de données pour leur donner forme, un grognement impératif à la fois.
 
 <aside name="pure">
 
-I find it delightful that the same group of people who pride themselves on
-dispassionate logic are also the ones who can't resist emotionally loaded terms
-for their work: "pure", "side effect", "lazy", "persistent", "first-class",
-"higher-order".
+Je trouve délicieux que le même groupe de personnes qui sont fières de leur logique impartiale sont aussi celles qui ne peuvent pas résister aux termes chargés émotionnellement pour leur travail : "pur", "effet de bord", "paresseux", "persistant", "de première classe", "d'ordre supérieur".
 
 </aside>
 
-Lox is not so austere. Lox is an imperative language, and mutation comes with
-the territory. Adding support for assignment doesn't require much work. Global
-variables already support redefinition, so most of the machinery is there now.
-Mainly, we're missing an explicit assignment notation.
+Lox n'est pas si austère. Lox est un langage impératif, et la mutation vient avec le territoire. Ajouter le support pour l'affectation (assignation) ne nécessite pas beaucoup de travail. Les variables globales supportent déjà la redéfinition, donc la plupart de la machinerie est là maintenant. Principalement, il nous manque une notation d'affectation explicite.
 
-### Assignment syntax
+### Syntaxe d'affectation
 
-That little `=` syntax is more complex than it might seem. Like most C-derived
-languages, assignment is an <span name="assign">expression</span> and not a
-statement. As in C, it is the lowest precedence expression form. That means the
-rule slots between `expression` and `equality` (the next lowest precedence
-expression).
+Cette petite syntaxe `=` est plus complexe qu'elle pourrait le sembler. Comme la plupart des langages dérivés du C, l'affectation est une <span name="assign">expression</span> et non une instruction. Comme en C, c'est la forme d'expression de plus basse précédence. Cela signifie que la règle se glisse entre `expression` et `equality` (la prochaine expression de plus basse précédence).
 
 <aside name="assign">
 
-In some other languages, like Pascal, Python, and Go, assignment is a statement.
+Dans certains autres langages, comme Pascal, Python, et Go, l'affectation est une instruction.
 
 </aside>
 
@@ -761,70 +504,48 @@ assignment     → IDENTIFIER "=" assignment
                | equality ;
 ```
 
-This says an `assignment` is either an identifier followed by an `=` and an
-expression for the value, or an `equality` (and thus any other) expression.
-Later, `assignment` will get more complex when we add property setters on
-objects, like:
+Ceci dit qu'une `assignment` (affectation) est soit un identifiant suivi par un `=` et une expression pour la valeur, ou une expression `equality` (et ainsi n'importe quelle autre). Plus tard, `assignment` deviendra plus complexe quand nous ajouterons les setters de propriété sur les objets, comme :
 
 ```lox
-instance.field = "value";
+instance.field = "valeur";
 ```
 
-The easy part is adding the <span name="assign-ast">new syntax tree node</span>.
+La partie facile est d'ajouter le <span name="assign-ast">nouveau nœud d'arbre syntaxique</span>.
 
 ^code assign-expr (1 before, 1 after)
 
 <aside name="assign-ast">
 
-The generated code for the new node is in [Appendix II][appendix-assign].
+Le code généré pour le nouveau nœud est dans l'[Annexe II][appendix-assign].
 
 [appendix-assign]: appendix-ii.html#assign-expression
 
 </aside>
 
-It has a token for the variable being assigned to, and an expression for the new
-value. After you run the AstGenerator to get the new Expr.Assign class, swap out
-the body of the parser's existing `expression()` method to match the updated
-rule.
+Il a un token pour la variable à laquelle on assigne, et une expression pour la nouvelle valeur. Après que vous exécutiez le générateur AST pour obtenir la nouvelle classe Expr.Assign, échangez le corps de la méthode `expression()` existante du parseur pour correspondre à la règle mise à jour.
 
 ^code expression (1 before, 1 after)
 
-Here is where it gets tricky. A single token lookahead recursive descent parser
-can't see far enough to tell that it's parsing an assignment until *after* it
-has gone through the left-hand side and stumbled onto the `=`. You might wonder
-why it even needs to. After all, we don't know we're parsing a `+` expression
-until after we've finished parsing the left operand.
+C'est ici que ça devient délicat. Un parseur à descente récursive avec un seul token de lookahead ne peut pas voir assez loin pour dire qu'il est en train de parser une affectation avant qu'il ait traversé le côté gauche et trébuché sur le `=`. Vous pourriez vous demander pourquoi il a même besoin de le savoir. Après tout, nous ne savons pas que nous parsons une expression `+` avant que nous ayons fini de parser l'opérande gauche.
 
-The difference is that the left-hand side of an assignment isn't an expression
-that evaluates to a value. It's a sort of pseudo-expression that evaluates to a
-"thing" you can assign to. Consider:
+La différence est que le côté gauche d'une affectation n'est pas une expression qui s'évalue en une valeur. C'est une sorte de pseudo-expression qui s'évalue en une "chose" à laquelle vous pouvez assigner. Considérez :
 
 ```lox
-var a = "before";
-a = "value";
+var a = "avant";
+a = "valeur";
 ```
 
-On the second line, we don't *evaluate* `a` (which would return the string
-"before"). We figure out what variable `a` refers to so we know where to store
-the right-hand side expression's value. The [classic terms][l-value] for these
-two <span name="l-value">constructs</span> are **l-value** and **r-value**. All
-of the expressions that we've seen so far that produce values are r-values. An
-l-value "evaluates" to a storage location that you can assign into.
+Sur la seconde ligne, nous n'_évaluons_ pas `a` (ce qui renverrait la chaîne "avant"). Nous comprenons à quelle variable `a` se réfère pour savoir où stocker la valeur de l'expression du côté droit. Les [termes classiques][l-value] pour ces deux <span name="l-value">constructions</span> sont **l-value** et **r-value**. Toutes les expressions que nous avons vues jusqu'ici qui produisent des valeurs sont des r-values. Une l-value "s'évalue" en un emplacement de stockage dans lequel vous pouvez assigner.
 
 [l-value]: https://en.wikipedia.org/wiki/Value_(computer_science)#lrvalue
 
 <aside name="l-value">
 
-In fact, the names come from assignment expressions: *l*-values appear on the
-*left* side of the `=` in an assignment, and *r*-values on the *right*.
+En fait, les noms viennent des expressions d'affectation : les _l_-values apparaissent sur le côté _gauche_ (left) du `=` dans une affectation, et les _r_-values sur la _droite_ (right).
 
 </aside>
 
-We want the syntax tree to reflect that an l-value isn't evaluated like a normal
-expression. That's why the Expr.Assign node has a *Token* for the left-hand
-side, not an Expr. The problem is that the parser doesn't know it's parsing an
-l-value until it hits the `=`. In a complex l-value, that may occur <span
-name="many">many</span> tokens later.
+Nous voulons que l'arbre syntaxique reflète qu'une l-value n'est pas évaluée comme une expression normale. C'est pourquoi le nœud Expr.Assign a un _Token_ pour le côté gauche, pas une Expr. Le problème est que le parseur ne sait pas qu'il parse une l-value jusqu'à ce qu'il frappe le `=`. Dans une l-value complexe, cela peut se produire <span name="many">de nombreux</span> tokens plus tard.
 
 ```lox
 makeList().head.next = node;
@@ -832,50 +553,31 @@ makeList().head.next = node;
 
 <aside name="many">
 
-Since the receiver of a field assignment can be any expression, and expressions
-can be as long as you want to make them, it may take an *unbounded* number of
-tokens of lookahead to find the `=`.
+Puisque le receveur d'une affectation de champ peut être n'importe quelle expression, et que les expressions peuvent être aussi longues que vous voulez les faire, cela peut prendre un nombre _illimité_ de tokens de lookahead pour trouver le `=`.
 
 </aside>
 
-We have only a single token of lookahead, so what do we do? We use a little
-trick, and it looks like this:
+Nous avons seulement un token de lookahead, donc que faisons-nous ? Nous utilisons une petite astuce, et cela ressemble à ceci :
 
 ^code parse-assignment
 
-Most of the code for parsing an assignment expression looks similar to that of
-the other binary operators like `+`. We parse the left-hand side, which can be
-any expression of higher precedence. If we find an `=`, we parse the right-hand
-side and then wrap it all up in an assignment expression tree node.
+La plupart du code pour parser une expression d'affectation ressemble à celui des autres opérateurs binaires comme `+`. Nous parsons le côté gauche, qui peut être n'importe quelle expression de plus haute précédence. Si nous trouvons un `=`, nous parsons le côté droit et ensuite enveloppons le tout dans un nœud d'arbre d'expression d'affectation.
 
 <aside name="no-throw">
 
-We *report* an error if the left-hand side isn't a valid assignment target, but
-we don't *throw* it because the parser isn't in a confused state where we need
-to go into panic mode and synchronize.
+Nous _rapportons_ une erreur si le côté gauche n'est pas une cible d'affectation valide, mais nous ne la _lançons_ pas parce que le parseur n'est pas dans un état confus où nous avons besoin d'aller en mode panique et de synchroniser.
 
 </aside>
 
-One slight difference from binary operators is that we don't loop to build up a
-sequence of the same operator. Since assignment is right-associative, we instead
-recursively call `assignment()` to parse the right-hand side.
+Une légère différence avec les opérateurs binaires est que nous ne bouclons pas pour construire une séquence du même opérateur. Puisque l'affectation est associative à droite, nous appelons à la place récursivement `assignment()` pour parser le côté droit.
 
-The trick is that right before we create the assignment expression node, we look
-at the left-hand side expression and figure out what kind of assignment target
-it is. We convert the r-value expression node into an l-value representation.
+L'astuce est que juste avant que nous créions le nœud d'expression d'affectation, nous regardons l'expression du côté gauche et comprenons quel type de cible d'affectation c'est. Nous convertissons le nœud d'expression r-value en une représentation l-value.
 
-This conversion works because it turns out that every valid assignment target
-happens to also be <span name="converse">valid syntax</span> as a normal
-expression. Consider a complex field assignment like:
+Cette conversion fonctionne parce qu'il s'avère que chaque cible d'affectation valide se trouve être aussi une <span name="converse">syntaxe valide</span> comme expression normale. Considérez une affectation de champ complexe comme :
 
 <aside name="converse">
 
-You can still use this trick even if there are assignment targets that are not
-valid expressions. Define a **cover grammar**, a looser grammar that accepts
-all of the valid expression *and* assignment target syntaxes. When you hit
-an `=`, report an error if the left-hand side isn't within the valid assignment
-target grammar. Conversely, if you *don't* hit an `=`, report an error if the
-left-hand side isn't a valid *expression*.
+Vous pouvez toujours utiliser cette astuce même s'il y a des cibles d'affectation qui ne sont pas des expressions valides. Définissez une **grammaire de couverture**, une grammaire plus lâche qui accepte toutes les syntaxes valides d'expression _et_ de cible d'affectation. Quand vous frappez un `=`, rapportez une erreur si le côté gauche n'est pas à l'intérieur de la grammaire de cible d'affectation valide. Inversement, si vous ne frappez _pas_ un `=`, rapportez une erreur si le côté gauche n'est pas une _expression_ valide.
 
 </aside>
 
@@ -883,19 +585,15 @@ left-hand side isn't a valid *expression*.
 newPoint(x + 2, 0).y = 3;
 ```
 
-The left-hand side of that assignment could also work as a valid expression.
+Le côté gauche de cette affectation pourrait aussi fonctionner comme une expression valide.
 
 ```lox
 newPoint(x + 2, 0).y;
 ```
 
-The first example sets the field, the second gets it.
+Le premier exemple définit le champ, le second l'obtient.
 
-This means we can parse the left-hand side *as if it were* an expression and
-then after the fact produce a syntax tree that turns it into an assignment
-target. If the left-hand side expression isn't a <span name="paren">valid</span>
-assignment target, we fail with a syntax error. That ensures we report an error
-on code like this:
+Cela signifie que nous pouvons parser le côté gauche _comme si c'était_ une expression et ensuite après coup produire un arbre syntaxique qui le transforme en une cible d'affectation. Si l'expression du côté gauche n'est pas une cible d'affectation <span name="paren">valide</span>, nous échouons avec une erreur de syntaxe. Cela assure que nous rapportons une erreur sur du code comme ceci :
 
 ```lox
 a + b = c;
@@ -903,110 +601,77 @@ a + b = c;
 
 <aside name="paren">
 
-Way back in the parsing chapter, I said we represent parenthesized expressions
-in the syntax tree because we'll need them later. This is why. We need to be
-able to distinguish these cases:
+Loin en arrière dans le chapitre sur le parsing, j'ai dit que nous représentions les expressions parenthésées dans l'arbre syntaxique parce que nous en aurions besoin plus tard. C'est pourquoi. Nous devons être capables de distinguer ces cas :
 
 ```lox
 a = 3;   // OK.
-(a) = 3; // Error.
+(a) = 3; // Erreur.
 ```
 
 </aside>
 
-Right now, the only valid target is a simple variable expression, but we'll add
-fields later. The end result of this trick is an assignment expression tree node
-that knows what it is assigning to and has an expression subtree for the value
-being assigned. All with only a single token of lookahead and no backtracking.
+Pour l'instant, la seule cible valide est une simple expression de variable, mais nous ajouterons les champs plus tard. Le résultat final de cette astuce est un nœud d'arbre d'expression d'affectation qui sait à quoi il assigne et a un sous-arbre d'expression pour la valeur étant assignée. Tout cela avec seulement un token de lookahead et pas de backtracking.
 
-### Assignment semantics
+### Sémantique d'affectation
 
-We have a new syntax tree node, so our interpreter gets a new visit method.
+Nous avons un nouveau nœud d'arbre syntaxique, donc notre interpréteur obtient une nouvelle méthode visit.
 
 ^code visit-assign
 
-For obvious reasons, it's similar to variable declaration. It evaluates the
-right-hand side to get the value, then stores it in the named variable. Instead
-of using `define()` on Environment, it calls this new method:
+Pour des raisons évidentes, c'est similaire à la déclaration de variable. Elle évalue le côté droit pour obtenir la valeur, puis la stocke dans la variable nommée. Au lieu d'utiliser `define()` sur Environment, elle appelle cette nouvelle méthode :
 
 ^code environment-assign
 
-The key difference between assignment and definition is that assignment is not
-<span name="new">allowed</span> to create a *new* variable. In terms of our
-implementation, that means it's a runtime error if the key doesn't already exist
-in the environment's variable map.
+La différence clé entre l'affectation et la définition est que l'affectation n'est pas <span name="new">autorisée</span> à créer une _nouvelle_ variable. En termes de notre implémentation, cela signifie que c'est une erreur d'exécution si la clé n'existe pas déjà dans la map de variables de l'environnement.
 
 <aside name="new">
 
-Unlike Python and Ruby, Lox doesn't do [implicit variable declaration][].
+Contrairement à Python et Ruby, Lox ne fait pas de [déclaration de variable implicite][implicit variable declaration].
 
 [implicit variable declaration]: #design-note
 
 </aside>
 
-The last thing the `visit()` method does is return the assigned value. That's
-because assignment is an expression that can be nested inside other expressions,
-like so:
+La dernière chose que la méthode `visit()` fait est de renvoyer la valeur assignée. C'est parce que l'affectation est une expression qui peut être imbriquée à l'intérieur d'autres expressions, comme ceci :
 
 ```lox
 var a = 1;
 print a = 2; // "2".
 ```
 
-Our interpreter can now create, read, and modify variables. It's about as
-sophisticated as early <span name="basic">BASICs</span>. Global variables are
-simple, but writing a large program when any two chunks of code can accidentally
-step on each other's state is no fun. We want *local* variables, which means
-it's time for *scope*.
+Notre interpréteur peut maintenant créer, lire, et modifier des variables. C'est à peu près aussi sophistiqué que les premiers <span name="basic">BASICs</span>. Les variables globales sont simples, mais écrire un gros programme quand deux morceaux de code quelconques peuvent accidentellement marcher sur l'état de l'autre n'est pas amusant. Nous voulons des variables _locales_, ce qui signifie qu'il est temps pour la _portée_.
 
 <aside name="basic">
 
-Maybe a little better than that. Unlike some old BASICs, Lox can handle variable
-names longer than two characters.
+Peut-être un peu mieux que ça. Contrairement à certains vieux BASICs, Lox peut gérer des noms de variables plus longs que deux caractères.
 
 </aside>
 
-## Scope
+## Portée
 
-A **scope** defines a region where a name maps to a certain entity. Multiple
-scopes enable the same name to refer to different things in different contexts.
-In my house, "Bob" usually refers to me. But maybe in your town you know a
-different Bob. Same name, but different dudes based on where you say it.
+Une **portée** (scope) définit une région où un nom mappe vers une certaine entité. De multiples portées permettent au même nom de se référer à différentes choses dans différents contextes. Dans ma maison, "Bob" se réfère généralement à moi. Mais peut-être que dans votre ville vous connaissez un Bob différent. Même nom, mais différents mecs basés sur où vous le dites.
 
-<span name="lexical">**Lexical scope**</span> (or the less commonly heard
-**static scope**) is a specific style of scoping where the text of the program
-itself shows where a scope begins and ends. In Lox, as in most modern languages,
-variables are lexically scoped. When you see an expression that uses some
-variable, you can figure out which variable declaration it refers to just by
-statically reading the code.
+La <span name="lexical">**portée lexicale**</span> (ou la **portée statique** moins communément entendue) est un style spécifique de portée où le texte du programme lui-même montre où une portée commence et se termine. Dans Lox, comme dans la plupart des langages modernes, les variables sont lexicalement portées. Quand vous voyez une expression qui utilise une certaine variable, vous pouvez comprendre à quelle déclaration de variable elle se réfère juste en lisant statiquement le code.
 
 <aside name="lexical">
 
-"Lexical" comes from the Greek "lexikos" which means "related to words". When we
-use it in programming languages, it usually means a thing you can figure out
-from source code itself without having to execute anything.
+"Lexical" vient du grec "lexikos" qui signifie "lié aux mots". Quand nous l'utilisons dans les langages de programmation, cela signifie généralement une chose que vous pouvez comprendre à partir du code source lui-même sans avoir à exécuter quoi que ce soit.
 
-Lexical scope came onto the scene with ALGOL. Earlier languages were often
-dynamically scoped. Computer scientists back then believed dynamic scope was
-faster to execute. Today, thanks to early Scheme hackers, we know that isn't
-true. If anything, it's the opposite.
+La portée lexicale est arrivée sur la scène avec ALGOL. Les langages plus tôt étaient souvent portés dynamiquement. Les informaticiens à l'époque croyaient que la portée dynamique était plus rapide à exécuter. Aujourd'hui, grâce aux premiers hackers Scheme, nous savons que ce n'est pas vrai. Au contraire, c'est l'opposé.
 
-Dynamic scope for variables lives on in some corners. Emacs Lisp defaults to
-dynamic scope for variables. The [`binding`][binding] macro in Clojure provides
-it. The widely disliked [`with` statement][with] in JavaScript turns properties
-on an object into dynamically scoped variables.
+La portée dynamique pour les variables survit dans certains coins. Emacs Lisp utilise par défaut la portée dynamique pour les variables. La macro [`binding`][binding] dans Clojure la fournit. L'instruction [`with`][with] largement détestée en JavaScript transforme les propriétés sur un objet en variables portées dynamiquement.
 
 [binding]: http://clojuredocs.org/clojure.core/binding
 [with]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/with
 
 </aside>
 
-For example:
+Par exemple :
 
 ```lox
 {
-  var a = "first";
-  print a; // "first".
+  var a = "premier";
+  print a; // "premier".
 }
 
 {
@@ -1015,16 +680,11 @@ For example:
 }
 ```
 
-Here, we have two blocks with a variable `a` declared in each of them. You and
-I can tell just from looking at the code that the use of `a` in the first
-`print` statement refers to the first `a`, and the second one refers to the
-second.
+Ici, nous avons deux blocs avec une variable `a` déclarée dans chacun d'eux. Vous et moi pouvons dire juste en regardant le code que l'utilisation de `a` dans la première instruction `print` se réfère au premier `a`, et la seconde se réfère au second.
 
-<img src="image/statements-and-state/blocks.png" alt="An environment for each 'a'." />
+<img src="image/statements-and-state/blocks.png" alt="Un environnement pour chaque 'a'." />
 
-This is in contrast to **dynamic scope** where you don't know what a name refers
-to until you execute the code. Lox doesn't have dynamically scoped *variables*,
-but methods and fields on objects are dynamically scoped.
+Ceci est en contraste avec la **portée dynamique** où vous ne savez pas à quoi un nom se réfère avant d'exécuter le code. Lox n'a pas de _variables_ portées dynamiquement, mais les méthodes et champs sur les objets sont portés dynamiquement.
 
 ```lox
 class Saxophone {
@@ -1044,157 +704,108 @@ fun playIt(thing) {
 }
 ```
 
-When `playIt()` calls `thing.play()`, we don't know if we're about to hear
-"Careless Whisper" or "Fore!" It depends on whether you pass a Saxophone or a
-GolfClub to the function, and we don't know that until runtime.
+Quand `playIt()` appelle `thing.play()`, nous ne savons pas si nous sommes sur le point d'entendre "Careless Whisper" ou "Fore!". Cela dépend de si vous passez un Saxophone ou un GolfClub à la fonction, et nous ne le savons pas avant l'exécution.
 
-Scope and environments are close cousins. The former is the theoretical concept,
-and the latter is the machinery that implements it. As our interpreter works its
-way through code, syntax tree nodes that affect scope will change the
-environment. In a C-ish syntax like Lox's, scope is controlled by curly-braced
-blocks. (That's why we call it **block scope**.)
+La portée et les environnements sont des cousins proches. La première est le concept théorique, et le second est la machinerie qui l'implémente. Alors que notre interpréteur fait son chemin à travers le code, les nœuds d'arbre syntaxique qui affectent la portée changeront l'environnement. Dans une syntaxe à la C comme celle de Lox, la portée est contrôlée par des blocs entre accolades. (C'est pourquoi nous l'appelons **portée de bloc**.)
 
 ```lox
 {
-  var a = "in block";
+  var a = "dans le bloc";
 }
-print a; // Error! No more "a".
+print a; // Erreur ! Plus de "a".
 ```
 
-The beginning of a block introduces a new local scope, and that scope ends when
-execution passes the closing `}`. Any variables declared inside the block
-disappear.
+Le début d'un bloc introduit une nouvelle portée locale, et cette portée se termine quand l'exécution passe le `}` fermant. Toutes les variables déclarées à l'intérieur du bloc disparaissent.
 
-### Nesting and shadowing
+### Imbrication et masquage
 
-A first cut at implementing block scope might work like this:
+Un premier essai pour implémenter la portée de bloc pourrait fonctionner comme ceci :
 
-1.  As we visit each statement inside the block, keep track of any variables
-    declared.
+1.  Alors que nous visitons chaque instruction à l'intérieur du bloc, garder une trace de toutes les variables déclarées.
 
-2.  After the last statement is executed, tell the environment to delete all of
-    those variables.
+2.  Après que la dernière instruction est exécutée, dire à l'environnement de supprimer toutes ces variables.
 
-That would work for the previous example. But remember, one motivation for
-local scope is encapsulation -- a block of code in one corner of the program
-shouldn't interfere with some other block. Check this out:
+Cela fonctionnerait pour l'exemple précédent. Mais rappelez-vous, une motivation pour la portée locale est l'encapsulation -- un bloc de code dans un coin du programme ne devrait pas interférer avec un autre bloc. Regardez ça :
 
 ```lox
-// How loud?
+// Quel volume ?
 var volume = 11;
 
 // Silence.
 volume = 0;
 
-// Calculate size of 3x4x5 cuboid.
+// Calculer la taille d'un cuboïde 3x4x5.
 {
   var volume = 3 * 4 * 5;
   print volume;
 }
 ```
 
-Look at the block where we calculate the volume of the cuboid using a local
-declaration of `volume`. After the block exits, the interpreter will delete the
-*global* `volume` variable. That ain't right. When we exit the block, we should
-remove any variables declared inside the block, but if there is a variable with
-the same name declared outside of the block, *that's a different variable*. It
-shouldn't get touched.
+Regardez le bloc où nous calculons le volume du cuboïde en utilisant une déclaration locale de `volume`. Après que le bloc sorte, l'interpréteur supprimera la variable `volume` _globale_. Ce n'est pas juste. Quand nous sortons du bloc, nous devrions retirer toutes les variables déclarées à l'intérieur du bloc, mais s'il y a une variable avec le même nom déclarée à l'extérieur du bloc, _c'est une variable différente_. Elle ne devrait pas être touchée.
 
-When a local variable has the same name as a variable in an enclosing scope, it
-**shadows** the outer one. Code inside the block can't see it any more -- it is
-hidden in the "shadow" cast by the inner one -- but it's still there.
+Quand une variable locale a le même nom qu'une variable dans une portée englobante, elle **masque** (shadows) l'externe. Le code à l'intérieur du bloc ne peut plus la voir -- elle est cachée dans l'"ombre" jetée par l'interne -- mais elle est toujours là.
 
-When we enter a new block scope, we need to preserve variables defined in outer
-scopes so they are still around when we exit the inner block. We do that by
-defining a fresh environment for each block containing only the variables
-defined in that scope. When we exit the block, we discard its environment and
-restore the previous one.
+Quand nous entrons dans une nouvelle portée de bloc, nous devons préserver les variables définies dans les portées externes pour qu'elles soient toujours là quand nous sortons du bloc interne. Nous faisons cela en définissant un environnement frais pour chaque bloc contenant seulement les variables définies dans cette portée. Quand nous sortons du bloc, nous rejetons son environnement et restaurons le précédent.
 
-We also need to handle enclosing variables that are *not* shadowed.
+Nous avons aussi besoin de gérer les variables englobantes qui ne sont _pas_ masquées.
 
 ```lox
-var global = "outside";
+var global = "dehors";
 {
-  var local = "inside";
+  var local = "dedans";
   print global + local;
 }
 ```
 
-Here, `global` lives in the outer global environment and `local` is defined
-inside the block's environment. In that `print` statement, both of those
-variables are in scope. In order to find them, the interpreter must search not
-only the current innermost environment, but also any enclosing ones.
+Ici, `global` vit dans l'environnement global externe et `local` est défini à l'intérieur de l'environnement du bloc. Dans cette instruction `print`, ces deux variables sont dans la portée. Afin de les trouver, l'interpréteur doit chercher non seulement l'environnement le plus interne courant, mais aussi tous ceux englobants.
 
-We implement this by <span name="cactus">chaining</span> the environments
-together. Each environment has a reference to the environment of the immediately
-enclosing scope. When we look up a variable, we walk that chain from innermost
-out until we find the variable. Starting at the inner scope is how we make local
-variables shadow outer ones.
+Nous implémentons cela en <span name="cactus">chaînant</span> les environnements ensemble. Chaque environnement a une référence vers l'environnement de la portée immédiatement englobante. Quand nous cherchons une variable, nous marchons dans cette chaîne du plus interne vers l'extérieur jusqu'à ce que nous trouvions la variable. Commencer à la portée interne est la façon dont nous faisons masquer les variables externes par les locales.
 
-<img src="image/statements-and-state/chaining.png" alt="Environments for each scope, linked together." />
+<img src="image/statements-and-state/chaining.png" alt="Environnements pour chaque portée, liés ensemble." />
 
 <aside name="cactus">
 
-While the interpreter is running, the environments form a linear list of
-objects, but consider the full set of environments created during the entire
-execution. An outer scope may have multiple blocks nested within it, and each
-will point to the outer one, giving a tree-like structure, though only one path
-through the tree exists at a time.
+Pendant que l'interpréteur tourne, les environnements forment une liste linéaire d'objets, mais considérez l'ensemble complet des environnements créés durant l'exécution entière. Une portée externe peut avoir de multiples blocs imbriqués en son sein, et chacun pointera vers l'externe, donnant une structure arborescente, bien qu'un seul chemin à travers l'arbre existe à la fois.
 
-The boring name for this is a [**parent-pointer tree**][parent pointer], but I
-much prefer the evocative **cactus stack**.
+Le nom ennuyeux pour cela est un [**arbre à pointeur de parent**][parent pointer], mais je préfère de loin le nom évocateur de **pile cactus**.
 
 [parent pointer]: https://en.wikipedia.org/wiki/Parent_pointer_tree
 
-<img class="above" src="image/statements-and-state/cactus.png" alt="Each branch points to its parent. The root is global scope." />
+<img class="above" src="image/statements-and-state/cactus.png" alt="Chaque branche pointe vers son parent. La racine est la portée globale." />
 
 </aside>
 
-Before we add block syntax to the grammar, we'll beef up our Environment class
-with support for this nesting. First, we give each environment a reference to
-its enclosing one.
+Avant que nous ajoutions la syntaxe de bloc à la grammaire, nous allons renforcer notre classe Environment avec le support pour cette imbrication. D'abord, nous donnons à chaque environnement une référence vers son englobant.
 
 ^code enclosing-field (1 before, 1 after)
 
-This field needs to be initialized, so we add a couple of constructors.
+Ce champ doit être initialisé, donc nous ajoutons une paire de constructeurs.
 
 ^code environment-constructors
 
-The no-argument constructor is for the global scope's environment, which ends
-the chain. The other constructor creates a new local scope nested inside the
-given outer one.
+Le constructeur sans argument est pour l'environnement de la portée globale, qui termine la chaîne. L'autre constructeur crée une nouvelle portée locale imbriquée à l'intérieur de celle externe donnée.
 
-We don't have to touch the `define()` method -- a new variable is always
-declared in the current innermost scope. But variable lookup and assignment work
-with existing variables and they need to walk the chain to find them. First,
-lookup:
+Nous n'avons pas à toucher la méthode `define()` -- une nouvelle variable est toujours déclarée dans la portée la plus interne courante. Mais la recherche de variable et l'affectation fonctionnent avec des variables existantes et elles doivent marcher dans la chaîne pour les trouver. D'abord, la recherche :
 
 ^code environment-get-enclosing (2 before, 3 after)
 
-If the variable isn't found in this environment, we simply try the enclosing
-one. That in turn does the same thing <span name="recurse">recursively</span>,
-so this will ultimately walk the entire chain. If we reach an environment with
-no enclosing one and still don't find the variable, then we give up and report
-an error as before.
+Si la variable n'est pas trouvée dans cet environnement, nous essayons simplement celui englobant. Celui-là fait à son tour la même chose <span name="recurse">récursivement</span>, donc cela marchera finalement la chaîne entière. Si nous atteignons un environnement sans englobant et ne trouvons toujours pas la variable, alors nous abandonnons et rapportons une erreur comme avant.
 
-Assignment works the same way.
+L'affectation fonctionne de la même manière.
 
 <aside name="recurse">
 
-It's likely faster to iteratively walk the chain, but I think the recursive
-solution is prettier. We'll do something *much* faster in clox.
+C'est probablement plus rapide de marcher itérativement dans la chaîne, mais je pense que la solution récursive est plus jolie. Nous ferons quelque chose de _beaucoup_ plus rapide dans clox.
 
 </aside>
 
 ^code environment-assign-enclosing (4 before, 1 after)
 
-Again, if the variable isn't in this environment, it checks the outer one,
-recursively.
+Encore une fois, si la variable n'est pas dans cet environnement, elle vérifie l'externe, récursivement.
 
-### Block syntax and semantics
+### Syntaxe et sémantique de bloc
 
-Now that Environments nest, we're ready to add blocks to the language. Behold
-the grammar:
+Maintenant que les environnements s'imbriquent, nous sommes prêts à ajouter les blocs au langage. Contemplez la grammaire :
 
 ```ebnf
 statement      → exprStmt
@@ -1204,90 +815,61 @@ statement      → exprStmt
 block          → "{" declaration* "}" ;
 ```
 
-A block is a (possibly empty) series of statements or declarations surrounded by
-curly braces. A block is itself a statement and can appear anywhere a statement
-is allowed. The <span name="block-ast">syntax tree</span> node looks like this:
+Un bloc est une série (possiblement vide) d'instructions ou de déclarations entourée par des accolades. Un bloc est lui-même une instruction et peut apparaître n'importe où une instruction est autorisée. Le nœud d'<span name="block-ast">arbre syntaxique</span> ressemble à ceci :
 
 ^code block-ast (1 before, 1 after)
 
 <aside name="block-ast">
 
-The generated code for the new node is in [Appendix II][appendix-block].
+Le code généré pour le nouveau nœud est dans l'[Annexe II][appendix-block].
 
 [appendix-block]: appendix-ii.html#block-statement
 
 </aside>
 
-<span name="generate">It</span> contains the list of statements that are inside
-the block. Parsing is straightforward. Like other statements, we detect the
-beginning of a block by its leading token -- in this case the `{`. In the
-`statement()` method, we add:
+<span name="generate">Il</span> contient la liste des instructions qui sont à l'intérieur du bloc. Le parsing est direct. Comme d'autres instructions, nous détectons le début d'un bloc par son token de tête -- dans ce cas le `{`. Dans la méthode `statement()`, nous ajoutons :
 
 <aside name="generate">
 
-As always, don't forget to run "GenerateAst.java".
+Comme toujours, n'oubliez pas d'exécuter "GenerateAst.java".
 
 </aside>
 
 ^code parse-block (1 before, 2 after)
 
-All the real work happens here:
+Tout le vrai travail se passe ici :
 
 ^code block
 
-We <span name="list">create</span> an empty list and then parse statements and
-add them to the list until we reach the end of the block, marked by the closing
-`}`. Note that the loop also has an explicit check for `isAtEnd()`. We have to
-be careful to avoid infinite loops, even when parsing invalid code. If the user
-forgets a closing `}`, the parser needs to not get stuck.
+Nous <span name="list">créons</span> une liste vide et ensuite parsons les instructions et les ajoutons à la liste jusqu'à ce que nous atteignions la fin du bloc, marquée par le `}` fermant. Notez que la boucle a aussi une vérification explicite pour `isAtEnd()`. Nous devons faire attention à éviter les boucles infinies, même en parsant du code invalide. Si l'utilisateur oublie un `}` fermant, le parseur ne doit pas rester coincé.
 
 <aside name="list">
 
-Having `block()` return the raw list of statements and leaving it to
-`statement()` to wrap the list in a Stmt.Block looks a little odd. I did it that
-way because we'll reuse `block()` later for parsing function bodies and we don't
-want that body wrapped in a Stmt.Block.
+Faire que `block()` renvoie la liste brute d'instructions et laisser à `statement()` le soin d'envelopper la liste dans un Stmt.Block semble un peu bizarre. Je l'ai fait de cette façon parce que nous réutiliserons `block()` plus tard pour parser les corps de fonction et nous ne voulons pas que ce corps soit enveloppé dans un Stmt.Block.
 
 </aside>
 
-That's it for syntax. For semantics, we add another visit method to Interpreter.
+C'est tout pour la syntaxe. Pour la sémantique, nous ajoutons une autre méthode visit à Interpreter.
 
 ^code visit-block
 
-To execute a block, we create a new environment for the block's scope and pass
-it off to this other method:
+Pour exécuter un bloc, nous créons un nouvel environnement pour la portée du bloc et le passons à cette autre méthode :
 
 ^code execute-block
 
-This new method executes a list of statements in the context of a given <span
-name="param">environment</span>. Up until now, the `environment` field in
-Interpreter always pointed to the same environment -- the global one. Now, that
-field represents the *current* environment. That's the environment that
-corresponds to the innermost scope containing the code to be executed.
+Cette nouvelle méthode exécute une liste d'instructions dans le contexte d'un <span name="param">environnement</span> donné. Jusqu'à maintenant, le champ `environment` dans Interpreter pointait toujours vers le même environnement -- le global. Maintenant, ce champ représente l'environnement _courant_. C'est l'environnement qui correspond à la portée la plus interne contenant le code à exécuter.
 
-To execute code within a given scope, this method updates the interpreter's
-`environment` field, visits all of the statements, and then restores the
-previous value. As is always good practice in Java, it restores the previous
-environment using a finally clause. That way it gets restored even if an
-exception is thrown.
+Pour exécuter du code au sein d'une portée donnée, cette méthode met à jour le champ `environment` de l'interpréteur, visite toutes les instructions, et ensuite restaure la valeur précédente. Comme c'est toujours une bonne pratique en Java, elle restaure l'environnement précédent en utilisant une clause finally. De cette façon il est restauré même si une exception est lancée.
 
 <aside name="param">
 
-Manually changing and restoring a mutable `environment` field feels inelegant.
-Another classic approach is to explicitly pass the environment as a parameter to
-each visit method. To "change" the environment, you pass a different one as you
-recurse down the tree. You don't have to restore the old one, since the new one
-lives on the Java stack and is implicitly discarded when the interpreter returns
-from the block's visit method.
+Changer manuellement et restaurer un champ `environment` mutable semble inélégant. Une autre approche classique est de passer explicitement l'environnement comme paramètre à chaque méthode visit. Pour "changer" l'environnement, vous en passez un différent alors que vous récursez vers le bas de l'arbre. Vous n'avez pas à restaurer l'ancien, puisque le nouveau vit sur la pile Java et est implicitement rejeté quand l'interpréteur revient de la méthode visit du bloc.
 
-I considered that for jlox, but it's kind of tedious and verbose adding an
-environment parameter to every single visit method. To keep the book a little
-simpler, I went with the mutable field.
+J'ai considéré cela pour jlox, mais c'est un peu fastidieux et verbeux d'ajouter un paramètre environnement à chaque méthode visit unique. Pour garder le livre un peu plus simple, je suis allé avec le champ mutable.
 
 </aside>
 
-Surprisingly, that's all we need to do in order to fully support local
-variables, nesting, and shadowing. Go ahead and try this out:
+Étonnamment, c'est tout ce que nous avons besoin de faire afin de supporter entièrement les variables locales, l'imbrication, et le masquage. Allez-y et essayez ceci :
 
 ```lox
 var a = "global a";
@@ -1311,36 +893,28 @@ print b;
 print c;
 ```
 
-Our little interpreter can remember things now. We are inching closer to
-something resembling a full-featured programming language.
+Notre petit interpréteur peut se souvenir de choses maintenant. Nous nous rapprochons centimètre par centimètre de quelque chose ressemblant à un langage de programmation complet.
 
 <div class="challenges">
 
-## Challenges
+## Défis
 
-1.  The REPL no longer supports entering a single expression and automatically
-    printing its result value. That's a drag. Add support to the REPL to let
-    users type in both statements and expressions. If they enter a statement,
-    execute it. If they enter an expression, evaluate it and display the result
-    value.
+1.  Le REPL ne supporte plus l'entrée d'une seule expression et l'impression automatique de sa valeur résultat. C'est barbant. Ajoutez le support au REPL pour laisser les utilisateurs taper à la fois des instructions et des expressions. S'ils entrent une instruction, exécutez-la. S'ils entrent une expression, évaluez-la et affichez la valeur résultat.
 
-2.  Maybe you want Lox to be a little more explicit about variable
-    initialization. Instead of implicitly initializing variables to `nil`, make
-    it a runtime error to access a variable that has not been initialized or
-    assigned to, as in:
+2.  Peut-être voulez-vous que Lox soit un peu plus explicite à propos de l'initialisation de variable. Au lieu d'initialiser implicitement les variables à `nil`, faites-en une erreur d'exécution d'accéder à une variable qui n'a pas été initialisée ou assignée, comme dans :
 
     ```lox
-    // No initializers.
+    // Pas d'initialiseurs.
     var a;
     var b;
 
-    a = "assigned";
-    print a; // OK, was assigned first.
+    a = "assigné";
+    print a; // OK, a été assigné en premier.
 
-    print b; // Error!
+    print b; // Erreur !
     ```
 
-3.  What does the following program do?
+3.  Que fait le programme suivant ?
 
     ```lox
     var a = 1;
@@ -1350,109 +924,52 @@ something resembling a full-featured programming language.
     }
     ```
 
-    What did you *expect* it to do? Is it what you think it should do? What
-    does analogous code in other languages you are familiar with do? What do
-    you think users will expect this to do?
+    que vous _attendiez_-vous à ce qu'il fasse ? Est-ce ce que vous pensez qu'il devrait faire ? Que fait le code analogue dans d'autres langages avec lesquels vous êtes familiers ? Que pensez-vous que les utilisateurs s'attendront à ce qu'il fasse ?
 
 </div>
 
 <div class="design-note">
 
-## Design Note: Implicit Variable Declaration
+## Note de Conception : Déclaration de Variable Implicite
 
-Lox has distinct syntax for declaring a new variable and assigning to an
-existing one. Some languages collapse those to only assignment syntax. Assigning
-to a non-existent variable automatically brings it into being. This is called
-**implicit variable declaration** and exists in Python, Ruby, and CoffeeScript,
-among others. JavaScript has an explicit syntax to declare variables, but can
-also create new variables on assignment. Visual Basic has [an option to enable
-or disable implicit variables][vb].
+Lox a une syntaxe distincte pour déclarer une nouvelle variable et assigner à une existante. Certains langages effondrent celles-ci en seulement la syntaxe d'affectation. Assigner à une variable non-existante l'amène automatiquement à l'existence. Ceci est appelé **déclaration de variable implicite** et existe en Python, Ruby, et CoffeeScript, parmi d'autres. JavaScript a une syntaxe explicite pour déclarer des variables, mais peut aussi créer de nouvelles variables lors de l'affectation. Visual Basic a [une option pour activer ou désactiver les variables implicites][vb].
 
 [vb]: https://msdn.microsoft.com/en-us/library/xe53dz5w(v=vs.100).aspx
 
-When the same syntax can assign or create a variable, each language must decide
-what happens when it isn't clear about which behavior the user intends. In
-particular, each language must choose how implicit declaration interacts with
-shadowing, and which scope an implicitly declared variable goes into.
+Quand la même syntaxe peut assigner ou créer une variable, chaque langage doit décider ce qui se passe quand il n'est pas clair quel comportement l'utilisateur a l'intention d'avoir. En particulier, chaque langage doit choisir comment la déclaration implicite interagit avec le masquage, et dans quelle portée une variable implicitement déclarée va.
 
-*   In Python, assignment always creates a variable in the current function's
-    scope, even if there is a variable with the same name declared outside of
-    the function.
+- En Python, l'affectation crée toujours une variable dans la portée de la fonction courante, même s'il y a une variable avec le même nom déclarée à l'extérieur de la fonction.
 
-*   Ruby avoids some ambiguity by having different naming rules for local and
-    global variables. However, blocks in Ruby (which are more like closures than
-    like "blocks" in C) have their own scope, so it still has the problem.
-    Assignment in Ruby assigns to an existing variable outside of the current
-    block if there is one with the same name. Otherwise, it creates a new
-    variable in the current block's scope.
+- Ruby évite une certaine ambiguïté en ayant des règles de nommage différentes pour les variables locales et globales. Cependant, les blocs en Ruby (qui sont plus comme des fermetures que comme des "blocs" en C) ont leur propre portée, donc il a toujours le problème. L'affectation en Ruby assigne à une variable existante à l'extérieur du bloc courant s'il y en a une avec le même nom. Sinon, elle crée une nouvelle variable dans la portée du bloc courant.
 
-*   CoffeeScript, which takes after Ruby in many ways, is similar. It explicitly
-    disallows shadowing by saying that assignment always assigns to a variable
-    in an outer scope if there is one, all the way up to the outermost global
-    scope. Otherwise, it creates the variable in the current function scope.
+- CoffeeScript, qui tient de Ruby de nombreuses façons, est similaire. Il interdit explicitement le masquage en disant que l'affectation assigne toujours à une variable dans une portée externe s'il y en a une, tout le chemin jusqu'à la portée globale la plus externe. Sinon, il crée la variable dans la portée de la fonction courante.
 
-*   In JavaScript, assignment modifies an existing variable in any enclosing
-    scope, if found. If not, it implicitly creates a new variable in the
-    *global* scope.
+- En JavaScript, l'affectation modifie une variable existante dans n'importe quelle portée englobante, si trouvée. Si non, elle crée implicitement une nouvelle variable dans la portée _globale_.
 
-The main advantage to implicit declaration is simplicity. There's less syntax
-and no "declaration" concept to learn. Users can just start assigning stuff and
-the language figures it out.
+L'avantage principal de la déclaration implicite est la simplicité. Il y a moins de syntaxe et pas de concept de "déclaration" à apprendre. Les utilisateurs peuvent juste commencer à assigner des trucs et le langage se débrouille.
 
-Older, statically typed languages like C benefit from explicit declaration
-because they give the user a place to tell the compiler what type each variable
-has and how much storage to allocate for it. In a dynamically typed,
-garbage-collected language, that isn't really necessary, so you can get away
-with making declarations implicit. It feels a little more "scripty", more "you
-know what I mean".
+Les langages plus vieux, typés statiquement comme C bénéficient de la déclaration explicite parce qu'ils donnent à l'utilisateur un endroit pour dire au compilateur quel type chaque variable a et combien de stockage allouer pour elle. Dans un langage typé dynamiquement, ramassé par le garbage collector, ce n'est pas vraiment nécessaire, donc vous pouvez vous en sortir en rendant les déclarations implicites. Cela semble un peu plus "scripty", plus "tu vois ce que je veux dire".
 
-But is that a good idea? Implicit declaration has some problems.
+Mais est-ce une bonne idée ? La déclaration implicite a quelques problèmes.
 
-*   A user may intend to assign to an existing variable, but may have misspelled
-    it. The interpreter doesn't know that, so it goes ahead and silently creates
-    some new variable and the variable the user wanted to assign to still has
-    its old value. This is particularly heinous in JavaScript where a typo will
-    create a *global* variable, which may in turn interfere with other code.
+- Un utilisateur peut avoir l'intention d'assigner à une variable existante, mais peut l'avoir mal orthographiée. L'interpréteur ne le sait pas, donc il y va et crée silencieusement une nouvelle variable et la variable à laquelle l'utilisateur voulait assigner a toujours son ancienne valeur. C'est particulièrement odieux en JavaScript où une faute de frappe créera une variable _globale_, qui peut à son tour interférer avec d'autre code.
 
-*   JS, Ruby, and CoffeeScript use the presence of an existing variable with the
-    same name -- even in an outer scope -- to determine whether or not an
-    assignment creates a new variable or assigns to an existing one. That means
-    adding a new variable in a surrounding scope can change the meaning of
-    existing code. What was once a local variable may silently turn into an
-    assignment to that new outer variable.
+- JS, Ruby, et CoffeeScript utilisent la présence d'une variable existante avec le même nom -- même dans une portée externe -- pour déterminer si oui ou non une affectation crée une nouvelle variable ou assigne à une existante. Cela signifie qu'ajouter une nouvelle variable dans une portée environnante peut changer le sens du code existant. Ce qui était une fois une variable locale peut silencieusement se transformer en une affectation à cette nouvelle variable externe.
 
-*   In Python, you may *want* to assign to some variable outside of the current
-    function instead of creating a new variable in the current one, but you
-    can't.
+- En Python, vous pouvez _vouloir_ assigner à une variable à l'extérieur de la fonction courante au lieu de créer une nouvelle variable dans la courante, mais vous ne pouvez pas.
 
-Over time, the languages I know with implicit variable declaration ended up
-adding more features and complexity to deal with these problems.
+Avec le temps, les langages que je connais avec déclaration de variable implicite ont fini par ajouter plus de fonctionnalités et de complexité pour gérer ces problèmes.
 
-*   Implicit declaration of global variables in JavaScript is universally
-    considered a mistake today. "Strict mode" disables it and makes it a compile
-    error.
+- La déclaration implicite de variables globales en JavaScript est universellement considérée comme une erreur aujourd'hui. Le "mode strict" la désactive et en fait une erreur de compilation.
 
-*   Python added a `global` statement to let you explicitly assign to a global
-    variable from within a function. Later, as functional programming and nested
-    functions became more popular, they added a similar `nonlocal` statement to
-    assign to variables in enclosing functions.
+- Python a ajouté une instruction `global` pour vous laisser assigner explicitement à une variable globale depuis l'intérieur d'une fonction. Plus tard, alors que la programmation fonctionnelle et les fonctions imbriquées devenaient plus populaires, ils ont ajouté une instruction `nonlocal` similaire pour assigner aux variables dans les fonctions englobantes.
 
-*   Ruby extended its block syntax to allow declaring certain variables to be
-    explicitly local to the block even if the same name exists in an outer
-    scope.
+- Ruby a étendu sa syntaxe de bloc pour permettre de déclarer certaines variables comme étant explicitement locales au bloc même si le même nom existe dans une portée externe.
 
-Given those, I think the simplicity argument is mostly lost. There is an
-argument that implicit declaration is the right *default* but I personally find
-that less compelling.
+Étant donné ceux-là, je pense que l'argument de simplicité est principalement perdu. Il y a un argument que la déclaration implicite est le bon _défaut_ mais je trouve personnellement cela moins convaincant.
 
-My opinion is that implicit declaration made sense in years past when most
-scripting languages were heavily imperative and code was pretty flat. As
-programmers have gotten more comfortable with deep nesting, functional
-programming, and closures, it's become much more common to want access to
-variables in outer scopes. That makes it more likely that users will run into
-the tricky cases where it's not clear whether they intend their assignment to
-create a new variable or reuse a surrounding one.
+Mon opinion est que la déclaration implicite avait du sens dans les années passées quand la plupart des langages de script étaient lourdement impératifs et le code était assez plat. À mesure que les programmeurs sont devenus plus à l'aise avec l'imbrication profonde, la programmation fonctionnelle, et les fermetures, il est devenu beaucoup plus courant de vouloir accéder aux variables dans les portées externes. Cela rend plus probable le fait que les utilisateurs tomberont dans les cas délicats où il n'est pas clair s'ils ont l'intention que leur affectation crée une nouvelle variable ou réutilise une environnante.
 
-So I prefer explicitly declaring variables, which is why Lox requires it.
+Donc je préfère déclarer explicitement les variables, c'est pourquoi Lox l'exige.
 
 </div>
