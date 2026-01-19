@@ -58,7 +58,21 @@ class Page {
 
     var words = title.split(" ");
     var word = words.first.toLowerCase();
-    if (word == "a" || word == "the") word = words[1].toLowerCase();
+    if (({"a", "the", "un", "une", "le", "la", "les", "des"}.contains(word) ||
+            word.startsWith("l'")) &&
+        words.length > 1) {
+      if (word.startsWith("l'")) {
+         // If it's l'foo, keep 'foo' if we can, or just advance?
+         // Actually, if it is "L'analyse lexicale", 'analyse' is better than 'lexicale'.
+         // But existing logic for 'the' skips 'the'.
+         // Let's just strip l' from the word if it starts with it.
+         word = word.substring(2);
+      } else {
+         word = words[1].toLowerCase();
+      }
+    } else if (word.startsWith("l'")) {
+       word = word.substring(2);
+    }
 
     return "chap${number}_$word";
   }

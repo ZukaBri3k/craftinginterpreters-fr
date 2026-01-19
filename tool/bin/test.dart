@@ -596,7 +596,7 @@ void _defineTestSuites() {
     ...noJavaLimits,
   });
 
-  java("chap04_scanning", {
+  java("chap04_analyse", {
     // No interpreter yet.
     "test": "skip",
     "test/scanning": "pass"
@@ -604,19 +604,19 @@ void _defineTestSuites() {
 
   // No test for chapter 5. It just has a hardcoded main() in AstPrinter.
 
-  java("chap06_parsing", {
+  java("chap06_analyse", {
     // No real interpreter yet.
     "test": "skip",
     "test/expressions/parse.lox": "pass"
   });
 
-  java("chap07_evaluating", {
+  java("chap07_évaluation", {
     // No real interpreter yet.
     "test": "skip",
     "test/expressions/evaluate.lox": "pass"
   });
 
-  java("chap08_statements", {
+  java("chap08_instructions", {
     "test": "pass",
     ...earlyChapters,
     ...javaNaNEquality,
@@ -634,7 +634,7 @@ void _defineTestSuites() {
     "test/variable/unreached_undefined.lox": "skip",
   });
 
-  java("chap09_control", {
+  java("chap09_contrôle", {
     "test": "pass",
     ...earlyChapters,
     ...javaNaNEquality,
@@ -644,7 +644,7 @@ void _defineTestSuites() {
     ...noJavaClasses,
   });
 
-  java("chap10_functions", {
+  java("chap10_fonctions", {
     "test": "pass",
     ...earlyChapters,
     ...javaNaNEquality,
@@ -653,7 +653,7 @@ void _defineTestSuites() {
     ...noJavaClasses,
   });
 
-  java("chap11_resolving", {
+  java("chap11_résolution", {
     "test": "pass",
     ...earlyChapters,
     ...javaNaNEquality,
@@ -677,7 +677,7 @@ void _defineTestSuites() {
     "test/super": "skip",
   });
 
-  java("chap13_inheritance", {
+  java("chap13_héritage", {
     "test": "pass",
     ...earlyChapters,
     ...javaNaNEquality,
@@ -689,7 +689,7 @@ void _defineTestSuites() {
     ...earlyChapters,
   });
 
-  c("chap17_compiling", {
+  c("chap17_compilation", {
     // No real interpreter yet.
     "test": "skip",
     "test/expressions/evaluate.lox": "pass",
@@ -701,19 +701,19 @@ void _defineTestSuites() {
     "test/expressions/evaluate.lox": "pass",
   });
 
-  c("chap19_strings", {
+  c("chap19_chaînes", {
     // No real interpreter yet.
     "test": "skip",
     "test/expressions/evaluate.lox": "pass",
   });
 
-  c("chap20_hash", {
+  c("chap20_tables", {
     // No real interpreter yet.
     "test": "skip",
     "test/expressions/evaluate.lox": "pass",
   });
 
-  c("chap21_global", {
+  c("chap21_variables", {
     "test": "pass",
     ...earlyChapters,
     ...noCControlFlow,
@@ -736,7 +736,7 @@ void _defineTestSuites() {
     "test/variable/use_local_in_initializer.lox": "skip",
   });
 
-  c("chap22_local", {
+  c("chap22_variables", {
     "test": "pass",
     ...earlyChapters,
     ...noCControlFlow,
@@ -744,14 +744,14 @@ void _defineTestSuites() {
     ...noCClasses,
   });
 
-  c("chap23_jumping", {
+  c("chap23_sauts", {
     "test": "pass",
     ...earlyChapters,
     ...noCFunctions,
     ...noCClasses,
   });
 
-  c("chap24_calls", {
+  c("chap24_appels", {
     "test": "pass",
     ...earlyChapters,
     ...noCClasses,
@@ -767,13 +767,13 @@ void _defineTestSuites() {
     "test/while/return_closure.lox": "skip",
   });
 
-  c("chap25_closures", {
+  c("chap25_fermetures", {
     "test": "pass",
     ...earlyChapters,
     ...noCClasses,
   });
 
-  c("chap26_garbage", {
+  c("chap26_ramasse-miettes", {
     "test": "pass",
     ...earlyChapters,
     ...noCClasses,
@@ -801,7 +801,7 @@ void _defineTestSuites() {
     "test/variable/local_from_method.lox": "skip",
   });
 
-  c("chap28_methods", {
+  c("chap28_méthodes", {
     "test": "pass",
     ...earlyChapters,
     ...noCInheritance,
@@ -812,7 +812,7 @@ void _defineTestSuites() {
     ...earlyChapters,
   });
 
-  c("chap30_optimization", {
+  c("chap30_optimisation", {
     "test": "pass",
     ...earlyChapters,
   });

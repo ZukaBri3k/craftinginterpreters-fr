@@ -85,112 +85,112 @@ run_generate_ast = @ java -cp build/gen/$(1) \
 			gen/$(1)/com/craftinginterpreters/lox
 
 java_chapters: split_chapters
-	@ $(MAKE) -f util/java.make DIR=gen/chap04_scanning PACKAGE=lox
+	@ $(MAKE) -f util/java.make DIR=gen/chap04_analyse PACKAGE=lox
 
-	@ $(MAKE) -f util/java.make DIR=gen/chap05_representing PACKAGE=tool
-	$(call run_generate_ast,chap05_representing)
-	@ $(MAKE) -f util/java.make DIR=gen/chap05_representing PACKAGE=lox
+	@ $(MAKE) -f util/java.make DIR=gen/chap05_représentation PACKAGE=tool
+	$(call run_generate_ast,chap05_représentation)
+	@ $(MAKE) -f util/java.make DIR=gen/chap05_représentation PACKAGE=lox
 
-	@ $(MAKE) -f util/java.make DIR=gen/chap06_parsing PACKAGE=tool
-	$(call run_generate_ast,chap06_parsing)
-	@ $(MAKE) -f util/java.make DIR=gen/chap06_parsing PACKAGE=lox
+	@ $(MAKE) -f util/java.make DIR=gen/chap06_analyse PACKAGE=tool
+	$(call run_generate_ast,chap06_analyse)
+	@ $(MAKE) -f util/java.make DIR=gen/chap06_analyse PACKAGE=lox
 
-	@ $(MAKE) -f util/java.make DIR=gen/chap07_evaluating PACKAGE=tool
-	$(call run_generate_ast,chap07_evaluating)
-	@ $(MAKE) -f util/java.make DIR=gen/chap07_evaluating PACKAGE=lox
+	@ $(MAKE) -f util/java.make DIR=gen/chap07_évaluation PACKAGE=tool
+	$(call run_generate_ast,chap07_évaluation)
+	@ $(MAKE) -f util/java.make DIR=gen/chap07_évaluation PACKAGE=lox
 
-	@ $(MAKE) -f util/java.make DIR=gen/chap08_statements PACKAGE=tool
-	$(call run_generate_ast,chap08_statements)
-	@ $(MAKE) -f util/java.make DIR=gen/chap08_statements PACKAGE=lox
+	@ $(MAKE) -f util/java.make DIR=gen/chap08_instructions PACKAGE=tool
+	$(call run_generate_ast,chap08_instructions)
+	@ $(MAKE) -f util/java.make DIR=gen/chap08_instructions PACKAGE=lox
 
-	@ $(MAKE) -f util/java.make DIR=gen/chap09_control PACKAGE=tool
-	$(call run_generate_ast,chap09_control)
-	@ $(MAKE) -f util/java.make DIR=gen/chap09_control PACKAGE=lox
+	@ $(MAKE) -f util/java.make DIR=gen/chap09_contrôle PACKAGE=tool
+	$(call run_generate_ast,chap09_contrôle)
+	@ $(MAKE) -f util/java.make DIR=gen/chap09_contrôle PACKAGE=lox
 
-	@ $(MAKE) -f util/java.make DIR=gen/chap10_functions PACKAGE=tool
-	$(call run_generate_ast,chap10_functions)
-	@ $(MAKE) -f util/java.make DIR=gen/chap10_functions PACKAGE=lox
+	@ $(MAKE) -f util/java.make DIR=gen/chap10_fonctions PACKAGE=tool
+	$(call run_generate_ast,chap10_fonctions)
+	@ $(MAKE) -f util/java.make DIR=gen/chap10_fonctions PACKAGE=lox
 
-	@ $(MAKE) -f util/java.make DIR=gen/chap11_resolving PACKAGE=tool
-	$(call run_generate_ast,chap11_resolving)
-	@ $(MAKE) -f util/java.make DIR=gen/chap11_resolving PACKAGE=lox
+	@ $(MAKE) -f util/java.make DIR=gen/chap11_résolution PACKAGE=tool
+	$(call run_generate_ast,chap11_résolution)
+	@ $(MAKE) -f util/java.make DIR=gen/chap11_résolution PACKAGE=lox
 
 	@ $(MAKE) -f util/java.make DIR=gen/chap12_classes PACKAGE=tool
 	$(call run_generate_ast,chap12_classes)
 	@ $(MAKE) -f util/java.make DIR=gen/chap12_classes PACKAGE=lox
 
-	@ $(MAKE) -f util/java.make DIR=gen/chap13_inheritance PACKAGE=tool
-	$(call run_generate_ast,chap13_inheritance)
-	@ $(MAKE) -f util/java.make DIR=gen/chap13_inheritance PACKAGE=lox
+	@ $(MAKE) -f util/java.make DIR=gen/chap13_héritage PACKAGE=tool
+	$(call run_generate_ast,chap13_héritage)
+	@ $(MAKE) -f util/java.make DIR=gen/chap13_héritage PACKAGE=lox
 
 c_chapters: split_chapters
-	@ $(MAKE) -f util/c.make NAME=chap14_chunks MODE=release SOURCE_DIR=gen/chap14_chunks
-	@ $(MAKE) -f util/c.make NAME=chap15_virtual MODE=release SOURCE_DIR=gen/chap15_virtual
-	@ $(MAKE) -f util/c.make NAME=chap16_scanning MODE=release SOURCE_DIR=gen/chap16_scanning
-	@ $(MAKE) -f util/c.make NAME=chap17_compiling MODE=release SOURCE_DIR=gen/chap17_compiling
+	@ $(MAKE) -f util/c.make NAME=chap14_morceaux MODE=release SOURCE_DIR=gen/chap14_morceaux
+	@ $(MAKE) -f util/c.make NAME=chap15_machine MODE=release SOURCE_DIR=gen/chap15_machine
+	@ $(MAKE) -f util/c.make NAME=chap16_analyse MODE=release SOURCE_DIR=gen/chap16_analyse
+	@ $(MAKE) -f util/c.make NAME=chap17_compilation MODE=release SOURCE_DIR=gen/chap17_compilation
 	@ $(MAKE) -f util/c.make NAME=chap18_types MODE=release SOURCE_DIR=gen/chap18_types
-	@ $(MAKE) -f util/c.make NAME=chap19_strings MODE=release SOURCE_DIR=gen/chap19_strings
-	@ $(MAKE) -f util/c.make NAME=chap20_hash MODE=release SOURCE_DIR=gen/chap20_hash
-	@ $(MAKE) -f util/c.make NAME=chap21_global MODE=release SOURCE_DIR=gen/chap21_global
-	@ $(MAKE) -f util/c.make NAME=chap22_local MODE=release SOURCE_DIR=gen/chap22_local
-	@ $(MAKE) -f util/c.make NAME=chap23_jumping MODE=release SOURCE_DIR=gen/chap23_jumping
-	@ $(MAKE) -f util/c.make NAME=chap24_calls MODE=release SOURCE_DIR=gen/chap24_calls
-	@ $(MAKE) -f util/c.make NAME=chap25_closures MODE=release SOURCE_DIR=gen/chap25_closures
-	@ $(MAKE) -f util/c.make NAME=chap26_garbage MODE=release SOURCE_DIR=gen/chap26_garbage
+	@ $(MAKE) -f util/c.make NAME=chap19_chaînes MODE=release SOURCE_DIR=gen/chap19_chaînes
+	@ $(MAKE) -f util/c.make NAME=chap20_tables MODE=release SOURCE_DIR=gen/chap20_tables
+	@ $(MAKE) -f util/c.make NAME=chap21_variables MODE=release SOURCE_DIR=gen/chap21_variables
+	@ $(MAKE) -f util/c.make NAME=chap22_variables MODE=release SOURCE_DIR=gen/chap22_variables
+	@ $(MAKE) -f util/c.make NAME=chap23_sauts MODE=release SOURCE_DIR=gen/chap23_sauts
+	@ $(MAKE) -f util/c.make NAME=chap24_appels MODE=release SOURCE_DIR=gen/chap24_appels
+	@ $(MAKE) -f util/c.make NAME=chap25_fermetures MODE=release SOURCE_DIR=gen/chap25_fermetures
+	@ $(MAKE) -f util/c.make NAME=chap26_ramasse-miettes MODE=release SOURCE_DIR=gen/chap26_ramasse-miettes
 	@ $(MAKE) -f util/c.make NAME=chap27_classes MODE=release SOURCE_DIR=gen/chap27_classes
-	@ $(MAKE) -f util/c.make NAME=chap28_methods MODE=release SOURCE_DIR=gen/chap28_methods
+	@ $(MAKE) -f util/c.make NAME=chap28_méthodes MODE=release SOURCE_DIR=gen/chap28_méthodes
 	@ $(MAKE) -f util/c.make NAME=chap29_superclasses MODE=release SOURCE_DIR=gen/chap29_superclasses
-	@ $(MAKE) -f util/c.make NAME=chap30_optimization MODE=release SOURCE_DIR=gen/chap30_optimization
+	@ $(MAKE) -f util/c.make NAME=chap30_optimisation MODE=release SOURCE_DIR=gen/chap30_optimisation
 
 cpp_chapters: split_chapters
-	@ $(MAKE) -f util/c.make NAME=cpp_chap14_chunks MODE=release CPP=true SOURCE_DIR=gen/chap14_chunks
-	@ $(MAKE) -f util/c.make NAME=cpp_chap15_virtual MODE=release CPP=true SOURCE_DIR=gen/chap15_virtual
-	@ $(MAKE) -f util/c.make NAME=cpp_chap16_scanning MODE=release CPP=true SOURCE_DIR=gen/chap16_scanning
-	@ $(MAKE) -f util/c.make NAME=cpp_chap17_compiling MODE=release CPP=true SOURCE_DIR=gen/chap17_compiling
+	@ $(MAKE) -f util/c.make NAME=cpp_chap14_morceaux MODE=release CPP=true SOURCE_DIR=gen/chap14_morceaux
+	@ $(MAKE) -f util/c.make NAME=cpp_chap15_machine MODE=release CPP=true SOURCE_DIR=gen/chap15_machine
+	@ $(MAKE) -f util/c.make NAME=cpp_chap16_analyse MODE=release CPP=true SOURCE_DIR=gen/chap16_analyse
+	@ $(MAKE) -f util/c.make NAME=cpp_chap17_compilation MODE=release CPP=true SOURCE_DIR=gen/chap17_compilation
 	@ $(MAKE) -f util/c.make NAME=cpp_chap18_types MODE=release CPP=true SOURCE_DIR=gen/chap18_types
-	@ $(MAKE) -f util/c.make NAME=cpp_chap19_strings MODE=release CPP=true SOURCE_DIR=gen/chap19_strings
-	@ $(MAKE) -f util/c.make NAME=cpp_chap20_hash MODE=release CPP=true SOURCE_DIR=gen/chap20_hash
-	@ $(MAKE) -f util/c.make NAME=cpp_chap21_global MODE=release CPP=true SOURCE_DIR=gen/chap21_global
-	@ $(MAKE) -f util/c.make NAME=cpp_chap22_local MODE=release CPP=true SOURCE_DIR=gen/chap22_local
-	@ $(MAKE) -f util/c.make NAME=cpp_chap23_jumping MODE=release CPP=true SOURCE_DIR=gen/chap23_jumping
-	@ $(MAKE) -f util/c.make NAME=cpp_chap24_calls MODE=release CPP=true SOURCE_DIR=gen/chap24_calls
-	@ $(MAKE) -f util/c.make NAME=cpp_chap25_closures MODE=release CPP=true SOURCE_DIR=gen/chap25_closures
-	@ $(MAKE) -f util/c.make NAME=cpp_chap26_garbage MODE=release CPP=true SOURCE_DIR=gen/chap26_garbage
+	@ $(MAKE) -f util/c.make NAME=cpp_chap19_chaînes MODE=release CPP=true SOURCE_DIR=gen/chap19_chaînes
+	@ $(MAKE) -f util/c.make NAME=cpp_chap20_tables MODE=release CPP=true SOURCE_DIR=gen/chap20_tables
+	@ $(MAKE) -f util/c.make NAME=cpp_chap21_variables MODE=release CPP=true SOURCE_DIR=gen/chap21_variables
+	@ $(MAKE) -f util/c.make NAME=cpp_chap22_variables MODE=release CPP=true SOURCE_DIR=gen/chap22_variables
+	@ $(MAKE) -f util/c.make NAME=cpp_chap23_sauts MODE=release CPP=true SOURCE_DIR=gen/chap23_sauts
+	@ $(MAKE) -f util/c.make NAME=cpp_chap24_appels MODE=release CPP=true SOURCE_DIR=gen/chap24_appels
+	@ $(MAKE) -f util/c.make NAME=cpp_chap25_fermetures MODE=release CPP=true SOURCE_DIR=gen/chap25_fermetures
+	@ $(MAKE) -f util/c.make NAME=cpp_chap26_ramasse-miettes MODE=release CPP=true SOURCE_DIR=gen/chap26_ramasse-miettes
 	@ $(MAKE) -f util/c.make NAME=cpp_chap27_classes MODE=release CPP=true SOURCE_DIR=gen/chap27_classes
-	@ $(MAKE) -f util/c.make NAME=cpp_chap28_methods MODE=release CPP=true SOURCE_DIR=gen/chap28_methods
+	@ $(MAKE) -f util/c.make NAME=cpp_chap28_méthodes MODE=release CPP=true SOURCE_DIR=gen/chap28_méthodes
 	@ $(MAKE) -f util/c.make NAME=cpp_chap29_superclasses MODE=release CPP=true SOURCE_DIR=gen/chap29_superclasses
-	@ $(MAKE) -f util/c.make NAME=cpp_chap30_optimization MODE=release CPP=true SOURCE_DIR=gen/chap30_optimization
+	@ $(MAKE) -f util/c.make NAME=cpp_chap30_optimisation MODE=release CPP=true SOURCE_DIR=gen/chap30_optimisation
 
 diffs: split_chapters java_chapters
 	@ mkdir -p build/diffs
-	@ -diff --recursive --new-file nonexistent/ gen/chap04_scanning/com/craftinginterpreters/ > build/diffs/chap04_scanning.diff
-	@ -diff --recursive --new-file gen/chap04_scanning/com/craftinginterpreters/ gen/chap05_representing/com/craftinginterpreters/ > build/diffs/chap05_representing.diff
-	@ -diff --recursive --new-file gen/chap05_representing/com/craftinginterpreters/ gen/chap06_parsing/com/craftinginterpreters/ > build/diffs/chap06_parsing.diff
-	@ -diff --recursive --new-file gen/chap06_parsing/com/craftinginterpreters/ gen/chap07_evaluating/com/craftinginterpreters/ > build/diffs/chap07_evaluating.diff
-	@ -diff --recursive --new-file gen/chap07_evaluating/com/craftinginterpreters/ gen/chap08_statements/com/craftinginterpreters/ > build/diffs/chap08_statements.diff
-	@ -diff --recursive --new-file gen/chap08_statements/com/craftinginterpreters/ gen/chap09_control/com/craftinginterpreters/ > build/diffs/chap09_control.diff
-	@ -diff --recursive --new-file gen/chap09_control/com/craftinginterpreters/ gen/chap10_functions/com/craftinginterpreters/ > build/diffs/chap10_functions.diff
-	@ -diff --recursive --new-file gen/chap10_functions/com/craftinginterpreters/ gen/chap11_resolving/com/craftinginterpreters/ > build/diffs/chap11_resolving.diff
-	@ -diff --recursive --new-file gen/chap11_resolving/com/craftinginterpreters/ gen/chap12_classes/com/craftinginterpreters/ > build/diffs/chap12_classes.diff
-	@ -diff --recursive --new-file gen/chap12_classes/com/craftinginterpreters/ gen/chap13_inheritance/com/craftinginterpreters/ > build/diffs/chap13_inheritance.diff
+	@ -diff --recursive --new-file nonexistent/ gen/chap04_analyse/com/craftinginterpreters/ > build/diffs/chap04_analyse.diff
+	@ -diff --recursive --new-file gen/chap04_analyse/com/craftinginterpreters/ gen/chap05_représentation/com/craftinginterpreters/ > build/diffs/chap05_représentation.diff
+	@ -diff --recursive --new-file gen/chap05_représentation/com/craftinginterpreters/ gen/chap06_analyse/com/craftinginterpreters/ > build/diffs/chap06_analyse.diff
+	@ -diff --recursive --new-file gen/chap06_analyse/com/craftinginterpreters/ gen/chap07_évaluation/com/craftinginterpreters/ > build/diffs/chap07_évaluation.diff
+	@ -diff --recursive --new-file gen/chap07_évaluation/com/craftinginterpreters/ gen/chap08_instructions/com/craftinginterpreters/ > build/diffs/chap08_instructions.diff
+	@ -diff --recursive --new-file gen/chap08_instructions/com/craftinginterpreters/ gen/chap09_contrôle/com/craftinginterpreters/ > build/diffs/chap09_contrôle.diff
+	@ -diff --recursive --new-file gen/chap09_contrôle/com/craftinginterpreters/ gen/chap10_fonctions/com/craftinginterpreters/ > build/diffs/chap10_fonctions.diff
+	@ -diff --recursive --new-file gen/chap10_fonctions/com/craftinginterpreters/ gen/chap11_résolution/com/craftinginterpreters/ > build/diffs/chap11_résolution.diff
+	@ -diff --recursive --new-file gen/chap11_résolution/com/craftinginterpreters/ gen/chap12_classes/com/craftinginterpreters/ > build/diffs/chap12_classes.diff
+	@ -diff --recursive --new-file gen/chap12_classes/com/craftinginterpreters/ gen/chap13_héritage/com/craftinginterpreters/ > build/diffs/chap13_héritage.diff
 
-	@ -diff --new-file nonexistent/ gen/chap14_chunks/ > build/diffs/chap14_chunks.diff
-	@ -diff --new-file gen/chap14_chunks/ gen/chap15_virtual/ > build/diffs/chap15_virtual.diff
-	@ -diff --new-file gen/chap15_virtual/ gen/chap16_scanning/ > build/diffs/chap16_scanning.diff
-	@ -diff --new-file gen/chap16_scanning/ gen/chap17_compiling/ > build/diffs/chap17_compiling.diff
-	@ -diff --new-file gen/chap17_compiling/ gen/chap18_types/ > build/diffs/chap18_types.diff
-	@ -diff --new-file gen/chap18_types/ gen/chap19_strings/ > build/diffs/chap19_strings.diff
-	@ -diff --new-file gen/chap19_strings/ gen/chap20_hash/ > build/diffs/chap20_hash.diff
-	@ -diff --new-file gen/chap20_hash/ gen/chap21_global/ > build/diffs/chap21_global.diff
-	@ -diff --new-file gen/chap21_global/ gen/chap22_local/ > build/diffs/chap22_local.diff
-	@ -diff --new-file gen/chap22_local/ gen/chap23_jumping/ > build/diffs/chap23_jumping.diff
-	@ -diff --new-file gen/chap23_jumping/ gen/chap24_calls/ > build/diffs/chap24_calls.diff
-	@ -diff --new-file gen/chap24_calls/ gen/chap25_closures/ > build/diffs/chap25_closures.diff
-	@ -diff --new-file gen/chap25_closures/ gen/chap26_garbage/ > build/diffs/chap26_garbage.diff
-	@ -diff --new-file gen/chap26_garbage/ gen/chap27_classes/ > build/diffs/chap27_classes.diff
-	@ -diff --new-file gen/chap27_classes/ gen/chap28_methods/ > build/diffs/chap28_methods.diff
-	@ -diff --new-file gen/chap28_methods/ gen/chap29_superclasses/ > build/diffs/chap29_superclasses.diff
-	@ -diff --new-file gen/chap29_superclasses/ gen/chap30_optimization/ > build/diffs/chap30_optimization.diff
+	@ -diff --new-file nonexistent/ gen/chap14_morceaux/ > build/diffs/chap14_morceaux.diff
+	@ -diff --new-file gen/chap14_morceaux/ gen/chap15_machine/ > build/diffs/chap15_machine.diff
+	@ -diff --new-file gen/chap15_machine/ gen/chap16_analyse/ > build/diffs/chap16_analyse.diff
+	@ -diff --new-file gen/chap16_analyse/ gen/chap17_compilation/ > build/diffs/chap17_compilation.diff
+	@ -diff --new-file gen/chap17_compilation/ gen/chap18_types/ > build/diffs/chap18_types.diff
+	@ -diff --new-file gen/chap18_types/ gen/chap19_chaînes/ > build/diffs/chap19_chaînes.diff
+	@ -diff --new-file gen/chap19_chaînes/ gen/chap20_tables/ > build/diffs/chap20_tables.diff
+	@ -diff --new-file gen/chap20_tables/ gen/chap21_variables/ > build/diffs/chap21_variables.diff
+	@ -diff --new-file gen/chap21_variables/ gen/chap22_variables/ > build/diffs/chap22_variables.diff
+	@ -diff --new-file gen/chap22_variables/ gen/chap23_sauts/ > build/diffs/chap23_sauts.diff
+	@ -diff --new-file gen/chap23_sauts/ gen/chap24_appels/ > build/diffs/chap24_appels.diff
+	@ -diff --new-file gen/chap24_appels/ gen/chap25_fermetures/ > build/diffs/chap25_fermetures.diff
+	@ -diff --new-file gen/chap25_fermetures/ gen/chap26_ramasse-miettes/ > build/diffs/chap26_ramasse-miettes.diff
+	@ -diff --new-file gen/chap26_ramasse-miettes/ gen/chap27_classes/ > build/diffs/chap27_classes.diff
+	@ -diff --new-file gen/chap27_classes/ gen/chap28_méthodes/ > build/diffs/chap28_méthodes.diff
+	@ -diff --new-file gen/chap28_méthodes/ gen/chap29_superclasses/ > build/diffs/chap29_superclasses.diff
+	@ -diff --new-file gen/chap29_superclasses/ gen/chap30_optimisation/ > build/diffs/chap30_optimisation.diff
 
 split_chapters:
 	@ dart tool/bin/split_chapters.dart

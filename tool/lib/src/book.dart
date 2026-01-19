@@ -13,7 +13,7 @@ const _tableOfContents = {
     'Crafting Interpreters',
     'Dedication',
     'Acknowledgements',
-    'Table of Contents',
+    'Table des matières',
   ],
   'Bienvenue': [
     'Introduction',
@@ -21,39 +21,39 @@ const _tableOfContents = {
     'Le langage Lox',
   ],
   'Un interpréteur à parcours d\'arbre': [
-    'Scanning',
-    'Representing Code',
-    'Parsing Expressions',
-    'Evaluating Expressions',
-    'Statements and State',
-    'Control Flow',
-    'Functions',
-    'Resolving and Binding',
+    'Analyse lexicale',
+    'Représentation du code',
+    'Analyse des expressions',
+    'Évaluation des expressions',
+    'Instructions et état',
+    'Contrôle de flux',
+    'Fonctions',
+    'Résolution et liaison',
     'Classes',
-    'Inheritance',
+    'Héritage',
   ],
   'A Bytecode Virtual Machine': [
-    'Chunks of Bytecode',
-    'A Virtual Machine',
-    'Scanning on Demand',
-    'Compiling Expressions',
-    'Types of Values',
-    'Strings',
-    'Hash Tables',
-    'Global Variables',
-    'Local Variables',
-    'Jumping Back and Forth',
-    'Calls and Functions',
-    'Closures',
-    'Garbage Collection',
-    'Classes and Instances',
-    'Methods and Initializers',
+    'Morceaux de bytecode',
+    'Machine virtuelle',
+    'Analyse à la demande',
+    'Compilation des expressions',
+    'Types de valeurs',
+    'Chaînes de caractères',
+    'Tables de hachage',
+    'Variables globales',
+    'Variables locales',
+    'Sauts avant et arrière',
+    'Appels et fonctions',
+    'Fermetures',
+    'Ramasse-miettes',
+    'Classes et instances',
+    'Méthodes et initialisateurs',
     'Superclasses',
-    'Optimization',
+    'Optimisation',
   ],
   'Backmatter': [
-    'Appendix I',
-    'Appendix II',
+    'Annexe I',
+    'Annexe II',
   ],
 };
 
@@ -104,6 +104,37 @@ const _tableOfContentsOriginal = {
     'Appendix I',
     'Appendix II',
   ],
+};
+const _titleMapping = {
+  'Scanning': 'Analyse lexicale',
+  'Representing Code': 'Représentation du code',
+  'Parsing Expressions': 'Analyse des expressions',
+  'Evaluating Expressions': 'Évaluation des expressions',
+  'Statements and State': 'Instructions et état',
+  'Control Flow': 'Contrôle de flux',
+  'Functions': 'Fonctions',
+  'Resolving and Binding': 'Résolution et liaison',
+  'Classes': 'Classes',
+  'Inheritance': 'Héritage',
+  'Chunks of Bytecode': 'Morceaux de bytecode',
+  'A Virtual Machine': 'Machine virtuelle',
+  'Scanning on Demand': 'Analyse à la demande',
+  'Compiling Expressions': 'Compilation des expressions',
+  'Types of Values': 'Types de valeurs',
+  'Strings': 'Chaînes de caractères',
+  'Hash Tables': 'Tables de hachage',
+  'Global Variables': 'Variables globales',
+  'Local Variables': 'Variables locales',
+  'Jumping Back and Forth': 'Sauts avant et arrière',
+  'Calls and Functions': 'Appels et fonctions',
+  'Closures': 'Fermetures',
+  'Garbage Collection': 'Ramasse-miettes',
+  'Classes and Instances': 'Classes et instances',
+  'Methods and Initializers': 'Méthodes et initialisateurs',
+  'Superclasses': 'Superclasses',
+  'Optimization': 'Optimisation',
+  'Appendix I': 'Annexe I',
+  'Appendix II': 'Annexe II',
 };
 
 /// The contents of the Markdown and source files for the book, loaded and
@@ -194,8 +225,12 @@ class Book {
   }
 
   /// Looks for a page with [title].
-  Page findChapter(String title) =>
-      pages.firstWhere((page) => page.title == title);
+  Page findChapter(String title) {
+    if (_titleMapping.containsKey(title)) {
+      title = _titleMapping[title];
+    }
+    return pages.firstWhere((page) => page.title == title);
+  }
 
   /// Looks for a page with [number];
   Page findNumber(String number) =>
